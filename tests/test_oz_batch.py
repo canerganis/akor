@@ -3,7 +3,7 @@ import unittest
 
 from oz import Error
 from oz_batch import (COMMON, HANDOFF_NOTE, LITERAL_LINE, MEANINGS,
-                      NOARG_LINE, REPLY_CONTRACT, SAFETY, TABLE_LINE, explicit, render)
+                      NOARG_LINE, REPLY_CONTRACT, RESULTS_RULE, SAFETY, TABLE_LINE, explicit, render)
 from test_oz2 import extended
 
 LONG = ':' + 'measurement 12.50 ± 0.02 mm; method unknown. ' * 6
@@ -83,6 +83,12 @@ class BatchTests(unittest.TestCase):
         status = render(ch, [('a', 'r9')], counters=[len])
         self.assertNotEqual(status.mode, 'direct-inline')
         self.assertEqual(data(status)['c']['9'], {'text': '1 check failed', 'status': 'failed'})
+
+    def test_results_rule_is_opt_in_and_follows_reply_contract(self):
+        plain = render(extended(), [('a', 'V')], counters=[len])
+        self.assertNotIn(RESULTS_RULE, plain.text)
+        ruled = render(extended(), [('a', 'V')], counters=[len], results_rule=True)
+        self.assertIn(REPLY_CONTRACT + ' ' + RESULTS_RULE, ruled.text.splitlines()[1])
 
     def test_literal_and_no_argument_rules_are_conditional(self):
         literal = render(extended(), [('a', ':hello r13')], counters=[len])
