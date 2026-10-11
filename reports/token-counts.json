@@ -1,0 +1,137 @@
+{
+  "kind": "synthetic_text_token_accounting",
+  "tiktoken_version": "0.14.0",
+  "fixture_and_prompts_sha256": "330df4f79c1e01fb207f0028af65fee07402229544f6d10a5e907df096053ddb",
+  "limitations": [
+    "No live model calls; no comprehension, task-success or repair-rate measurement.",
+    "Encodings are o200k_base and cl100k_base; neither represents all providers or current models.",
+    "Text tokens only; API message framing, reasoning, tool calls, prices and prompt-cache billing excluded.",
+    "Message-text totals and recipient-input totals are separate accounting views; do not add them as total API usage.",
+    "All stateless delivery calls include bootstrap and required reference definitions; no context memory assumed.",
+    "JSON and JSON-array baselines use the same content, semantics, references and delta routing.",
+    "History replay is an explicitly inefficient ablation, not the only baseline.",
+    "Two small synthetic cases are not a representative production benchmark."
+  ],
+  "encodings": {
+    "o200k_base": [
+      {
+        "case": "coding_en",
+        "messages": 6,
+        "message_text_tokens": {
+          "akor": 175,
+          "json": 253,
+          "array": 199
+        },
+        "bootstrap_tokens": {
+          "akor": 416,
+          "json": 421,
+          "array": 422
+        },
+        "six_stateless_delivery_input_tokens": {
+          "akor": 3224,
+          "json": 3414,
+          "array": 3350
+        },
+        "same_peer_history_replay_input_tokens": {
+          "akor": 3437,
+          "json": 3721,
+          "array": 3594
+        },
+        "akor_message_saving_vs_json_pct": 30.83,
+        "akor_message_saving_vs_array_pct": 12.06,
+        "akor_input_saving_vs_json_pct": 5.57,
+        "akor_input_saving_vs_array_pct": 3.76,
+        "akor_delta_input_saving_vs_replay_pct": 6.2
+      },
+      {
+        "case": "materials_tr",
+        "messages": 6,
+        "message_text_tokens": {
+          "akor": 211,
+          "json": 289,
+          "array": 237
+        },
+        "bootstrap_tokens": {
+          "akor": 416,
+          "json": 421,
+          "array": 422
+        },
+        "six_stateless_delivery_input_tokens": {
+          "akor": 3291,
+          "json": 3464,
+          "array": 3410
+        },
+        "same_peer_history_replay_input_tokens": {
+          "akor": 3576,
+          "json": 3843,
+          "array": 3727
+        },
+        "akor_message_saving_vs_json_pct": 26.99,
+        "akor_message_saving_vs_array_pct": 10.97,
+        "akor_input_saving_vs_json_pct": 4.99,
+        "akor_input_saving_vs_array_pct": 3.49,
+        "akor_delta_input_saving_vs_replay_pct": 7.97
+      }
+    ],
+    "cl100k_base": [
+      {
+        "case": "coding_en",
+        "messages": 6,
+        "message_text_tokens": {
+          "akor": 172,
+          "json": 253,
+          "array": 199
+        },
+        "bootstrap_tokens": {
+          "akor": 416,
+          "json": 421,
+          "array": 421
+        },
+        "six_stateless_delivery_input_tokens": {
+          "akor": 3221,
+          "json": 3407,
+          "array": 3341
+        },
+        "same_peer_history_replay_input_tokens": {
+          "akor": 3433,
+          "json": 3714,
+          "array": 3585
+        },
+        "akor_message_saving_vs_json_pct": 32.02,
+        "akor_message_saving_vs_array_pct": 13.57,
+        "akor_input_saving_vs_json_pct": 5.46,
+        "akor_input_saving_vs_array_pct": 3.59,
+        "akor_delta_input_saving_vs_replay_pct": 6.18
+      },
+      {
+        "case": "materials_tr",
+        "messages": 6,
+        "message_text_tokens": {
+          "akor": 229,
+          "json": 309,
+          "array": 257
+        },
+        "bootstrap_tokens": {
+          "akor": 416,
+          "json": 421,
+          "array": 421
+        },
+        "six_stateless_delivery_input_tokens": {
+          "akor": 3427,
+          "json": 3596,
+          "array": 3540
+        },
+        "same_peer_history_replay_input_tokens": {
+          "akor": 3727,
+          "json": 3991,
+          "array": 3874
+        },
+        "akor_message_saving_vs_json_pct": 25.89,
+        "akor_message_saving_vs_array_pct": 10.89,
+        "akor_input_saving_vs_json_pct": 4.7,
+        "akor_input_saving_vs_array_pct": 3.19,
+        "akor_delta_input_saving_vs_replay_pct": 8.05
+      }
+    ]
+  }
+}

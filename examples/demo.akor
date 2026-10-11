@@ -1,0 +1,6 @@
+do T1 lead>coder {"v":1,"goal":"Fix timeout; preserve retry behavior.","refs":["R1"]}
+fact T1 coder>lead {"v":1,"claim":"The request has no timeout.","state":"observed","refs":["R2"]}
+ask T1 coder>lead {"v":1,"q":"Should the timeout apply per attempt or across all retries?"}
+offer T1 lead>coder {"v":1,"change":"Use a 5-second timeout per attempt; retain two retries."}
+review T1 coder>lead {"v":1,"on":"m4","verdict":"pass","reason":"Per-attempt timeout preserves the existing retry contract."}
+done T1 coder>lead {"v":1,"result":"Added the per-attempt timeout; retries unchanged.","check":"passed","refs":["R3"]}
