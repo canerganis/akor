@@ -43,6 +43,8 @@ def main(argv=None):
             p.add_argument('--min-savings', type=int, default=0,
                            help='Minimum token savings required for auto dictionary selection (default: 0)')
             p.add_argument('--max-tokens', type=int)
+            p.add_argument('--context', choices=['needed', 'full'], default='needed',
+                           help='needed: only referenced context; full: every reference, stable prefix')
         if command == 'compile':
             p.add_argument('--out', type=Path, required=True, help='New directory for channel, messages and cost report')
             p.add_argument('--max-macros', type=int, default=4)
@@ -72,6 +74,8 @@ def main(argv=None):
                            help='Per-call dictionary negotiation (default: off)')
             p.add_argument('--min-savings', type=int, default=0,
                            help='Minimum token savings required for auto dictionary selection (default: 0)')
+            p.add_argument('--context', choices=['needed', 'full'], default='needed',
+                           help='needed: only referenced context; full: every reference, stable prefix')
             p.add_argument('--reply-mode', choices=['rows', 'lanes', 'auto'], default='rows',
                            help='auto: rows below 16 packed jobs, lanes from 16 (adapter must support both)')
         if command == 'plan':
@@ -152,7 +156,7 @@ def main(argv=None):
                 return 0
             packet = render(channel, read_json(args.messages), max_tokens=args.max_tokens,
                             counters=counters, encoding=args.dictionary, min_savings=args.min_savings,
-                            reply_mode=args.reply_mode)
+                            reply_mode=args.reply_mode, context_policy=args.context)
             value = {'language': 'OZ/7', 'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
                      'binding': packet.binding, 'wires': packet.wires,
                      'alternatives': dict(packet.alternatives), 'encoding': packet.encoding,
@@ -184,7 +188,8 @@ def workspace_command(args):
     if args.command == 'run':
         return {'runs': workspace.run(args.to, args.adapter, max_calls=args.max_calls,
                                       max_tokens=args.max_tokens, timeout=args.timeout, reply_mode=args.reply_mode,
-                                      encoding=args.dictionary, min_savings=args.min_savings)}
+                                      encoding=args.dictionary, min_savings=args.min_savings,
+                                      context_policy=args.context)}
     with workspace.inbox() as box:
         if args.command == 'send':
             if (args.frame is None) == (args.file is None):
@@ -197,7 +202,8 @@ def workspace_command(args):
             return {'id': mid, 'inserted': inserted, 'kind': box.inspect(mid)['kind']}
         if args.command == 'plan':
             plan = workspace.plan(box, args.to, max_tokens=args.max_tokens, reply_mode=args.reply_mode,
-                                  encoding=args.dictionary, min_savings=args.min_savings)
+                                  encoding=args.dictionary, min_savings=args.min_savings,
+                                  context_policy=args.context)
             value = {'ids': [j.id for j in plan.jobs], 'deferred': list(plan.deferred),
                      'mode': plan.packet.mode if plan.packet else None,
                      'reply_mode': plan.packet.reply_mode if plan.packet else None,

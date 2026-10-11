@@ -153,15 +153,16 @@ class Workspace:
             if temp.exists():
                 temp.unlink()
 
-    def plan(self, box, name='worker', *, max_tokens=None, reply_mode='rows', encoding='off', min_savings=0):
+    def plan(self, box, name='worker', *, max_tokens=None, reply_mode='rows', encoding='off', min_savings=0,
+             context_policy='needed'):
         # A preview gets its own receipt; the real run is planned and measured again.
         return box.plan(self.channel(name), counters=self.counters(), limit=self.config['batch_size'],
                         max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
                         encoding=encoding, min_savings=min_savings, reply_mode=reply_mode,
-                        receipt=new_receipt())
+                        receipt=new_receipt(), context_policy=context_policy)
 
     def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, reply_mode='rows',
-            encoding='off', min_savings=0):
+            encoding='off', min_savings=0, context_policy='needed'):
         if type(max_calls) is not int or not 1 <= max_calls <= 100:
             raise Error('max_calls must be 1..100')
         adapter_path = adapter_path.resolve()
@@ -177,7 +178,8 @@ class Workspace:
             worker = Worker(box, self.channel(name), adapter, counters=counters, owner=name,
                             batch_size=self.config['batch_size'], timeout=timeout,
                             max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                            reply_mode=reply_mode, encoding=encoding, min_savings=min_savings)
+                            reply_mode=reply_mode, encoding=encoding, min_savings=min_savings,
+                            context_policy=context_policy)
             for _ in range(max_calls):
                 result = worker.run_once()
                 results.append(result)

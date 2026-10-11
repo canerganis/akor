@@ -178,7 +178,7 @@ class Inbox:
 
     def plan(self, channel: Channel, *, counters, limit: int = 16, max_tokens: int | None = None,
              max_bytes: int = 262144, encoding: str = 'off', min_savings: int = 0,
-             reply_mode: str = 'rows', receipt: str = PREVIEW_RECEIPT) -> Plan:
+             reply_mode: str = 'rows', receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan:
         """Read-only packing: the largest feasible ordered prefix of ready jobs.
 
         Feasibility is not monotonic (reply auto switches contracts at 16), so
@@ -203,7 +203,8 @@ class Inbox:
             return render(channel, [(r['id'], r['wire']) for r in items], counters=cached,
                           max_tokens=max_tokens, max_bytes=max_bytes, encoding=encoding,
                           min_savings=min_savings, reply_mode=resolve_reply_mode(reply_mode, len(items)),
-                          receipt=receipt, handoffs=self._handoffs([r['id'] for r in items]))
+                          receipt=receipt, handoffs=self._handoffs([r['id'] for r in items]),
+                          context_policy=context_policy)
         selected, deferred, packet = [], [], None
         for size in range(len(rows), 0, -1):
             try:
@@ -236,7 +237,7 @@ class Inbox:
     def claim_prepared(self, channel: Channel, *, owner: str, counters, receipt: str, limit: int = 16,
                        max_tokens: int | None = None, max_bytes: int = 262144,
                        lease_seconds: float = 60, encoding: str = 'off', min_savings: int = 0,
-                       reply_mode: str = 'rows') -> tuple[Delivery, Batch] | None:
+                       reply_mode: str = 'rows', context_policy: str = 'needed') -> tuple[Delivery, Batch] | None:
         """Measure outside the write lock, then atomically reserve the selected jobs.
 
         A budget failure consumes no attempts. Concurrent changes trigger a fresh
@@ -253,7 +254,7 @@ class Inbox:
                 self._recover(channel.binding, 'work')
             plan = self.plan(channel, counters=counters, limit=limit, max_tokens=max_tokens,
                              max_bytes=max_bytes, encoding=encoding, min_savings=min_savings,
-                             reply_mode=reply_mode, receipt=receipt)
+                             reply_mode=reply_mode, receipt=receipt, context_policy=context_policy)
             if not plan.jobs:
                 if plan.deferred:
                     raise BudgetError('no ready job fits the budget; attempts unchanged; increase budget')
