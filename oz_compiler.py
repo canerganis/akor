@@ -1,4 +1,4 @@
-"""Bounded, lossless OZ/3..5 compiler. No model calls or live channel mutations."""
+"""Bounded, lossless OZ/2 macro compiler. No model calls or live channel mutations."""
 from __future__ import annotations
 
 from collections import Counter
@@ -25,8 +25,6 @@ class Compilation:
     added_macros: tuple[Macro, ...]
     evaluated_dictionaries: int
     tokenizer_evaluations: int
-    absolute_tokens: tuple[int, ...] = ()
-    before_form_tokens: tuple[int, ...] = ()
 
     @property
     def changed(self) -> bool:
@@ -62,9 +60,7 @@ def _templates(frames, existing, *, limit):
 def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
                      counters: Iterable[Callable[[str], int]], max_macros: int = 4,
                      template_limit: int = 8, candidate_limit: int = 32,
-                     response_contract: str = '', additional_context: str = '',
-                     relative: bool = False, basis_limit: int = 8,
-                     forms: bool = False, form_limit: int = 8) -> Compilation:
+                     response_contract: str = '', additional_context: str = '') -> Compilation:
     """Choose only dictionary changes reducing complete measured receiver input.
 
     Every provided tokenizer must be no worse than the current candidate and
@@ -77,10 +73,6 @@ def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
         raise Error('max_macros must be 0..8')
     if type(template_limit) is not int or not 1 <= template_limit <= 32:
         raise Error('template_limit must be 1..32')
-    if type(relative) is not bool or type(basis_limit) is not int or not 1 <= basis_limit <= 16:
-        raise Error('invalid relative compilation options')
-    if type(forms) is not bool or type(form_limit) is not int or not 1 <= form_limit <= 16:
-        raise Error('invalid Form compilation options')
     messages = tuple(messages)
     meter = TokenMeter(counters)
     if not meter.counters:
@@ -97,7 +89,6 @@ def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
     def fork(macros):
         snap = dict(original)
         snap['revision'] += 1
-        snap['vectors'] = True
         snap['macros'] = [dict(code=m.code, steps=[vars(a) for a in m.steps]) for m in macros]
         return Channel.from_snapshot(snap)
 
@@ -105,11 +96,6 @@ def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
         return all(a <= b for a, b in zip(packet.tokens, best.tokens)) and packet.tokens != best.tokens
 
     current, best, evaluated = channel, baseline, 1
-    vector = fork(channel.codebook.macros.values())
-    packet = render(vector, raw, **options)
-    evaluated += 1
-    if improves(packet, best):
-        current, best = vector, packet
     added = []
     for _ in range(max_macros):
         available = [chr(n) for n in range(ord('A'), ord('Z') + 1) if chr(n) not in current.codebook.macros]
@@ -138,21 +124,8 @@ def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
             break
         _, current, best, macro = winner
         added.append(macro)
-    absolute_tokens = best.tokens
-    if relative:
-        from oz_delta import fit_basis
-        current, best, trials, absolute_tokens = fit_basis(current, raw, revision=original['revision'] + 1,
-                                                         basis_limit=basis_limit, **options)
-        evaluated += trials
-    before_form_tokens = best.tokens
-    if forms:
-        from oz_form import fit_form
-        current, best, trials, before_form_tokens = fit_form(current, raw, revision=original['revision'] + 1,
-                                                           form_limit=form_limit, **options)
-        evaluated += trials
     compressed = tuple((mid, wire) for (mid, _), wire in zip(raw, best.wires))
     for (_, wire), expected in zip(compressed, frames):
         if current.accept(wire, binding=current.binding) != expected:
             raise Error('compiler semantic round-trip failed')
-    return Compilation(current, compressed, best, baseline, tuple(added), evaluated, len(meter.cache),
-                       absolute_tokens, before_form_tokens)
+    return Compilation(current, compressed, best, baseline, tuple(added), evaluated, len(meter.cache))

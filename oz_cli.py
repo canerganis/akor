@@ -27,20 +27,24 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--version', action='version', version='akor-protocol 0.9.0; OZ/1 + OZ/2 + OZ/6 replies')
     sub = parser.add_subparsers(dest='command', required=True)
-    for command in ['decode', 'pack', 'prompt']:
+    for command in ['decode', 'pack', 'prompt', 'compile']:
         p = sub.add_parser(command)
         p.add_argument('--channel', type=Path, required=True, help='JSON channel snapshot')
         if command == 'decode':
             p.add_argument('frame')
-        if command == 'pack':
+        if command in {'pack', 'compile'}:
             p.add_argument('--messages', type=Path, required=True, help='JSON [[id,frame],...]')
             p.add_argument('--encoding', action='append', help='tiktoken encoding; repeat for multiple targets')
+            p.add_argument('--worker', action='store_true', help='Include the Worker response contract in token cost')
+        if command == 'pack':
             p.add_argument('--dictionary', choices=['off', 'auto', 'on'], default='off',
                            help='Per-call dictionary negotiation (default: off)')
             p.add_argument('--min-savings', type=int, default=0,
                            help='Minimum token savings required for auto dictionary selection (default: 0)')
-            p.add_argument('--worker', action='store_true', help='Include the Worker response contract in token cost')
             p.add_argument('--max-tokens', type=int)
+        if command == 'compile':
+            p.add_argument('--out', type=Path, required=True, help='New directory for channel, messages and cost report')
+            p.add_argument('--max-macros', type=int, default=4)
     for command in ['init', 'demo']:
         p = sub.add_parser(command, help='Create a local workspace' if command == 'init' else 'Run a model-free end-to-end demo')
         p.add_argument('directory', type=Path)
@@ -88,7 +92,7 @@ def main(argv=None):
             p.add_argument('manifest', type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.command not in {'decode', 'prompt', 'pack'}:
+        if args.command not in {'decode', 'prompt', 'pack', 'compile'}:
             value = workspace_command(args)
             if args.command == 'status' and not args.json:
                 print('Durum: ' + ', '.join(f'{k}={v}' for k, v in value['states'].items()))
@@ -121,6 +125,31 @@ def main(argv=None):
             encodings = [tiktoken.get_encoding(n) for n in (args.encoding or ['o200k_base'])]
             counters = [lambda s, enc=enc: len(enc.encode(s, disallowed_special=())) for enc in encodings]
             contract = RESPONSE_CONTRACT if args.worker else ''
+            if args.command == 'compile':
+                from oz_compiler import compile_messages
+                if args.out.exists():
+                    raise Error('compiler output directory must not exist')
+                result = compile_messages(channel, read_json(args.messages), counters=counters,
+                                          max_macros=args.max_macros, response_contract=contract)
+                report = {'changed': result.changed, 'old_binding': channel.binding,
+                          'binding': result.channel.binding, 'encodings': [e.name for e in encodings],
+                          'before_tokens': result.baseline.tokens, 'after_tokens': result.packet.tokens,
+                          'selected_mode': result.packet.mode, 'worker_contract_included': args.worker,
+                          'added_macros': [m.code for m in result.added_macros],
+                          'search': {'spellings_per_frame': 32, 'templates_per_round': 8,
+                                     'code_trials_per_template': 2, 'max_new_macros': args.max_macros},
+                          'evaluated_dictionaries': result.evaluated_dictionaries,
+                          'tokenizer_evaluations': result.tokenizer_evaluations,
+                          'exact_round_trip': True, 'actual_model_calls': 0,
+                          'scope': 'Supplied corpus only; receiver input, including grammar, dictionary and references.'}
+                files = {'channel.json': result.channel.snapshot(), 'messages.json': result.messages,
+                         'report.json': report}
+                args.out.mkdir(parents=True, exist_ok=False)
+                for name, data in files.items():
+                    (args.out / name).write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+                (args.out / 'prompt.txt').write_bytes(result.packet.text.encode('utf-8'))
+                print(json.dumps(dict(report, directory=str(args.out.resolve())), ensure_ascii=False, indent=2))
+                return 0
             packet = render(channel, read_json(args.messages), max_tokens=args.max_tokens,
                             counters=counters, response_contract=contract,
                             encoding=args.dictionary, min_savings=args.min_savings)
