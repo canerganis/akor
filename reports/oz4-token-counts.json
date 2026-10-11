@@ -1,0 +1,247 @@
+{
+  "package": "0.6.0",
+  "kind": "synthetic_offline_distinct_code_review_plans",
+  "tiktoken": "0.14.0",
+  "encodings": [
+    "o200k_base",
+    "cl100k_base"
+  ],
+  "actual_model_calls": 0,
+  "actual_tool_executions": 0,
+  "response_contract_included": true,
+  "identity_frame": {
+    "text": "^",
+    "primitive_requests": 48,
+    "payload_tokens_only": [
+      1,
+      1
+    ]
+  },
+  "cases": [
+    {
+      "case": "small_read",
+      "messages": 1,
+      "unique_programs": 1,
+      "primitive_requests": 1,
+      "relative_selected": false,
+      "mode": "brief/objects",
+      "local_compile_seconds": 0.004,
+      "exact_round_trip": true,
+      "compiled_sample": [
+        "r"
+      ],
+      "counts": {
+        "o200k_base": {
+          "initial_adaptive": 189,
+          "optimized_oz3": 189,
+          "exact_frame_dictionary": 299,
+          "oz4": 189,
+          "strongest_baseline": 189
+        },
+        "cl100k_base": {
+          "initial_adaptive": 188,
+          "optimized_oz3": 188,
+          "exact_frame_dictionary": 297,
+          "oz4": 188,
+          "strongest_baseline": 188
+        }
+      }
+    },
+    {
+      "case": "single_long_plan",
+      "messages": 1,
+      "unique_programs": 1,
+      "primitive_requests": 48,
+      "relative_selected": false,
+      "mode": "oz/tuples",
+      "local_compile_seconds": 0.07,
+      "exact_round_trip": true,
+      "compiled_sample": [
+        "r9a9t31V2V7V3V11VV6V4V10V5V8V12V19V17V15r18rt30"
+      ],
+      "counts": {
+        "o200k_base": {
+          "initial_adaptive": 846,
+          "optimized_oz3": 846,
+          "exact_frame_dictionary": 861,
+          "oz4": 846,
+          "strongest_baseline": 846
+        },
+        "cl100k_base": {
+          "initial_adaptive": 844,
+          "optimized_oz3": 844,
+          "exact_frame_dictionary": 860,
+          "oz4": 844,
+          "strongest_baseline": 844
+        }
+      }
+    },
+    {
+      "case": "distinct_8",
+      "messages": 8,
+      "unique_programs": 8,
+      "primitive_requests": 384,
+      "relative_selected": true,
+      "mode": "oz/tuples",
+      "local_compile_seconds": 1.894,
+      "exact_round_trip": true,
+      "compiled_sample": [
+        "^",
+        "^2=t30;5=t31;46=r8",
+        "^2=t30;8=t31;46=r15"
+      ],
+      "counts": {
+        "o200k_base": {
+          "initial_adaptive": 1173,
+          "optimized_oz3": 1150,
+          "exact_frame_dictionary": 1179,
+          "oz4": 1140,
+          "strongest_baseline": 1150
+        },
+        "cl100k_base": {
+          "initial_adaptive": 1165,
+          "optimized_oz3": 1141,
+          "exact_frame_dictionary": 1178,
+          "oz4": 1129,
+          "strongest_baseline": 1141
+        }
+      }
+    },
+    {
+      "case": "distinct_32",
+      "messages": 32,
+      "unique_programs": 32,
+      "primitive_requests": 1536,
+      "relative_selected": true,
+      "mode": "oz/tuples",
+      "local_compile_seconds": 15.264,
+      "exact_round_trip": true,
+      "compiled_sample": [
+        "^2=t31;20=t30;46=r1",
+        "^5=t31;20=t30;46=r8",
+        "^8=t31;20=t30;46=r15"
+      ],
+      "counts": {
+        "o200k_base": {
+          "initial_adaptive": 2389,
+          "optimized_oz3": 2200,
+          "exact_frame_dictionary": 2277,
+          "oz4": 1739,
+          "strongest_baseline": 2200
+        },
+        "cl100k_base": {
+          "initial_adaptive": 2358,
+          "optimized_oz3": 2168,
+          "exact_frame_dictionary": 2277,
+          "oz4": 1705,
+          "strongest_baseline": 2168
+        }
+      }
+    },
+    {
+      "case": "distinct_64",
+      "messages": 64,
+      "unique_programs": 64,
+      "primitive_requests": 3072,
+      "relative_selected": true,
+      "mode": "oz/tuples",
+      "local_compile_seconds": 31.547,
+      "exact_round_trip": true,
+      "compiled_sample": [
+        "^2=t31;20=t30;46=r1",
+        "^5=t31;20=t30;46=r8",
+        "^8=t31;20=t30;46=r15"
+      ],
+      "counts": {
+        "o200k_base": {
+          "initial_adaptive": 3766,
+          "optimized_oz3": 3351,
+          "exact_frame_dictionary": 3492,
+          "oz4": 2300,
+          "strongest_baseline": 3351
+        },
+        "cl100k_base": {
+          "initial_adaptive": 3705,
+          "optimized_oz3": 3289,
+          "exact_frame_dictionary": 3494,
+          "oz4": 2236,
+          "strongest_baseline": 3289
+        }
+      },
+      "reuse_existing_dictionary": {
+        "full_batch_render_median_ms_3_runs": 773.883,
+        "decode_64_frames_median_ms_3_runs": 2.935
+      }
+    },
+    {
+      "case": "identical_64_control",
+      "messages": 64,
+      "unique_programs": 1,
+      "primitive_requests": 3072,
+      "relative_selected": false,
+      "mode": "oz_table/tuples",
+      "local_compile_seconds": 2.34,
+      "exact_round_trip": true,
+      "compiled_sample": [
+        "r9a9t31V2V7V3V11VV6V4V10V5V8V12V19V17V15r18rt30",
+        "r9a9t31V2V7V3V11VV6V4V10V5V8V12V19V17V15r18rt30",
+        "r9a9t31V2V7V3V11VV6V4V10V5V8V12V19V17V15r18rt30"
+      ],
+      "counts": {
+        "o200k_base": {
+          "initial_adaptive": 1239,
+          "optimized_oz3": 1239,
+          "exact_frame_dictionary": 1239,
+          "oz4": 1239,
+          "strongest_baseline": 1239
+        },
+        "cl100k_base": {
+          "initial_adaptive": 1238,
+          "optimized_oz3": 1238,
+          "exact_frame_dictionary": 1238,
+          "oz4": 1238,
+          "strongest_baseline": 1238
+        }
+      }
+    },
+    {
+      "case": "literal",
+      "messages": 1,
+      "unique_programs": 1,
+      "primitive_requests": 0,
+      "relative_selected": false,
+      "mode": "plain/objects",
+      "local_compile_seconds": 0.003,
+      "exact_round_trip": true,
+      "compiled_sample": [
+        ":New failure at line 12; root cause unknown.\r\nDo not claim tests passed."
+      ],
+      "counts": {
+        "o200k_base": {
+          "initial_adaptive": 194,
+          "optimized_oz3": 194,
+          "exact_frame_dictionary": 220,
+          "oz4": 194,
+          "strongest_baseline": 194
+        },
+        "cl100k_base": {
+          "initial_adaptive": 193,
+          "optimized_oz3": 193,
+          "exact_frame_dictionary": 218,
+          "oz4": 193,
+          "strongest_baseline": 193
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "No global minimum or unprecedented-efficiency claim.",
+    "Synthetic code-review instructions, not completed code changes or live model comprehension.",
+    "Full Base, grammar, references, IDs and response contract are counted in every batch.",
+    "Output/reasoning/tool tokens, provider framing, retries and sender bootstrap are excluded.",
+    "No model acceleration measured. Local compilation time is single-run and machine-specific.",
+    "Exact-frame dictionary is also a production renderer candidate when messages repeat.",
+    "One Base, up to eight candidates; up to sixteen original-coordinate edits per frame.",
+    "Identical-plan control must not be confused with useful distinct tasks."
+  ]
+}

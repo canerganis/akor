@@ -1,4 +1,4 @@
-"""Bounded, lossless OZ/3 compiler. No model calls or live channel mutations."""
+"""Bounded, lossless OZ/3..4 compiler. No model calls or live channel mutations."""
 from __future__ import annotations
 
 from collections import Counter
@@ -25,6 +25,7 @@ class Compilation:
     added_macros: tuple[Macro, ...]
     evaluated_dictionaries: int
     tokenizer_evaluations: int
+    absolute_tokens: tuple[int, ...] = ()
 
     @property
     def changed(self) -> bool:
@@ -60,7 +61,8 @@ def _templates(frames, existing, *, limit):
 def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
                      counters: Iterable[Callable[[str], int]], max_macros: int = 4,
                      template_limit: int = 8, candidate_limit: int = 32,
-                     response_contract: str = '', additional_context: str = '') -> Compilation:
+                     response_contract: str = '', additional_context: str = '',
+                     relative: bool = False, basis_limit: int = 8) -> Compilation:
     """Choose only dictionary changes reducing complete measured receiver input.
 
     Every provided tokenizer must be no worse than the current candidate and
@@ -73,6 +75,8 @@ def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
         raise Error('max_macros must be 0..8')
     if type(template_limit) is not int or not 1 <= template_limit <= 32:
         raise Error('template_limit must be 1..32')
+    if type(relative) is not bool or type(basis_limit) is not int or not 1 <= basis_limit <= 16:
+        raise Error('invalid relative compilation options')
     messages = tuple(messages)
     meter = TokenMeter(counters)
     if not meter.counters:
@@ -130,8 +134,14 @@ def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
             break
         _, current, best, macro = winner
         added.append(macro)
+    absolute_tokens = best.tokens
+    if relative:
+        from oz_delta import fit_basis
+        current, best, trials, absolute_tokens = fit_basis(current, raw, revision=original['revision'] + 1,
+                                                         basis_limit=basis_limit, **options)
+        evaluated += trials
     compressed = tuple((mid, wire) for (mid, _), wire in zip(raw, best.wires))
     for (_, wire), expected in zip(compressed, frames):
         if current.accept(wire, binding=current.binding) != expected:
             raise Error('compiler semantic round-trip failed')
-    return Compilation(current, compressed, best, baseline, tuple(added), evaluated, len(meter.cache))
+    return Compilation(current, compressed, best, baseline, tuple(added), evaluated, len(meter.cache), absolute_tokens)

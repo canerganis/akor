@@ -6,7 +6,7 @@ import re
 from types import MappingProxyType
 from typing import Callable, Iterable, Mapping
 
-from oz import Atom, Channel, Error, RULES, TokenMeter, _dump, _lex
+from oz import Atom, Channel, Error, RULES, TokenMeter, _dump
 
 
 BRIEF = MappingProxyType({
@@ -56,7 +56,7 @@ def brief(atoms: Iterable[Atom]) -> str:
 def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
            counters: Iterable[Callable[[str], int]], max_tokens: int | None = None,
            max_bytes: int = 262144, response_contract: str = '', additional_context: str = '',
-           candidate_limit: int = 256) -> Batch:
+           candidate_limit: int | None = None) -> Batch:
     """Choose among complete receiver inputs, charging context and dictionaries.
 
     Stateless by design: every batch includes needed context. Provider prefix
@@ -64,6 +64,10 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     Routing metadata stays in the trusted adapter; message IDs stay in the text.
     """
     messages = tuple(messages)
+    if candidate_limit is None:
+        # A calibrated relative channel needs only a small candidate search on
+        # the communication path; explicit callers can still choose 2..4096.
+        candidate_limit = 32 if channel.basis else 256
     meter = TokenMeter(counters)
     if not meter.counters:
         raise Error('batch rendering requires actual target token counters')
@@ -83,7 +87,15 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     frames = tuple(channel.accept(wire, binding=channel.binding) for _, wire in messages)
     # Share this cache across all encodings and final candidate measurements.
     cached = tuple(lambda text, i=i: meter.counts(text)[i] for i in range(len(meter.counters)))
-    wires = tuple(channel.encode(atoms, counters=cached, candidate_limit=candidate_limit) for atoms in frames)
+    def encode_frames(target):
+        # Identical ASTs with different job IDs are encoded once. IDs and
+        # results remain independent; this does not deduplicate execution.
+        encoded = {}
+        for atoms in frames:
+            if atoms not in encoded:
+                encoded[atoms] = target.encode(atoms, counters=cached, candidate_limit=candidate_limit)
+        return tuple(encoded[atoms] for atoms in frames)
+    wires = encode_frames(channel)
     flat = tuple(a for frame in frames for a in frame)
     contexts = {'objects': channel.context(flat)}
     snapshot = channel.snapshot()
@@ -102,21 +114,30 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     primitives = tuple((':' + f[0].text) if f[0].code == ':' else
                        ''.join(a.code + (str(a.ref) if a.ref is not None else '') for a in f) for f in frames)
     symbolic = [('oz', wires), ('oz_base', primitives)]
+    if channel.basis:
+        absolute_snapshot = channel.snapshot()
+        absolute_snapshot.pop('basis')
+        absolute = Channel.from_snapshot(absolute_snapshot)
+        symbolic.append(('oz_absolute', encode_frames(absolute)))
     if channel.codebook.vectors:
         # A shorter payload can lose once its grammar is charged. Keep the
         # original macro renderer as an independent, fully costed fallback.
         old = channel.snapshot()
         old.pop('vectors', None)
+        old.pop('basis', None)
         scalar = Channel.from_snapshot(old)
-        scalar_wires = tuple(scalar.encode(atoms, counters=cached, candidate_limit=candidate_limit) for atoms in frames)
+        scalar_wires = encode_frames(scalar)
         symbolic.append(('oz_scalar', scalar_wires))
     for name, candidate_wires in symbolic:
-        codes = [a.code for wire in candidate_wires for a in
-                 _lex(wire, active=channel.active, codebook=channel.codebook) if a.code != ':']
-        vectors = any(not w.startswith(':') and '[' in w for w in candidate_wires)
-        dictionary = channel.codebook.prompt(codes, vectors=vectors) if codes else 'A frame beginning with : is exact literal text.'
+        dictionary = channel.dictionary(candidate_wires)
         bodies[name] = (dictionary + '\nRows [id,frame]:\n'
                         + _dump(list(zip(ids, candidate_wires))))
+        unique = list(dict.fromkeys(candidate_wires))
+        if len(unique) < len(candidate_wires):
+            indices = {w: i for i, w in enumerate(unique)}
+            bodies[name + '_table'] = (dictionary +
+                '\nTemplates indexed from 0; each row [id,template_index] is an independent request.\n'
+                + _dump(unique) + '\n' + _dump([[mid, indices[w]] for mid, w in zip(ids, candidate_wires)]))
     codes = set(a.code for a in flat if a.code != ':')
     legend = '\n'.join(RULES[c].name + ': ' + RULES[c].meaning for c in RULES if c in codes)
     json_rows = [[mid, [[RULES[a.code].name, a.ref] if a.code != ':' else ['literal', None, a.text]

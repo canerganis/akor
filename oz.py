@@ -1,4 +1,4 @@
-"""OZ/1..3: context-bound semantic bytecode for agent messages.
+"""OZ/1..4: context-bound semantic bytecode for agent messages.
 
 The trusted adapter carries routing/version metadata. This module parses and
 renders messages; it never executes requests or treats agent claims as proof.
@@ -292,7 +292,7 @@ class Channel:
 
     def __init__(self, *, session: str, task: str, revision: int, sender: str,
                  recipient: str, goal: str, references: Iterable[Reference], active: int,
-                 codebook: Codebook | None = None):
+                 codebook: Codebook | None = None, basis: Iterable[Atom] | None = None):
         strings = (session, task, sender, recipient, goal)
         if any(not isinstance(v, str) or not v.strip() for v in strings):
             raise Error('channel identifiers and goal must be nonempty')
@@ -331,10 +331,19 @@ class Channel:
                     raise Error('macro fixed reference missing or incompatible')
             if not possible_kinds:
                 raise Error('macro parameter has incompatible reference types')
+        self._basis = tuple(basis) if basis is not None else ()
+        if basis is not None:
+            from oz_delta import work_program
+            if not work_program(self._basis) or any(a.ref not in self._refs or
+                    self._refs[a.ref].kind not in RULES[a.code].kinds for a in self._basis):
+                raise Error('Base requires 1..64 valid primitive work requests')
         # Protocol meanings are bound too: changed codebooks cannot silently interoperate.
         manifest = [session, task, revision, sender, recipient, goal, active,
                     [vars(ref) for ref in sorted(refs, key=lambda r: r.number)], self.codebook.prompt(),
                     [[c, sorted(r.kinds), r.argument, r.active_allowed] for c, r in RULES.items()]]
+        if self._basis:
+            from oz_delta import DELTA_GRAMMAR
+            manifest.append(['OZ/4', DELTA_GRAMMAR, [vars(a) for a in self._basis]])
         self._binding = hashlib.sha256(_dump(manifest).encode('utf-8')).hexdigest()
 
     @property
@@ -344,6 +353,10 @@ class Channel:
     @property
     def active(self) -> int:
         return self._active
+
+    @property
+    def basis(self) -> tuple[Atom, ...]:
+        return self._basis
 
     @property
     def codebook(self) -> Codebook:
@@ -361,6 +374,8 @@ class Channel:
                             for m in self.codebook.macros.values()])
         if self.codebook.vectors:
             result['vectors'] = True
+        if self.basis:
+            result['basis'] = [vars(a).copy() for a in self.basis]
         return result
 
     @classmethod
@@ -370,6 +385,8 @@ class Channel:
             args['references'] = [Reference(**r) for r in args['references']]
             args['codebook'] = Codebook((Macro(m['code'], tuple(Atom(**a) for a in m['steps']))
                                         for m in args.pop('macros', [])), vectors=args.pop('vectors', False))
+            if 'basis' in args:
+                args['basis'] = [Atom(**a) for a in args['basis']]
             return cls(**args)
         except (KeyError, TypeError) as exc:
             raise Error('invalid channel snapshot') from exc
@@ -393,7 +410,17 @@ class Channel:
     def accept(self, wire: str, *, binding: str) -> tuple[Atom, ...]:
         if binding != self.binding:
             raise Error('channel/context/codebook mismatch; resynchronize')
-        atoms = parse(wire, active=self.active, codebook=self.codebook)
+        if isinstance(wire, str) and wire.startswith('^'):
+            from oz_delta import apply_delta
+            try:
+                if len(wire.encode('utf-8')) > 8192:
+                    raise Error('frame exceeds 8192 UTF-8 bytes')
+            except UnicodeError as exc:
+                raise Error('invalid UTF-8') from exc
+            atoms = apply_delta(wire, self.basis,
+                                lambda w: parse(w, active=self.active, codebook=self.codebook))
+        else:
+            atoms = parse(wire, active=self.active, codebook=self.codebook)
         for index, atom in enumerate(atoms):
             if atom.code in {'.', '/'} and index != len(atoms) - 1:
                 raise Error('completion/stop must be the final atom')
@@ -463,7 +490,13 @@ class Channel:
         for i in range(len(atoms) - 1, -1, -1):
             shortest[i] = min((s + shortest[j] for j, s in edges[i]), key=lambda s: (len(s), s))
         explicit = ''.join(a.code + (str(a.ref) if a.ref is not None else '') for a in atoms)
-        result = dict.fromkeys([shortest[0], explicit])
+        from oz_delta import delta_spellings
+        relative = delta_spellings(self.basis, atoms)
+        smallest = min([shortest[0], *relative], key=lambda s: (len(s), s))
+        result = dict.fromkeys([smallest, explicit])
+        for value in [*relative, shortest[0]]:
+            if len(result) < limit:
+                result[value] = None
         stack = [(0, '')]
         while stack and len(result) < limit:
             i, prefix = stack.pop()
@@ -492,6 +525,38 @@ class Channel:
         return '\n'.join(atom.text if atom.code == ':' else
                          RULES[atom.code].meaning.replace(' N', f' {atom.ref}')
                          if atom.ref is not None else RULES[atom.code].meaning for atom in atoms)
+
+    def dictionary(self, wires: Iterable[str]) -> str:
+        """Only used syntax, with the entire immutable Base when referenced."""
+        wires = tuple(wires)
+        relative = any(w.startswith('^') for w in wires)
+        codes, vectors = [], False
+        for wire in wires:
+            atoms = self.accept(wire, binding=self.binding)
+            if wire.startswith('^'):
+                codes.extend(a.code for a in [*self.basis, *atoms])
+                for edit in wire[1:].split(';') if wire != '^' and not wire.startswith('^@') else []:
+                    payload = edit.split('=', 1)[1]
+                    if payload:
+                        codes.extend(a.code for a in _lex(payload, active=self.active, codebook=self.codebook))
+                        vectors = vectors or '[' in payload
+            elif not wire.startswith(':'):
+                codes.extend(a.code for a in _lex(wire, active=self.active, codebook=self.codebook))
+                vectors = vectors or '[' in wire
+        dictionary = (self.codebook.prompt(codes, vectors=vectors) if codes else
+                      'A frame beginning with : is exact literal text.')
+        if relative:
+            from oz_delta import DELTA_GRAMMAR, explicit
+            dictionary += DELTA_GRAMMAR + '\nBase=' + explicit(self.basis)
+        return dictionary
+
+    def prompt(self) -> str:
+        """Complete sender dictionary, including an optional bound Base."""
+        text = self.codebook.prompt()
+        if self.basis:
+            from oz_delta import DELTA_GRAMMAR, explicit
+            text += DELTA_GRAMMAR + '\nBase=' + explicit(self.basis)
+        return text
 
     def context(self, atoms: Iterable[Atom]) -> str:
         atoms = tuple(atoms)
@@ -533,8 +598,7 @@ class Channel:
         context = self.context(atoms)
         candidates = {'plain': context + '\n' + self.describe(atoms)}
         if not wire.startswith(':'):
-            codes = [a.code for a in _lex(wire, active=self.active, codebook=self.codebook)]
-            candidates['oz'] = self.codebook.prompt(codes, vectors='[' in wire) + '\n' + context + '\n' + wire
+            candidates['oz'] = self.dictionary([wire]) + '\n' + context + '\n' + wire
         costs = {key: tuple(counter(value) for counter in counters) for key, value in candidates.items()}
         if any(type(n) is not int or n < 0 for counts in costs.values() for n in counts):
             raise Error('token counter must return a nonnegative integer')

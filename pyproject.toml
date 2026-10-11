@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "akor-protocol"
-version = "0.5.0"
+version = "0.6.0"
 description = "Compact, provider-neutral agent communication protocol and reference relay"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,4 +18,4 @@ akor = "akor:main"
 oz = "oz_cli:main"
 
 [tool.setuptools]
-py-modules = ["akor", "oz", "oz_batch", "oz_runtime", "oz_cli", "oz_worker", "oz_workspace", "oz_compiler"]
+py-modules = ["akor", "oz", "oz_batch", "oz_runtime", "oz_cli", "oz_worker", "oz_workspace", "oz_compiler", "oz_delta"]

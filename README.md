@@ -1,8 +1,25 @@
 # AKOR
 
-**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.5.0 / ÖZ/3.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.6.0 / ÖZ/4.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+
+## 0.6.0: ortak planı paylaş, yalnız farkı gönder
+
+ÖZ/4 mesajları bağlı bir programdaki değişikliği taşıyabiliyor. `^` ortak programın tamamını, `^2=t31` üçüncü adımın değişmesini, `^@7:9` hedef referansının değiştirilmesini ifade ediyor. Her mesaj özgün Base'den bağımsız çözülür; önceki mesajın hatırlanması varsayılmaz.
+
+```powershell
+oz decode --channel examples/oz4-channel.json "^2=t31"
+oz compile --channel examples/oz4-training-channel.json --messages examples/oz4-training-messages.json --relative --worker --out .oz-runtime/oz4-derlenmis
+```
+
+Örnek 48 adımlı plan `^` ile **1 komut tokeninde** taşınabiliyor; sözlük/bağlam ayrıca sayılır. Sentetik **64 farklı** kod inceleme planında gerekli sözlük, Base, kaynaklar ve cevap biçimi dahil **3.351 → 2.300 / 3.289 → 2.236** girdi tokeni: optimize edilmiş mutlak biçime göre **%31–32 ek azalma**. Aynı frame'lerin tekrarlandığı kontrolde daha ucuz şablon tablosu seçilir; küçük mesajlarda yeni dil zorlanmaz.
+
+**179 test geçti.** Bunlar kodlayıcı, çözümleyici ve kuyruk testleridir; canlı model anlama veya gerçek kodlama hızı ölçümü değildir. Sözlük araştırması tek seferlik hazırlık olarak kullanılmalı; dilbilgisinin kısa olması model hızını tek başına kanıtlamaz.
+
+[ÖZ/4 dili ve örnekler](OZ4.md) · [Ölçüm raporu](reports/OZ4-RESULTS.md).
 
 ## 0.5.0: daha az tokenle daha çok işlem isteği
+
+Bu bölümün sayıları 0.5.0 sürümünün tarihli ölçümleridir; 0.6.0 ortak şablon tablosunu da karşılaştırdığı için aynı girdide farklı bir biçim seçebilir.
 
 `V[1:16]`, `VN=rNaNt30` sözlüğü altında **48 işlem isteğini 6 komut tokeninde** taşıyor. Bu sayı sözlük ve kaynak bağlamını içermez. ÖZ/3 hedef listelerini ve aralıkları kesin sırayla açar; tekrar eden iş dizilerinden maliyeti ölçülmüş kısa kodlar üretir.
 

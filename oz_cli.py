@@ -25,7 +25,7 @@ def read_json(path):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', action='version', version='akor-protocol 0.5.0; OZ/1 + OZ/2 + OZ/3')
+    parser.add_argument('--version', action='version', version='akor-protocol 0.6.0; OZ/1 + OZ/2 + OZ/3 + OZ/4')
     sub = parser.add_subparsers(dest='command', required=True)
     for command in ['decode', 'pack', 'prompt', 'compile']:
         p = sub.add_parser(command)
@@ -41,6 +41,7 @@ def main(argv=None):
             else:
                 p.add_argument('--out', type=Path, required=True, help='New directory for channel, messages and cost report')
                 p.add_argument('--max-macros', type=int, default=4)
+                p.add_argument('--relative', action='store_true', help='Try OZ/4: send exact differences from a shared program')
     for command in ['init', 'demo']:
         p = sub.add_parser(command, help='Create a local workspace' if command == 'init' else 'Run a model-free end-to-end demo')
         p.add_argument('directory', type=Path)
@@ -100,7 +101,7 @@ def main(argv=None):
             return 0
         channel = Channel.from_snapshot(read_json(args.channel))
         if args.command == 'prompt':
-            print(channel.codebook.prompt())
+            print(channel.prompt())
             return 0
         if args.command == 'decode':
             atoms = channel.accept(args.frame, binding=channel.binding)
@@ -120,14 +121,17 @@ def main(argv=None):
                 if args.out.exists():
                     raise Error('compiler output directory must not exist')
                 result = compile_messages(channel, read_json(args.messages), counters=counters,
-                                          max_macros=args.max_macros, response_contract=contract)
+                                          max_macros=args.max_macros, response_contract=contract, relative=args.relative)
                 report = {'changed': result.changed, 'old_binding': channel.binding,
                           'binding': result.channel.binding, 'encodings': [e.name for e in encodings],
                           'before_tokens': result.baseline.tokens, 'after_tokens': result.packet.tokens,
+                          'absolute_optimized_tokens': result.absolute_tokens,
+                          'relative_selected': bool(result.channel.basis),
                           'selected_mode': result.packet.mode, 'worker_contract_included': args.worker,
                           'added_macros': [m.code for m in result.added_macros],
                           'search': {'spellings_per_frame': 32, 'templates_per_round': 8,
-                                     'code_trials_per_template': 2, 'max_new_macros': args.max_macros},
+                                     'code_trials_per_template': 2, 'max_new_macros': args.max_macros,
+                                     'relative_enabled': args.relative, 'basis_candidates': 8 if args.relative else 0},
                           'evaluated_dictionaries': result.evaluated_dictionaries,
                           'tokenizer_evaluations': result.tokenizer_evaluations,
                           'exact_round_trip': True, 'actual_model_calls': 0,

@@ -124,7 +124,7 @@ class CompilerTests(unittest.TestCase):
     def test_learns_repeated_exact_sequence_and_charges_full_context(self):
         ch = channel(vectors=False, macros=False)
         wire = ''.join(f'r{n}a{n}t30' for n in range(1, 17))
-        messages = [(f'm{i}', wire) for i in range(4)]
+        messages = [(f'm{i}', ''.join(f'r{n}a{n}t30' for n in range(1 + i, 17 + i))) for i in range(4)]
         result = compile_messages(ch, messages, counters=[len], max_macros=2,
                                   response_contract='KEEP EXACT OUTPUT CONTRACT', additional_context='EXACT PREDECESSOR')
         self.assertTrue(result.changed)
@@ -175,12 +175,14 @@ class CompilerTests(unittest.TestCase):
             (root / 'in.json').write_text(json.dumps(ch.snapshot()), encoding='utf-8')
             (root / 'messages.json').write_text(json.dumps(messages), encoding='utf-8')
             args = ['compile', '--channel', str(root / 'in.json'), '--messages', str(root / 'messages.json'),
-                    '--out', str(root / 'out'), '--worker', '--max-macros', '1']
+                    '--out', str(root / 'out'), '--worker', '--max-macros', '1', '--relative']
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 self.assertEqual(main(args), 0)
             report = json.loads(out.getvalue())
             self.assertTrue(report['worker_contract_included'])
+            self.assertTrue(report['search']['relative_enabled'])
+            self.assertEqual(report['absolute_optimized_tokens'], report['after_tokens'])
             prompt = (root / 'out/prompt.txt').read_bytes().decode('utf-8')
             self.assertEqual(len(prompt), report['after_tokens'][0])
             compiled = Channel.from_snapshot(json.loads((root / 'out/channel.json').read_text(encoding='utf-8')))
