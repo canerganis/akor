@@ -2,7 +2,7 @@ import json
 import unittest
 
 from oz import Error
-from oz_batch import (COMMON, CONTEXT_LINE, HANDOFF_NOTE, LITERAL_LINE, MEANINGS,
+from oz_batch import (COMMON, HANDOFF_NOTE, LITERAL_LINE, MEANINGS,
                       NOARG_LINE, REPLY_CONTRACT, SAFETY, TABLE_LINE, explicit, render)
 from test_oz2 import extended
 
@@ -16,7 +16,7 @@ def data(packet):
 
 
 def frames_counter(text):
-    return len(text) + (100000 if 'Execute j;' in text else 0)
+    return len(text) + (100000 if 'Do j;' in text else 0)
 
 
 class BatchTests(unittest.TestCase):
@@ -26,7 +26,7 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(len(lines), 3)
         self.assertTrue(lines[0].startswith(COMMON + ' ' + SAFETY + ' '))
         self.assertIn(REPLY_CONTRACT, lines[1])
-        self.assertIn(CONTEXT_LINE, lines[1])
+        self.assertEqual(data(packet)['goal'], extended().snapshot()['goal'])
         self.assertEqual(json.dumps(data(packet), ensure_ascii=False, separators=(',', ':')), lines[2])
         self.assertTrue(packet.text.endswith('\n'))
         self.assertEqual(packet.receipt, '0123456789abcdef')
@@ -57,7 +57,7 @@ class BatchTests(unittest.TestCase):
         direct = render(ch, [('job_zq7', 'r13')], counters=[len])
         body = data(direct)
         self.assertIn(direct.mode, ('direct-inline', 'direct-ids', 'frames'))
-        self.assertIn('g', body)
+        self.assertIn('goal', body)
         self.assertNotIn('job_zq7', direct.text)
         self.assertIn('12.50 ± 0.02 mm', direct.text)
         self.assertEqual(data(render(ch, [('a', 'r13')], counters=[frames_counter]))['c'], {'13': '12.50 ± 0.02 mm'})
@@ -88,7 +88,7 @@ class BatchTests(unittest.TestCase):
         literal = render(extended(), [('a', ':hello r13')], counters=[len])
         self.assertIn(LITERAL_LINE, literal.text)
         self.assertNotIn(NOARG_LINE, literal.text)
-        self.assertNotIn('Execute j;', literal.text.splitlines()[0])
+        self.assertNotIn('Do j;', literal.text.splitlines()[0])
         # Direct forms spell out '.', so only frames need the no-argument rule.
         self.assertNotIn(NOARG_LINE, render(extended(), [('a', '.')], counters=[len]).text)
         noarg = render(extended(), [('a', '.')], counters=[frames_counter])
@@ -163,7 +163,7 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(render(ch, [('j1', 'V')], counters=[len], max_bytes=size).text, baseline.text)
         with self.assertRaises(Error):
             render(ch, [('j1', 'V')], counters=[len], max_bytes=size - 1)
-        for receipt in ['short', 'G' * 16, 'A' * 16]:
+        for receipt in ['', 'G', 'A' * 16, 'a' * 17, 'ab-c', '1 ']:
             with self.assertRaises(Error):
                 render(ch, [('j1', 'V')], counters=[len], receipt=receipt)
 

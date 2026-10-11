@@ -69,7 +69,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('j', body)
         self.assertNotIn('first', prompt)
         # Previews carry a real-shaped receipt so their token count matches a run.
-        self.assertRegex(body['q'], '^[0-9a-f]{16}$')
+        self.assertEqual(body['q'], '1')
         code, out, err = self.cli('status', '--json', *base)
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['jobs'][0]['attempts'], 0)

@@ -54,6 +54,14 @@ class Outcome:
     text: str
 
 
+def _base36(n: int) -> str:
+    digits = ''
+    while n:
+        n, d = divmod(n, 36)
+        digits = '0123456789abcdefghijklmnopqrstuvwxyz'[d] + digits
+    return digits
+
+
 class Inbox:
     def __init__(self, path: str | Path = ':memory:', *, clock: Callable[[], float] = time.time):
         self.clock = clock
@@ -90,6 +98,7 @@ class Inbox:
                 seq INTEGER PRIMARY KEY, mid TEXT NOT NULL REFERENCES jobs(id),
                 event TEXT NOT NULL, at REAL NOT NULL, details TEXT NOT NULL);
             CREATE INDEX IF NOT EXISTS job_events ON events(mid,seq);
+            CREATE TABLE IF NOT EXISTS receipts(seq INTEGER PRIMARY KEY AUTOINCREMENT, at REAL NOT NULL);
             CREATE TABLE IF NOT EXISTS runs(
                 seq INTEGER PRIMARY KEY, binding TEXT NOT NULL, at REAL NOT NULL,
                 ids TEXT NOT NULL, report TEXT NOT NULL);
@@ -101,6 +110,20 @@ class Inbox:
             if 'available_at' not in columns:
                 self.db.execute('ALTER TABLE jobs ADD COLUMN available_at REAL NOT NULL DEFAULT 0')
             self.db.execute('PRAGMA user_version=2')
+
+    def new_receipt(self) -> str:
+        """Next attempt receipt: a never-reused counter in base 36, a few tokens long.
+
+        It only correlates a reply with one call attempt; it is not a secret.
+        """
+        with self._transaction():
+            seq = self.db.execute('INSERT INTO receipts(at) VALUES (?)', (self.clock(),)).lastrowid
+        return _base36(seq)
+
+    def next_receipt(self) -> str:
+        """The receipt the next attempt will get, for previews with real token counts."""
+        row = self.db.execute("SELECT seq FROM sqlite_sequence WHERE name='receipts'").fetchone()
+        return _base36((row[0] if row else 0) + 1)
 
     def _event(self, mid: str, event: str, **details):
         self.db.execute('INSERT INTO events(mid,event,at,details) VALUES (?,?,?,?)',

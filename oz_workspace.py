@@ -11,7 +11,6 @@ import uuid
 from oz import Atom, Channel, Codebook, Error, Macro, Reference
 from oz_batch import valid_id
 from oz_runtime import Inbox
-from oz_reply import new_receipt
 from oz_worker import StdioAdapter, Worker, loads, process_host
 
 
@@ -153,10 +152,10 @@ class Workspace:
                 temp.unlink()
 
     def plan(self, box, name='worker', *, max_tokens=None, context_policy='needed'):
-        # A preview gets its own receipt; the real run is planned and measured again.
+        # A preview shows the receipt the next attempt will get; the run is planned and measured again.
         return box.plan(self.channel(name), counters=self.counters(), limit=self.config['batch_size'],
                         max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                        receipt=new_receipt(), context_policy=context_policy)
+                        receipt=box.next_receipt(), context_policy=context_policy)
 
     def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, context_policy='needed'):
         if type(max_calls) is not int or not 1 <= max_calls <= 100:

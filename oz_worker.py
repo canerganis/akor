@@ -13,7 +13,7 @@ import time
 from typing import Callable
 
 from oz import Channel, Error
-from oz_reply import LANGUAGE, PROTOCOL, check_capabilities, new_receipt, validate_reply, validate_usage
+from oz_reply import LANGUAGE, PROTOCOL, check_capabilities, validate_reply, validate_usage
 from oz_runtime import Inbox, Outcome
 
 class AdapterError(Error):
@@ -126,7 +126,7 @@ class Worker:
 
     def run_once(self) -> dict:
         # A fresh receipt per attempt, made before planning so it is charged.
-        receipt = new_receipt()
+        receipt = self.inbox.new_receipt()
         claimed = self.inbox.claim_prepared(self.channel, receipt=receipt, **self.options)
         if claimed is None:
             return {'status': 'idle', 'model_calls': 0}

@@ -1,4 +1,5 @@
 """OZ/9 positional replies, receipts, usage, negotiation and Worker retry integration."""
+import json
 import unittest
 
 from oz import Error
@@ -189,7 +190,7 @@ class ReplyWorkerTests(unittest.TestCase):
             calls.append(request)
             if len(calls) == 1:
                 return {'reply': [request['receipt'], 'done one', [1, 'temporary'], 'done three']}
-            if calls[0]['receipt'] in request['prompt']:
+            if json.loads(request['prompt'].splitlines()[-1])['q'] == calls[0]['receipt']:
                 return {'reply': [calls[0]['receipt'], 'reused receipt']}
             return {'reply': [request['receipt'], 'eventual success']}
         worker = self.worker(adapter, batch_size=3)
@@ -201,7 +202,7 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(second['ids'], ['retryme'])
         self.assertEqual(self.box.inspect('retryme')['result'], 'eventual success')
         self.assertNotEqual(calls[0]['receipt'], calls[1]['receipt'])
-        self.assertNotIn(calls[0]['receipt'], calls[1]['prompt'])
+        self.assertEqual(json.loads(calls[1]['prompt'].splitlines()[-1])['q'], calls[1]['receipt'])
         self.assertEqual(self.box.inspect('first')['result'], 'done one')
 
     def test_every_attempt_uses_fresh_receipt(self):

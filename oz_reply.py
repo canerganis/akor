@@ -6,8 +6,6 @@ correlate a reply with one call attempt; they are not authentication or proof.
 """
 from __future__ import annotations
 
-import uuid
-
 from oz import Error
 
 PROTOCOL = 'oz.adapter/3'
@@ -15,10 +13,6 @@ LANGUAGE = 'OZ/9'
 USAGE_FIELDS = ('input_tokens', 'cached_input_tokens', 'cache_creation_input_tokens',
                 'output_tokens', 'reasoning_output_tokens')
 STATUS = {0: 'ok', 1: 'retry', 2: 'failed'}
-
-
-def new_receipt() -> str:
-    return uuid.uuid4().hex[:16]
 
 
 def check_capabilities(value: object) -> dict:
