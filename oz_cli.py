@@ -25,7 +25,7 @@ def read_json(path):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', action='version', version='akor-protocol 0.7.0; OZ/1 + OZ/2 + OZ/3 + OZ/4 + OZ/5')
+    parser.add_argument('--version', action='version', version='akor-protocol 0.8.0; OZ/1 + OZ/2 + OZ/3 + OZ/4 + OZ/5 + OZ/6 replies')
     sub = parser.add_subparsers(dest='command', required=True)
     for command in ['decode', 'pack', 'prompt', 'compile', 'unpack']:
         p = sub.add_parser(command)
@@ -67,6 +67,8 @@ def main(argv=None):
             p.add_argument('--max-attempts', type=int, default=3)
         if command in {'plan', 'run'}:
             p.add_argument('--max-tokens', type=int)
+            p.add_argument('--reply-mode', choices=['rows', 'lanes'], default='rows',
+                           help='Use OZ/6 ordered result lanes only with a compatible adapter')
         if command == 'plan':
             p.add_argument('--show-prompt', action='store_true')
         if command == 'run':
@@ -197,7 +199,7 @@ def workspace_command(args):
         return {'added': args.name}
     if args.command == 'run':
         return {'runs': workspace.run(args.to, args.adapter, max_calls=args.max_calls,
-                                      max_tokens=args.max_tokens, timeout=args.timeout)}
+                                      max_tokens=args.max_tokens, timeout=args.timeout, reply_mode=args.reply_mode)}
     with workspace.inbox() as box:
         if args.command == 'send':
             if (args.frame is None) == (args.file is None):
@@ -209,7 +211,7 @@ def workspace_command(args):
                                 max_attempts=args.max_attempts)
             return {'id': mid, 'inserted': inserted, 'kind': box.inspect(mid)['kind']}
         if args.command == 'plan':
-            plan = workspace.plan(box, args.to, max_tokens=args.max_tokens)
+            plan = workspace.plan(box, args.to, max_tokens=args.max_tokens, reply_mode=args.reply_mode)
             value = {'ids': [j.id for j in plan.jobs], 'deferred': list(plan.deferred),
                      'mode': plan.packet.mode if plan.packet else None,
                      'input_tokens': list(plan.packet.tokens) if plan.packet else [],

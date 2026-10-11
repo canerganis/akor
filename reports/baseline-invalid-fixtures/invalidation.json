@@ -1,0 +1,27 @@
+{
+  "invalidated": true,
+  "archive": "baseline-invalid-fixtures",
+  "reason": "Harness ground-truth and control-input defects invalidated accuracy interpretation.",
+  "findings": [
+    "Mixed valid matrix column expanded to six values for four IDs; model rejections were correct.",
+    "Second regular matrix range 4:5 expanded to two values for three IDs while expected rows used 4,6,5; model rejection was correct.",
+    "Primitive control prompts exposed a valid boolean label that leaked the expected verdict.",
+    "Simple Form malformed control used a two-atom row that was not validated against the Form channel.",
+    "Operation output names were not fixed unambiguously before the first call."
+  ],
+  "archived_raw_files": [
+    "oz5-live-language.raw.json",
+    "OZ5-LIVE-LANGUAGE.raw.md"
+  ],
+  "raw_files_modified": false,
+  "original_experiment_paydas": {
+    "calls": 12,
+    "oz5_cases": 12,
+    "primitive_json_cases": 12,
+    "pooled_into_corrected_cohort": false
+  },
+  "archived_raw_sha256": {
+    "oz5-live-language.raw.json": "61423e2cfde93d55cfbb6e9c13eeea640c0f8a2700e86f7ed2cf4c1dfe3aa2df",
+    "OZ5-LIVE-LANGUAGE.raw.md": "461ce6219325e214562c2f6d74eecf97cc34497f7645630e13fd8f798708eead"
+  }
+}

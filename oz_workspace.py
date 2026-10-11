@@ -150,12 +150,18 @@ class Workspace:
             if temp.exists():
                 temp.unlink()
 
-    def plan(self, box, name='worker', *, max_tokens=None):
+    def plan(self, box, name='worker', *, max_tokens=None, reply_mode='rows'):
+        if reply_mode not in ('rows', 'lanes'):
+            raise Error('reply_mode must be rows or lanes')
+        contract = RESPONSE_CONTRACT
+        if reply_mode == 'lanes':
+            from oz_reply import reply_contract
+            contract = reply_contract(uuid.uuid4().hex[:16])
         return box.plan(self.channel(name), counters=self.counters(), limit=self.config['batch_size'],
                         max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                        response_contract=RESPONSE_CONTRACT)
+                        response_contract=contract)
 
-    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120):
+    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, reply_mode='rows'):
         if type(max_calls) is not int or not 1 <= max_calls <= 100:
             raise Error('max_calls must be 1..100')
         adapter_path = adapter_path.resolve()
@@ -168,7 +174,8 @@ class Workspace:
         with self.inbox() as box:
             worker = Worker(box, self.channel(name), adapter, counters=counters, owner=name,
                             batch_size=self.config['batch_size'], timeout=timeout,
-                            max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'])
+                            max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
+                            reply_mode=reply_mode)
             for _ in range(max_calls):
                 result = worker.run_once()
                 results.append(result)

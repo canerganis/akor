@@ -1,0 +1,1641 @@
+{
+  "kind": "paired_live_coding_pilot",
+  "model_requested": "gpt-6-luna",
+  "model_confirmed": true,
+  "protocol": {
+    "conditions": [
+      "explicit_json",
+      "compact_oz5"
+    ],
+    "fixtures": 5,
+    "repeats_per_fixture_per_condition": 2,
+    "planned_task_condition_repeat_cells": 20,
+    "provider_calls_planned": 12,
+    "provider_calls_observed": 12,
+    "repeat_1": "single task per call; condition order alternates by fixture",
+    "repeat_2": "five-ID batch; reverse fixture order; compact condition uses OZ/5 matrix",
+    "same_function_and_hidden_test_payloads": true,
+    "temperature_or_sampling_controls": "CLI does not expose a verified sampling setting; defaults kept identical",
+    "proposal_only": true,
+    "task_requests_execution": false
+  },
+  "frozen_baseline": {
+    "fixture_hashes": {
+      "range-clamp": "44428751e9ff9bdf5045f6fa20a78851453759abe3b898f534c0010515e9e97f",
+      "merge-adjacent": "63a6be52fe17a8758c035bde5b88dad3470e4b81d61cc5aff800192a80cfb0ac",
+      "strict-retry-after": "fe98afdc7f12ea456fc8ccddd5eb508d8fe1ff6dbd1572049dcb99fe932bb0e7",
+      "chunk-boundaries": "ea56fb3ce61e81b289c4dce61dcd8a26ce3c7afa4c3fc54f602cdfe183222474",
+      "stable-unique": "8cd264f93d8e13b492edee6348f09ac9ca7efe698598d44686cf8ee5d20371a3"
+    },
+    "prompt_hashes": {
+      "explicit_single": [
+        "24ae13453dcf6af2b529f4370d06fc2f60ea5461da22fc0da427114dd465b00b",
+        "7c860992ed297727b2fb1643aee65ec0b8f32a018ce88551ea85ebd861e5f7dc",
+        "f20454d0fa2db31f8cc8206963908637ffc6e08c9b6e363290f4ccfca08ddb34",
+        "8de7f498647b31c56cbb367651ce1f09231a4d517935546e9b5bd40b19bef483",
+        "c2627af795978674b20ecbab81dce7185d0aee60e0849db05e0cfca115706aa0"
+      ],
+      "compact_single": [
+        "e161eef3a8c12b49906d5aba9014efc24c390b7b0b3ebbb486e56755fea333e2",
+        "51271962b4a2017b5bdb6f83fb6ffeae5838eb7042d221d61da1a77b45047537",
+        "b94482ba11323410e4b35a6f3348faefadfaa79a441177d7137f323ef2f7d94c",
+        "11a50315863f61fac606455387480d64436c58b6c47d186ec2f726a93b09d3ce",
+        "92c9bf9abfb6d6bdd030a43539f7daf71b96980d4b379e9e726571b765882f24"
+      ],
+      "explicit_batch_reverse": "aa26a3ec4c45a140d6e70884851d19e5263ec95c75b04ba8a18861d53f9f24e6",
+      "compact_batch_reverse": "2b0b733c147a20fe3fc7f8949367b734477c3a0476f2c74814d7112ae74cec79"
+    },
+    "prompt_estimated_tokens": {
+      "explicit_single": [
+        {
+          "o200k_base": 433,
+          "cl100k_base": 430
+        },
+        {
+          "o200k_base": 441,
+          "cl100k_base": 438
+        },
+        {
+          "o200k_base": 423,
+          "cl100k_base": 418
+        },
+        {
+          "o200k_base": 436,
+          "cl100k_base": 432
+        },
+        {
+          "o200k_base": 379,
+          "cl100k_base": 376
+        }
+      ],
+      "compact_single": [
+        {
+          "o200k_base": 735,
+          "cl100k_base": 734
+        },
+        {
+          "o200k_base": 748,
+          "cl100k_base": 745
+        },
+        {
+          "o200k_base": 732,
+          "cl100k_base": 729
+        },
+        {
+          "o200k_base": 738,
+          "cl100k_base": 736
+        },
+        {
+          "o200k_base": 685,
+          "cl100k_base": 684
+        }
+      ],
+      "explicit_batch_reverse": {
+        "o200k_base": 1447,
+        "cl100k_base": 1432
+      },
+      "compact_batch_reverse": {
+        "o200k_base": 1840,
+        "cl100k_base": 1828
+      }
+    },
+    "precheck": {
+      "codec_roundtrip": true,
+      "payload_equivalence": {
+        "range-clamp": {
+          "frame_matches_reference_ids": true,
+          "source_requirements_and_tests_equal": true,
+          "single_compact_context_is_task_scoped": true
+        },
+        "merge-adjacent": {
+          "frame_matches_reference_ids": true,
+          "source_requirements_and_tests_equal": true,
+          "single_compact_context_is_task_scoped": true
+        },
+        "strict-retry-after": {
+          "frame_matches_reference_ids": true,
+          "source_requirements_and_tests_equal": true,
+          "single_compact_context_is_task_scoped": true
+        },
+        "chunk-boundaries": {
+          "frame_matches_reference_ids": true,
+          "source_requirements_and_tests_equal": true,
+          "single_compact_context_is_task_scoped": true
+        },
+        "stable-unique": {
+          "frame_matches_reference_ids": true,
+          "source_requirements_and_tests_equal": true,
+          "single_compact_context_is_task_scoped": true
+        }
+      },
+      "oracle_solutions_passed": 5,
+      "buggy_baselines_detected": 5,
+      "unsafe_import_attribute_io_call_rejected": true,
+      "safe_keyword_lambda_syntax_v2_accepted": true,
+      "API_signature_changes_rejected": true,
+      "duplicate_key_and_nonfinite_json_rejected": true,
+      "batch_id_order_enforced": true,
+      "tool_used_output_not_scored": true,
+      "tool_event_pair_deduplicated": true,
+      "single_result_schema_matches": true,
+      "batch_matrix_grammar_and_context_present": true
+    }
+  },
+  "readiness_check": {
+    "model_requested": "gpt-6-luna",
+    "status": "completed",
+    "prompt_sha256": "46c941a49efc5aefc771fb67cda2eab18d9361dc8a350c283c58210b12d1592a",
+    "answer_sha256": "b342fc286d0216cc212e0d7ba234894e2e7283ddf14f959adf0fe7fd5924308a",
+    "provider_usage_records": [
+      {
+        "input_tokens": 24814,
+        "cached_input_tokens": 13056,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 9,
+        "reasoning_output_tokens": 0
+      }
+    ],
+    "tool_event_count": 0,
+    "tool_event_types": [],
+    "nonfatal_cli_warning_classes": [
+      "ignored_existing_user_config_setting",
+      "ignored_existing_user_config_setting",
+      "unstable_feature_notice",
+      "hook_timeout_clamped"
+    ],
+    "note": "Readiness check is reported separately and excluded from the 20 coding task cells."
+  },
+  "cell_results": [
+    {
+      "fixture_id": "range-clamp",
+      "condition": "explicit_json",
+      "repeat": 1,
+      "call_id": "r1-explicit_json-range-clamp",
+      "status": "scored",
+      "task_success": true,
+      "output_format_conformant": true,
+      "source_conformance": "accepted",
+      "hidden_tests_correct": 7,
+      "hidden_tests_evaluated": 7,
+      "hidden_tests_total": 7,
+      "candidate_execution_seconds": 0.063
+    },
+    {
+      "fixture_id": "merge-adjacent",
+      "condition": "explicit_json",
+      "repeat": 1,
+      "call_id": "r1-explicit_json-merge-adjacent",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 6,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "strict-retry-after",
+      "condition": "explicit_json",
+      "repeat": 1,
+      "call_id": "r1-explicit_json-strict-retry-after",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 10,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "chunk-boundaries",
+      "condition": "explicit_json",
+      "repeat": 1,
+      "call_id": "r1-explicit_json-chunk-boundaries",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "stable-unique",
+      "condition": "explicit_json",
+      "repeat": 1,
+      "call_id": "r1-explicit_json-stable-unique",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "range-clamp",
+      "condition": "compact_oz5",
+      "repeat": 1,
+      "call_id": "r1-compact_oz5-range-clamp",
+      "status": "scored",
+      "task_success": true,
+      "output_format_conformant": true,
+      "source_conformance": "accepted",
+      "hidden_tests_correct": 7,
+      "hidden_tests_evaluated": 7,
+      "hidden_tests_total": 7,
+      "candidate_execution_seconds": 0.062
+    },
+    {
+      "fixture_id": "merge-adjacent",
+      "condition": "compact_oz5",
+      "repeat": 1,
+      "call_id": "r1-compact_oz5-merge-adjacent",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 6,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "strict-retry-after",
+      "condition": "compact_oz5",
+      "repeat": 1,
+      "call_id": "r1-compact_oz5-strict-retry-after",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 10,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "chunk-boundaries",
+      "condition": "compact_oz5",
+      "repeat": 1,
+      "call_id": "r1-compact_oz5-chunk-boundaries",
+      "status": "scored",
+      "task_success": true,
+      "output_format_conformant": true,
+      "source_conformance": "accepted",
+      "hidden_tests_correct": 5,
+      "hidden_tests_evaluated": 5,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": 0.063
+    },
+    {
+      "fixture_id": "stable-unique",
+      "condition": "compact_oz5",
+      "repeat": 1,
+      "call_id": "r1-compact_oz5-stable-unique",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "range-clamp",
+      "condition": "explicit_json",
+      "repeat": 2,
+      "call_id": "r2-explicit_json-matrix",
+      "status": "scored",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "accepted",
+      "hidden_tests_correct": 6,
+      "hidden_tests_evaluated": 7,
+      "hidden_tests_total": 7,
+      "candidate_execution_seconds": 0.047
+    },
+    {
+      "fixture_id": "merge-adjacent",
+      "condition": "explicit_json",
+      "repeat": 2,
+      "call_id": "r2-explicit_json-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 6,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "strict-retry-after",
+      "condition": "explicit_json",
+      "repeat": 2,
+      "call_id": "r2-explicit_json-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 10,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "chunk-boundaries",
+      "condition": "explicit_json",
+      "repeat": 2,
+      "call_id": "r2-explicit_json-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "stable-unique",
+      "condition": "explicit_json",
+      "repeat": 2,
+      "call_id": "r2-explicit_json-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "range-clamp",
+      "condition": "compact_oz5",
+      "repeat": 2,
+      "call_id": "r2-compact_oz5-matrix",
+      "status": "scored",
+      "task_success": true,
+      "output_format_conformant": true,
+      "source_conformance": "accepted",
+      "hidden_tests_correct": 7,
+      "hidden_tests_evaluated": 7,
+      "hidden_tests_total": 7,
+      "candidate_execution_seconds": 0.046
+    },
+    {
+      "fixture_id": "merge-adjacent",
+      "condition": "compact_oz5",
+      "repeat": 2,
+      "call_id": "r2-compact_oz5-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 6,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "strict-retry-after",
+      "condition": "compact_oz5",
+      "repeat": 2,
+      "call_id": "r2-compact_oz5-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 10,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "chunk-boundaries",
+      "condition": "compact_oz5",
+      "repeat": 2,
+      "call_id": "r2-compact_oz5-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": null
+    },
+    {
+      "fixture_id": "stable-unique",
+      "condition": "compact_oz5",
+      "repeat": 2,
+      "call_id": "r2-compact_oz5-matrix",
+      "status": "rejected_call",
+      "task_success": false,
+      "output_format_conformant": true,
+      "source_conformance": "rejected_call",
+      "hidden_tests_correct": null,
+      "hidden_tests_evaluated": 0,
+      "hidden_tests_total": 5,
+      "candidate_execution_seconds": null
+    }
+  ],
+  "condition_summary": {
+    "explicit_json": {
+      "task_cell_denominator": 10,
+      "task_successes": 1,
+      "output_format_conformant_calls": 6,
+      "source_conformant_cells": 2,
+      "hidden_test_correct": 13,
+      "hidden_test_evaluation_denominator": 14,
+      "hidden_test_denominator_including_failed_cells": 66,
+      "non_scored_or_missing_cells": 8,
+      "cell_status_counts": {
+        "scored": 2,
+        "rejected_call": 8
+      },
+      "provider_calls": 6,
+      "provider_usage_record_count": 6,
+      "provider_usage_totals": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 125440,
+        "input_tokens": 150792,
+        "output_tokens": 3418,
+        "reasoning_output_tokens": 1883
+      },
+      "cli_wall_time_seconds": {
+        "observed_calls": 4,
+        "sum": 59.984,
+        "mean": 14.996,
+        "min": 9.062,
+        "max": 24.625
+      },
+      "tokenizer_prompt_estimates_separate": {
+        "o200k_base": 3559,
+        "cl100k_base": 3526
+      }
+    },
+    "compact_oz5": {
+      "task_cell_denominator": 10,
+      "task_successes": 3,
+      "output_format_conformant_calls": 6,
+      "source_conformant_cells": 3,
+      "hidden_test_correct": 19,
+      "hidden_test_evaluation_denominator": 19,
+      "hidden_test_denominator_including_failed_cells": 66,
+      "non_scored_or_missing_cells": 7,
+      "cell_status_counts": {
+        "scored": 3,
+        "rejected_call": 7
+      },
+      "provider_calls": 6,
+      "provider_usage_record_count": 6,
+      "provider_usage_totals": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 124416,
+        "input_tokens": 152727,
+        "output_tokens": 3692,
+        "reasoning_output_tokens": 2137
+      },
+      "cli_wall_time_seconds": {
+        "observed_calls": 4,
+        "sum": 56.985,
+        "mean": 14.246,
+        "min": 10.765,
+        "max": 18.657
+      },
+      "tokenizer_prompt_estimates_separate": {
+        "o200k_base": 5478,
+        "cl100k_base": 5456
+      }
+    }
+  },
+  "tool_events_total": 0,
+  "evaluator_revisions": [
+    {
+      "revision": "v1",
+      "rule": "Initial scorer did not support ast.keyword/ast.Lambda; first four observed scores are retained per call."
+    },
+    {
+      "revision": "v2",
+      "rule": "Rescores frozen raw answers; supports explicitly allowed builtin keyword/lambda syntax and safe builtin ValueError raises. Still rejects attributes, imports, disallowed calls, malformed/duplicate/nonfinite JSON, and any changed public function signature."
+    }
+  ],
+  "batch_output_contract_note": "Both paired batch prompts request a results array with exact task IDs/order, while the shared COMMON_RULES earlier says to return function_source and explanation in one object. This uncorrected wording conflict is logged; do not treat batch results as a clean estimate of format preference.",
+  "calls": [
+    {
+      "id": "r1-explicit_json-range-clamp",
+      "status": "completed",
+      "exit_code": 0,
+      "repeat": 1,
+      "condition": "explicit_json",
+      "task_ids": [
+        "range-clamp"
+      ],
+      "prompt_sha256": "24ae13453dcf6af2b529f4370d06fc2f60ea5461da22fc0da427114dd465b00b",
+      "prompt_utf8_bytes": 1965,
+      "answer_sha256": "c779fdb01ef7f14a7c7a946cade03f44cf47a4b5642cb49d0ef18ea1dd26b267",
+      "raw_answer": "{\"function_source\":\"def normalize_range(start, stop, size):\\n    if start < 0:\\n        start += size\\n    if stop < 0:\\n        stop += size\\n    start = min(max(start, 0), size)\\n    stop = min(max(stop, 0), size)\\n    return (start, stop)\",\"explanation\":\"Negatif sınırları size kadar kaydırır, iki sınırı [0, size] aralığına sıkıştırır ve stop < start durumunu korur. Belirtilen örnek testler çalıştırılmak üzere istenmiştir; sonuçları doğrulanmamıştır.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 24920,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 413,
+          "reasoning_output_tokens": 269
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "estimated_tokens": {
+        "o200k_base": 433,
+        "cl100k_base": 430
+      },
+      "sent_task_payload_sha256": "44428751e9ff9bdf5045f6fa20a78851453759abe3b898f534c0010515e9e97f",
+      "recovered_from_interrupted_run": true,
+      "output_format_conformant": true,
+      "scores": {
+        "range-clamp": {
+          "source_sha256": "c288cc0d18064378b4b50b3b56426ef2b27d5ac98b313219deb752250f9f34e6",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.063
+        }
+      },
+      "evaluator_v1_observed_console_score": {
+        "range-clamp": {
+          "status": "scored",
+          "correct": 7,
+          "total": 7
+        }
+      },
+      "evaluator_v2_rescore": {
+        "range-clamp": {
+          "source_sha256": "c288cc0d18064378b4b50b3b56426ef2b27d5ac98b313219deb752250f9f34e6",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.063
+        }
+      },
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "evaluator_pre_raise_v2_score": {
+        "range-clamp": {
+          "source_sha256": "c288cc0d18064378b4b50b3b56426ef2b27d5ac98b313219deb752250f9f34e6",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.063
+        }
+      }
+    },
+    {
+      "id": "r1-compact_oz5-range-clamp",
+      "status": "completed",
+      "exit_code": 0,
+      "repeat": 1,
+      "condition": "compact_oz5",
+      "task_ids": [
+        "range-clamp"
+      ],
+      "prompt_sha256": "e161eef3a8c12b49906d5aba9014efc24c390b7b0b3ebbb486e56755fea333e2",
+      "prompt_utf8_bytes": 3021,
+      "answer_sha256": "4c844883756228d340b91c4efcd732a3dd2c2014c0d8cbe0d085335576a77f4a",
+      "raw_answer": "{\"function_source\":\"def normalize_range(start, stop, size):\\n    if start < 0:\\n        start += size\\n    if stop < 0:\\n        stop += size\\n\\n    start = min(max(start, 0), size)\\n    stop = min(max(stop, 0), size)\\n    return (start, stop)\\n\",\"explanation\":\"Bu öneri, negatif sınırları dizi uzunluğuna göre sona taşır ve her iki sınırı [0, size] aralığına sıkıştırır. stop start değerinden küçükse sıralamayı değiştirmeden boş aralığı korur. İstenen test prosedürü için sonuç bildirilmemiştir; değişiklik uygulanmamıştır.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 25224,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 450,
+          "reasoning_output_tokens": 288
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "estimated_tokens": {
+        "o200k_base": 735,
+        "cl100k_base": 734
+      },
+      "sent_task_payload_sha256": "44428751e9ff9bdf5045f6fa20a78851453759abe3b898f534c0010515e9e97f",
+      "recovered_from_interrupted_run": true,
+      "output_format_conformant": true,
+      "scores": {
+        "range-clamp": {
+          "source_sha256": "b257577379fbceaff6f894f2a39d6d010a9e4a20d8d1ff8e8099b6d3cad62434",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.062
+        }
+      },
+      "evaluator_v1_observed_console_score": {
+        "range-clamp": {
+          "status": "scored",
+          "correct": 7,
+          "total": 7
+        }
+      },
+      "evaluator_v2_rescore": {
+        "range-clamp": {
+          "source_sha256": "b257577379fbceaff6f894f2a39d6d010a9e4a20d8d1ff8e8099b6d3cad62434",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.062
+        }
+      },
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "evaluator_pre_raise_v2_score": {
+        "range-clamp": {
+          "source_sha256": "b257577379fbceaff6f894f2a39d6d010a9e4a20d8d1ff8e8099b6d3cad62434",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.062
+        }
+      }
+    },
+    {
+      "id": "r1-explicit_json-merge-adjacent",
+      "status": "completed",
+      "exit_code": 0,
+      "repeat": 1,
+      "condition": "explicit_json",
+      "task_ids": [
+        "merge-adjacent"
+      ],
+      "prompt_sha256": "7c860992ed297727b2fb1643aee65ec0b8f32a018ce88551ea85ebd861e5f7dc",
+      "prompt_utf8_bytes": 2036,
+      "answer_sha256": "6adf5c0f8af905191c933c9df249a0778ffe2f6a81199933d2ac7477133f6985",
+      "raw_answer": "{\"function_source\":\"def merge_intervals(intervals):\\n    normalized = []\\n    for start, end in intervals:\\n        if start <= end:\\n            normalized.append([start, end])\\n        else:\\n            normalized.append([end, start])\\n\\n    normalized.sort(key=lambda interval: interval[0])\\n    result = []\\n    for start, end in normalized:\\n        if result and start <= result[-1][1] + 1:\\n            result[-1][1] = max(result[-1][1], end)\\n        else:\\n            result.append([start, end])\\n    return result\",\"explanation\":\"Korunan imza, ters uçları normalize eder; tekil aralıkları tutar ve çakışan ya da bitişik aralıkları iki elemanlı listelerde birleştirir. Listelenen test prosedürünü çalıştırın; sonuç burada doğrulanmış değildir.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 24928,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 354,
+          "reasoning_output_tokens": 143
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "estimated_tokens": {
+        "o200k_base": 441,
+        "cl100k_base": 438
+      },
+      "sent_task_payload_sha256": "63a6be52fe17a8758c035bde5b88dad3470e4b81d61cc5aff800192a80cfb0ac",
+      "recovered_from_interrupted_run": true,
+      "output_format_conformant": true,
+      "scores": {
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_v1_observed_console_score": {
+        "merge-adjacent": {
+          "status": "rejected_call"
+        }
+      },
+      "evaluator_v2_rescore": {
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "evaluator_pre_raise_v2_score": {
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      }
+    },
+    {
+      "id": "r1-compact_oz5-merge-adjacent",
+      "status": "completed",
+      "exit_code": 0,
+      "repeat": 1,
+      "condition": "compact_oz5",
+      "task_ids": [
+        "merge-adjacent"
+      ],
+      "prompt_sha256": "51271962b4a2017b5bdb6f83fb6ffeae5838eb7042d221d61da1a77b45047537",
+      "prompt_utf8_bytes": 3092,
+      "answer_sha256": "072c94494222810ca80bac611a7076677a7ca13a647ce553886ccbe875c1455c",
+      "raw_answer": "{\"function_source\":\"def merge_intervals(intervals):\\n    normalized = [[min(start, end), max(start, end)] for start, end in intervals]\\n    normalized = sorted(normalized, key=lambda interval: interval[0])\\n    result = []\\n    for start, end in normalized:\\n        if result and start <= result[-1][1] + 1:\\n            result[-1][1] = max(result[-1][1], end)\\n        else:\\n            result.append([start, end])\\n    return result\",\"explanation\":\"Uç noktaları normalize eder, başlangıca göre sıralar ve örtüşen ya da bitişik kapalı aralıkları birleştirir. Tekil aralıkları ve boş girdiyi korur; bu yalnızca uygulanmamış bir öneridir.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 25237,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 371,
+          "reasoning_output_tokens": 187
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "estimated_tokens": {
+        "o200k_base": 748,
+        "cl100k_base": 745
+      },
+      "sent_task_payload_sha256": "63a6be52fe17a8758c035bde5b88dad3470e4b81d61cc5aff800192a80cfb0ac",
+      "recovered_from_interrupted_run": true,
+      "output_format_conformant": true,
+      "scores": {
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_v1_observed_console_score": {
+        "merge-adjacent": {
+          "status": "rejected_ast:keyword"
+        }
+      },
+      "evaluator_v2_rescore": {
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "evaluator_pre_raise_v2_score": {
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      }
+    },
+    {
+      "id": "r1-explicit_json-strict-retry-after",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 24.625,
+      "prompt_sha256": "f20454d0fa2db31f8cc8206963908637ffc6e08c9b6e363290f4ccfca08ddb34",
+      "prompt_utf8_bytes": 2029,
+      "answer_sha256": "6933596bd7e456b8c779c0aaafb2bdce10d47b973cc951e31657bf74856a06bb",
+      "raw_answer": "{\"function_source\":\"def parse_retry_after(value, fallback, cap):\\n    upper = max(0, cap)\\n\\n    if type(value) is int and value >= 0:\\n        seconds = value\\n    elif isinstance(value, str) and value and all(\\\"0\\\" <= digit <= \\\"9\\\" for digit in value):\\n        seconds = 0\\n        for digit in value:\\n            if seconds < upper:\\n                seconds = min(upper, seconds * 10 + int(digit))\\n    else:\\n        seconds = fallback\\n\\n    return min(max(seconds, 0), upper)\",\"explanation\":\"Öneri, değişiklik uygulanmadı ve test edilmedi. İstenen testler: '12' için 10; True ve ' 3' için fallback’in [0, cap] aralığına kırpılmış değeri.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 25221,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 926,
+          "reasoning_output_tokens": 733
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 1,
+      "condition": "explicit_json",
+      "task_ids": [
+        "strict-retry-after"
+      ],
+      "estimated_tokens": {
+        "o200k_base": 423,
+        "cl100k_base": 418
+      },
+      "sent_task_payload_sha256": "fe98afdc7f12ea456fc8ccddd5eb508d8fe1ff6dbd1572049dcb99fe932bb0e7",
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_v2_rescore": {
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      }
+    },
+    {
+      "id": "r1-compact_oz5-strict-retry-after",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 15.329,
+      "prompt_sha256": "b94482ba11323410e4b35a6f3348faefadfaa79a441177d7137f323ef2f7d94c",
+      "prompt_utf8_bytes": 3087,
+      "answer_sha256": "7ee3ca4858f910271d55ddc2bdcfa678ecc2ee681795e19e2f4807cc8ed38dbc",
+      "raw_answer": "{\"function_source\":\"def parse_retry_after(value, fallback, cap):\\n    if type(value) is int and value >= 0:\\n        seconds = value\\n    elif isinstance(value, str) and value and all('0' <= char <= '9' for char in value):\\n        seconds = int(value)\\n    else:\\n        return min(max(fallback, 0), cap)\\n    return min(max(seconds, 0), cap)\",\"explanation\":\"Accepts only exact nonnegative integers or nonempty ASCII digit strings. Invalid input returns the fallback clamped to [0, cap]; accepted values are clamped to the same range. No change is applied and no tests are run.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 25532,
+          "cached_input_tokens": 7936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 448,
+          "reasoning_output_tokens": 293
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 1,
+      "condition": "compact_oz5",
+      "task_ids": [
+        "strict-retry-after"
+      ],
+      "estimated_tokens": {
+        "o200k_base": 732,
+        "cl100k_base": 729
+      },
+      "sent_task_payload_sha256": "fe98afdc7f12ea456fc8ccddd5eb508d8fe1ff6dbd1572049dcb99fe932bb0e7",
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_v2_rescore": {
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      }
+    },
+    {
+      "id": "r1-compact_oz5-chunk-boundaries",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 10.765,
+      "prompt_sha256": "11a50315863f61fac606455387480d64436c58b6c47d186ec2f726a93b09d3ce",
+      "prompt_utf8_bytes": 3015,
+      "answer_sha256": "1a359fcaad9d90949b89eeb1702ef381126e904f42c196c344cf8851c8e09b31",
+      "raw_answer": "{\"function_source\":\"def chunk_ranges(total, chunk):\\n    if total < 0:\\n        raise ValueError(\\\"total must be non-negative\\\")\\n    if chunk <= 0:\\n        raise ValueError(\\\"chunk must be positive\\\")\\n\\n    ranges = []\\n    start = 0\\n    while start < total:\\n        end = min(start + chunk, total)\\n        ranges = ranges + [(start, end)]\\n        start = end\\n    return ranges\",\"explanation\":\"Yarım açık aralıkları yalnızca start < total iken üretir; böylece total=0 boş liste döndürür ve tam bölünen toplamlar fazladan boş aralık oluşturmaz. Geçersiz total veya chunk değerlerinde sonsuz döngü yerine ValueError önerir. Bu bir öneridir; uygulanmadı ve test çalıştırılmadı.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 25227,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 589,
+          "reasoning_output_tokens": 395
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 1,
+      "condition": "compact_oz5",
+      "task_ids": [
+        "chunk-boundaries"
+      ],
+      "estimated_tokens": {
+        "o200k_base": 738,
+        "cl100k_base": 736
+      },
+      "sent_task_payload_sha256": "ea56fb3ce61e81b289c4dce61dcd8a26ce3c7afa4c3fc54f602cdfe183222474",
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "chunk-boundaries": {
+          "source_sha256": "e9b6d37c24cb1e895d64240ffb5b2c3f5197371dbb739c6ef570862aa04a2eb6",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 5,
+          "total": 5,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.063
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "chunk-boundaries": {
+          "source_sha256": "e9b6d37c24cb1e895d64240ffb5b2c3f5197371dbb739c6ef570862aa04a2eb6",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 5,
+          "total": 5,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.063
+        }
+      },
+      "evaluator_v2_rescore": {
+        "chunk-boundaries": {
+          "source_sha256": "e9b6d37c24cb1e895d64240ffb5b2c3f5197371dbb739c6ef570862aa04a2eb6",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 5,
+          "total": 5,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.063
+        }
+      }
+    },
+    {
+      "id": "r1-explicit_json-chunk-boundaries",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 9.062,
+      "prompt_sha256": "8de7f498647b31c56cbb367651ce1f09231a4d517935546e9b5bd40b19bef483",
+      "prompt_utf8_bytes": 1962,
+      "answer_sha256": "9de9a49a60e66d5e041f1d72870b01d30c31b411b728f40b18cdb07b8e45dee8",
+      "raw_answer": "{\"function_source\":\"def chunk_ranges(total, chunk):\\n    if total < 0:\\n        raise ValueError(\\\"total must be non-negative\\\")\\n    if chunk <= 0:\\n        raise ValueError(\\\"chunk must be positive\\\")\\n\\n    ranges = []\\n    start = 0\\n    while start < total:\\n        end = min(start + chunk, total)\\n        ranges.append((start, end))\\n        start = end\\n    return ranges\",\"explanation\":\"Proposed replacement validates the documented bounds, returns no ranges when total is zero, and avoids an empty trailing range for exact multiples.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 24923,
+          "cached_input_tokens": 24320,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 273,
+          "reasoning_output_tokens": 133
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 1,
+      "condition": "explicit_json",
+      "task_ids": [
+        "chunk-boundaries"
+      ],
+      "estimated_tokens": {
+        "o200k_base": 436,
+        "cl100k_base": 432
+      },
+      "sent_task_payload_sha256": "ea56fb3ce61e81b289c4dce61dcd8a26ce3c7afa4c3fc54f602cdfe183222474",
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_v2_rescore": {
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      }
+    },
+    {
+      "id": "r1-explicit_json-stable-unique",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 10.578,
+      "prompt_sha256": "c2627af795978674b20ecbab81dce7185d0aee60e0849db05e0cfca115706aa0",
+      "prompt_utf8_bytes": 1781,
+      "answer_sha256": "ae26469b4a1f0c0ef05ee70d00ac6f39c53e1ae6185ad7e7a34cd5a270826a5a",
+      "raw_answer": "{\"function_source\":\"def stable_unique(values):\\n    unique = []\\n    for value in values:\\n        if value not in unique:\\n            unique.append(value)\\n    return unique\\n\",\"explanation\":\"Öneri, ilk görülen eşit değerleri korur, listeler gibi hashlenemeyen değerleri destekler ve girdiyi değiştirmeden yeni liste döndürür. Belirtilen iki örnek bu davranışı kontrol etmek için kullanılabilir; test çalıştırılmadı.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 24866,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 202,
+          "reasoning_output_tokens": 89
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 1,
+      "condition": "explicit_json",
+      "task_ids": [
+        "stable-unique"
+      ],
+      "estimated_tokens": {
+        "o200k_base": 379,
+        "cl100k_base": 376
+      },
+      "sent_task_payload_sha256": "8cd264f93d8e13b492edee6348f09ac9ca7efe698598d44686cf8ee5d20371a3",
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_v2_rescore": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      }
+    },
+    {
+      "id": "r1-compact_oz5-stable-unique",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 12.234,
+      "prompt_sha256": "92c9bf9abfb6d6bdd030a43539f7daf71b96980d4b379e9e726571b765882f24",
+      "prompt_utf8_bytes": 2835,
+      "answer_sha256": "9501bb2197d149dc0ef6585f1cbfcf7d53d297f7837c7d134a0a46e8ace3a7b4",
+      "raw_answer": "{\"function_source\":\"def stable_unique(values):\\n    result = []\\n    for value in values:\\n        if value not in result:\\n            result.append(value)\\n    return result\",\"explanation\":\"İlk görülen eşit değerleri sırayı koruyarak yeni bir listede tutar; listeler gibi hashlenemeyen değerleri de destekler ve girdiyi değiştirmez. Öneri uygulanmadı. Testler istendi, ancak sonuç verilmedi.\"}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 25174,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 299,
+          "reasoning_output_tokens": 191
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 1,
+      "condition": "compact_oz5",
+      "task_ids": [
+        "stable-unique"
+      ],
+      "estimated_tokens": {
+        "o200k_base": 685,
+        "cl100k_base": 684
+      },
+      "sent_task_payload_sha256": "8cd264f93d8e13b492edee6348f09ac9ca7efe698598d44686cf8ee5d20371a3",
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      },
+      "evaluator_v2_rescore": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        }
+      }
+    },
+    {
+      "id": "r2-compact_oz5-matrix",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 18.657,
+      "prompt_sha256": "2b0b733c147a20fe3fc7f8949367b734477c3a0476f2c74814d7112ae74cec79",
+      "prompt_utf8_bytes": 7252,
+      "answer_sha256": "0e08a14a7cfdb69a3adce98d29bef8ac237c86aff1b8c01bf9ab0173f98823f1",
+      "raw_answer": "{\"results\":[{\"task_id\":\"stable-unique\",\"function_source\":\"def stable_unique(values):\\n    result = []\\n    for value in values:\\n        if value not in result:\\n            result.append(value)\\n    return result\",\"explanation\":\"İlk görülen değerleri sırayla korur, eşit olan sonraki değerleri atlar ve yeni bir liste döndürür. Test prosedürü istendi; çalıştırılmadı.\"},{\"task_id\":\"chunk-boundaries\",\"function_source\":\"def chunk_ranges(total, chunk):\\n    if total < 0 or chunk <= 0:\\n        raise ValueError(\\\"total must be nonnegative and chunk must be positive\\\")\\n    ranges = []\\n    start = 0\\n    while start < total:\\n        stop = min(start + chunk, total)\\n        ranges.append((start, stop))\\n        start = stop\\n    return ranges\",\"explanation\":\"Aralıkları [0, total) üzerinde ardışık ve boş olmayan parçalar halinde üretir; geçersiz total veya chunk için ValueError verir. Test prosedürü istendi; çalıştırılmadı.\"},{\"task_id\":\"strict-retry-after\",\"function_source\":\"def parse_retry_after(value, fallback, cap):\\n    if type(value) is int and value >= 0:\\n        seconds = value\\n    elif isinstance(value, str) and value and all(\\\"0\\\" <= char <= \\\"9\\\" for char in value):\\n        seconds = int(value)\\n    else:\\n        seconds = fallback\\n    return min(max(seconds, 0), cap)\",\"explanation\":\"Yalnızca bool olmayan, negatif olmayan tam int değerleri veya boş olmayan ASCII ondalık dizgeleri kabul eder; diğer girdilerde fallback kullanır ve sonucu [0, cap] aralığına sınırlar. Test prosedürü istendi; çalıştırılmadı.\"},{\"task_id\":\"merge-adjacent\",\"function_source\":\"def merge_intervals(intervals):\\n    normalized = []\\n    for start, end in intervals:\\n        if start > end:\\n            start, end = end, start\\n        normalized.append([start, end])\\n    normalized.sort(key=lambda interval: interval[0])\\n\\n    result = []\\n    for start, end in normalized:\\n        if result and start <= result[-1][1] + 1:\\n            result[-1][1] = max(result[-1][1], end)\\n        else:\\n            result.append([start, end])\\n    return result\",\"explanation\":\"Uçları normalize eder, başlangıca göre sıralar ve çakışan ya da bitişik kapalı aralıkları birleştirir; tek elemanlı aralıkları korur. Test prosedürü istendi; çalıştırılmadı.\"},{\"task_id\":\"range-clamp\",\"function_source\":\"def normalize_range(start, stop, size):\\n    if start < 0:\\n        start = size + start\\n    if stop < 0:\\n        stop = size + stop\\n    start = min(max(start, 0), size)\\n    stop = min(max(stop, 0), size)\\n    return (start, stop)\",\"explanation\":\"Negatif sınırları size'a göre çözümler, iki sınırı da [0, size] içine kısar ve stop start'tan önceyse boş aralığı korur. Test prosedürü istendi; çalıştırılmadı.\"}]}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 26333,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1535,
+          "reasoning_output_tokens": 783
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 2,
+      "condition": "compact_oz5",
+      "task_ids": [
+        "stable-unique",
+        "chunk-boundaries",
+        "strict-retry-after",
+        "merge-adjacent",
+        "range-clamp"
+      ],
+      "matrix_package": true,
+      "estimated_tokens": {
+        "o200k_base": 1840,
+        "cl100k_base": 1828
+      },
+      "sent_task_payload_sha256": {
+        "range-clamp": "44428751e9ff9bdf5045f6fa20a78851453759abe3b898f534c0010515e9e97f",
+        "merge-adjacent": "63a6be52fe17a8758c035bde5b88dad3470e4b81d61cc5aff800192a80cfb0ac",
+        "strict-retry-after": "fe98afdc7f12ea456fc8ccddd5eb508d8fe1ff6dbd1572049dcb99fe932bb0e7",
+        "chunk-boundaries": "ea56fb3ce61e81b289c4dce61dcd8a26ce3c7afa4c3fc54f602cdfe183222474",
+        "stable-unique": "8cd264f93d8e13b492edee6348f09ac9ca7efe698598d44686cf8ee5d20371a3"
+      },
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "range-clamp": {
+          "source_sha256": "4e44a482b52a9b7ea262b754e8be6e46ab545c94f7f106415576d4f6c8e257fa",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.046
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "range-clamp": {
+          "source_sha256": "4e44a482b52a9b7ea262b754e8be6e46ab545c94f7f106415576d4f6c8e257fa",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.047
+        }
+      },
+      "evaluator_v2_rescore": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "range-clamp": {
+          "source_sha256": "4e44a482b52a9b7ea262b754e8be6e46ab545c94f7f106415576d4f6c8e257fa",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 7,
+          "total": 7,
+          "all_hidden_tests_passed": true,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            true,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.046
+        }
+      }
+    },
+    {
+      "id": "r2-explicit_json-matrix",
+      "status": "completed",
+      "exit_code": 0,
+      "wall_seconds": 15.719,
+      "prompt_sha256": "aa26a3ec4c45a140d6e70884851d19e5263ec95c75b04ba8a18861d53f9f24e6",
+      "prompt_utf8_bytes": 6305,
+      "answer_sha256": "f6dc9bbef091c65c1cd73530f640f70111f81c59b4b310960e4f969ddcb4d695",
+      "raw_answer": "{\"results\":[{\"task_id\":\"stable-unique\",\"function_source\":\"def stable_unique(values):\\n    result = []\\n    for value in values:\\n        if not any(value == earlier for earlier in result):\\n            result.append(value)\\n    return result\",\"explanation\":\"İlk görülen değerleri sıralarını koruyarak yeni bir listede tutar; eşitlik karşılaştırması hash gerektirmez.\"},{\"task_id\":\"chunk-boundaries\",\"function_source\":\"def chunk_ranges(total, chunk):\\n    ranges = []\\n    start = 0\\n    while start < total:\\n        end = min(start + chunk, total)\\n        ranges.append((start, end))\\n        start = end\\n    return ranges\",\"explanation\":\"Yalnızca boş olmayan, ardışık yarı açık aralıklar üretir; total sıfırken boş liste döndürür.\"},{\"task_id\":\"strict-retry-after\",\"function_source\":\"def parse_retry_after(value, fallback, cap):\\n    if type(value) is int and value >= 0:\\n        seconds = value\\n    elif isinstance(value, str) and value:\\n        seconds = 0\\n        valid = True\\n        for character in value:\\n            if character < \\\"0\\\" or character > \\\"9\\\":\\n                valid = False\\n                break\\n            seconds = seconds * 10 + (ord(character) - ord(\\\"0\\\"))\\n        if not valid:\\n            seconds = fallback\\n    else:\\n        seconds = fallback\\n    return min(max(seconds, 0), cap)\",\"explanation\":\"Yalnızca bool olmayan negatif dışı int veya ASCII ondalık rakamlardan oluşan boş olmayan metni kabul eder; diğer değerlerde fallback kullanıp sonucu 0 ile cap arasına sınırlar.\"},{\"task_id\":\"merge-adjacent\",\"function_source\":\"def merge_intervals(intervals):\\n    normalized = []\\n    for start, end in intervals:\\n        if start > end:\\n            start, end = end, start\\n        normalized.append([start, end])\\n    normalized.sort()\\n\\n    result = []\\n    for start, end in normalized:\\n        if result and start <= result[-1][1] + 1:\\n            if end > result[-1][1]:\\n                result[-1][1] = end\\n        else:\\n            result.append([start, end])\\n    return result\",\"explanation\":\"Uçları normalize edip başlangıca göre sıralar; kapalı aralıklarda çakışan veya bitişik aralıkları birleştirir ve tek noktalı aralıkları korur.\"},{\"task_id\":\"range-clamp\",\"function_source\":\"def normalize_range(start, stop, size):\\n    if start < 0:\\n        start = max(size + start, 0)\\n    else:\\n        start = min(start, size)\\n\\n    if stop < 0:\\n        stop = max(size + stop, 0)\\n    else:\\n        stop = min(stop, size)\\n\\n    if stop < start:\\n        stop = start\\n    return (start, stop)\",\"explanation\":\"Negatif sınırları sondan sayar, iki sınırı [0, size] aralığına sıkıştırır ve ters kalan aralığı boş aralık olarak döndürür.\"}]}",
+      "provider_usage_records": [
+        {
+          "input_tokens": 25934,
+          "cached_input_tokens": 7936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1250,
+          "reasoning_output_tokens": 516
+        }
+      ],
+      "tool_event_count": 0,
+      "tool_event_types": [],
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "repeat": 2,
+      "condition": "explicit_json",
+      "task_ids": [
+        "stable-unique",
+        "chunk-boundaries",
+        "strict-retry-after",
+        "merge-adjacent",
+        "range-clamp"
+      ],
+      "matrix_package": false,
+      "estimated_tokens": {
+        "o200k_base": 1447,
+        "cl100k_base": 1432
+      },
+      "sent_task_payload_sha256": {
+        "range-clamp": "44428751e9ff9bdf5045f6fa20a78851453759abe3b898f534c0010515e9e97f",
+        "merge-adjacent": "63a6be52fe17a8758c035bde5b88dad3470e4b81d61cc5aff800192a80cfb0ac",
+        "strict-retry-after": "fe98afdc7f12ea456fc8ccddd5eb508d8fe1ff6dbd1572049dcb99fe932bb0e7",
+        "chunk-boundaries": "ea56fb3ce61e81b289c4dce61dcd8a26ce3c7afa4c3fc54f602cdfe183222474",
+        "stable-unique": "8cd264f93d8e13b492edee6348f09ac9ca7efe698598d44686cf8ee5d20371a3"
+      },
+      "scorer_revision": "v2_rescore_same_raw_answer",
+      "output_format_conformant": true,
+      "scores": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "range-clamp": {
+          "source_sha256": "8669044eef19f8e9e3fdb19046b07dfa0fa2733090bc9d6e418d68952c182baa",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 6,
+          "total": 7,
+          "all_hidden_tests_passed": false,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.047
+        }
+      },
+      "evaluator_pre_raise_v2_score": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "range-clamp": {
+          "source_sha256": "8669044eef19f8e9e3fdb19046b07dfa0fa2733090bc9d6e418d68952c182baa",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 6,
+          "total": 7,
+          "all_hidden_tests_passed": false,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.062
+        }
+      },
+      "evaluator_v2_rescore": {
+        "stable-unique": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "chunk-boundaries": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "strict-retry-after": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "merge-adjacent": {
+          "status": "rejected_call",
+          "source_conformance": "rejected_call"
+        },
+        "range-clamp": {
+          "source_sha256": "8669044eef19f8e9e3fdb19046b07dfa0fa2733090bc9d6e418d68952c182baa",
+          "source_conformance": "accepted",
+          "status": "scored",
+          "correct": 6,
+          "total": 7,
+          "all_hidden_tests_passed": false,
+          "test_results": [
+            true,
+            true,
+            true,
+            true,
+            false,
+            true,
+            true
+          ],
+          "exception_types": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "wall_seconds": 0.047
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Short pilot over five synthetic functions; findings do not establish general coding ability or production reliability.",
+    "CLI telemetry may expose input/output/cached/reasoning usage only partially; tokenizer estimates are reported separately and are not provider billing.",
+    "Wall times include local CLI/session startup and are not model-only latency.",
+    "The isolated subprocess and AST allowlist reduce execution surface; this is not a security sandbox.",
+    "No real project files, production changes, test execution, network, or physical validation were involved.",
+    "Timeouts, malformed responses, missing/duplicate IDs, rejected AST and runtime errors remain in the denominator as failures.",
+    "Model did not run tools or tests. The local evaluator separately executed accepted candidate functions against fixed hidden test vectors in isolated child processes.",
+    "Model did not run tools or tests. The local evaluator separately executed accepted candidate functions against fixed hidden test vectors in isolated child processes."
+  ],
+  "provider_usage_collection_note": "Usage totals sum every retained provider usage record per call. Each of the 12 coding calls exposed exactly one record; readiness is separate.",
+  "cli_wall_time_note": "Per-call wall_seconds includes the local CLI lifecycle; the first four recovered calls have no retained wall_seconds and are omitted from observed-call aggregates."
+}

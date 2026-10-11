@@ -1,6 +1,23 @@
 # AKOR
 
-**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.7.0 / ÖZ/5.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.8.0 / ÖZ/6 cevapları.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+
+## 0.8.0: cevapları da kısalt
+
+ÖZ/6, sonuç metinlerini teslim sırasına bağlayıp tekrar eden görev kimliklerini cevaptan çıkarır. `{"q":"0123456789abcdef","s":0,"v":["sonuç A","sonuç B"]}` iki ayrı iş için açıkça aynı tamamlanma durumunu bildirir; karışık durumlar `s:[0,1]` gibi ayrı verilir. Her çağrının cevap kimliği değişir; eksik cevap başarı sayılmaz.
+
+```powershell
+oz plan --workspace .oz-runtime/ekip --reply-mode lanes --show-prompt
+oz run --workspace .oz-runtime/ekip --adapter adapter.json --reply-mode lanes
+```
+
+Varsayılan eski `rows` biçimidir. `lanes`, destekleyen adaptör için açıkça seçilir; sözleşme ve gerçek cevap kimliği girdi bütçesine dahildir. **Luna'nın 6 canlı biçim çağrısında tüm cevaplar exact denetimi geçti.** 64 işlik örnekte sağlayıcının bildirdiği çıktı **1.574 → 1.262 token** oldu; tam girdi+çıktı **28.058 → 27.807**. Tek ve 16 işlik örneklerde toplam tüketim arttı; bu küçük pilot genel görev başarısı veya hızlanma kanıtı değildir.
+
+**Luna doğrulaması: 212 test geçti.** Paket 0.8.0 kuruldu; depo dışından import, CLI ve lanes kuyruk/cevap akışı yerel olarak kontrol edildi. Eksik cevap, yanlış çağrı kimliği ve karışık başarı/hata durumlarında yeniden deneme davranışı sınandı.
+
+[ÖZ/6 sözleşmesi ve kullanım](OZ6.md) · [Luna cevap ölçümleri](reports/OZ-REPLY-RESULTS.md).
+
+ÖZ/5 [canlı anlama pilotunda](reports/OZ5-LIVE-LANGUAGE.md) 12/12 vaka doğru yorumlandı; bunlar 6 açılım ve 6 ret vakasıdır. [Kodlama pilotunda](reports/OZ5-LIVE-CODING.md) ise 5 küçük fonksiyon için kompakt girdinin yerel token hesabı açık JSON'a göre yaklaşık **%54 daha pahalıydı**. Sözlük/dilbilgisi yükü kazancı aştı. Kaynak kısıtı ihlalleri ve toplu çıktı talimatındaki çelişki, kod doğruluğu kıyasını sınırladı; genel üstünlük gösterilmedi. Aşağıdaki eski sürüm sayıları çevrimdışı ölçümlerdir.
 
 ## 0.7.0: ortak işlem biçimi, değişen parametreler
 
@@ -13,7 +30,7 @@ oz compile --channel examples/oz5-training-channel.json --messages examples/oz5-
 oz unpack --channel .oz-runtime/oz5-derlenmis/channel.json --matrix .oz-runtime/oz5-derlenmis/matrix.json
 ```
 
-**202 test geçti.** Dil çözümleyici ve kuyruk doğrulandı; canlı model anlama ve gerçek kodlama hızı henüz ölçülmedi. Doğrudan `channel.fill_form(...)` hazır Form'u tokenizer araması olmadan doldurur. Derleme, her mesajda tekrarlanacak bir iletişim adımı değildir.
+**0.7.0'da 202 test geçti.** O sürümde dil çözümleyici ve kuyruk doğrulandı; canlı model anlama ve gerçek kodlama hızı ölçülmemişti. Doğrudan `channel.fill_form(...)` hazır Form'u tokenizer araması olmadan doldurur. Derleme, her mesajda tekrarlanacak bir iletişim adımı değildir.
 
 [ÖZ/5 dili ve kullanım](OZ5.md) · [Ölçüm ve kontrol örnekleri](reports/OZ5-RESULTS.md). Aşağıdaki eski sürüm ölçümleri tarihli sonuçlardır; yeni sürüm daha fazla paket biçimini karşılaştırır.
 

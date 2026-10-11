@@ -1,0 +1,939 @@
+{
+  "kind": "oz5_live_language_corrected_cohort",
+  "cohort": "codec_validated_enum_fixed",
+  "invalidated": false,
+  "date": "2026-10-11",
+  "model_requested": "gpt-6-luna",
+  "cli_version": "codex-cli 0.160.0",
+  "fixtures_sha256": "736fecccb8285db0a50909f9825b16e8ebeb8417a04b254e516b4ca3e39f1a3e",
+  "codec_preflight": {
+    "valid": true,
+    "checks": [
+      {
+        "case_id": "form1-a",
+        "encoding": "oz5",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 1,
+        "error_class": null
+      },
+      {
+        "case_id": "form1-a",
+        "encoding": "primitive_json",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 1,
+        "error_class": null
+      },
+      {
+        "case_id": "form1-b",
+        "encoding": "oz5",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 0,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "form1-b",
+        "encoding": "primitive_json",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 1,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "regular1-a",
+        "encoding": "oz5",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 3,
+        "error_class": null
+      },
+      {
+        "case_id": "regular1-a",
+        "encoding": "primitive_json",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 3,
+        "error_class": null
+      },
+      {
+        "case_id": "regular1-b",
+        "encoding": "oz5",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 0,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "regular1-b",
+        "encoding": "primitive_json",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 1,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "mixed1-a",
+        "encoding": "oz5",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 4,
+        "error_class": null
+      },
+      {
+        "case_id": "mixed1-a",
+        "encoding": "primitive_json",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 4,
+        "error_class": null
+      },
+      {
+        "case_id": "mixed1-b",
+        "encoding": "oz5",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 0,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "mixed1-b",
+        "encoding": "primitive_json",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 1,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "form2-a",
+        "encoding": "oz5",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 1,
+        "error_class": null
+      },
+      {
+        "case_id": "form2-a",
+        "encoding": "primitive_json",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 1,
+        "error_class": null
+      },
+      {
+        "case_id": "form2-b",
+        "encoding": "oz5",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 0,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "form2-b",
+        "encoding": "primitive_json",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 1,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "regular2-a",
+        "encoding": "oz5",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 3,
+        "error_class": null
+      },
+      {
+        "case_id": "regular2-a",
+        "encoding": "primitive_json",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 3,
+        "error_class": null
+      },
+      {
+        "case_id": "regular2-b",
+        "encoding": "oz5",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 0,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "regular2-b",
+        "encoding": "primitive_json",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 1,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "mixed2-a",
+        "encoding": "oz5",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 4,
+        "error_class": null
+      },
+      {
+        "case_id": "mixed2-a",
+        "encoding": "primitive_json",
+        "expected_valid": true,
+        "codec_valid": true,
+        "decoded_frame_count": 4,
+        "error_class": null
+      },
+      {
+        "case_id": "mixed2-b",
+        "encoding": "oz5",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 0,
+        "error_class": "Error"
+      },
+      {
+        "case_id": "mixed2-b",
+        "encoding": "primitive_json",
+        "expected_valid": false,
+        "codec_valid": false,
+        "decoded_frame_count": 1,
+        "error_class": "Error"
+      }
+    ],
+    "check_count": 24,
+    "fixtures_sha256": "736fecccb8285db0a50909f9825b16e8ebeb8417a04b254e516b4ca3e39f1a3e",
+    "prompt_hashes": [
+      {
+        "family": "simple_form",
+        "rep": 1,
+        "mode": "oz5",
+        "sha256": "2cf338835e6f944f50650fad7f0d8516559eb692a767f71a6e9317d56004ab8a"
+      },
+      {
+        "family": "simple_form",
+        "rep": 1,
+        "mode": "primitive_json",
+        "sha256": "89573435d3949304137dad58a1cc799f14b0b819fe1caa6984e5bfa80dc335d0"
+      },
+      {
+        "family": "regular_matrix",
+        "rep": 1,
+        "mode": "oz5",
+        "sha256": "f222e0b0f3e4114d2764bd1eb2723451fc96f2d8ead8b6ef9944a4ad6a9b74f1"
+      },
+      {
+        "family": "regular_matrix",
+        "rep": 1,
+        "mode": "primitive_json",
+        "sha256": "b3e1ee9c13167e9d3792c417cdd7be387ffc0cb0ec751871264ffbe489c66bdf"
+      },
+      {
+        "family": "mixed_matrix",
+        "rep": 1,
+        "mode": "oz5",
+        "sha256": "adbd9920feec3cd70e111cc6b4996ce9357f87f1631751eb1e800537b52e1a46"
+      },
+      {
+        "family": "mixed_matrix",
+        "rep": 1,
+        "mode": "primitive_json",
+        "sha256": "9cf7e28ab4a9cc12afd25ec6f430a2471346c13d8efc4716c815ed8b6c4e9aab"
+      },
+      {
+        "family": "simple_form",
+        "rep": 2,
+        "mode": "oz5",
+        "sha256": "50ec1c49d642f5ae8b319e6c77248e946f319928359f1c240218fe2d8a1b9615"
+      },
+      {
+        "family": "simple_form",
+        "rep": 2,
+        "mode": "primitive_json",
+        "sha256": "6d1e7f9b59e4eb6be79bbd1754d9767fc85ff0ac275ad8b0f81a28241405b87c"
+      },
+      {
+        "family": "regular_matrix",
+        "rep": 2,
+        "mode": "oz5",
+        "sha256": "8b5731b474fd58f59e2d486251fce68bde5dfb1c29e53fedb7cb933b2ad6b1bb"
+      },
+      {
+        "family": "regular_matrix",
+        "rep": 2,
+        "mode": "primitive_json",
+        "sha256": "9f7ee7a6f617779809e690e350e391a23fb52d948f88bf8ea91432f5f93748b4"
+      },
+      {
+        "family": "mixed_matrix",
+        "rep": 2,
+        "mode": "oz5",
+        "sha256": "d52afdeddc16d65004cb56029cca326f29d6f5f4e695cf01b093714f174ac10f"
+      },
+      {
+        "family": "mixed_matrix",
+        "rep": 2,
+        "mode": "primitive_json",
+        "sha256": "b8737acf5eac4bdc127f09d0732de0e42b0fdbe721c85eb6b2e250bd1fbe8856"
+      }
+    ]
+  },
+  "language_recommendations": [
+    "Keep response op enum explicit.",
+    "Add a worked mixed matrix example and clarify per-case error isolation."
+  ],
+  "runs": [
+    {
+      "family": "simple_form",
+      "rep": 1,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 8.516,
+      "answer": "{\"cases\":[{\"id\":\"form1-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"form1-a\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":51}]}]},{\"id\":\"form1-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25414,
+          "cached_input_tokens": 13056,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 240,
+          "reasoning_output_tokens": 167
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "2cf338835e6f944f50650fad7f0d8516559eb692a767f71a6e9317d56004ab8a",
+      "prompt_token_estimate": {
+        "estimate": 580,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "33c1bdbac2b918feb457acf53e018762f83bd86afe1094073864e31453751919",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "835fdd2730cf9ba57f54abea0582145a6b99f246ee07b04abd3ec59323250598"
+    },
+    {
+      "family": "simple_form",
+      "rep": 1,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.0,
+      "answer": "{\"cases\":[{\"id\":\"form1-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"form1-a\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":51}]}]},{\"id\":\"form1-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24962,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 151,
+          "reasoning_output_tokens": 78
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "89573435d3949304137dad58a1cc799f14b0b819fe1caa6984e5bfa80dc335d0",
+      "prompt_token_estimate": {
+        "estimate": 437,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "33c1bdbac2b918feb457acf53e018762f83bd86afe1094073864e31453751919",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "835fdd2730cf9ba57f54abea0582145a6b99f246ee07b04abd3ec59323250598"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 1,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 11.469,
+      "answer": "{\"cases\":[{\"id\":\"regular1-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"reg1-a\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":51}]},{\"id\":\"reg1-b\",\"atoms\":[{\"op\":\"read\",\"ref\":8},{\"op\":\"audit\",\"ref\":8},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"reg1-c\",\"atoms\":[{\"op\":\"read\",\"ref\":9},{\"op\":\"audit\",\"ref\":9},{\"op\":\"test\",\"ref\":53}]}]},{\"id\":\"regular1-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25250,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 305,
+          "reasoning_output_tokens": 164
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "f222e0b0f3e4114d2764bd1eb2723451fc96f2d8ead8b6ef9944a4ad6a9b74f1",
+      "prompt_token_estimate": {
+        "estimate": 729,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "0affae7ca036d102232fe0a77e83e2a4d0f41019889ff68119c243a0d01eb66d",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "d4cdf5c1d48c8116de8e40caab519b57d994682345ca5c0a2c07ece7afee8efc"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 1,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.687,
+      "answer": "{\"cases\":[{\"id\":\"regular1-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"reg1-a\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":51}]},{\"id\":\"reg1-b\",\"atoms\":[{\"op\":\"read\",\"ref\":8},{\"op\":\"audit\",\"ref\":8},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"reg1-c\",\"atoms\":[{\"op\":\"read\",\"ref\":9},{\"op\":\"audit\",\"ref\":9},{\"op\":\"test\",\"ref\":53}]}]},{\"id\":\"regular1-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25132,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 203,
+          "reasoning_output_tokens": 62
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "b3e1ee9c13167e9d3792c417cdd7be387ffc0cb0ec751871264ffbe489c66bdf",
+      "prompt_token_estimate": {
+        "estimate": 609,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "0affae7ca036d102232fe0a77e83e2a4d0f41019889ff68119c243a0d01eb66d",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "d4cdf5c1d48c8116de8e40caab519b57d994682345ca5c0a2c07ece7afee8efc"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 1,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 10.563,
+      "answer": "{\"cases\":[{\"id\":\"mixed1-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"mix1-1\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":51}]},{\"id\":\"mix1-2\",\"atoms\":[{\"op\":\"read\",\"ref\":9},{\"op\":\"audit\",\"ref\":9},{\"op\":\"test\",\"ref\":51}]},{\"id\":\"mix1-3\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":53}]},{\"id\":\"mix1-4\",\"atoms\":[{\"op\":\"read\",\"ref\":8},{\"op\":\"audit\",\"ref\":8},{\"op\":\"test\",\"ref\":52}]}]},{\"id\":\"mixed1-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25276,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 252,
+          "reasoning_output_tokens": 73
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "adbd9920feec3cd70e111cc6b4996ce9357f87f1631751eb1e800537b52e1a46",
+      "prompt_token_estimate": {
+        "estimate": 757,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "7cb526a2a708202919fc6d4e159f3a7b5bffbde4589a815cd4c93d13fc6d0e1f",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "75397828a19e9af1f0ac0811ec2da9799816c4cc39987810fb44c2af77eedad3"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 1,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.875,
+      "answer": "{\"cases\":[{\"id\":\"mixed1-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"mix1-1\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":51}]},{\"id\":\"mix1-2\",\"atoms\":[{\"op\":\"read\",\"ref\":9},{\"op\":\"audit\",\"ref\":9},{\"op\":\"test\",\"ref\":51}]},{\"id\":\"mix1-3\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":53}]},{\"id\":\"mix1-4\",\"atoms\":[{\"op\":\"read\",\"ref\":8},{\"op\":\"audit\",\"ref\":8},{\"op\":\"test\",\"ref\":52}]}]},{\"id\":\"mixed1-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25166,
+          "cached_input_tokens": 1792,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 254,
+          "reasoning_output_tokens": 75
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "9cf7e28ab4a9cc12afd25ec6f430a2471346c13d8efc4716c815ed8b6c4e9aab",
+      "prompt_token_estimate": {
+        "estimate": 647,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "7cb526a2a708202919fc6d4e159f3a7b5bffbde4589a815cd4c93d13fc6d0e1f",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "75397828a19e9af1f0ac0811ec2da9799816c4cc39987810fb44c2af77eedad3"
+    },
+    {
+      "family": "simple_form",
+      "rep": 2,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.734,
+      "answer": "{\"cases\":[{\"id\":\"form2-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"form2-a\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":52}]}]},{\"id\":\"form2-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25129,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 121,
+          "reasoning_output_tokens": 48
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "50ec1c49d642f5ae8b319e6c77248e946f319928359f1c240218fe2d8a1b9615",
+      "prompt_token_estimate": {
+        "estimate": 606,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "b6336c168f00dd93f7bb6d64b046bc63be0d3fd596c173290977e2f8cbc2a4ce",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "8d3815fc3ab8dd378c1aef39a7f2a8c81e97faa66b11762d74473db13b6e5827"
+    },
+    {
+      "family": "simple_form",
+      "rep": 2,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.344,
+      "answer": "{\"cases\":[{\"id\":\"form2-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"form2-a\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":52}]}]},{\"id\":\"form2-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25295,
+          "cached_input_tokens": 1792,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 128,
+          "reasoning_output_tokens": 55
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "6d1e7f9b59e4eb6be79bbd1754d9767fc85ff0ac275ad8b0f81a28241405b87c",
+      "prompt_token_estimate": {
+        "estimate": 463,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "b6336c168f00dd93f7bb6d64b046bc63be0d3fd596c173290977e2f8cbc2a4ce",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "8d3815fc3ab8dd378c1aef39a7f2a8c81e97faa66b11762d74473db13b6e5827"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 2,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.859,
+      "answer": "{\"cases\":[{\"id\":\"regular2-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"reg2-a\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"reg2-b\",\"atoms\":[{\"op\":\"read\",\"ref\":6},{\"op\":\"audit\",\"ref\":6},{\"op\":\"test\",\"ref\":53}]},{\"id\":\"reg2-c\",\"atoms\":[{\"op\":\"read\",\"ref\":5},{\"op\":\"audit\",\"ref\":5},{\"op\":\"test\",\"ref\":54}]}]},{\"id\":\"regular2-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25276,
+          "cached_input_tokens": 1792,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 280,
+          "reasoning_output_tokens": 139
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "8b5731b474fd58f59e2d486251fce68bde5dfb1c29e53fedb7cb933b2ad6b1bb",
+      "prompt_token_estimate": {
+        "estimate": 757,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "37507fc6e150cfd3dfae38788ffd714ca00099fc34775f0591ab1e6072d8ed96",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "8abd87f735cba1b666201d2bc61fb6000423b2a7dbb9acdd9d27edd2135b3532"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 2,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 10.328,
+      "answer": "{\"cases\":[{\"id\":\"regular2-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"reg2-a\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"reg2-b\",\"atoms\":[{\"op\":\"read\",\"ref\":6},{\"op\":\"audit\",\"ref\":6},{\"op\":\"test\",\"ref\":53}]},{\"id\":\"reg2-c\",\"atoms\":[{\"op\":\"read\",\"ref\":5},{\"op\":\"audit\",\"ref\":5},{\"op\":\"test\",\"ref\":54}]}]},{\"id\":\"regular2-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25154,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 191,
+          "reasoning_output_tokens": 50
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "9f7ee7a6f617779809e690e350e391a23fb52d948f88bf8ea91432f5f93748b4",
+      "prompt_token_estimate": {
+        "estimate": 635,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "37507fc6e150cfd3dfae38788ffd714ca00099fc34775f0591ab1e6072d8ed96",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "8abd87f735cba1b666201d2bc61fb6000423b2a7dbb9acdd9d27edd2135b3532"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 2,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 24.297,
+      "answer": "{\"cases\":[{\"id\":\"mixed2-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"mix2-1\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"mix2-2\",\"atoms\":[{\"op\":\"read\",\"ref\":5},{\"op\":\"audit\",\"ref\":5},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"mix2-3\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":54}]},{\"id\":\"mix2-4\",\"atoms\":[{\"op\":\"read\",\"ref\":6},{\"op\":\"audit\",\"ref\":6},{\"op\":\"test\",\"ref\":53}]}]},{\"id\":\"mixed2-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25304,
+          "cached_input_tokens": 13056,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 346,
+          "reasoning_output_tokens": 167
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "d52afdeddc16d65004cb56029cca326f29d6f5f4e695cf01b093714f174ac10f",
+      "prompt_token_estimate": {
+        "estimate": 783,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "f349b4a56dea4f8440cf206c25cd144b4b0ed4d729ee3d06b80df34a3808a8f8",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "d17f6a34d340fca529f32d96b1b76befd40c2d5929776717381095a4ba34f26d"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 2,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 13.25,
+      "answer": "{\"cases\":[{\"id\":\"mixed2-a\",\"status\":\"ok\",\"frames\":[{\"id\":\"mix2-1\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"mix2-2\",\"atoms\":[{\"op\":\"read\",\"ref\":5},{\"op\":\"audit\",\"ref\":5},{\"op\":\"test\",\"ref\":52}]},{\"id\":\"mix2-3\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"audit\",\"ref\":4},{\"op\":\"test\",\"ref\":54}]},{\"id\":\"mix2-4\",\"atoms\":[{\"op\":\"read\",\"ref\":6},{\"op\":\"audit\",\"ref\":6},{\"op\":\"test\",\"ref\":53}]}]},{\"id\":\"mixed2-b\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25194,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 299,
+          "reasoning_output_tokens": 120
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "prompt_sha256": "b8737acf5eac4bdc127f09d0732de0e42b0fdbe721c85eb6b2e250bd1fbe8856",
+      "prompt_token_estimate": {
+        "estimate": 673,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "f349b4a56dea4f8440cf206c25cd144b4b0ed4d729ee3d06b80df34a3808a8f8",
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_success",
+        "correct_rejection"
+      ],
+      "case_count": 2,
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "score_status": "scored",
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "scorer_revision": 2,
+      "raw_answer_sha256": "d17f6a34d340fca529f32d96b1b76befd40c2d5929776717381095a4ba34f26d"
+    }
+  ],
+  "limitations": [
+    "Synthetic protocol comprehension only.",
+    "Tool-use trials remain in the denominator as unsuitable failures.",
+    "No coding, physical, or production validation.",
+    "Invalid-control difficulty is not matched: OZ/5 invalids include missing Form slots, matrix length mismatch, or zero refs, while primitive invalids use a null required ref; aggregate scores do not establish equal difficulty, superiority, or parity."
+  ],
+  "model_access": "confirmed_by_completed_call",
+  "provider_usage_summary": {
+    "input_tokens": {
+      "value": 302552,
+      "unit": "provider-reported tokens"
+    },
+    "cached_input_tokens": {
+      "value": 194560,
+      "unit": "provider-reported tokens"
+    },
+    "output_tokens": {
+      "value": 2770,
+      "unit": "provider-reported tokens"
+    },
+    "reasoning_output_tokens": {
+      "value": 1198,
+      "unit": "provider-reported tokens"
+    }
+  },
+  "score_summary": {
+    "oz5": {
+      "calls": 6,
+      "cases_total_in_denominator": 12,
+      "strict_response_contract": {
+        "correct_cases": 12,
+        "correct_calls": 6
+      },
+      "semantic_equivalence": {
+        "correct_cases": 12,
+        "correct_calls": 6
+      },
+      "case_categories": {
+        "correct_rejection": 6,
+        "exact_success": 6
+      }
+    },
+    "primitive_json": {
+      "calls": 6,
+      "cases_total_in_denominator": 12,
+      "strict_response_contract": {
+        "correct_cases": 12,
+        "correct_calls": 6
+      },
+      "semantic_equivalence": {
+        "correct_cases": 12,
+        "correct_calls": 6
+      },
+      "case_categories": {
+        "correct_rejection": 6,
+        "exact_success": 6
+      }
+    }
+  },
+  "prior_cohort_correction": "All three OZ/5 rejections previously scored as false rejects were correct: both mixed matrix repetitions expanded six values for four IDs, and the second regular matrix supplied two values for three IDs. Previous cohort denominators remain in the invalidated archive and are not pooled.",
+  "scorer_revision": 2,
+  "scorer_revision_note": "Re-scored stored answers only: oz_worker.loads rejects duplicate keys/non-finite constants; valid outputs pass Channel.validate; comparisons use typed canonical JSON. No model calls were made.",
+  "comparison_limitation": "Invalid control payloads were not shape-matched: OZ/5 invalids cover missing Form slots, matrix length mismatch, and zero refs; each primitive invalid uses null for a required ref. Aggregate 12/12 scores do not establish equal difficulty, superiority, or parity."
+}

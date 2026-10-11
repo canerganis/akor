@@ -1,0 +1,1988 @@
+{
+  "package": "0.8.0",
+  "kind": "oz6_reply_format_measurement_bundle",
+  "actual_model_calls": 6,
+  "actual_tool_executions": 0,
+  "offline_benchmark": {
+    "package": "0.8.0",
+    "kind": "offline_oz6_reply_format_token_comparison",
+    "actual_model_calls": 0,
+    "actual_tool_executions": 0,
+    "tiktoken": "0.14.0",
+    "encodings": [
+      "o200k_base",
+      "cl100k_base"
+    ],
+    "receipt_fixture": "0123456789abcdef",
+    "input_measurement": "Only the additive response contract is counted; common request/context/body tokens are excluded.",
+    "output_measurement": "Projected output tokens from the exact, explicitly synthetic filled JSON fixtures; not model output or provider usage.",
+    "coverage": {
+      "job_counts": [
+        1,
+        4,
+        16,
+        64
+      ],
+      "id_lengths": [
+        "short",
+        "long"
+      ],
+      "status_patterns": [
+        "same",
+        "mixed"
+      ],
+      "cases": 16
+    },
+    "cases": [
+      {
+        "jobs": 1,
+        "id_length": "short",
+        "statuses": "same",
+        "fixture_ids": [
+          "t1"
+        ],
+        "fixture_statuses": [
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 29,
+              "lanes": 35,
+              "saved_by_lanes": -6
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 92,
+              "lanes": 149,
+              "saved_by_lanes": -57
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 29,
+              "lanes": 34,
+              "saved_by_lanes": -5
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 91,
+              "lanes": 147,
+              "saved_by_lanes": -56
+            }
+          }
+        }
+      },
+      {
+        "jobs": 1,
+        "id_length": "short",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "t1"
+        ],
+        "fixture_statuses": [
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 29,
+              "lanes": 35,
+              "saved_by_lanes": -6
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 92,
+              "lanes": 149,
+              "saved_by_lanes": -57
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 29,
+              "lanes": 34,
+              "saved_by_lanes": -5
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 91,
+              "lanes": 147,
+              "saved_by_lanes": -56
+            }
+          }
+        }
+      },
+      {
+        "jobs": 1,
+        "id_length": "long",
+        "statuses": "same",
+        "fixture_ids": [
+          "task_001_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 33,
+              "lanes": 35,
+              "saved_by_lanes": -2
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 96,
+              "lanes": 149,
+              "saved_by_lanes": -53
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 33,
+              "lanes": 34,
+              "saved_by_lanes": -1
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 95,
+              "lanes": 147,
+              "saved_by_lanes": -52
+            }
+          }
+        }
+      },
+      {
+        "jobs": 1,
+        "id_length": "long",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "task_001_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 33,
+              "lanes": 35,
+              "saved_by_lanes": -2
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 96,
+              "lanes": 149,
+              "saved_by_lanes": -53
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 33,
+              "lanes": 34,
+              "saved_by_lanes": -1
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 95,
+              "lanes": 147,
+              "saved_by_lanes": -52
+            }
+          }
+        }
+      },
+      {
+        "jobs": 4,
+        "id_length": "short",
+        "statuses": "same",
+        "fixture_ids": [
+          "t1",
+          "t2",
+          "t3",
+          "t4"
+        ],
+        "fixture_statuses": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"t2\",0,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t3\",0,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"t4\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 154,
+              "lanes": 139,
+              "saved_by_lanes": 15
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 217,
+              "lanes": 253,
+              "saved_by_lanes": -36
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 154,
+              "lanes": 138,
+              "saved_by_lanes": 16
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 216,
+              "lanes": 251,
+              "saved_by_lanes": -35
+            }
+          }
+        }
+      },
+      {
+        "jobs": 4,
+        "id_length": "short",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "t1",
+          "t2",
+          "t3",
+          "t4"
+        ],
+        "fixture_statuses": [
+          0,
+          1,
+          2,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"t2\",1,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t3\",2,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"t4\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":[0,1,2,0],\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 154,
+              "lanes": 145,
+              "saved_by_lanes": 9
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 217,
+              "lanes": 259,
+              "saved_by_lanes": -42
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 154,
+              "lanes": 144,
+              "saved_by_lanes": 10
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 216,
+              "lanes": 257,
+              "saved_by_lanes": -41
+            }
+          }
+        }
+      },
+      {
+        "jobs": 4,
+        "id_length": "long",
+        "statuses": "same",
+        "fixture_ids": [
+          "task_001_long_fixture_id",
+          "task_002_long_fixture_id",
+          "task_003_long_fixture_id",
+          "task_004_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"task_002_long_fixture_id\",0,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_003_long_fixture_id\",0,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"task_004_long_fixture_id\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 170,
+              "lanes": 139,
+              "saved_by_lanes": 31
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 233,
+              "lanes": 253,
+              "saved_by_lanes": -20
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 170,
+              "lanes": 138,
+              "saved_by_lanes": 32
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 232,
+              "lanes": 251,
+              "saved_by_lanes": -19
+            }
+          }
+        }
+      },
+      {
+        "jobs": 4,
+        "id_length": "long",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "task_001_long_fixture_id",
+          "task_002_long_fixture_id",
+          "task_003_long_fixture_id",
+          "task_004_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0,
+          1,
+          2,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"task_002_long_fixture_id\",1,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_003_long_fixture_id\",2,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"task_004_long_fixture_id\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":[0,1,2,0],\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 170,
+              "lanes": 145,
+              "saved_by_lanes": 25
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 233,
+              "lanes": 259,
+              "saved_by_lanes": -26
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 170,
+              "lanes": 144,
+              "saved_by_lanes": 26
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 232,
+              "lanes": 257,
+              "saved_by_lanes": -25
+            }
+          }
+        }
+      },
+      {
+        "jobs": 16,
+        "id_length": "short",
+        "statuses": "same",
+        "fixture_ids": [
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "t5",
+          "t6",
+          "t7",
+          "t8",
+          "t9",
+          "t10",
+          "t11",
+          "t12",
+          "t13",
+          "t14",
+          "t15",
+          "t16"
+        ],
+        "fixture_statuses": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"t2\",0,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t3\",0,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"t4\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t5\",0,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"t6\",0,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t7\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"t8\",0,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t9\",0,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"t10\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t11\",0,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"t12\",0,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t13\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"t14\",0,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t15\",0,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"t16\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 604,
+              "lanes": 505,
+              "saved_by_lanes": 99
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 667,
+              "lanes": 619,
+              "saved_by_lanes": 48
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 604,
+              "lanes": 504,
+              "saved_by_lanes": 100
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 666,
+              "lanes": 617,
+              "saved_by_lanes": 49
+            }
+          }
+        }
+      },
+      {
+        "jobs": 16,
+        "id_length": "short",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "t5",
+          "t6",
+          "t7",
+          "t8",
+          "t9",
+          "t10",
+          "t11",
+          "t12",
+          "t13",
+          "t14",
+          "t15",
+          "t16"
+        ],
+        "fixture_statuses": [
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"t2\",1,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t3\",2,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"t4\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t5\",1,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"t6\",2,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t7\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"t8\",1,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t9\",2,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"t10\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t11\",1,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"t12\",2,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t13\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"t14\",1,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t15\",2,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"t16\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":[0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0],\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 604,
+              "lanes": 535,
+              "saved_by_lanes": 69
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 667,
+              "lanes": 649,
+              "saved_by_lanes": 18
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 604,
+              "lanes": 534,
+              "saved_by_lanes": 70
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 666,
+              "lanes": 647,
+              "saved_by_lanes": 19
+            }
+          }
+        }
+      },
+      {
+        "jobs": 16,
+        "id_length": "long",
+        "statuses": "same",
+        "fixture_ids": [
+          "task_001_long_fixture_id",
+          "task_002_long_fixture_id",
+          "task_003_long_fixture_id",
+          "task_004_long_fixture_id",
+          "task_005_long_fixture_id",
+          "task_006_long_fixture_id",
+          "task_007_long_fixture_id",
+          "task_008_long_fixture_id",
+          "task_009_long_fixture_id",
+          "task_010_long_fixture_id",
+          "task_011_long_fixture_id",
+          "task_012_long_fixture_id",
+          "task_013_long_fixture_id",
+          "task_014_long_fixture_id",
+          "task_015_long_fixture_id",
+          "task_016_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"task_002_long_fixture_id\",0,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_003_long_fixture_id\",0,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"task_004_long_fixture_id\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_005_long_fixture_id\",0,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"task_006_long_fixture_id\",0,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_007_long_fixture_id\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"task_008_long_fixture_id\",0,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_009_long_fixture_id\",0,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"task_010_long_fixture_id\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_011_long_fixture_id\",0,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"task_012_long_fixture_id\",0,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_013_long_fixture_id\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"task_014_long_fixture_id\",0,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_015_long_fixture_id\",0,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"task_016_long_fixture_id\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 668,
+              "lanes": 505,
+              "saved_by_lanes": 163
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 731,
+              "lanes": 619,
+              "saved_by_lanes": 112
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 668,
+              "lanes": 504,
+              "saved_by_lanes": 164
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 730,
+              "lanes": 617,
+              "saved_by_lanes": 113
+            }
+          }
+        }
+      },
+      {
+        "jobs": 16,
+        "id_length": "long",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "task_001_long_fixture_id",
+          "task_002_long_fixture_id",
+          "task_003_long_fixture_id",
+          "task_004_long_fixture_id",
+          "task_005_long_fixture_id",
+          "task_006_long_fixture_id",
+          "task_007_long_fixture_id",
+          "task_008_long_fixture_id",
+          "task_009_long_fixture_id",
+          "task_010_long_fixture_id",
+          "task_011_long_fixture_id",
+          "task_012_long_fixture_id",
+          "task_013_long_fixture_id",
+          "task_014_long_fixture_id",
+          "task_015_long_fixture_id",
+          "task_016_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"task_002_long_fixture_id\",1,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_003_long_fixture_id\",2,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"task_004_long_fixture_id\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_005_long_fixture_id\",1,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"task_006_long_fixture_id\",2,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_007_long_fixture_id\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"task_008_long_fixture_id\",1,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_009_long_fixture_id\",2,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"task_010_long_fixture_id\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_011_long_fixture_id\",1,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"task_012_long_fixture_id\",2,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_013_long_fixture_id\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"task_014_long_fixture_id\",1,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_015_long_fixture_id\",2,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"task_016_long_fixture_id\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":[0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0],\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 668,
+              "lanes": 535,
+              "saved_by_lanes": 133
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 731,
+              "lanes": 649,
+              "saved_by_lanes": 82
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 668,
+              "lanes": 534,
+              "saved_by_lanes": 134
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 730,
+              "lanes": 647,
+              "saved_by_lanes": 83
+            }
+          }
+        }
+      },
+      {
+        "jobs": 64,
+        "id_length": "short",
+        "statuses": "same",
+        "fixture_ids": [
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "t5",
+          "t6",
+          "t7",
+          "t8",
+          "t9",
+          "t10",
+          "t11",
+          "t12",
+          "t13",
+          "t14",
+          "t15",
+          "t16",
+          "t17",
+          "t18",
+          "t19",
+          "t20",
+          "t21",
+          "t22",
+          "t23",
+          "t24",
+          "t25",
+          "t26",
+          "t27",
+          "t28",
+          "t29",
+          "t30",
+          "t31",
+          "t32",
+          "t33",
+          "t34",
+          "t35",
+          "t36",
+          "t37",
+          "t38",
+          "t39",
+          "t40",
+          "t41",
+          "t42",
+          "t43",
+          "t44",
+          "t45",
+          "t46",
+          "t47",
+          "t48",
+          "t49",
+          "t50",
+          "t51",
+          "t52",
+          "t53",
+          "t54",
+          "t55",
+          "t56",
+          "t57",
+          "t58",
+          "t59",
+          "t60",
+          "t61",
+          "t62",
+          "t63",
+          "t64"
+        ],
+        "fixture_statuses": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T17: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T19: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T21: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T23: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T25: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T27: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T29: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T31: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T33: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T35: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T37: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T39: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T41: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T43: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T45: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T47: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T49: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T51: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T53: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T55: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T57: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T59: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T61: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T63: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"t2\",0,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t3\",0,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"t4\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t5\",0,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"t6\",0,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t7\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"t8\",0,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t9\",0,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"t10\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t11\",0,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"t12\",0,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t13\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"t14\",0,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t15\",0,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"t16\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t17\",0,\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\"],[\"t18\",0,\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t19\",0,\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\"],[\"t20\",0,\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t21\",0,\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\"],[\"t22\",0,\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t23\",0,\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\"],[\"t24\",0,\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t25\",0,\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\"],[\"t26\",0,\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t27\",0,\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\"],[\"t28\",0,\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t29\",0,\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\"],[\"t30\",0,\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t31\",0,\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\"],[\"t32\",0,\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t33\",0,\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\"],[\"t34\",0,\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t35\",0,\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\"],[\"t36\",0,\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t37\",0,\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\"],[\"t38\",0,\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t39\",0,\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\"],[\"t40\",0,\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t41\",0,\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\"],[\"t42\",0,\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t43\",0,\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\"],[\"t44\",0,\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t45\",0,\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\"],[\"t46\",0,\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t47\",0,\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\"],[\"t48\",0,\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t49\",0,\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\"],[\"t50\",0,\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t51\",0,\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\"],[\"t52\",0,\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t53\",0,\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\"],[\"t54\",0,\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t55\",0,\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\"],[\"t56\",0,\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t57\",0,\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\"],[\"t58\",0,\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t59\",0,\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\"],[\"t60\",0,\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t61\",0,\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\"],[\"t62\",0,\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t63\",0,\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\"],[\"t64\",0,\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2404,
+              "lanes": 1969,
+              "saved_by_lanes": 435
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2467,
+              "lanes": 2083,
+              "saved_by_lanes": 384
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2404,
+              "lanes": 1968,
+              "saved_by_lanes": 436
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2466,
+              "lanes": 2081,
+              "saved_by_lanes": 385
+            }
+          }
+        }
+      },
+      {
+        "jobs": 64,
+        "id_length": "short",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "t1",
+          "t2",
+          "t3",
+          "t4",
+          "t5",
+          "t6",
+          "t7",
+          "t8",
+          "t9",
+          "t10",
+          "t11",
+          "t12",
+          "t13",
+          "t14",
+          "t15",
+          "t16",
+          "t17",
+          "t18",
+          "t19",
+          "t20",
+          "t21",
+          "t22",
+          "t23",
+          "t24",
+          "t25",
+          "t26",
+          "t27",
+          "t28",
+          "t29",
+          "t30",
+          "t31",
+          "t32",
+          "t33",
+          "t34",
+          "t35",
+          "t36",
+          "t37",
+          "t38",
+          "t39",
+          "t40",
+          "t41",
+          "t42",
+          "t43",
+          "t44",
+          "t45",
+          "t46",
+          "t47",
+          "t48",
+          "t49",
+          "t50",
+          "t51",
+          "t52",
+          "t53",
+          "t54",
+          "t55",
+          "t56",
+          "t57",
+          "t58",
+          "t59",
+          "t60",
+          "t61",
+          "t62",
+          "t63",
+          "t64"
+        ],
+        "fixture_statuses": [
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T17: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T19: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T21: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T23: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T25: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T27: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T29: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T31: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T33: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T35: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T37: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T39: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T41: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T43: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T45: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T47: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T49: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T51: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T53: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T55: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T57: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T59: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T61: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T63: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"t2\",1,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t3\",2,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"t4\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t5\",1,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"t6\",2,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t7\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"t8\",1,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t9\",2,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"t10\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t11\",1,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"t12\",2,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t13\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"t14\",1,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t15\",2,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"t16\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t17\",1,\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\"],[\"t18\",2,\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t19\",0,\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\"],[\"t20\",1,\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t21\",2,\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\"],[\"t22\",0,\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t23\",1,\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\"],[\"t24\",2,\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t25\",0,\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\"],[\"t26\",1,\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t27\",2,\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\"],[\"t28\",0,\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t29\",1,\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\"],[\"t30\",2,\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t31\",0,\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\"],[\"t32\",1,\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t33\",2,\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\"],[\"t34\",0,\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t35\",1,\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\"],[\"t36\",2,\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t37\",0,\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\"],[\"t38\",1,\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t39\",2,\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\"],[\"t40\",0,\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t41\",1,\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\"],[\"t42\",2,\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t43\",0,\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\"],[\"t44\",1,\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t45\",2,\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\"],[\"t46\",0,\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t47\",1,\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\"],[\"t48\",2,\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t49\",0,\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\"],[\"t50\",1,\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t51\",2,\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\"],[\"t52\",0,\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t53\",1,\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\"],[\"t54\",2,\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t55\",0,\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\"],[\"t56\",1,\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t57\",2,\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\"],[\"t58\",0,\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t59\",1,\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\"],[\"t60\",2,\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t61\",0,\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\"],[\"t62\",1,\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"t63\",2,\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\"],[\"t64\",0,\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":[0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0],\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2404,
+              "lanes": 2095,
+              "saved_by_lanes": 309
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2467,
+              "lanes": 2209,
+              "saved_by_lanes": 258
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2404,
+              "lanes": 2094,
+              "saved_by_lanes": 310
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2466,
+              "lanes": 2207,
+              "saved_by_lanes": 259
+            }
+          }
+        }
+      },
+      {
+        "jobs": 64,
+        "id_length": "long",
+        "statuses": "same",
+        "fixture_ids": [
+          "task_001_long_fixture_id",
+          "task_002_long_fixture_id",
+          "task_003_long_fixture_id",
+          "task_004_long_fixture_id",
+          "task_005_long_fixture_id",
+          "task_006_long_fixture_id",
+          "task_007_long_fixture_id",
+          "task_008_long_fixture_id",
+          "task_009_long_fixture_id",
+          "task_010_long_fixture_id",
+          "task_011_long_fixture_id",
+          "task_012_long_fixture_id",
+          "task_013_long_fixture_id",
+          "task_014_long_fixture_id",
+          "task_015_long_fixture_id",
+          "task_016_long_fixture_id",
+          "task_017_long_fixture_id",
+          "task_018_long_fixture_id",
+          "task_019_long_fixture_id",
+          "task_020_long_fixture_id",
+          "task_021_long_fixture_id",
+          "task_022_long_fixture_id",
+          "task_023_long_fixture_id",
+          "task_024_long_fixture_id",
+          "task_025_long_fixture_id",
+          "task_026_long_fixture_id",
+          "task_027_long_fixture_id",
+          "task_028_long_fixture_id",
+          "task_029_long_fixture_id",
+          "task_030_long_fixture_id",
+          "task_031_long_fixture_id",
+          "task_032_long_fixture_id",
+          "task_033_long_fixture_id",
+          "task_034_long_fixture_id",
+          "task_035_long_fixture_id",
+          "task_036_long_fixture_id",
+          "task_037_long_fixture_id",
+          "task_038_long_fixture_id",
+          "task_039_long_fixture_id",
+          "task_040_long_fixture_id",
+          "task_041_long_fixture_id",
+          "task_042_long_fixture_id",
+          "task_043_long_fixture_id",
+          "task_044_long_fixture_id",
+          "task_045_long_fixture_id",
+          "task_046_long_fixture_id",
+          "task_047_long_fixture_id",
+          "task_048_long_fixture_id",
+          "task_049_long_fixture_id",
+          "task_050_long_fixture_id",
+          "task_051_long_fixture_id",
+          "task_052_long_fixture_id",
+          "task_053_long_fixture_id",
+          "task_054_long_fixture_id",
+          "task_055_long_fixture_id",
+          "task_056_long_fixture_id",
+          "task_057_long_fixture_id",
+          "task_058_long_fixture_id",
+          "task_059_long_fixture_id",
+          "task_060_long_fixture_id",
+          "task_061_long_fixture_id",
+          "task_062_long_fixture_id",
+          "task_063_long_fixture_id",
+          "task_064_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T17: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T19: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T21: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T23: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T25: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T27: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T29: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T31: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T33: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T35: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T37: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T39: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T41: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T43: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T45: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T47: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T49: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T51: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T53: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T55: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T57: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T59: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T61: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T63: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"task_002_long_fixture_id\",0,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_003_long_fixture_id\",0,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"task_004_long_fixture_id\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_005_long_fixture_id\",0,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"task_006_long_fixture_id\",0,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_007_long_fixture_id\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"task_008_long_fixture_id\",0,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_009_long_fixture_id\",0,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"task_010_long_fixture_id\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_011_long_fixture_id\",0,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"task_012_long_fixture_id\",0,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_013_long_fixture_id\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"task_014_long_fixture_id\",0,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_015_long_fixture_id\",0,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"task_016_long_fixture_id\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_017_long_fixture_id\",0,\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\"],[\"task_018_long_fixture_id\",0,\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_019_long_fixture_id\",0,\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\"],[\"task_020_long_fixture_id\",0,\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_021_long_fixture_id\",0,\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\"],[\"task_022_long_fixture_id\",0,\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_023_long_fixture_id\",0,\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\"],[\"task_024_long_fixture_id\",0,\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_025_long_fixture_id\",0,\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\"],[\"task_026_long_fixture_id\",0,\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_027_long_fixture_id\",0,\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\"],[\"task_028_long_fixture_id\",0,\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_029_long_fixture_id\",0,\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\"],[\"task_030_long_fixture_id\",0,\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_031_long_fixture_id\",0,\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\"],[\"task_032_long_fixture_id\",0,\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_033_long_fixture_id\",0,\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\"],[\"task_034_long_fixture_id\",0,\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_035_long_fixture_id\",0,\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\"],[\"task_036_long_fixture_id\",0,\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_037_long_fixture_id\",0,\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\"],[\"task_038_long_fixture_id\",0,\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_039_long_fixture_id\",0,\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\"],[\"task_040_long_fixture_id\",0,\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_041_long_fixture_id\",0,\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\"],[\"task_042_long_fixture_id\",0,\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_043_long_fixture_id\",0,\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\"],[\"task_044_long_fixture_id\",0,\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_045_long_fixture_id\",0,\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\"],[\"task_046_long_fixture_id\",0,\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_047_long_fixture_id\",0,\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\"],[\"task_048_long_fixture_id\",0,\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_049_long_fixture_id\",0,\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\"],[\"task_050_long_fixture_id\",0,\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_051_long_fixture_id\",0,\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\"],[\"task_052_long_fixture_id\",0,\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_053_long_fixture_id\",0,\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\"],[\"task_054_long_fixture_id\",0,\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_055_long_fixture_id\",0,\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\"],[\"task_056_long_fixture_id\",0,\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_057_long_fixture_id\",0,\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\"],[\"task_058_long_fixture_id\",0,\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_059_long_fixture_id\",0,\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\"],[\"task_060_long_fixture_id\",0,\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_061_long_fixture_id\",0,\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\"],[\"task_062_long_fixture_id\",0,\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_063_long_fixture_id\",0,\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\"],[\"task_064_long_fixture_id\",0,\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2660,
+              "lanes": 1969,
+              "saved_by_lanes": 691
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2723,
+              "lanes": 2083,
+              "saved_by_lanes": 640
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2660,
+              "lanes": 1968,
+              "saved_by_lanes": 692
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2722,
+              "lanes": 2081,
+              "saved_by_lanes": 641
+            }
+          }
+        }
+      },
+      {
+        "jobs": 64,
+        "id_length": "long",
+        "statuses": "mixed",
+        "fixture_ids": [
+          "task_001_long_fixture_id",
+          "task_002_long_fixture_id",
+          "task_003_long_fixture_id",
+          "task_004_long_fixture_id",
+          "task_005_long_fixture_id",
+          "task_006_long_fixture_id",
+          "task_007_long_fixture_id",
+          "task_008_long_fixture_id",
+          "task_009_long_fixture_id",
+          "task_010_long_fixture_id",
+          "task_011_long_fixture_id",
+          "task_012_long_fixture_id",
+          "task_013_long_fixture_id",
+          "task_014_long_fixture_id",
+          "task_015_long_fixture_id",
+          "task_016_long_fixture_id",
+          "task_017_long_fixture_id",
+          "task_018_long_fixture_id",
+          "task_019_long_fixture_id",
+          "task_020_long_fixture_id",
+          "task_021_long_fixture_id",
+          "task_022_long_fixture_id",
+          "task_023_long_fixture_id",
+          "task_024_long_fixture_id",
+          "task_025_long_fixture_id",
+          "task_026_long_fixture_id",
+          "task_027_long_fixture_id",
+          "task_028_long_fixture_id",
+          "task_029_long_fixture_id",
+          "task_030_long_fixture_id",
+          "task_031_long_fixture_id",
+          "task_032_long_fixture_id",
+          "task_033_long_fixture_id",
+          "task_034_long_fixture_id",
+          "task_035_long_fixture_id",
+          "task_036_long_fixture_id",
+          "task_037_long_fixture_id",
+          "task_038_long_fixture_id",
+          "task_039_long_fixture_id",
+          "task_040_long_fixture_id",
+          "task_041_long_fixture_id",
+          "task_042_long_fixture_id",
+          "task_043_long_fixture_id",
+          "task_044_long_fixture_id",
+          "task_045_long_fixture_id",
+          "task_046_long_fixture_id",
+          "task_047_long_fixture_id",
+          "task_048_long_fixture_id",
+          "task_049_long_fixture_id",
+          "task_050_long_fixture_id",
+          "task_051_long_fixture_id",
+          "task_052_long_fixture_id",
+          "task_053_long_fixture_id",
+          "task_054_long_fixture_id",
+          "task_055_long_fixture_id",
+          "task_056_long_fixture_id",
+          "task_057_long_fixture_id",
+          "task_058_long_fixture_id",
+          "task_059_long_fixture_id",
+          "task_060_long_fixture_id",
+          "task_061_long_fixture_id",
+          "task_062_long_fixture_id",
+          "task_063_long_fixture_id",
+          "task_064_long_fixture_id"
+        ],
+        "fixture_statuses": [
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0,
+          1,
+          2,
+          0
+        ],
+        "fixture_texts": [
+          "SYNTHETIC fixture T1: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T3: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T5: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T7: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T9: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T11: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T13: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T15: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T17: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T19: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T21: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T23: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T25: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T27: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T29: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T31: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T33: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T35: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T37: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T39: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T41: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T43: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T45: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T47: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T49: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T51: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T53: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T55: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T57: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T59: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T61: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.",
+          "SYNTHETIC fixture T63: exact short receipt; no task was executed.",
+          "SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed."
+        ],
+        "projected_outputs": {
+          "rows": "{\"results\":[[\"task_001_long_fixture_id\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"],[\"task_002_long_fixture_id\",1,\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_003_long_fixture_id\",2,\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\"],[\"task_004_long_fixture_id\",0,\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_005_long_fixture_id\",1,\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\"],[\"task_006_long_fixture_id\",2,\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_007_long_fixture_id\",0,\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\"],[\"task_008_long_fixture_id\",1,\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_009_long_fixture_id\",2,\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\"],[\"task_010_long_fixture_id\",0,\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_011_long_fixture_id\",1,\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\"],[\"task_012_long_fixture_id\",2,\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_013_long_fixture_id\",0,\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\"],[\"task_014_long_fixture_id\",1,\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_015_long_fixture_id\",2,\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\"],[\"task_016_long_fixture_id\",0,\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_017_long_fixture_id\",1,\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\"],[\"task_018_long_fixture_id\",2,\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_019_long_fixture_id\",0,\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\"],[\"task_020_long_fixture_id\",1,\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_021_long_fixture_id\",2,\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\"],[\"task_022_long_fixture_id\",0,\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_023_long_fixture_id\",1,\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\"],[\"task_024_long_fixture_id\",2,\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_025_long_fixture_id\",0,\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\"],[\"task_026_long_fixture_id\",1,\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_027_long_fixture_id\",2,\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\"],[\"task_028_long_fixture_id\",0,\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_029_long_fixture_id\",1,\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\"],[\"task_030_long_fixture_id\",2,\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_031_long_fixture_id\",0,\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\"],[\"task_032_long_fixture_id\",1,\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_033_long_fixture_id\",2,\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\"],[\"task_034_long_fixture_id\",0,\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_035_long_fixture_id\",1,\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\"],[\"task_036_long_fixture_id\",2,\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_037_long_fixture_id\",0,\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\"],[\"task_038_long_fixture_id\",1,\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_039_long_fixture_id\",2,\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\"],[\"task_040_long_fixture_id\",0,\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_041_long_fixture_id\",1,\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\"],[\"task_042_long_fixture_id\",2,\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_043_long_fixture_id\",0,\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\"],[\"task_044_long_fixture_id\",1,\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_045_long_fixture_id\",2,\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\"],[\"task_046_long_fixture_id\",0,\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_047_long_fixture_id\",1,\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\"],[\"task_048_long_fixture_id\",2,\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_049_long_fixture_id\",0,\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\"],[\"task_050_long_fixture_id\",1,\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_051_long_fixture_id\",2,\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\"],[\"task_052_long_fixture_id\",0,\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_053_long_fixture_id\",1,\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\"],[\"task_054_long_fixture_id\",2,\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_055_long_fixture_id\",0,\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\"],[\"task_056_long_fixture_id\",1,\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_057_long_fixture_id\",2,\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\"],[\"task_058_long_fixture_id\",0,\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_059_long_fixture_id\",1,\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\"],[\"task_060_long_fixture_id\",2,\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_061_long_fixture_id\",0,\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\"],[\"task_062_long_fixture_id\",1,\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"],[\"task_063_long_fixture_id\",2,\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\"],[\"task_064_long_fixture_id\",0,\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]]}",
+          "lanes": "{\"q\":\"0123456789abcdef\",\"s\":[0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0],\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T2: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T3: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T4: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T5: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T6: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T7: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T8: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T9: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T10: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T11: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T12: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T13: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T14: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T15: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T16: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T17: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T18: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T19: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T20: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T21: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T22: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T23: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T24: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T25: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T26: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T27: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T28: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T29: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T30: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T31: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T32: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T33: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T34: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T35: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T36: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T37: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T38: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T39: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T40: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T41: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T42: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T43: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T44: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T45: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T46: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T47: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T48: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T49: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T50: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T51: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T52: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T53: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T54: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T55: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T56: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T57: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T58: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T59: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T60: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T61: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T62: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\",\"SYNTHETIC fixture T63: exact short receipt; no task was executed.\",\"SYNTHETIC fixture T64: exact long receipt. Input value=12.50 ± 0.02 mm; procedure and measurement method unknown; no task, test, or external action was executed.\"]}"
+        },
+        "token_counts": {
+          "o200k_base": {
+            "input_contract_tokens": {
+              "rows": 63,
+              "lanes": 114,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2660,
+              "lanes": 2095,
+              "saved_by_lanes": 565
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2723,
+              "lanes": 2209,
+              "saved_by_lanes": 514
+            }
+          },
+          "cl100k_base": {
+            "input_contract_tokens": {
+              "rows": 62,
+              "lanes": 113,
+              "delta_lanes_minus_rows": 51
+            },
+            "projected_output_tokens_fixture_only": {
+              "rows": 2660,
+              "lanes": 2094,
+              "saved_by_lanes": 566
+            },
+            "contract_plus_projected_fixture_output_tokens": {
+              "rows": 2722,
+              "lanes": 2207,
+              "saved_by_lanes": 515
+            }
+          }
+        }
+      }
+    ],
+    "limitations": [
+      "All result text is synthetic fixture content; no task was executed and no model output is represented.",
+      "Input counts include only the response-format contract, not the shared task prompt, IDs, provider envelope, retries, or reasoning tokens.",
+      "Output counts tokenize a compact JSON serialization of the filled fixtures and are predictions, not actual provider usage.",
+      "A single fixed receipt is used; tokenizer counts can vary slightly with different receipt strings.",
+      "No claim is made about semantic comprehension, live latency, accuracy, or API cost."
+    ]
+  },
+  "live_model_trials": {
+    "model": "gpt-6-luna",
+    "cli_mode": "ephemeral read-only JSON output; no API key or model configuration was supplied",
+    "calls": 6,
+    "paired_cases": [
+      {
+        "jobs": 1,
+        "id_length": "short",
+        "statuses": "same",
+        "receipt": "0123456789abcdef",
+        "rows": {
+          "exact_scorer_pass": true,
+          "usage": {
+            "input_tokens": 24595,
+            "cached_input_tokens": 1792,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 33,
+            "reasoning_output_tokens": 0
+          },
+          "raw_output": "{\"results\":[[\"t1\",0,\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]]}"
+        },
+        "lanes": {
+          "exact_scorer_pass": true,
+          "usage": {
+            "input_tokens": 24656,
+            "cached_input_tokens": 23296,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 39,
+            "reasoning_output_tokens": 0
+          },
+          "raw_output": "{\"q\":\"0123456789abcdef\",\"s\":0,\"v\":[\"SYNTHETIC fixture T1: exact short receipt; no task was executed.\"]}"
+        }
+      },
+      {
+        "jobs": 16,
+        "id_length": "long",
+        "statuses": "mixed",
+        "receipt": "a1b2c3d4e5f60718",
+        "rows": {
+          "exact_scorer_pass": true,
+          "usage": {
+            "input_tokens": 25124,
+            "cached_input_tokens": 7936,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 468,
+            "reasoning_output_tokens": 10
+          },
+          "raw_output": "{\"results\":[[\"task_001_long_fixture_id\",1,\"SYNTHETIC fixture T1: exact result; no task was executed.\"],[\"task_002_long_fixture_id\",2,\"SYNTHETIC fixture T2: exact result; no task was executed.\"],[\"task_003_long_fixture_id\",0,\"SYNTHETIC fixture T3: exact result; no task was executed.\"],[\"task_004_long_fixture_id\",1,\"SYNTHETIC fixture T4: exact result; no task was executed.\"],[\"task_005_long_fixture_id\",2,\"SYNTHETIC fixture T5: exact result; no task was executed.\"],[\"task_006_long_fixture_id\",0,\"SYNTHETIC fixture T6: exact result; no task was executed.\"],[\"task_007_long_fixture_id\",1,\"SYNTHETIC fixture T7: exact result; no task was executed.\"],[\"task_008_long_fixture_id\",2,\"SYNTHETIC fixture T8: exact result; no task was executed.\"],[\"task_009_long_fixture_id\",0,\"SYNTHETIC fixture T9: exact result; no task was executed.\"],[\"task_010_long_fixture_id\",1,\"SYNTHETIC fixture T10: exact result; no task was executed.\"],[\"task_011_long_fixture_id\",2,\"SYNTHETIC fixture T11: exact result; no task was executed.\"],[\"task_012_long_fixture_id\",0,\"SYNTHETIC fixture T12: exact result; no task was executed.\"],[\"task_013_long_fixture_id\",1,\"SYNTHETIC fixture T13: exact result; no task was executed.\"],[\"task_014_long_fixture_id\",2,\"SYNTHETIC fixture T14: exact result; no task was executed.\"],[\"task_015_long_fixture_id\",0,\"SYNTHETIC fixture T15: exact result; no task was executed.\"],[\"task_016_long_fixture_id\",1,\"SYNTHETIC fixture T16: exact result; no task was executed.\"]]}"
+        },
+        "lanes": {
+          "exact_scorer_pass": true,
+          "usage": {
+            "input_tokens": 25511,
+            "cached_input_tokens": 13056,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 378,
+            "reasoning_output_tokens": 45
+          },
+          "raw_output": "{\"q\":\"a1b2c3d4e5f60718\",\"s\":[1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1],\"v\":[\"SYNTHETIC fixture T1: exact result; no task was executed.\",\"SYNTHETIC fixture T2: exact result; no task was executed.\",\"SYNTHETIC fixture T3: exact result; no task was executed.\",\"SYNTHETIC fixture T4: exact result; no task was executed.\",\"SYNTHETIC fixture T5: exact result; no task was executed.\",\"SYNTHETIC fixture T6: exact result; no task was executed.\",\"SYNTHETIC fixture T7: exact result; no task was executed.\",\"SYNTHETIC fixture T8: exact result; no task was executed.\",\"SYNTHETIC fixture T9: exact result; no task was executed.\",\"SYNTHETIC fixture T10: exact result; no task was executed.\",\"SYNTHETIC fixture T11: exact result; no task was executed.\",\"SYNTHETIC fixture T12: exact result; no task was executed.\",\"SYNTHETIC fixture T13: exact result; no task was executed.\",\"SYNTHETIC fixture T14: exact result; no task was executed.\",\"SYNTHETIC fixture T15: exact result; no task was executed.\",\"SYNTHETIC fixture T16: exact result; no task was executed.\"]}"
+        }
+      },
+      {
+        "jobs": 64,
+        "id_length": "short",
+        "statuses": "mixed",
+        "receipt": "1029384756abcdef",
+        "rows": {
+          "exact_scorer_pass": true,
+          "usage": {
+            "input_tokens": 26484,
+            "cached_input_tokens": 7936,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1574,
+            "reasoning_output_tokens": 28
+          },
+          "raw_output": "{\"results\":[[\"t1\",1,\"SYNTHETIC fixture T1: exact result; no task was executed.\"],[\"t2\",2,\"SYNTHETIC fixture T2: exact result; no task was executed.\"],[\"t3\",0,\"SYNTHETIC fixture T3: exact result; no task was executed.\"],[\"t4\",1,\"SYNTHETIC fixture T4: exact result; no task was executed.\"],[\"t5\",2,\"SYNTHETIC fixture T5: exact result; no task was executed.\"],[\"t6\",0,\"SYNTHETIC fixture T6: exact result; no task was executed.\"],[\"t7\",1,\"SYNTHETIC fixture T7: exact result; no task was executed.\"],[\"t8\",2,\"SYNTHETIC fixture T8: exact result; no task was executed.\"],[\"t9\",0,\"SYNTHETIC fixture T9: exact result; no task was executed.\"],[\"t10\",1,\"SYNTHETIC fixture T10: exact result; no task was executed.\"],[\"t11\",2,\"SYNTHETIC fixture T11: exact result; no task was executed.\"],[\"t12\",0,\"SYNTHETIC fixture T12: exact result; no task was executed.\"],[\"t13\",1,\"SYNTHETIC fixture T13: exact result; no task was executed.\"],[\"t14\",2,\"SYNTHETIC fixture T14: exact result; no task was executed.\"],[\"t15\",0,\"SYNTHETIC fixture T15: exact result; no task was executed.\"],[\"t16\",1,\"SYNTHETIC fixture T16: exact result; no task was executed.\"],[\"t17\",2,\"SYNTHETIC fixture T17: exact result; no task was executed.\"],[\"t18\",0,\"SYNTHETIC fixture T18: exact result; no task was executed.\"],[\"t19\",1,\"SYNTHETIC fixture T19: exact result; no task was executed.\"],[\"t20\",2,\"SYNTHETIC fixture T20: exact result; no task was executed.\"],[\"t21\",0,\"SYNTHETIC fixture T21: exact result; no task was executed.\"],[\"t22\",1,\"SYNTHETIC fixture T22: exact result; no task was executed.\"],[\"t23\",2,\"SYNTHETIC fixture T23: exact result; no task was executed.\"],[\"t24\",0,\"SYNTHETIC fixture T24: exact result; no task was executed.\"],[\"t25\",1,\"SYNTHETIC fixture T25: exact result; no task was executed.\"],[\"t26\",2,\"SYNTHETIC fixture T26: exact result; no task was executed.\"],[\"t27\",0,\"SYNTHETIC fixture T27: exact result; no task was executed.\"],[\"t28\",1,\"SYNTHETIC fixture T28: exact result; no task was executed.\"],[\"t29\",2,\"SYNTHETIC fixture T29: exact result; no task was executed.\"],[\"t30\",0,\"SYNTHETIC fixture T30: exact result; no task was executed.\"],[\"t31\",1,\"SYNTHETIC fixture T31: exact result; no task was executed.\"],[\"t32\",2,\"SYNTHETIC fixture T32: exact result; no task was executed.\"],[\"t33\",0,\"SYNTHETIC fixture T33: exact result; no task was executed.\"],[\"t34\",1,\"SYNTHETIC fixture T34: exact result; no task was executed.\"],[\"t35\",2,\"SYNTHETIC fixture T35: exact result; no task was executed.\"],[\"t36\",0,\"SYNTHETIC fixture T36: exact result; no task was executed.\"],[\"t37\",1,\"SYNTHETIC fixture T37: exact result; no task was executed.\"],[\"t38\",2,\"SYNTHETIC fixture T38: exact result; no task was executed.\"],[\"t39\",0,\"SYNTHETIC fixture T39: exact result; no task was executed.\"],[\"t40\",1,\"SYNTHETIC fixture T40: exact result; no task was executed.\"],[\"t41\",2,\"SYNTHETIC fixture T41: exact result; no task was executed.\"],[\"t42\",0,\"SYNTHETIC fixture T42: exact result; no task was executed.\"],[\"t43\",1,\"SYNTHETIC fixture T43: exact result; no task was executed.\"],[\"t44\",2,\"SYNTHETIC fixture T44: exact result; no task was executed.\"],[\"t45\",0,\"SYNTHETIC fixture T45: exact result; no task was executed.\"],[\"t46\",1,\"SYNTHETIC fixture T46: exact result; no task was executed.\"],[\"t47\",2,\"SYNTHETIC fixture T47: exact result; no task was executed.\"],[\"t48\",0,\"SYNTHETIC fixture T48: exact result; no task was executed.\"],[\"t49\",1,\"SYNTHETIC fixture T49: exact result; no task was executed.\"],[\"t50\",2,\"SYNTHETIC fixture T50: exact result; no task was executed.\"],[\"t51\",0,\"SYNTHETIC fixture T51: exact result; no task was executed.\"],[\"t52\",1,\"SYNTHETIC fixture T52: exact result; no task was executed.\"],[\"t53\",2,\"SYNTHETIC fixture T53: exact result; no task was executed.\"],[\"t54\",0,\"SYNTHETIC fixture T54: exact result; no task was executed.\"],[\"t55\",1,\"SYNTHETIC fixture T55: exact result; no task was executed.\"],[\"t56\",2,\"SYNTHETIC fixture T56: exact result; no task was executed.\"],[\"t57\",0,\"SYNTHETIC fixture T57: exact result; no task was executed.\"],[\"t58\",1,\"SYNTHETIC fixture T58: exact result; no task was executed.\"],[\"t59\",2,\"SYNTHETIC fixture T59: exact result; no task was executed.\"],[\"t60\",0,\"SYNTHETIC fixture T60: exact result; no task was executed.\"],[\"t61\",1,\"SYNTHETIC fixture T61: exact result; no task was executed.\"],[\"t62\",2,\"SYNTHETIC fixture T62: exact result; no task was executed.\"],[\"t63\",0,\"SYNTHETIC fixture T63: exact result; no task was executed.\"],[\"t64\",1,\"SYNTHETIC fixture T64: exact result; no task was executed.\"]]}"
+        },
+        "lanes": {
+          "exact_scorer_pass": true,
+          "usage": {
+            "input_tokens": 26545,
+            "cached_input_tokens": 6912,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1262,
+            "reasoning_output_tokens": 25
+          },
+          "raw_output": "{\"q\":\"1029384756abcdef\",\"s\":[1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1,2,0,1],\"v\":[\"SYNTHETIC fixture T1: exact result; no task was executed.\",\"SYNTHETIC fixture T2: exact result; no task was executed.\",\"SYNTHETIC fixture T3: exact result; no task was executed.\",\"SYNTHETIC fixture T4: exact result; no task was executed.\",\"SYNTHETIC fixture T5: exact result; no task was executed.\",\"SYNTHETIC fixture T6: exact result; no task was executed.\",\"SYNTHETIC fixture T7: exact result; no task was executed.\",\"SYNTHETIC fixture T8: exact result; no task was executed.\",\"SYNTHETIC fixture T9: exact result; no task was executed.\",\"SYNTHETIC fixture T10: exact result; no task was executed.\",\"SYNTHETIC fixture T11: exact result; no task was executed.\",\"SYNTHETIC fixture T12: exact result; no task was executed.\",\"SYNTHETIC fixture T13: exact result; no task was executed.\",\"SYNTHETIC fixture T14: exact result; no task was executed.\",\"SYNTHETIC fixture T15: exact result; no task was executed.\",\"SYNTHETIC fixture T16: exact result; no task was executed.\",\"SYNTHETIC fixture T17: exact result; no task was executed.\",\"SYNTHETIC fixture T18: exact result; no task was executed.\",\"SYNTHETIC fixture T19: exact result; no task was executed.\",\"SYNTHETIC fixture T20: exact result; no task was executed.\",\"SYNTHETIC fixture T21: exact result; no task was executed.\",\"SYNTHETIC fixture T22: exact result; no task was executed.\",\"SYNTHETIC fixture T23: exact result; no task was executed.\",\"SYNTHETIC fixture T24: exact result; no task was executed.\",\"SYNTHETIC fixture T25: exact result; no task was executed.\",\"SYNTHETIC fixture T26: exact result; no task was executed.\",\"SYNTHETIC fixture T27: exact result; no task was executed.\",\"SYNTHETIC fixture T28: exact result; no task was executed.\",\"SYNTHETIC fixture T29: exact result; no task was executed.\",\"SYNTHETIC fixture T30: exact result; no task was executed.\",\"SYNTHETIC fixture T31: exact result; no task was executed.\",\"SYNTHETIC fixture T32: exact result; no task was executed.\",\"SYNTHETIC fixture T33: exact result; no task was executed.\",\"SYNTHETIC fixture T34: exact result; no task was executed.\",\"SYNTHETIC fixture T35: exact result; no task was executed.\",\"SYNTHETIC fixture T36: exact result; no task was executed.\",\"SYNTHETIC fixture T37: exact result; no task was executed.\",\"SYNTHETIC fixture T38: exact result; no task was executed.\",\"SYNTHETIC fixture T39: exact result; no task was executed.\",\"SYNTHETIC fixture T40: exact result; no task was executed.\",\"SYNTHETIC fixture T41: exact result; no task was executed.\",\"SYNTHETIC fixture T42: exact result; no task was executed.\",\"SYNTHETIC fixture T43: exact result; no task was executed.\",\"SYNTHETIC fixture T44: exact result; no task was executed.\",\"SYNTHETIC fixture T45: exact result; no task was executed.\",\"SYNTHETIC fixture T46: exact result; no task was executed.\",\"SYNTHETIC fixture T47: exact result; no task was executed.\",\"SYNTHETIC fixture T48: exact result; no task was executed.\",\"SYNTHETIC fixture T49: exact result; no task was executed.\",\"SYNTHETIC fixture T50: exact result; no task was executed.\",\"SYNTHETIC fixture T51: exact result; no task was executed.\",\"SYNTHETIC fixture T52: exact result; no task was executed.\",\"SYNTHETIC fixture T53: exact result; no task was executed.\",\"SYNTHETIC fixture T54: exact result; no task was executed.\",\"SYNTHETIC fixture T55: exact result; no task was executed.\",\"SYNTHETIC fixture T56: exact result; no task was executed.\",\"SYNTHETIC fixture T57: exact result; no task was executed.\",\"SYNTHETIC fixture T58: exact result; no task was executed.\",\"SYNTHETIC fixture T59: exact result; no task was executed.\",\"SYNTHETIC fixture T60: exact result; no task was executed.\",\"SYNTHETIC fixture T61: exact result; no task was executed.\",\"SYNTHETIC fixture T62: exact result; no task was executed.\",\"SYNTHETIC fixture T63: exact result; no task was executed.\",\"SYNTHETIC fixture T64: exact result; no task was executed.\"]}"
+        }
+      }
+    ],
+    "exact_score_dimensions": [
+      "receipt",
+      "item count",
+      "request order",
+      "status",
+      "exact result text"
+    ],
+    "limitations": [
+      "Codex CLI provider usage includes system/tool overhead and is not comparable to format-contract-only tiktoken counts.",
+      "Three small paired cases establish observed format compliance only, not general accuracy or production fitness."
+    ]
+  },
+  "measurement_scope": {
+    "actual_model_calls": "Combined live model calls only; excludes offline benchmark. Each paired case contains rows and lanes calls.",
+    "offline_benchmark_actual_model_calls": 0
+  }
+}

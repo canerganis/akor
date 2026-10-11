@@ -1,0 +1,708 @@
+{
+  "kind": "oz5_live_language_comprehension",
+  "date": "2026-10-11",
+  "model_requested": "gpt-6-luna",
+  "cli_version": "codex-cli 0.160.0",
+  "fixtures_sha256": "ef0b42907b4ceb612d3224bee89898817424763bccd8809a0462378080408465",
+  "runs": [
+    {
+      "family": "simple_form",
+      "rep": 1,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 10.953,
+      "prompt_sha256": "890f91cc3d0e428f23196e1524165b934da36e9d98d6bc74224e14eb30442a15",
+      "prompt_token_estimate": {
+        "estimate": 343,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "e683f0894f58d4be5e03f8c224e5a5938b7e508dfd03e22059206327f31e2011",
+      "answer": "{\"cases\":[{\"id\":\"form1-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"form1-ok\",\"atoms\":[{\"op\":\"r\",\"ref\":7},{\"op\":\"a\",\"ref\":7},{\"op\":\"t\",\"ref\":31}]}]},{\"id\":\"form1-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 25165,
+          "cached_input_tokens": 7936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 215,
+          "reasoning_output_tokens": 141
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "alias_only_match",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "case_count": 2,
+      "correct": false,
+      "score_status": "scored",
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "semantic_correct_cases": 2,
+      "strict_response_contract": false,
+      "semantic_equivalence": true
+    },
+    {
+      "family": "simple_form",
+      "rep": 1,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 9.25,
+      "prompt_sha256": "072ab17d89cf2548f1ea654d02002e3ba8722548703da87ef8c11232da015120",
+      "prompt_token_estimate": {
+        "estimate": 250,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "e683f0894f58d4be5e03f8c224e5a5938b7e508dfd03e22059206327f31e2011",
+      "answer": "{\"cases\":[{\"id\":\"form1-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"form1-ok\",\"atoms\":[{\"op\":\"read\",\"ref\":7},{\"op\":\"inspect\",\"ref\":7},{\"op\":\"request_test\",\"ref\":31}]}]},{\"id\":\"form1-missing\",\"status\":\"error\",\"frames\":[]}] }",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24759,
+          "cached_input_tokens": 1792,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 339,
+          "reasoning_output_tokens": 264
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_labels_success",
+        "correct_rejection"
+      ],
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": true,
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 1,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.156,
+      "prompt_sha256": "47ecc09d74e4ee7c57e650fbf1d4f1c08b0d38c32c16d916a70cc39d82ac0be3",
+      "prompt_token_estimate": {
+        "estimate": 384,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "8556ae1d8c977185e386b7fbdeea4970ac6848a11c025267c4302e1220f7ce7c",
+      "answer": "{\"cases\":[{\"id\":\"regular1-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"reg1-a\",\"atoms\":[{\"op\":\"r\",\"ref\":7},{\"op\":\"a\",\"ref\":7},{\"op\":\"t\",\"ref\":31}]},{\"id\":\"reg1-b\",\"atoms\":[{\"op\":\"r\",\"ref\":8},{\"op\":\"a\",\"ref\":8},{\"op\":\"t\",\"ref\":32}]},{\"id\":\"reg1-c\",\"atoms\":[{\"op\":\"r\",\"ref\":9},{\"op\":\"a\",\"ref\":9},{\"op\":\"t\",\"ref\":33}]}]},{\"id\":\"regular1-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24895,
+          "cached_input_tokens": 7936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 202,
+          "reasoning_output_tokens": 60
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "alias_only_match",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 1,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.891,
+      "prompt_sha256": "0dae766d662f6cb388c40b797cc6159b0c7c32627605b8f3493558213b70c2c7",
+      "prompt_token_estimate": {
+        "estimate": 389,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "8556ae1d8c977185e386b7fbdeea4970ac6848a11c025267c4302e1220f7ce7c",
+      "answer": "{\"cases\":[{\"id\":\"regular1-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"reg1-a\",\"atoms\":[{\"op\":\"r\",\"ref\":7},{\"op\":\"a\",\"ref\":7},{\"op\":\"t\",\"ref\":31}]},{\"id\":\"reg1-b\",\"atoms\":[{\"op\":\"r\",\"ref\":8},{\"op\":\"a\",\"ref\":8},{\"op\":\"t\",\"ref\":32}]},{\"id\":\"reg1-c\",\"atoms\":[{\"op\":\"r\",\"ref\":9},{\"op\":\"a\",\"ref\":9},{\"op\":\"t\",\"ref\":33}]}]},{\"id\":\"regular1-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24898,
+          "cached_input_tokens": 1792,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 225,
+          "reasoning_output_tokens": 83
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "alias_only_match",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 1,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.734,
+      "prompt_sha256": "898df7dbeaa15e5c9685c31f1321c09ba85c4ff9914746efd8ed7e635f5a5ee2",
+      "prompt_token_estimate": {
+        "estimate": 417,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "78f14150f39fd1c65d20d1c0b4fdbda64a5780ca3d0510e31e26e7602fa8817d",
+      "answer": "{\"cases\":[{\"id\":\"mixed1-ok\",\"status\":\"error\",\"frames\":[]},{\"id\":\"mixed1-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24928,
+          "cached_input_tokens": 1792,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 199,
+          "reasoning_output_tokens": 161
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        false,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "false_reject",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 1,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": false,
+      "score_status": "scored"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 1,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 8.329,
+      "prompt_sha256": "4dc0aff8652c613c59310d72da4c7602e75b554a2c97f82bc830fed84507355c",
+      "prompt_token_estimate": {
+        "estimate": 458,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "78f14150f39fd1c65d20d1c0b4fdbda64a5780ca3d0510e31e26e7602fa8817d",
+      "answer": "{\"cases\":[{\"id\":\"mixed1-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"mix1-1\",\"atoms\":[{\"op\":\"r\",\"ref\":7},{\"op\":\"a\",\"ref\":7},{\"op\":\"t\",\"ref\":31}]},{\"id\":\"mix1-2\",\"atoms\":[{\"op\":\"r\",\"ref\":9},{\"op\":\"a\",\"ref\":9},{\"op\":\"t\",\"ref\":31}]},{\"id\":\"mix1-3\",\"atoms\":[{\"op\":\"r\",\"ref\":7},{\"op\":\"a\",\"ref\":7},{\"op\":\"t\",\"ref\":33}]},{\"id\":\"mix1-4\",\"atoms\":[{\"op\":\"r\",\"ref\":8},{\"op\":\"a\",\"ref\":8},{\"op\":\"t\",\"ref\":32}]}]},{\"id\":\"mixed1-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24967,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 216,
+          "reasoning_output_tokens": 36
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "alias_only_match",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    },
+    {
+      "family": "simple_form",
+      "rep": 2,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 24.218,
+      "prompt_sha256": "d73c0594456c10436e759043abc35425b296a92d9f9e6edfb4a3f10d30e36293",
+      "prompt_token_estimate": {
+        "estimate": 343,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "194eb01ac845e1f863d39c54638b0fbbbb5772bd87fb4f33ca65b49a6bda286a",
+      "answer": "{\"cases\":[{\"id\":\"form2-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"form2-ok\",\"atoms\":[{\"op\":\"r\",\"ref\":4},{\"op\":\"a\",\"ref\":4},{\"op\":\"t\",\"ref\":22}]}]},{\"id\":\"form2-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24854,
+          "cached_input_tokens": 13056,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 233,
+          "reasoning_output_tokens": 159
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "alias_only_match",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    },
+    {
+      "family": "simple_form",
+      "rep": 2,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 13.36,
+      "prompt_sha256": "d21df0ae51ccabb9df4b64a7b16137362ca8918f5ef7ac70ef5c1b8cf585378e",
+      "prompt_token_estimate": {
+        "estimate": 250,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "194eb01ac845e1f863d39c54638b0fbbbb5772bd87fb4f33ca65b49a6bda286a",
+      "answer": "{\"cases\":[{\"id\":\"form2-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"form2-ok\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"inspect\",\"ref\":4},{\"op\":\"request_test\",\"ref\":22}]}]},{\"id\":\"form2-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24761,
+          "cached_input_tokens": 0,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 410,
+          "reasoning_output_tokens": 335
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_labels_success",
+        "correct_rejection"
+      ],
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": true,
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 2,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 7.672,
+      "prompt_sha256": "6be7d4db81df76d2f2d8faff04f32189c1b96c68f1f4fc35d1fa2b9e4668180c",
+      "prompt_token_estimate": {
+        "estimate": 384,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "ab6d224d279b81e3bd39a8291fab4249288c4fe90e2d059ab468a147a9c650a8",
+      "answer": "{\"cases\":[{\"id\":\"regular2-ok\",\"status\":\"error\",\"frames\":[]},{\"id\":\"regular2-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24893,
+          "cached_input_tokens": 7936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 103,
+          "reasoning_output_tokens": 65
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        false,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "false_reject",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 1,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": false,
+      "score_status": "scored"
+    },
+    {
+      "family": "regular_matrix",
+      "rep": 2,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 10.375,
+      "prompt_sha256": "39476ea3dec7295696f7551f9c2e01ef76c1a592704ad02eedeedb2c70ffef5f",
+      "prompt_token_estimate": {
+        "estimate": 389,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "ab6d224d279b81e3bd39a8291fab4249288c4fe90e2d059ab468a147a9c650a8",
+      "answer": "{\"cases\":[{\"id\":\"regular2-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"reg2-a\",\"atoms\":[{\"op\":\"r\",\"ref\":4},{\"op\":\"a\",\"ref\":4},{\"op\":\"t\",\"ref\":22}]},{\"id\":\"reg2-b\",\"atoms\":[{\"op\":\"r\",\"ref\":6},{\"op\":\"a\",\"ref\":6},{\"op\":\"t\",\"ref\":23}]},{\"id\":\"reg2-c\",\"atoms\":[{\"op\":\"r\",\"ref\":5},{\"op\":\"a\",\"ref\":5},{\"op\":\"t\",\"ref\":24}]}]},{\"id\":\"regular2-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24900,
+          "cached_input_tokens": 7936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 208,
+          "reasoning_output_tokens": 66
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "alias_only_match",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 2,
+      "mode": "oz5",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 8.015,
+      "prompt_sha256": "bdc906a948cceae5823f2f6d9155c485ed6ccdbe81ba51911338ed3ef0c6c8b9",
+      "prompt_token_estimate": {
+        "estimate": 417,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "93b1a3bed728af889739aad77b6875c72646865d4739d2f51854423e1afd2a2b",
+      "answer": "{\"cases\":[{\"id\":\"mixed2-ok\",\"status\":\"error\",\"frames\":[]},{\"id\":\"mixed2-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24928,
+          "cached_input_tokens": 7936,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 246,
+          "reasoning_output_tokens": 208
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        false,
+        true
+      ],
+      "semantic_case_results": [
+        false,
+        true
+      ],
+      "case_results": [
+        false,
+        true
+      ],
+      "case_categories": [
+        "false_reject",
+        "correct_rejection"
+      ],
+      "correct_cases": 1,
+      "semantic_correct_cases": 1,
+      "case_count": 2,
+      "correct": false,
+      "strict_response_contract": false,
+      "semantic_equivalence": false,
+      "score_status": "scored"
+    },
+    {
+      "family": "mixed_matrix",
+      "rep": 2,
+      "mode": "primitive_json",
+      "model_requested": "gpt-6-luna",
+      "status": "completed",
+      "returncode": 0,
+      "error_class": null,
+      "wall_seconds": 8.219,
+      "prompt_sha256": "120620e6a5fbe3931921deeae5772e80b5f5af1c6b3461133108b3d872233492",
+      "prompt_token_estimate": {
+        "estimate": 458,
+        "method": "local o200k_base prompt estimate"
+      },
+      "fixture_sha256": "93b1a3bed728af889739aad77b6875c72646865d4739d2f51854423e1afd2a2b",
+      "answer": "{\"cases\":[{\"id\":\"mixed2-ok\",\"status\":\"ok\",\"frames\":[{\"id\":\"mix2-1\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"inspect\",\"ref\":4},{\"op\":\"request_test\",\"ref\":22}]},{\"id\":\"mix2-2\",\"atoms\":[{\"op\":\"read\",\"ref\":5},{\"op\":\"inspect\",\"ref\":5},{\"op\":\"request_test\",\"ref\":22}]},{\"id\":\"mix2-3\",\"atoms\":[{\"op\":\"read\",\"ref\":4},{\"op\":\"inspect\",\"ref\":4},{\"op\":\"request_test\",\"ref\":24}]},{\"id\":\"mix2-4\",\"atoms\":[{\"op\":\"read\",\"ref\":6},{\"op\":\"inspect\",\"ref\":6},{\"op\":\"request_test\",\"ref\":23}]}]},{\"id\":\"mixed2-missing\",\"status\":\"error\",\"frames\":[]}]}",
+      "provider_usage_events": [
+        {
+          "input_tokens": 24969,
+          "cached_input_tokens": 23296,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 297,
+          "reasoning_output_tokens": 113
+        }
+      ],
+      "tool_call_count": 0,
+      "tool_item_types": [],
+      "separate_tool_trial": false,
+      "strict_case_results": [
+        true,
+        true
+      ],
+      "semantic_case_results": [
+        true,
+        true
+      ],
+      "case_results": [
+        true,
+        true
+      ],
+      "case_categories": [
+        "exact_labels_success",
+        "correct_rejection"
+      ],
+      "correct_cases": 2,
+      "semantic_correct_cases": 2,
+      "case_count": 2,
+      "correct": true,
+      "strict_response_contract": true,
+      "semantic_equivalence": true,
+      "score_status": "scored"
+    }
+  ],
+  "limitations": [
+    "Synthetic protocol comprehension only.",
+    "Prompt token counts are local estimates; provider usage is separate.",
+    "Tool-use trials remain in the denominator as unsuitable failures.",
+    "No coding, execution, physical, or production validation."
+  ],
+  "model_access": "confirmed_by_completed_call",
+  "provider_usage_summary": {
+    "input_tokens": {
+      "value": 298917,
+      "unit": "provider-reported tokens"
+    },
+    "cached_input_tokens": {
+      "value": 104704,
+      "unit": "provider-reported tokens"
+    },
+    "output_tokens": {
+      "value": 2893,
+      "unit": "provider-reported tokens"
+    },
+    "reasoning_output_tokens": {
+      "value": 1691,
+      "unit": "provider-reported tokens"
+    }
+  },
+  "score_summary": {
+    "oz5": {
+      "calls": 6,
+      "cases_total_in_denominator": 12,
+      "strict_response_contract": {
+        "correct_cases": 6,
+        "cases_total": 12,
+        "correct_calls": 0
+      },
+      "semantic_equivalence": {
+        "correct_cases": 9,
+        "cases_total": 12,
+        "correct_calls": 3
+      },
+      "call_categories": {
+        "scored": 6
+      },
+      "case_categories": {
+        "alias_only_match": 3,
+        "correct_rejection": 6,
+        "false_reject": 3
+      }
+    },
+    "primitive_json": {
+      "calls": 6,
+      "cases_total_in_denominator": 12,
+      "strict_response_contract": {
+        "correct_cases": 9,
+        "cases_total": 12,
+        "correct_calls": 3
+      },
+      "semantic_equivalence": {
+        "correct_cases": 12,
+        "cases_total": 12,
+        "correct_calls": 6
+      },
+      "call_categories": {
+        "scored": 6
+      },
+      "case_categories": {
+        "alias_only_match": 3,
+        "correct_rejection": 6,
+        "exact_labels_success": 3
+      }
+    }
+  },
+  "language_recommendations": [
+    "Specify whether response op fields must use descriptive operation names or wire symbols.",
+    "Add a mixed matrix example and make per-case error isolation explicit."
+  ]
+}

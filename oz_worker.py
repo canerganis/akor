@@ -9,6 +9,7 @@ import re
 import signal
 import subprocess
 import time
+import uuid
 from typing import Callable
 
 from oz import Channel, Error
@@ -134,20 +135,31 @@ class Worker:
 
     def __init__(self, inbox: Inbox, channel: Channel, adapter: Callable[[dict], dict], *,
                  counters, owner: str = 'worker', max_tokens: int = 2048, batch_size: int = 16,
-                 timeout: float = 120, retry_delay: float = 2):
+                 timeout: float = 120, retry_delay: float = 2, reply_mode: str = 'rows'):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
         if isinstance(adapter, StdioAdapter) and adapter.timeout > timeout:
             raise Error('stdio adapter timeout must not exceed worker timeout')
         if type(retry_delay) not in {int, float} or not 0 <= retry_delay <= 86400:
             raise Error('invalid retry delay')
+        if reply_mode not in ('rows', 'lanes'):
+            raise Error('reply_mode must be rows or lanes')
         self.inbox, self.channel, self.adapter = inbox, channel, adapter
         self.options = dict(counters=tuple(counters), owner=owner, max_tokens=max_tokens,
                             limit=batch_size, lease_seconds=timeout + 30, response_contract=RESPONSE_CONTRACT)
         self.retry_delay = retry_delay
+        self.reply_mode = reply_mode
 
     def run_once(self) -> dict:
-        claimed = self.inbox.claim_prepared(self.channel, **self.options)
+        options = dict(self.options)
+        receipt = None
+        if self.reply_mode == 'lanes':
+            from oz_reply import reply_contract
+            # Generate before planning so the actual receipt is charged to the
+            # input budget. No post-claim prompt mutation or free metadata.
+            receipt = uuid.uuid4().hex[:16]
+            options['response_contract'] = reply_contract(receipt)
+        claimed = self.inbox.claim_prepared(self.channel, **options)
         if claimed is None:
             return {'status': 'idle', 'model_calls': 0}
         delivery, packet = claimed
@@ -155,13 +167,18 @@ class Worker:
         request = {'protocol': 'oz.adapter/1', 'binding': delivery.binding,
                    'ids': list(ids), 'attempts': {j.id: j.attempt for j in delivery.jobs},
                    'prompt': packet.text, 'estimated_input_tokens': list(packet.tokens)}
+        if receipt is not None:
+            request.update(protocol='oz.adapter/2', reply_mode='lanes', receipt=receipt)
         start = time.monotonic()
         report = {'mode': packet.mode, 'estimated_input_tokens': list(packet.tokens),
-                  'adapter_calls': 1, 'provider_reported_usage': {}}
+                  'adapter_calls': 1, 'provider_reported_usage': {}, 'reply_mode': self.reply_mode}
         phase = 'adapter'
         try:
             reply = self.adapter(request)
             phase = 'validation'
+            if receipt is not None:
+                from oz_reply import validate_lanes
+                reply = validate_lanes(reply, ids, receipt)
             outcomes, usage = validate_reply(reply, ids)
             report['provider_reported_usage'] = usage
             report['status'] = 'received'
