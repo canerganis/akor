@@ -10,7 +10,7 @@ from unittest.mock import patch
 
 from oz import Error
 from oz_cli import main
-from oz_workspace import DEMO_SCRIPT, Workspace, channel_from_files, demo, initialize
+from oz_workspace import DEMO_SCRIPT, DEMO_CAPABILITIES, Workspace, channel_from_files, demo, initialize
 from test_oz2 import extended
 
 
@@ -138,7 +138,7 @@ class WorkspaceTests(unittest.TestCase):
     def test_cli_run_explicit_adapter_and_independent_restart(self):
         workspace = initialize(self.root)
         adapter = self.root / 'adapter.json'
-        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', DEMO_SCRIPT]}), encoding='utf8')
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', DEMO_SCRIPT], **DEMO_CAPABILITIES}), encoding='utf8')
         base = ('--workspace', str(self.root))
         self.assertEqual(self.cli('send', 'P', '--id', 'first', *base)[0], 0)
         with patch('oz_workspace.token_counters', return_value=(len,)):
@@ -152,7 +152,7 @@ class WorkspaceTests(unittest.TestCase):
     def test_cli_failure_returns_nonzero_and_explains_safe_error_code(self):
         initialize(self.root)
         adapter = self.root / 'adapter.json'
-        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', 'print("not-json")']}), encoding='utf8')
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', 'print("not-json")'], **DEMO_CAPABILITIES}), encoding='utf8')
         base = ('--workspace', str(self.root))
         self.cli('send', 'P', '--id', 'first', '--max-attempts', '1', *base)
         with patch('oz_workspace.token_counters', return_value=(len,)):
@@ -163,6 +163,21 @@ class WorkspaceTests(unittest.TestCase):
         code, out, err = self.cli('inspect', 'first', *base)
         self.assertEqual(json.loads(out)['job']['state'], 'pending')
         self.assertIn('requeued', [e['event'] for e in json.loads(out)['history']])
+
+    def test_legacy_or_partial_adapter_config_fails_before_claim(self):
+        initialize(self.root)
+        adapter = self.root / 'adapter.json'
+        base = ('--workspace', str(self.root))
+        self.cli('send', 'P', '--id', 'first', *base)
+        for spec, mode in [({'argv': [sys.executable, '-c', DEMO_SCRIPT]}, 'rows'),
+                           (dict(DEMO_CAPABILITIES, argv=[sys.executable], reply_modes=['rows']), 'auto')]:
+            with self.subTest(spec=spec):
+                adapter.write_text(json.dumps(spec), encoding='utf8')
+                with patch('oz_workspace.token_counters', return_value=(len,)):
+                    code, out, err = self.cli('run', '--adapter', str(adapter), '--reply-mode', mode, *base)
+                self.assertEqual(code, 2, err)
+        code, out, err = self.cli('inspect', 'first', *base)
+        self.assertEqual(json.loads(out)['job']['attempts'], 0)
 
     def test_host_events_cli_is_model_free(self):
         initialize(self.root)

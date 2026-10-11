@@ -18,6 +18,7 @@ def fixture(name):
 class CompatibilityTests(unittest.TestCase):
     def test_oz2_binding_is_unchanged_since_0_8_0(self):
         saved = fixture('oz2-channel.json')
+        self.assertEqual(saved['binding'], 'f4eaee805ef77d70c4e322d1bd7a4a31fb9ad77d709798e1a555b21abb9b8132')
         channel = Channel.from_snapshot(saved['channel'])
         self.assertEqual(channel.binding, saved['binding'])
         self.assertEqual(Channel.from_snapshot(channel.snapshot()).binding, saved['binding'])
@@ -47,13 +48,13 @@ class CompatibilityTests(unittest.TestCase):
     def test_removed_layers_fail_with_a_specific_message_and_do_not_mutate(self):
         legacy = fixture('oz5-legacy-channel.json')
         before = json.dumps(legacy, sort_keys=True)
-        with self.assertRaisesRegex(Error, 'removed OZ/3-5 feature: vectors, form'):
+        with self.assertRaisesRegex(Error, r'^uses removed OZ/3-5 feature vectors; re-export as OZ/2$'):
             Channel.from_snapshot(legacy)
         self.assertEqual(json.dumps(legacy, sort_keys=True), before)
         oz2 = fixture('oz2-channel.json')['channel']
         for key, value in [('vectors', True), ('basis', [{'code': 'r', 'ref': 1, 'text': None}]),
                            ('form', [{'code': 'r', 'ref': 0, 'text': None}])]:
-            with self.subTest(key=key), self.assertRaisesRegex(Error, 'removed OZ/3-5 feature: ' + key):
+            with self.subTest(key=key), self.assertRaisesRegex(Error, f'^uses removed OZ/3-5 feature {key}; re-export as OZ/2$'):
                 Channel.from_snapshot(dict(oz2, **{key: value}))
 
     def test_removed_wire_syntax_is_rejected(self):

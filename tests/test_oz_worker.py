@@ -7,8 +7,16 @@ import unittest
 
 from oz import Error
 from oz_runtime import Inbox
-from oz_worker import AdapterError, RESPONSE_CONTRACT, StdioAdapter, Worker, loads, process_host, validate_reply
+from oz_batch import REPLY_CONTRACTS
+from oz_reply import validate_response
+from oz_worker import AdapterError, StdioAdapter, Worker, loads, process_host
 from test_oz2 import extended
+
+CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/7'], 'reply_modes': ['rows', 'lanes']}
+
+
+def rows(request, results):
+    return {'reply': {'q': request['receipt'], 'results': results}}
 
 
 class WorkerTests(unittest.TestCase):
@@ -22,7 +30,7 @@ class WorkerTests(unittest.TestCase):
         self.box.post(self.ch, mid, wire, binding=self.ch.binding, **kwargs)
 
     def worker(self, adapter, **kwargs):
-        return Worker(self.box, self.ch, adapter, counters=[len], max_tokens=10000, **kwargs)
+        return Worker(self.box, self.ch, adapter, counters=[len], max_tokens=10000, capabilities=CAPS, **kwargs)
 
     def test_callable_adapter_receives_measured_prompt_and_exact_ids(self):
         self.post('one')
@@ -30,16 +38,16 @@ class WorkerTests(unittest.TestCase):
         seen = []
         def adapter(request):
             seen.append(request)
-            self.assertEqual(request['estimated_input_tokens'], [len(request['prompt'])])
-            self.assertIn(RESPONSE_CONTRACT, request['prompt'])
-            return {'results': [[i, 0, '12.50 ± 0.02 mm; method unknown.'] for i in request['ids']],
-                    'usage': {'input_tokens': 500, 'output_tokens': 30, 'cached_input_tokens': 100}}
+            self.assertEqual(request['prompt_tokens'], [len(request['prompt'])])
+            self.assertIn(REPLY_CONTRACTS['rows'], request['prompt'])
+            return dict(rows(request, [[i, 0, '12.50 ± 0.02 mm; method unknown.'] for i in request['ids']]),
+                        usage={'input_tokens': 500, 'output_tokens': 30, 'cached_input_tokens': 100})
         result = self.worker(adapter).run_once()
         self.assertEqual(result['status'], 'received')
         self.assertEqual(len(seen), 1)
         self.assertEqual(self.box.stats(), {'done': 2})
         self.assertEqual(self.box.inspect('one')['result'], '12.50 ± 0.02 mm; method unknown.')
-        self.assertEqual(self.box.runs()[0]['report']['provider_reported_usage']['input_tokens'], 500)
+        self.assertEqual(self.box.runs()[0]['report']['usage']['input_tokens'], 500)
         self.assertEqual(self.worker(adapter).run_once()['status'], 'idle')
         self.assertEqual(len(seen), 1)
 
@@ -50,8 +58,8 @@ class WorkerTests(unittest.TestCase):
         def adapter(r):
             calls.append(r['ids'])
             if len(calls) == 1:
-                return {'results': [['one', 0, 'done'], ['two', 1, 'retry later']]}
-            return {'results': [['two', 0, 'done']]}
+                return rows(r, [['one', 0, 'done'], ['two', 1, 'retry later']])
+            return rows(r, [['two', 0, 'done']])
         worker = self.worker(adapter, retry_delay=5)
         worker.run_once()
         self.assertEqual(worker.run_once()['status'], 'idle')
@@ -64,8 +72,7 @@ class WorkerTests(unittest.TestCase):
     def test_invalid_response_never_unlocks_dependencies(self):
         self.post('one')
         self.post('two', after=['one'])
-        response = {'results': [['other', 0, 'wrong id']]}
-        result = self.worker(lambda r: response).run_once()
+        result = self.worker(lambda r: rows(r, [['other', 0, 'wrong id']])).run_once()
         self.assertEqual(result['status'], 'adapter_error')
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
         self.assertEqual(self.box.inspect('two')['attempts'], 0)
@@ -82,7 +89,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_permanent_outcome_requires_explicit_requeue(self):
         self.post()
-        worker = self.worker(lambda r: {'results': [['one', 2, 'unsupported request']]})
+        worker = self.worker(lambda r: rows(r, [['one', 2, 'unsupported request']]))
         worker.run_once()
         self.assertEqual(self.box.inspect('one')['state'], 'failed')
         self.assertEqual(worker.run_once()['status'], 'idle')
@@ -104,19 +111,22 @@ class WorkerTests(unittest.TestCase):
                 loads(text)
 
     def test_invalid_or_partial_replies_and_usage_are_rejected(self):
-        cases = [None, {}, {'results': []}, {'results': [['one', True, 'x']]},
-                 {'results': [['one', 0, '']]}, {'results': [['one', 0, 'x'], ['one', 0, 'x']]},
-                 {'results': [['one', 0, 'x']], 'usage': {'input_tokens': -1}},
-                 {'results': [['one', 0, 'x']], 'usage': {'output_tokens': True}},
-                 {'results': [['one', 0, 'x']], 'secret': 'ignored?'}]
+        q = '0123456789abcdef'
+        good = {'q': q, 'results': [['one', 0, 'x']]}
+        cases = [None, {}, {'reply': {'q': q, 'results': []}}, {'reply': {'q': q, 'results': [['one', True, 'x']]}},
+                 {'reply': {'q': q, 'results': [['one', 0, '']]}},
+                 {'reply': {'q': q, 'results': [['one', 0, 'x'], ['one', 0, 'x']]}},
+                 {'reply': good, 'usage': {'input_tokens': -1}}, {'reply': good, 'usage': {'output_tokens': True}},
+                 {'reply': good, 'secret': 'ignored?'}, good]
+        self.assertEqual(validate_response({'reply': good}, ('one',), q, 'rows'), ({'one': ('ok', 'x')}, {}))
         for value in cases:
             with self.subTest(value=value), self.assertRaises(Error):
-                validate_reply(value, ('one',))
+                validate_response(value, ('one',), q, 'rows')
 
     def test_stdio_adapter_real_process_round_trip_and_unicode(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"results":[[i,0,"12.50 ± 0.02 mm"] for i in r["ids"]]},sys.stdout)')
-        adapter = StdioAdapter((sys.executable, '-c', script), timeout=10)
+                  'json.dump({"reply":{"q":r["receipt"],"results":[[i,0,"12.50 ± 0.02 mm"] for i in r["ids"]]}},sys.stdout)')
+        adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post()
         result = self.worker(adapter, timeout=10).run_once()
         self.assertEqual(result['status'], 'received')

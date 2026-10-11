@@ -9,7 +9,7 @@ import uuid
 from oz import Channel, Error
 from oz_batch import render
 from oz_workspace import Workspace, channel_from_files, demo, initialize, read_utf8
-from oz_worker import RESPONSE_CONTRACT, process_host
+from oz_worker import process_host
 
 
 def read_json(path):
@@ -35,7 +35,8 @@ def main(argv=None):
         if command in {'pack', 'compile'}:
             p.add_argument('--messages', type=Path, required=True, help='JSON [[id,frame],...]')
             p.add_argument('--encoding', action='append', help='tiktoken encoding; repeat for multiple targets')
-            p.add_argument('--worker', action='store_true', help='Include the Worker response contract in token cost')
+            p.add_argument('--reply-mode', choices=['rows', 'lanes'], default='rows',
+                           help='Reply contract charged in the packet (OZ/7)')
         if command == 'pack':
             p.add_argument('--dictionary', choices=['off', 'auto', 'on'], default='off',
                            help='Per-call dictionary negotiation (default: off)')
@@ -71,8 +72,8 @@ def main(argv=None):
                            help='Per-call dictionary negotiation (default: off)')
             p.add_argument('--min-savings', type=int, default=0,
                            help='Minimum token savings required for auto dictionary selection (default: 0)')
-            p.add_argument('--reply-mode', choices=['rows', 'lanes'], default='rows',
-                           help='Use OZ/6 ordered result lanes only with a compatible adapter')
+            p.add_argument('--reply-mode', choices=['rows', 'lanes', 'auto'], default='rows',
+                           help='auto: rows below 16 packed jobs, lanes from 16 (adapter must support both)')
         if command == 'plan':
             p.add_argument('--show-prompt', action='store_true')
         if command == 'run':
@@ -124,17 +125,16 @@ def main(argv=None):
                 raise Error('token counting requires: pip install "akor-protocol[benchmark]"') from None
             encodings = [tiktoken.get_encoding(n) for n in (args.encoding or ['o200k_base'])]
             counters = [lambda s, enc=enc: len(enc.encode(s, disallowed_special=())) for enc in encodings]
-            contract = RESPONSE_CONTRACT if args.worker else ''
             if args.command == 'compile':
                 from oz_compiler import compile_messages
                 if args.out.exists():
                     raise Error('compiler output directory must not exist')
                 result = compile_messages(channel, read_json(args.messages), counters=counters,
-                                          max_macros=args.max_macros, response_contract=contract)
+                                          max_macros=args.max_macros, reply_mode=args.reply_mode)
                 report = {'changed': result.changed, 'old_binding': channel.binding,
                           'binding': result.channel.binding, 'encodings': [e.name for e in encodings],
                           'before_tokens': result.baseline.tokens, 'after_tokens': result.packet.tokens,
-                          'selected_mode': result.packet.mode, 'worker_contract_included': args.worker,
+                          'selected_mode': result.packet.mode, 'reply_mode': args.reply_mode,
                           'added_macros': [m.code for m in result.added_macros],
                           'search': {'spellings_per_frame': 32, 'templates_per_round': 8,
                                      'code_trials_per_template': 2, 'max_new_macros': args.max_macros},
@@ -151,14 +151,13 @@ def main(argv=None):
                 print(json.dumps(dict(report, directory=str(args.out.resolve())), ensure_ascii=False, indent=2))
                 return 0
             packet = render(channel, read_json(args.messages), max_tokens=args.max_tokens,
-                            counters=counters, response_contract=contract,
-                            encoding=args.dictionary, min_savings=args.min_savings)
-            value = {'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
+                            counters=counters, encoding=args.dictionary, min_savings=args.min_savings,
+                            reply_mode=args.reply_mode)
+            value = {'language': 'OZ/7', 'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
                      'binding': packet.binding, 'wires': packet.wires,
-                     'alternatives': dict(packet.alternatives),
-                     'dictionary': args.dictionary, 'encoding': getattr(packet, 'encoding', args.dictionary),
-                     'json_tokens': getattr(packet, 'json_tokens', None),
-                     'saved_tokens': getattr(packet, 'saved_tokens', None)}
+                     'alternatives': dict(packet.alternatives), 'encoding': packet.encoding,
+                     'reply_mode': packet.reply_mode, 'json_tokens': packet.json_tokens,
+                     'saved_tokens': packet.saved_tokens}
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, TypeError, sqlite3.Error) as exc:
@@ -201,7 +200,9 @@ def workspace_command(args):
                                   encoding=args.dictionary, min_savings=args.min_savings)
             value = {'ids': [j.id for j in plan.jobs], 'deferred': list(plan.deferred),
                      'mode': plan.packet.mode if plan.packet else None,
+                     'reply_mode': plan.packet.reply_mode if plan.packet else None,
                      'input_tokens': list(plan.packet.tokens) if plan.packet else [],
+                     'saved_tokens': list(plan.packet.saved_tokens or []) if plan.packet else [],
                      'encodings': workspace.config['encodings'], 'attempts_consumed': 0}
             if args.show_prompt:
                 value['prompt'] = plan.packet.text if plan.packet else ''

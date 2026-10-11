@@ -11,7 +11,8 @@ import uuid
 from oz import Atom, Channel, Codebook, Error, Macro, Reference
 from oz_batch import valid_id
 from oz_runtime import Inbox
-from oz_worker import RESPONSE_CONTRACT, StdioAdapter, Worker, loads, process_host
+from oz_reply import new_receipt
+from oz_worker import StdioAdapter, Worker, loads, process_host
 
 
 def token_counters(names):
@@ -81,7 +82,9 @@ def initialize(path: Path, channel: Channel | None = None):
         'oz plan\noz status\n```\n\n'
         'Gerçek ajan için JSON stdin/stdout adaptörünü açıkça seç:\n\n'
         '`oz run --adapter adapter.json`\n\n'
-        'adapter.json: {"argv":["python","worker.py"]}\n'
+        'adapter.json: {"argv":["python","worker.py"],"protocols":["oz.adapter/3"],'
+        '"languages":["OZ/7"],"reply_modes":["rows","lanes"]}\n'
+        'Adaptör istemi modele iletir, {"reply":...,"usage":...} döndürür (OZ7.md).\n'
         'Komut çalışma dizini adaptör dosyasının klasörüdür. oz init hiçbir adaptör çalıştırmaz.\n'
         'oz.json içinde kanallar, hedef tokenizer, girdi bütçesi ve paket büyüklüğü bulunur.\n'
         'Yeni kaynak/sözlük için yeni kanal ekle: oz channel-add yeni kanal.json\n'
@@ -150,32 +153,31 @@ class Workspace:
             if temp.exists():
                 temp.unlink()
 
-    def plan(self, box, name='worker', *, max_tokens=None, reply_mode='rows'):
-        if reply_mode not in ('rows', 'lanes'):
-            raise Error('reply_mode must be rows or lanes')
-        contract = RESPONSE_CONTRACT
-        if reply_mode == 'lanes':
-            from oz_reply import reply_contract
-            contract = reply_contract(uuid.uuid4().hex[:16])
+    def plan(self, box, name='worker', *, max_tokens=None, reply_mode='rows', encoding='off', min_savings=0):
+        # A preview gets its own receipt; the real run is planned and measured again.
         return box.plan(self.channel(name), counters=self.counters(), limit=self.config['batch_size'],
                         max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                        response_contract=contract)
+                        encoding=encoding, min_savings=min_savings, reply_mode=reply_mode,
+                        receipt=new_receipt())
 
-    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, reply_mode='rows'):
+    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, reply_mode='rows',
+            encoding='off', min_savings=0):
         if type(max_calls) is not int or not 1 <= max_calls <= 100:
             raise Error('max_calls must be 1..100')
         adapter_path = adapter_path.resolve()
         spec = loads(adapter_path.read_text(encoding='utf-8'))
-        if not isinstance(spec, dict) or set(spec) != {'argv'} or not isinstance(spec['argv'], list):
-            raise Error('Adaptör dosyası yalnız argv listesi içermeli')
-        adapter = StdioAdapter(tuple(spec['argv']), cwd=adapter_path.parent, timeout=timeout)
+        if (not isinstance(spec, dict) or set(spec) != {'argv', 'protocols', 'languages', 'reply_modes'}
+                or not isinstance(spec['argv'], list)):
+            raise Error('Adaptör dosyası argv, protocols, languages ve reply_modes içermeli (oz.adapter/3)')
+        adapter = StdioAdapter(tuple(spec['argv']), cwd=adapter_path.parent, timeout=timeout,
+                               capabilities={k: spec[k] for k in ('protocols', 'languages', 'reply_modes')})
         results = []
         counters = self.counters()
         with self.inbox() as box:
             worker = Worker(box, self.channel(name), adapter, counters=counters, owner=name,
                             batch_size=self.config['batch_size'], timeout=timeout,
                             max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                            reply_mode=reply_mode)
+                            reply_mode=reply_mode, encoding=encoding, min_savings=min_savings)
             for _ in range(max_calls):
                 result = worker.run_once()
                 results.append(result)
@@ -185,16 +187,18 @@ class Workspace:
 
 
 DEMO_SCRIPT = (
-    'import json,sys; r=json.load(sys.stdin); '
-    'json.dump({"results":[[i,0,"DEMO receipt only; no model or task execution."] for i in r["ids"]]},sys.stdout)'
+    'import json,sys; r=json.load(sys.stdin); t="DEMO receipt only; no model or task execution."; '
+    'json.dump({"reply":{"q":r["receipt"],"results":[[i,0,t] for i in r["ids"]]} if r["reply_mode"]=="rows" '
+    'else {"q":r["receipt"],"s":0,"v":[t for i in r["ids"]]}},sys.stdout)'
 )
+DEMO_CAPABILITIES = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/7'], 'reply_modes': ['rows', 'lanes']}
 
 
 def demo(path: Path):
     counters = token_counters(['o200k_base'])
     workspace = initialize(path)
     worker, reviewer = workspace.channel(), workspace.channel('reviewer')
-    adapter = StdioAdapter((sys.executable, '-c', DEMO_SCRIPT), timeout=10)
+    adapter = StdioAdapter((sys.executable, '-c', DEMO_SCRIPT), timeout=10, capabilities=DEMO_CAPABILITIES)
     with workspace.inbox() as box:
         box.post(worker, 'read', 'r1', binding=worker.binding)
         box.post(worker, 'propose', 'P', binding=worker.binding)

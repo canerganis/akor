@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from oz import Channel, Error, Reference
+from oz_batch import REPLY_CONTRACTS
 from oz_compiler import compile_messages
 from oz_cli import main
 
@@ -35,16 +36,15 @@ class CompilerTests(unittest.TestCase):
         ch = channel()
         wire = ''.join(f'r{n}a{n}t30' for n in range(1, 17))
         messages = [(f'm{i}', ''.join(f'r{n}a{n}t30' for n in range(1 + i, 17 + i))) for i in range(4)]
-        result = compile_messages(ch, messages, counters=[len], max_macros=2,
-                                  response_contract='KEEP EXACT OUTPUT CONTRACT', additional_context='EXACT PREDECESSOR')
+        result = compile_messages(ch, messages, counters=[len], max_macros=2, reply_mode='lanes')
         self.assertTrue(result.changed)
         self.assertTrue(result.added_macros)
         self.assertLess(result.packet.tokens[0], result.baseline.tokens[0])
         self.assertEqual(result.channel.scope[-1], ch.scope[-1] + 1)
         for (mid, encoded), (_, original) in zip(result.messages, messages):
             self.assertEqual(result.channel.accept(encoded, binding=result.channel.binding), ch.accept(original, binding=ch.binding))
-        self.assertIn('KEEP EXACT OUTPUT CONTRACT', result.packet.text)
-        self.assertIn('EXACT PREDECESSOR', result.packet.text)
+        self.assertIn(REPLY_CONTRACTS['lanes'], result.packet.text)
+        self.assertTrue(result.packet.mode.startswith('oz/'))
         self.assertIn('12.50 ± 0.02 mm', result.packet.text)
         with self.assertRaises(Error):
             ch.accept(result.messages[0][1], binding=result.channel.binding)
@@ -85,12 +85,12 @@ class CompilerTests(unittest.TestCase):
             (root / 'in.json').write_text(json.dumps(ch.snapshot()), encoding='utf-8')
             (root / 'messages.json').write_text(json.dumps(messages), encoding='utf-8')
             args = ['compile', '--channel', str(root / 'in.json'), '--messages', str(root / 'messages.json'),
-                    '--out', str(root / 'out'), '--worker', '--max-macros', '1']
+                    '--out', str(root / 'out'), '--max-macros', '1']
             out = io.StringIO()
             with contextlib.redirect_stdout(out):
                 self.assertEqual(main(args), 0)
             report = json.loads(out.getvalue())
-            self.assertTrue(report['worker_contract_included'])
+            self.assertEqual(report['reply_mode'], 'rows')
             prompt = (root / 'out/prompt.txt').read_bytes().decode('utf-8')
             self.assertEqual(len(prompt), report['after_tokens'][0])
             compiled = Channel.from_snapshot(json.loads((root / 'out/channel.json').read_text(encoding='utf-8')))

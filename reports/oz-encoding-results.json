@@ -1,0 +1,960 @@
+{
+  "kind": "offline_oz_encoding_actual_input_tokens",
+  "package": "0.8.0",
+  "actual_model_calls": 0,
+  "actual_tool_executions": 0,
+  "tiktoken_version": "0.14.0",
+  "encodings": [
+    "o200k_base",
+    "cl100k_base"
+  ],
+  "measurement": "Exact complete receiver-input text passed to each tokenizer; includes shared context and candidate dictionary, excludes provider framing/output/reasoning.",
+  "fixture_source": "Existing OZ/2 synthetic accounting scenarios in oz2_benchmark.py; the task data is synthetic.",
+  "gate": {
+    "off": "compact JSON candidates only",
+    "auto": "exact input comparison; no tokenizer regression; at least one strict saving; each saving meets min_savings=0",
+    "on": "OZ/1 and OZ/2 dictionary candidates only"
+  },
+  "batch_sizes": [
+    1,
+    4,
+    8,
+    16,
+    32,
+    64
+  ],
+  "max_batch_size": 64,
+  "break_even_by_fixture": {
+    "code": {
+      "first_batch_size_auto_selecting_dictionary": 32,
+      "interpretation": "Fixture-specific observed crossover; no universal batch threshold."
+    },
+    "materials": {
+      "first_batch_size_auto_selecting_dictionary": 32,
+      "interpretation": "Fixture-specific observed crossover; no universal batch threshold."
+    },
+    "data": {
+      "first_batch_size_auto_selecting_dictionary": 32,
+      "interpretation": "Fixture-specific observed crossover; no universal batch threshold."
+    },
+    "translation": {
+      "first_batch_size_auto_selecting_dictionary": 32,
+      "interpretation": "Fixture-specific observed crossover; no universal batch threshold."
+    },
+    "support": {
+      "first_batch_size_auto_selecting_dictionary": 32,
+      "interpretation": "Fixture-specific observed crossover; no universal batch threshold."
+    },
+    "planning": {
+      "first_batch_size_auto_selecting_dictionary": 32,
+      "interpretation": "Fixture-specific observed crossover; no universal batch threshold."
+    }
+  },
+  "cases": [
+    {
+      "scenario": "code",
+      "batch_size": 1,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 550,
+        "cl100k_base": 550
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 664,
+        "cl100k_base": 662
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 550,
+        "cl100k_base": 550
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "code",
+      "batch_size": 4,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 589,
+        "cl100k_base": 589
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 690,
+        "cl100k_base": 685
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 589,
+        "cl100k_base": 589
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "code",
+      "batch_size": 8,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 671,
+        "cl100k_base": 671
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 740,
+        "cl100k_base": 731
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 671,
+        "cl100k_base": 671
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "code",
+      "batch_size": 16,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 808,
+        "cl100k_base": 808
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 826,
+        "cl100k_base": 810
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 808,
+        "cl100k_base": 808
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "code",
+      "batch_size": 32,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1082,
+        "cl100k_base": 1082
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 940,
+        "cl100k_base": 938
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 940,
+        "cl100k_base": 938
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 142,
+        "cl100k_base": 144
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "code",
+      "batch_size": 64,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1630,
+        "cl100k_base": 1630
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 1164,
+        "cl100k_base": 1162
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 1164,
+        "cl100k_base": 1162
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 466,
+        "cl100k_base": 468
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "materials",
+      "batch_size": 1,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 563,
+        "cl100k_base": 563
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 677,
+        "cl100k_base": 675
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 563,
+        "cl100k_base": 563
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "materials",
+      "batch_size": 4,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 602,
+        "cl100k_base": 602
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 703,
+        "cl100k_base": 698
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 602,
+        "cl100k_base": 602
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "materials",
+      "batch_size": 8,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 684,
+        "cl100k_base": 684
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 753,
+        "cl100k_base": 744
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 684,
+        "cl100k_base": 684
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "materials",
+      "batch_size": 16,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 821,
+        "cl100k_base": 821
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 839,
+        "cl100k_base": 823
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 821,
+        "cl100k_base": 821
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "materials",
+      "batch_size": 32,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1095,
+        "cl100k_base": 1095
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 953,
+        "cl100k_base": 951
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 953,
+        "cl100k_base": 951
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 142,
+        "cl100k_base": 144
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "materials",
+      "batch_size": 64,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1643,
+        "cl100k_base": 1643
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 1177,
+        "cl100k_base": 1175
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 1177,
+        "cl100k_base": 1175
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 466,
+        "cl100k_base": 468
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "data",
+      "batch_size": 1,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 558,
+        "cl100k_base": 558
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 672,
+        "cl100k_base": 670
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 558,
+        "cl100k_base": 558
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "data",
+      "batch_size": 4,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 597,
+        "cl100k_base": 597
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 698,
+        "cl100k_base": 693
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 597,
+        "cl100k_base": 597
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "data",
+      "batch_size": 8,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 679,
+        "cl100k_base": 679
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 748,
+        "cl100k_base": 739
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 679,
+        "cl100k_base": 679
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "data",
+      "batch_size": 16,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 816,
+        "cl100k_base": 816
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 834,
+        "cl100k_base": 818
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 816,
+        "cl100k_base": 816
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "data",
+      "batch_size": 32,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1090,
+        "cl100k_base": 1090
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 948,
+        "cl100k_base": 946
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 948,
+        "cl100k_base": 946
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 142,
+        "cl100k_base": 144
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "data",
+      "batch_size": 64,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1638,
+        "cl100k_base": 1638
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 1172,
+        "cl100k_base": 1170
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 1172,
+        "cl100k_base": 1170
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 466,
+        "cl100k_base": 468
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "translation",
+      "batch_size": 1,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 560,
+        "cl100k_base": 561
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 674,
+        "cl100k_base": 673
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 560,
+        "cl100k_base": 561
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "translation",
+      "batch_size": 4,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 599,
+        "cl100k_base": 600
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 700,
+        "cl100k_base": 696
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 599,
+        "cl100k_base": 600
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "translation",
+      "batch_size": 8,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 681,
+        "cl100k_base": 682
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 750,
+        "cl100k_base": 742
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 681,
+        "cl100k_base": 682
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "translation",
+      "batch_size": 16,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 818,
+        "cl100k_base": 819
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 836,
+        "cl100k_base": 821
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 818,
+        "cl100k_base": 819
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "translation",
+      "batch_size": 32,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1092,
+        "cl100k_base": 1093
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 950,
+        "cl100k_base": 949
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 950,
+        "cl100k_base": 949
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 142,
+        "cl100k_base": 144
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "translation",
+      "batch_size": 64,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1640,
+        "cl100k_base": 1641
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 1174,
+        "cl100k_base": 1173
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 1174,
+        "cl100k_base": 1173
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 466,
+        "cl100k_base": 468
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "support",
+      "batch_size": 1,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 553,
+        "cl100k_base": 554
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 667,
+        "cl100k_base": 666
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 553,
+        "cl100k_base": 554
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "support",
+      "batch_size": 4,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 592,
+        "cl100k_base": 593
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 693,
+        "cl100k_base": 689
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 592,
+        "cl100k_base": 593
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "support",
+      "batch_size": 8,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 674,
+        "cl100k_base": 675
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 743,
+        "cl100k_base": 735
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 674,
+        "cl100k_base": 675
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "support",
+      "batch_size": 16,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 811,
+        "cl100k_base": 812
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 829,
+        "cl100k_base": 814
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 811,
+        "cl100k_base": 812
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "support",
+      "batch_size": 32,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1085,
+        "cl100k_base": 1086
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 943,
+        "cl100k_base": 942
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 943,
+        "cl100k_base": 942
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 142,
+        "cl100k_base": 144
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "support",
+      "batch_size": 64,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1633,
+        "cl100k_base": 1634
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 1167,
+        "cl100k_base": 1166
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 1167,
+        "cl100k_base": 1166
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 466,
+        "cl100k_base": 468
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "planning",
+      "batch_size": 1,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 561,
+        "cl100k_base": 563
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 675,
+        "cl100k_base": 675
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 561,
+        "cl100k_base": 563
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "planning",
+      "batch_size": 4,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 600,
+        "cl100k_base": 602
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 701,
+        "cl100k_base": 698
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 600,
+        "cl100k_base": 602
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "planning",
+      "batch_size": 8,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 682,
+        "cl100k_base": 684
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 751,
+        "cl100k_base": 744
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 682,
+        "cl100k_base": 684
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "planning",
+      "batch_size": 16,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 819,
+        "cl100k_base": 821
+      },
+      "dictionary_mode": "oz_base/tuples",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 837,
+        "cl100k_base": 823
+      },
+      "auto_mode": "json/tuples",
+      "auto_actual_input_tokens": {
+        "o200k_base": 819,
+        "cl100k_base": 821
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 0,
+        "cl100k_base": 0
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "planning",
+      "batch_size": 32,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1093,
+        "cl100k_base": 1095
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 951,
+        "cl100k_base": 951
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 951,
+        "cl100k_base": 951
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 142,
+        "cl100k_base": 144
+      },
+      "all_rows_round_trip_exact": false
+    },
+    {
+      "scenario": "planning",
+      "batch_size": 64,
+      "max_batch_size": 64,
+      "json_mode": "json/tuples",
+      "json_actual_input_tokens": {
+        "o200k_base": 1641,
+        "cl100k_base": 1643
+      },
+      "dictionary_mode": "oz_base/tuples+table",
+      "dictionary_actual_input_tokens": {
+        "o200k_base": 1175,
+        "cl100k_base": 1175
+      },
+      "auto_mode": "oz_base/tuples+table",
+      "auto_actual_input_tokens": {
+        "o200k_base": 1175,
+        "cl100k_base": 1175
+      },
+      "auto_savings_vs_json": {
+        "o200k_base": 466,
+        "cl100k_base": 468
+      },
+      "all_rows_round_trip_exact": false
+    }
+  ],
+  "limitations": [
+    "Synthetic offline tokenizer measurements are not provider usage, API cost, model behavior, or task-success evidence.",
+    "No prompt/output/reasoning tokens, provider envelope, retries, or cache billing are measured.",
+    "Break-even varies by fixture, batch size, full context, and tokenizer; no universal cutoff is inferred."
+  ]
+}

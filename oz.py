@@ -301,12 +301,10 @@ class Channel:
 
     @classmethod
     def from_snapshot(cls, value: dict) -> Channel:
-        removed = [key for key in ('vectors', 'basis', 'form')
-                   if isinstance(value, dict) and value.get(key) not in (None, False, [])]
-        if removed:
-            # Stripping these would change the binding and orphan queued wires.
-            raise Error('channel uses removed OZ/3-5 feature: ' + ', '.join(removed)
-                        + '; re-export it as an OZ/2 channel')
+        for key in ('vectors', 'basis', 'form'):
+            if isinstance(value, dict) and value.get(key) not in (None, False, []):
+                # Stripping it would change the binding and orphan queued wires.
+                raise Error(f'uses removed OZ/3-5 feature {key}; re-export as OZ/2')
         try:
             args = {k: v for k, v in dict(value).items() if k not in {'vectors', 'basis', 'form'}}
             args['references'] = [Reference(**r) for r in args['references']]

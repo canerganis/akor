@@ -60,12 +60,12 @@ def _templates(frames, existing, *, limit):
 def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
                      counters: Iterable[Callable[[str], int]], max_macros: int = 4,
                      template_limit: int = 8, candidate_limit: int = 32,
-                     response_contract: str = '', additional_context: str = '') -> Compilation:
+                     reply_mode: str = 'rows') -> Compilation:
     """Choose only dictionary changes reducing complete measured receiver input.
 
     Every provided tokenizer must be no worse than the current candidate and
-    at least one must improve. Includes grammar, definitions, references, IDs,
-    supplied response contract and predecessor context. This is calibration on
+    at least one must improve. Measures complete OZ/7 dictionary packets
+    (encoding='on'), including definitions, references, IDs and reply contract. This is calibration on
     the supplied corpus, not a prediction of unseen traffic or task accuracy.
     Returns a NEW channel revision only on improvement; never mutates an inbox.
     """
@@ -78,8 +78,7 @@ def compile_messages(channel: Channel, messages: Iterable[tuple[str, str]], *,
     if not meter.counters:
         raise Error('compiler requires actual target token counters')
     cached = tuple(lambda text, i=i: meter.counts(text)[i] for i in range(len(meter.counters)))
-    options = dict(counters=cached, candidate_limit=candidate_limit,
-                   response_contract=response_contract, additional_context=additional_context)
+    options = dict(counters=cached, candidate_limit=candidate_limit, encoding='on', reply_mode=reply_mode)
     # Render first to validate the public input shape and IDs before mining.
     baseline = render(channel, messages, **options)
     frames = tuple(channel.accept(w, binding=channel.binding) for _, w in messages)
