@@ -1,0 +1,139 @@
+{
+  "package": "0.4.0",
+  "kind": "offline_workflow_with_real_stdio_and_tokenizer",
+  "tiktoken_version": "0.14.0",
+  "encoding": "o200k_base",
+  "input_budget_per_batch": 350,
+  "work_jobs": 20,
+  "work_batches": 3,
+  "review_input_budget": 2048,
+  "predecessor_outputs_included": true,
+  "work_reports": [
+    {
+      "mode": "json/tuples",
+      "estimated_input_tokens": [
+        350
+      ],
+      "adapter_calls": 1,
+      "provider_reported_usage": {},
+      "status": "received",
+      "wall_seconds": 0.063,
+      "ids": [
+        "m0",
+        "m1",
+        "m2",
+        "m3",
+        "m4",
+        "m5",
+        "m6"
+      ],
+      "outcomes": {
+        "m0": "ok",
+        "m1": "ok",
+        "m2": "ok",
+        "m3": "retry",
+        "m4": "ok",
+        "m5": "ok",
+        "m6": "ok"
+      }
+    },
+    {
+      "mode": "json/tuples",
+      "estimated_input_tokens": [
+        350
+      ],
+      "adapter_calls": 1,
+      "provider_reported_usage": {},
+      "status": "received",
+      "wall_seconds": 0.063,
+      "ids": [
+        "m3",
+        "m7",
+        "m8",
+        "m9",
+        "m10",
+        "m11",
+        "m12"
+      ],
+      "outcomes": {
+        "m3": "ok",
+        "m7": "ok",
+        "m8": "ok",
+        "m9": "ok",
+        "m10": "ok",
+        "m11": "ok",
+        "m12": "ok"
+      }
+    },
+    {
+      "mode": "json/tuples",
+      "estimated_input_tokens": [
+        350
+      ],
+      "adapter_calls": 1,
+      "provider_reported_usage": {},
+      "status": "received",
+      "wall_seconds": 0.063,
+      "ids": [
+        "m13",
+        "m14",
+        "m15",
+        "m16",
+        "m17",
+        "m18",
+        "m19"
+      ],
+      "outcomes": {
+        "m13": "ok",
+        "m14": "ok",
+        "m15": "ok",
+        "m16": "ok",
+        "m17": "ok",
+        "m18": "ok",
+        "m19": "ok"
+      }
+    }
+  ],
+  "review_report": {
+    "mode": "brief/objects",
+    "estimated_input_tokens": [
+      631
+    ],
+    "adapter_calls": 1,
+    "provider_reported_usage": {},
+    "status": "received",
+    "wall_seconds": 0.078,
+    "ids": [
+      "review"
+    ],
+    "outcomes": {
+      "review": "ok"
+    }
+  },
+  "host_report": {
+    "status": "host_recorded",
+    "model_calls": 0,
+    "adapter_calls": 0,
+    "ids": [
+      "notice"
+    ]
+  },
+  "actual_model_calls": 0,
+  "stdio_adapter_calls": 4,
+  "retried_job": "m3",
+  "retry_attempts": 2,
+  "other_work_attempts": 1,
+  "oversized_job_attempts": 0,
+  "oversized_payload_preserved": true,
+  "review_waited_for_all_dependencies": true,
+  "reopen_preserved_results": true,
+  "states": {
+    "done": 22,
+    "pending": 1
+  },
+  "limitations": [
+    "Synthetic adapter acknowledges IDs; it does not perform or validate domain tasks.",
+    "Input budget includes the worker response contract, not provider system/tool framing.",
+    "No model speed, quality, billing or language-comprehension claim."
+  ]
+}

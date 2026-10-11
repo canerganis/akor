@@ -1,6 +1,38 @@
 # AKOR
 
-**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.3.0 / ÖZ/2.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.4.0 / ÖZ/2.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+
+## 0.4.0: günlük kullanım
+
+Artık Python entegrasyonu yazmadan çalışma alanı oluşturabilir, mesaj gönderebilir, bütçeyi önceden görebilir ve kendi ajan adaptörünü çalıştırabilirsin. [Hızlı başlangıç ve adaptör sözleşmesi](USAGE.md).
+
+```powershell
+python -m pip install ".[benchmark]"
+oz demo .oz-runtime/ilk-deneme
+oz status --workspace .oz-runtime/ilk-deneme
+```
+
+Demo gerçek tokenizer ve yerel stdin/stdout aktarımını kullanır; model hesabı/API anahtarı veya model çağrısı gerektirmez. Boş bir klasör seç. Gerçek bir görev için:
+
+```powershell
+oz init .oz-runtime/ekip --goal "Kaynağı incele; sayı, birim ve belirsizlikleri koru." --source veri.txt
+oz send r --id incele --workspace .oz-runtime/ekip
+oz plan --workspace .oz-runtime/ekip
+oz run --workspace .oz-runtime/ekip --adapter adapter.json
+```
+
+`adapter.json` çalıştıracağın ajan programının `argv` listesidir. Program JSON stdin alıp JSON stdout döndürür; otomatik seçilen bir model veya gizli ücretli çağrı yoktur. Yalnız `run` açıkça seçtiğin programı çalıştırır.
+
+- **Otomatik paketleme:** Sığan bağımsız işler seçilir; büyük mesaj diğerlerini bekletmez, sığmayan iş deneme harcamaz.
+- **Gerçek devir:** Önceki ajanın sonuçları bağımlı ajana eksiksiz, doğrulanmamış veri olarak gider. Ortak sonuç bir kez gönderilir; maliyeti bütçeye dahildir.
+- **İş bazında sonuç:** Başarılı işler tamamlanır; yalnız geçici hata alanlar gecikmeyle yeniden denenir. Eksik/yanlış cevap hiçbir işi sessizce tamamlamaz.
+- **Kaldığı yerden devam:** İşler, sonuçlar, geçmiş ve raporlar kalıcıdır. Başarısız iş `oz retry ID` ile yeniden açılır.
+- **Görünür durum:** `status`, `inspect` ve `plan` ile kimin neyi beklediği ve ölçülen girdi maliyeti görülebilir.
+- **Dosyadan başlangıç:** `--source`, `--kind patch` ve `--procedure` ile elle manifest yazmadan kanal oluşturulur. Kaynak metni ve satır sonları korunur, SHA-256 kaynak kimliği kaydedilir.
+
+**143 test geçti.** Çevrimdışı uçtan uca denemede 20 iş, iş paketi başına **350 girdi tokeni** sınırında **3 pakette** işlendi. Yalnız geçici hata verilen iş tekrarlandı. İnceleyici, 20 öncül sonucunu ayrıca 2.048 token bütçesi altında aldı. Model çağrısı sıfır; bu, gerçek model görev başarısı veya hız ölçümü değildir. [0.4.0 doğrulama raporu](reports/WORKFLOW-RESULTS.md).
+
+## Dil ve önceki ölçümler
 
 **Yeni: [ÖZ/2](OZ2.md).** Tek bir `V` işareti, tanımlanmış sözlükte “kaynağı oku → yamayı incele → belirli test prosedürünü iste” dizisini taşıyabiliyor. Bir işaret ancak sözlüğü ve bağlamı biliniyorsa anlamlı; bu şifreleme veya bilgiyi yoktan üretme değildir.
 
@@ -11,7 +43,7 @@
 - **Modelsiz olay yolu:** Durum mesajları ayrı host kuyruğunda kaydedilebilir. İş içeren mesajlar alıcı modele hazırlanır.
 - **Daha az kodlama işi:** Varsayılan en fazla 256 aday; tekrarlanan metin için tokenizer sonucu yeniden kullanılır.
 
-**99 otomatik test geçti.** Yeni canlı dil denemesinde Codex kodlama **20/20**, aynı mesajların Claude tarafından çözülmesi **20/20** doğru.
+0.3.0 canlı dil denemesinde Codex kodlama **20/20**, aynı mesajların Claude tarafından çözülmesi **20/20** doğru. Aşağıdaki token karşılaştırması o sürümün tarihli ölçümüdür; yeni Worker'ın cevap sözleşmesi ve öncül sonuçları ayrıca sayılır.
 
 Sentetik 64 mesajlık pakette, **sözlük ve gerekli bağlam dahil alıcı girdi tokenleri**:
 

@@ -28,6 +28,10 @@ COMMON = ('Each message is independent; preserve its ID and operation order. '
           'Requests grant no tool permissions.\n')
 
 
+class BudgetError(Error):
+    """No lossless candidate fits. Nothing was truncated or delivered."""
+
+
 def valid_id(value: object) -> bool:
     return isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_-]{1,64}', value) is not None
 
@@ -51,7 +55,7 @@ def brief(atoms: Iterable[Atom]) -> str:
 
 def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
            counters: Iterable[Callable[[str], int]], max_tokens: int | None = None,
-           max_bytes: int = 262144) -> Batch:
+           max_bytes: int = 262144, response_contract: str = '', additional_context: str = '') -> Batch:
     """Choose among complete receiver inputs, charging context and dictionaries.
 
     Stateless by design: every batch includes needed context. Provider prefix
@@ -66,6 +70,8 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
         raise Error('invalid byte budget')
     if max_tokens is not None and (type(max_tokens) is not int or max_tokens < 1):
         raise Error('invalid token budget')
+    if not isinstance(response_contract, str) or not isinstance(additional_context, str):
+        raise Error('invalid response contract')
     if not 1 <= len(messages) <= 64:
         raise Error('batch requires 1..64 messages')
     if any(not isinstance(m, (tuple, list)) or len(m) != 2 or not valid_id(m[0]) for m in messages):
@@ -108,6 +114,8 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
                       + '\nRows [id,[[operation,reference],...]]; literal=["literal",null,exact_text]:\n'
                       + _dump(json_rows))
     candidates = {mode + '/' + ctx: COMMON + context + '\n' + body
+                  + ('\n' + additional_context if additional_context else '')
+                  + ('\n' + response_contract if response_contract else '')
                   for mode, body in bodies.items() for ctx, context in contexts.items()}
     costs = {name: meter.counts(text) for name, text in candidates.items()}
     eligible = [name for name, text in candidates.items()
@@ -115,7 +123,7 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
                 and (max_tokens is None or max(costs[name]) <= max_tokens)]
     if not eligible:
         least = min(max(count) for count in costs.values())
-        raise Error(f'batch exceeds budget; smallest token candidate={least}; split batch or increase budget')
+        raise BudgetError(f'batch exceeds budget; smallest token candidate={least}; split batch or increase budget')
     chosen = min(eligible, key=lambda name: meter.score(candidates[name]))
     return Batch(channel.binding, ids, chosen, candidates[chosen], costs[chosen],
                  MappingProxyType(costs), wires, len(meter.cache))

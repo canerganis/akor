@@ -1,5 +1,7 @@
 # ÖZ/2: birleşik anlamlar ve kalıcı aktarım
 
+Güncel 0.4.0 çalışma alanı, otomatik paketleme, öncül sonuçlarının aktarımı ve Worker adaptörü için [kullanım kılavuzuna](USAGE.md) bak. Aşağıdaki dil sözleşmesi korunur; kuyruk API'si geriye uyumlu genişletildi.
+
 Paket 0.3.0. [ÖZ/1](OZ.md) atomları korunur; `r` artık prosedürü de kaynak olarak okuyabilir. Büyük ASCII harfleri yalnız kanal sözlüğünde tanımlanırsa makrodur. Makrosuz kanal `V` mesajını reddeder.
 
 ## Anlam makroları
