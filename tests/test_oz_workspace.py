@@ -60,12 +60,16 @@ class WorkspaceTests(unittest.TestCase):
             code, out, err = self.cli('plan', '--show-prompt', '--max-tokens', '10000', *base)
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['attempts_consumed'], 0)
-        self.assertIn('12.50 ± 0.02 mm', json.loads(out)['prompt'])
+        prompt = json.loads(out)['prompt']
+        self.assertIn('12.50 ± 0.02 mm', prompt)
         plan = json.loads(out)
-        self.assertEqual((plan['mode'], plan['ids']), ('frames', ['first']))
-        self.assertTrue(plan['prompt'].startswith('OZ/8\n'))
-        self.assertNotIn('first', plan['prompt'].split('\nDATA ')[1])
-        self.assertIn('\nDATA {"j":["r1>2"],"q":"', plan['prompt'])
+        self.assertEqual(plan['ids'], ['first'])
+        self.assertTrue(prompt.endswith('\n'))
+        body = json.loads(prompt.splitlines()[-1])
+        self.assertIn('j', body)
+        self.assertNotIn('first', prompt)
+        # Previews carry a real-shaped receipt so their token count matches a run.
+        self.assertRegex(body['q'], '^[0-9a-f]{16}$')
         code, out, err = self.cli('status', '--json', *base)
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['jobs'][0]['attempts'], 0)
@@ -143,7 +147,8 @@ class WorkspaceTests(unittest.TestCase):
     def test_cli_run_explicit_adapter_and_independent_restart(self):
         workspace = initialize(self.root)
         adapter = self.root / 'adapter.json'
-        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', DEMO_SCRIPT], **DEMO_CAPABILITIES}), encoding='utf8')
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', DEMO_SCRIPT],
+                                       **DEMO_CAPABILITIES}), encoding='utf8')
         base = ('--workspace', str(self.root))
         self.assertEqual(self.cli('send', 'P', '--id', 'first', *base)[0], 0)
         with patch('oz_workspace.token_counters', return_value=(len,)):
@@ -157,7 +162,8 @@ class WorkspaceTests(unittest.TestCase):
     def test_cli_failure_returns_nonzero_and_explains_safe_error_code(self):
         initialize(self.root)
         adapter = self.root / 'adapter.json'
-        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', 'print("not-json")'], **DEMO_CAPABILITIES}), encoding='utf8')
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', 'print("not-json")'],
+                                       **DEMO_CAPABILITIES}), encoding='utf8')
         base = ('--workspace', str(self.root))
         self.cli('send', 'P', '--id', 'first', '--max-attempts', '1', *base)
         with patch('oz_workspace.token_counters', return_value=(len,)):
@@ -178,8 +184,8 @@ class WorkspaceTests(unittest.TestCase):
         for spec in [{'argv': [sys.executable, '-c', DEMO_SCRIPT]},
                      dict(DEMO_CAPABILITIES, argv=argv, reply_modes=['lanes']),
                      {'argv': argv, 'protocols': ['oz.adapter/3']},
-                     {'argv': argv, 'protocols': ['oz.adapter/3'], 'languages': ['OZ/7']},
-                     {'argv': argv, 'protocols': ['oz.adapter/2'], 'languages': ['OZ/8']}]:
+                     {'argv': argv, 'protocols': ['oz.adapter/3'], 'languages': ['OZ/8']},
+                     {'argv': argv, 'protocols': ['oz.adapter/2'], 'languages': ['OZ/9']}]:
             with self.subTest(spec=spec):
                 adapter.write_text(json.dumps(spec), encoding='utf8')
                 with patch('oz_workspace.token_counters', return_value=(len,)):
@@ -188,8 +194,8 @@ class WorkspaceTests(unittest.TestCase):
         code, out, err = self.cli('inspect', 'first', *base)
         self.assertEqual(json.loads(out)['job']['attempts'], 0)
 
-    def test_demo_capabilities_are_oz_adapter_3_and_oz_8(self):
-        self.assertEqual(DEMO_CAPABILITIES, {'protocols': ['oz.adapter/3'], 'languages': ['OZ/8']})
+    def test_demo_capabilities_are_adapter3_and_oz9(self):
+        self.assertEqual(DEMO_CAPABILITIES, {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']})
 
     def test_removed_cli_options_and_commands_are_rejected(self):
         initialize(self.root)
@@ -205,7 +211,7 @@ class WorkspaceTests(unittest.TestCase):
                 self.cli(*args, *(base if args[0] in {'plan', 'run'} else ()))
             self.assertEqual(caught.exception.code, 2)
 
-    def test_context_option_selects_needed_or_full_in_plan_and_pack(self):
+    def test_context_option_selects_needed_or_full_in_plan(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
         self.cli('send', 'r1', '--id', 'first', *base)
@@ -228,9 +234,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['model_calls'], 0)
 
-    def test_demo_is_real_stdio_but_not_a_model_or_task_validation(self):
-        # Character counts here test orchestration only; published token counts
-        # use real tiktoken separately, never this fake counter.
+    def test_demo_is_real_stdio_but_not_model_or_task_validation(self):
         with patch('oz_workspace.token_counters', return_value=(lambda s: len(s) // 4,)):
             result = demo(self.root)
         self.assertEqual(result['actual_model_calls'], 0)

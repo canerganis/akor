@@ -25,7 +25,7 @@ def read_json(path):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', action='version', version='akor-protocol 0.9.0; OZ/8 (OZ/1 atoms, OZ/2 host macros)')
+    parser.add_argument('--version', action='version', version='akor-protocol 0.9.0; OZ/9 (OZ/1 atoms, OZ/2 host macros)')
     sub = parser.add_subparsers(dest='command', required=True)
     for command in ['decode', 'pack', 'prompt']:
         p = sub.add_parser(command)
@@ -115,7 +115,7 @@ def main(argv=None):
             counters = [lambda s, enc=enc: len(enc.encode(s, disallowed_special=())) for enc in encodings]
             packet = render(channel, read_json(args.messages), max_tokens=args.max_tokens,
                             counters=counters, context_policy=args.context)
-            value = {'language': 'OZ/8', 'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
+            value = {'language': 'OZ/9', 'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
                      'binding': packet.binding, 'wires': packet.wires, 'alternatives': dict(packet.alternatives)}
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return 0

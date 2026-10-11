@@ -82,8 +82,8 @@ def initialize(path: Path, channel: Channel | None = None):
         'oz plan\noz status\n```\n\n'
         'Gerçek ajan için JSON stdin/stdout adaptörünü açıkça seç:\n\n'
         '`oz run --adapter adapter.json`\n\n'
-        'adapter.json: {"argv":["python","worker.py"],"protocols":["oz.adapter/3"],"languages":["OZ/8"]}\n'
-        'Adaptör istemi modele iletir, {"reply":...,"usage":...} döndürür (OZ8.md).\n'
+        'adapter.json: {"argv":["python","worker.py"],"protocols":["oz.adapter/3"],"languages":["OZ/9"]}\n'
+        'Adaptör istemi modele iletir, {"reply":...,"usage":...} döndürür (OZ9.md).\n'
         'Komut çalışma dizini adaptör dosyasının klasörüdür. oz init hiçbir adaptör çalıştırmaz.\n'
         'oz.json içinde kanallar, hedef tokenizer, girdi bütçesi ve paket büyüklüğü bulunur.\n'
         'Yeni kaynak/sözlük için yeni kanal ekle: oz channel-add yeni kanal.json\n'
@@ -165,7 +165,7 @@ class Workspace:
         spec = loads(adapter_path.read_text(encoding='utf-8'))
         if (not isinstance(spec, dict) or set(spec) != {'argv', 'protocols', 'languages'}
                 or not isinstance(spec['argv'], list)):
-            raise Error('Adaptör dosyası argv, protocols ve languages içermeli (oz.adapter/3, OZ/8)')
+            raise Error('Adaptör dosyası argv, protocols ve languages içermeli (oz.adapter/3, OZ/9)')
         adapter = StdioAdapter(tuple(spec['argv']), cwd=adapter_path.parent, timeout=timeout,
                                capabilities={k: spec[k] for k in ('protocols', 'languages')})
         results = []
@@ -185,10 +185,9 @@ class Workspace:
 
 DEMO_SCRIPT = (
     'import json,sys; r=json.load(sys.stdin); '
-    'json.dump({"reply":{"q":r["receipt"],"s":0,"v":["DEMO receipt only; no model or task execution." '
-    'for i in r["ids"]]}},sys.stdout)'
+    'json.dump({"reply":[r["receipt"]]+["DEMO receipt only; no model or task execution." for i in r["ids"]]},sys.stdout)'
 )
-DEMO_CAPABILITIES = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/8']}
+DEMO_CAPABILITIES = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
 
 
 def demo(path: Path):

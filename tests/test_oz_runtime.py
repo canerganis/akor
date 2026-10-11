@@ -1,6 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
+import json
 import tempfile
 import unittest
 
@@ -87,7 +88,12 @@ class InboxTests(unittest.TestCase):
         packet = delivery.prepare(self.ch, counters=[len])
         self.assertEqual(packet.ids, ('m1',))
         self.assertNotIn('m1', packet.text)
-        self.assertIn('"j":["r7a7t14+8."]', packet.text)
+        body = json.loads(packet.text.splitlines()[-1])
+        if packet.mode.startswith('frames'):
+            self.assertEqual(packet.wires, ('r7a7t14+8.',))
+        else:
+            self.assertIn('review patch; preserve public API', body['j'][0])
+            self.assertTrue(body['j'][0].endswith('no test outcome or global approval implied'))
 
     def test_retry_cannot_duplicate_acknowledged_work(self):
         self.post('m1')
@@ -178,12 +184,10 @@ class InboxTests(unittest.TestCase):
             with Inbox(path) as first:
                 for i in range(20):
                     first.post(self.ch, f'm{i}', 'V', binding=self.ch.binding)
-
             def worker(owner):
                 with Inbox(path) as box:
                     delivery = box.claim(self.ch, owner=owner, limit=10)
                     return {j.id for j in delivery.jobs} if delivery else set()
-
             with ThreadPoolExecutor(max_workers=2) as pool:
                 one, two = list(pool.map(worker, ['a', 'b']))
             self.assertFalse(one & two)

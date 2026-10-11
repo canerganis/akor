@@ -1,4 +1,4 @@
-"""Provider-neutral OZ/8 worker and opt-in JSON-over-stdio adapter. No API keys needed."""
+"""Provider-neutral OZ/9 worker and opt-in JSON-over-stdio adapter. No API keys needed."""
 from __future__ import annotations
 
 from dataclasses import dataclass

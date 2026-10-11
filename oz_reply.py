@@ -1,6 +1,7 @@
-"""OZ/8 replies, receipts, adapter capabilities and provider usage.
+"""OZ/9 replies, receipts, adapter capabilities and provider usage.
 
-Replies are positional lanes: v[i] answers the i-th delivered job. Receipts
+A reply is [q, r0, r1, ...]: r_i answers the i-th delivered job and is a
+string (success) or [1|2, string] (retryable or permanent failure). Receipts
 correlate a reply with one call attempt; they are not authentication or proof.
 """
 from __future__ import annotations
@@ -10,7 +11,7 @@ import uuid
 from oz import Error
 
 PROTOCOL = 'oz.adapter/3'
-LANGUAGE = 'OZ/8'
+LANGUAGE = 'OZ/9'
 USAGE_FIELDS = ('input_tokens', 'cached_input_tokens', 'cache_creation_input_tokens',
                 'output_tokens', 'reasoning_output_tokens')
 STATUS = {0: 'ok', 1: 'retry', 2: 'failed'}
@@ -42,17 +43,18 @@ def _text(value: object) -> bool:
 def validate_reply(value: object, ids, receipt: str) -> dict:
     """Whole-reply validation; any defect rejects every result."""
     ids = tuple(ids)
-    if not isinstance(value, dict) or set(value) != {'q', 's', 'v'} or value['q'] != receipt:
-        raise Error('reply receipt or schema mismatch')
-    texts, statuses = value['v'], value['s']
-    if not isinstance(texts, list) or len(texts) != len(ids) or not all(_text(t) for t in texts):
-        raise Error('reply needs exactly one nonblank result per delivered job')
-    if type(statuses) is int:
-        statuses = [statuses] * len(ids)
-    if (not isinstance(statuses, list) or len(statuses) != len(ids)
-            or any(type(s) is not int or s not in STATUS for s in statuses)):
-        raise Error('every result requires an explicit valid status')
-    return {mid: (STATUS[s], t) for mid, s, t in zip(ids, statuses, texts)}
+    if not isinstance(value, list) or len(value) != len(ids) + 1 or value[0] != receipt:
+        raise Error('reply must be [q, one result per delivered job]')
+    outcomes = {}
+    for mid, item in zip(ids, value[1:]):
+        if _text(item):
+            outcomes[mid] = ('ok', item)
+        elif (isinstance(item, list) and len(item) == 2 and type(item[0]) is int
+                and item[0] in (1, 2) and _text(item[1])):
+            outcomes[mid] = (STATUS[item[0]], item[1])
+        else:
+            raise Error('each result must be a nonblank string or [1|2, nonblank string]')
+    return outcomes
 
 
 def validate_usage(value: object) -> dict:
@@ -78,9 +80,8 @@ def validate_response(value: object, ids, receipt: str) -> tuple[dict, dict]:
     return validate_reply(value['reply'], ids, receipt), usage
 
 
-def encode_reply(outcomes: dict, ids, receipt: str) -> dict:
+def encode_reply(outcomes: dict, ids, receipt: str) -> list:
     """Build a valid reply from (status, text) pairs, e.g. for test adapters."""
     codes = {v: k for k, v in STATUS.items()}
-    statuses = [codes[outcomes[mid][0]] for mid in ids]
-    return {'q': receipt, 's': statuses[0] if len(set(statuses)) == 1 else statuses,
-            'v': [outcomes[mid][1] for mid in ids]}
+    return [receipt, *(outcomes[mid][1] if outcomes[mid][0] == 'ok' else [codes[outcomes[mid][0]], outcomes[mid][1]]
+                       for mid in ids)]
