@@ -5,7 +5,7 @@ import unittest
 
 from oz import Error
 from oz_runtime import Inbox
-from oz_batch import REPLY_CONTRACT
+from oz_batch import reply_contract
 from oz_reply import validate_response
 from oz_worker import AdapterError, StdioAdapter, Worker, loads, process_host
 from test_oz2 import extended
@@ -48,7 +48,7 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(result['prompt_tokens'], seen[0]['prompt_tokens'])
         self.assertEqual(seen[0]['prompt_tokens'], [len(seen[0]['prompt'])])
         self.assertEqual(seen[0]['ids'], ['one', 'two'])
-        self.assertIn(REPLY_CONTRACT, seen[0]['prompt'])
+        self.assertIn(reply_contract(seen[0]['receipt']), seen[0]['prompt'])
         self.assertEqual(len(seen), 1)
         self.assertEqual(self.box.stats(), {'done': 2})
         self.assertEqual(self.box.inspect('one')['result'], '12.50 ± 0.02 mm; method unknown.')

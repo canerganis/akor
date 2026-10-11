@@ -3,7 +3,7 @@ import unittest
 
 from oz import Error
 from oz_batch import (COMMON, HANDOFF_NOTE, LITERAL_LINE, MEANINGS,
-                      NOARG_LINE, REPLY_CONTRACT, RESULTS_RULE, SAFETY, TABLE_LINE, explicit, render)
+                      NOARG_LINE, PREVIEW_RECEIPT, RESULTS_RULE, SAFETY, TABLE_LINE, explicit, render, reply_contract)
 from test_oz2 import extended
 
 LONG = ':' + 'measurement 12.50 ± 0.02 mm; method unknown. ' * 6
@@ -25,7 +25,8 @@ class BatchTests(unittest.TestCase):
         lines = packet.text.splitlines()
         self.assertEqual(len(lines), 3)
         self.assertTrue(lines[0].startswith(COMMON + ' ' + SAFETY + ' '))
-        self.assertIn(REPLY_CONTRACT, lines[1])
+        self.assertIn(reply_contract('0123456789abcdef'), lines[1])
+        self.assertNotIn('"q"', lines[2])
         self.assertEqual(data(packet)['goal'], extended().snapshot()['goal'])
         self.assertEqual(json.dumps(data(packet), ensure_ascii=False, separators=(',', ':')), lines[2])
         self.assertTrue(packet.text.endswith('\n'))
@@ -88,7 +89,7 @@ class BatchTests(unittest.TestCase):
         plain = render(extended(), [('a', 'V')], counters=[len])
         self.assertNotIn(RESULTS_RULE, plain.text)
         ruled = render(extended(), [('a', 'V')], counters=[len], results_rule=True)
-        self.assertIn(REPLY_CONTRACT + ' ' + RESULTS_RULE, ruled.text.splitlines()[1])
+        self.assertIn(reply_contract(PREVIEW_RECEIPT) + ' ' + RESULTS_RULE, ruled.text.splitlines()[1])
 
     def test_literal_and_no_argument_rules_are_conditional(self):
         literal = render(extended(), [('a', ':hello r13')], counters=[len])

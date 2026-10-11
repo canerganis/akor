@@ -1,9 +1,8 @@
 """OZ/9 positional replies, receipts, usage, negotiation and Worker retry integration."""
-import json
 import unittest
 
 from oz import Error
-from oz_batch import REPLY_CONTRACT
+from oz_batch import reply_contract
 from oz_reply import (check_capabilities, encode_reply, validate_reply, validate_response,
                       validate_usage)
 from oz_runtime import Inbox
@@ -118,7 +117,7 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(request['ids'], ['job_zq7'])
         self.assertEqual((request['protocol'], request['language']), ('oz.adapter/3', 'OZ/9'))
         self.assertNotIn('job_zq7', request['prompt'])
-        self.assertIn(REPLY_CONTRACT, request['prompt'])
+        self.assertIn(reply_contract(request['receipt']), request['prompt'])
         self.assertIn(request['receipt'], request['prompt'])
         self.assertEqual(request['prompt_tokens'], [len(request['prompt'])])
         self.assertEqual((result['language'], result['mode']), ('OZ/9', result['mode']))
@@ -190,7 +189,7 @@ class ReplyWorkerTests(unittest.TestCase):
             calls.append(request)
             if len(calls) == 1:
                 return {'reply': [request['receipt'], 'done one', [1, 'temporary'], 'done three']}
-            if json.loads(request['prompt'].splitlines()[-1])['q'] == calls[0]['receipt']:
+            if reply_contract(calls[0]['receipt']) in request['prompt']:
                 return {'reply': [calls[0]['receipt'], 'reused receipt']}
             return {'reply': [request['receipt'], 'eventual success']}
         worker = self.worker(adapter, batch_size=3)
@@ -202,7 +201,8 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(second['ids'], ['retryme'])
         self.assertEqual(self.box.inspect('retryme')['result'], 'eventual success')
         self.assertNotEqual(calls[0]['receipt'], calls[1]['receipt'])
-        self.assertEqual(json.loads(calls[1]['prompt'].splitlines()[-1])['q'], calls[1]['receipt'])
+        self.assertIn(reply_contract(calls[1]['receipt']), calls[1]['prompt'])
+        self.assertNotIn(reply_contract(calls[0]['receipt']), calls[1]['prompt'])
         self.assertEqual(self.box.inspect('first')['result'], 'done one')
 
     def test_every_attempt_uses_fresh_receipt(self):

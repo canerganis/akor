@@ -438,3 +438,20 @@ Results: required outputs and deltas only; reference c; preserve exactness and e
 
 It adds 18 request tokens (o200k) and only pays off if a live run shows it
 saves more output tokens than that per call.
+
+Reply contract revision K3 (Claude, live evidence, 2026-10-12). Sonnet
+(claude -p, no tools) returned an object such as {"q":"2","r":[...]} for the
+contract above in 5 of 8 calls. Candidate wordings on the same OZ/9 packets,
+materials and code, 1 and 4 jobs, 2 repetitions each:
+
+| Wording | Valid replies |
+|---|---:|
+| A: `JSON [q,...]: echo q; ...` | 3/8 |
+| K2: `Reply only JSON array ["<q>","result",...]: ...` | 3/8 (q omitted) |
+| K3: `Reply only JSON array ["<q>",result per j in order]; result "text", or [1,"text"] retryable / [2,"text"] permanent failure.` | 7/8 |
+
+K3 is now the wire contract. `<q>` is the actual receipt, so the body has no
+`q` field. Request tokens (o200k): materials n=1 141 (-37.9%), n=4 192
+(-37.5%), n=16 281 (-45.9%), n=64 382 (-55.3%); code n=1 128 (-40.2%),
+n=64 369 (-56.2%). The remaining K3 failure wrapped a success string in an
+array without a status code.
