@@ -1,10 +1,44 @@
 # AKOR
 
-**Ajanlar için Kısa Orkestrasyon Dili — paket 0.2.0 / protokoller AKOR/1 ve ÖZ/1.**
+**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.3.0 / ÖZ/2.** Python 3.10+, çekirdekte yalnız standart kütüphane.
 
-**Yeni: [ÖZ/1](OZ.md), sembolik ajan dili.** `a`, `?3`, `+8.` gibi kısa anlam atomlarını çözer; bağlam ve sözlük maliyetine göre alıcı gösterimini seçer. Durum mesajları için ek model çağrısı gerektirmeyen bir aktarım yolu sağlar. Codex → Claude arasındaki 12 örneklik canlı kodlama/çözümleme denemesi geçti. Ayrıntılar ve ölçüm sınırları [ÖZ raporunda](reports/OZ-RESULTS.md).
+**Yeni: [ÖZ/2](OZ2.md).** Tek bir `V` işareti, tanımlanmış sözlükte “kaynağı oku → yamayı incele → belirli test prosedürünü iste” dizisini taşıyabiliyor. Bir işaret ancak sözlüğü ve bağlamı biliniyorsa anlamlı; bu şifreleme veya bilgiyi yoktan üretme değildir.
 
-AKOR, farklı modellerin görev, bulgu, soru, öneri ve sonuçları kısa, denetlenebilir mesajlarla paylaşması için hazırlanmış bağımsız bir prototiptir. Modelin sistem talimatına eklenen küçük bir dil tanımı ve Python ile yazılmış bir mesaj aktarıcısından oluşur. Modelin verilen biçimi takip etmesi gerekir. Aşağıda önceki AKOR/1 metin biçimi anlatılır; yeni ÖZ/1 dili ayrı modüldür. Canlı pilot yalnız ÖZ/1 için yapıldı.
+- **Anlam makroları:** Parametreli/sabit makrolar kesin işlem dizilerine açılır. Kanıt veya başarı iddiaları makrolarda gizlenmez.
+- **Ölçülen maliyete göre seçim:** ÖZ, makrosuz ÖZ, kısa metin, açık metin ve kompakt JSON karşılaştırılır; sözlük ve bağlam dahil en ucuz aday kullanılır.
+- **Toplu aktarım:** Bağımsız mesajlar tek girdide paylaşılır; ortak kaynak bir kez yer alır. Bütçe aşılırsa metin kesilmez.
+- **Kalıcı kuyruk:** SQLite; farklı ajan bağımlılıkları, tekrar ayıklama, teslim süresi, yeniden deneme ve eski cevabı reddetme.
+- **Modelsiz olay yolu:** Durum mesajları ayrı host kuyruğunda kaydedilebilir. İş içeren mesajlar alıcı modele hazırlanır.
+- **Daha az kodlama işi:** Varsayılan en fazla 256 aday; tekrarlanan metin için tokenizer sonucu yeniden kullanılır.
+
+**99 otomatik test geçti.** Yeni canlı dil denemesinde Codex kodlama **20/20**, aynı mesajların Claude tarafından çözülmesi **20/20** doğru.
+
+Sentetik 64 mesajlık pakette, **sözlük ve gerekli bağlam dahil alıcı girdi tokenleri**:
+
+| Tokenizer | Kısa metin | Kompakt JSON | ÖZ/2 |
+|---|---:|---:|---:|
+| o200k_base | 1.791 | 1.250 | **814** |
+| cl100k_base | 1.790 | 1.248 | **760** |
+
+Bu örnekte kısa metne göre **%54,6–57,5**, JSON'a göre **%34,9–39,1** azalma. Küçük paketlerde metin/JSON kazanabiliyor; seçici onu kullanıyor. Altı alandaki 48 işi ayrı girdilerden 6 toplu girdiye taşımak yaklaşık **%72** azalma sağladı; bu ayrı karşılaştırmada bağlam tekrarının kaldırılması belirleyici. Gerçek görev başarısı veya toplam API hızlanması ölçülmedi. [Yöntem ve sınırlar](reports/OZ2-RESULTS.md).
+
+```powershell
+python -X utf8 -m examples.oz2_demo
+python -m unittest discover -s tests -v
+python -X utf8 -m oz_cli decode --channel examples/oz2-channel.json V
+```
+
+Yerel demo bağımsız işleri toplu teslim eder, inceleme ajanını öncüllerinin ACK'sine kadar bekletir ve durum kaydını model çağrısı olmadan işler. Gerçek araç/test yürütmez.
+
+Kurulum: `python -m pip install .`. Komutlar: `oz decode`, `oz prompt`, `oz pack`. Token ölçümü için isteğe bağlı kurulum: `python -m pip install ".[benchmark]"`.
+
+```powershell
+oz pack --channel examples/oz2-channel.json --messages examples/oz2-messages.json --encoding o200k_base --encoding cl100k_base --max-tokens 1200
+```
+
+Kendi ajanına bağlamak için [ÖZ/2 sözleşmesi ve örnekleri](OZ2.md), [çalışan demo](examples/oz2_demo.py), [taşınabilir kanal](examples/oz2-channel.json). Çekirdek sağlayıcı hesabı/anahtarı gerektirmez; model ve araç adaptörü host'a aittir. Mevcut Orchestra Board veya başka projeler otomatik değiştirilmez.
+
+AKOR, farklı modellerin görev, bulgu, soru, öneri ve sonuçları kısa, denetlenebilir mesajlarla paylaşması için bağımsız bir prototiptir. Aşağıda desteklenmeye devam eden önceki **AKOR/1** metin biçimi anlatılır. Güncel ÖZ/2 kullanımı ayrı belgededir; canlı pilotlar ÖZ diline aittir.
 
 ## Bir mesaj nasıl görünür?
 
@@ -106,6 +140,6 @@ python -m venv .venv
 
 Ölçüm bağımlılığı yalnız proje içindeki sanal ortama kurulur. Tokenizer ilk çalışmada sözlük dosyalarını indirebilir; bunlar `.token-cache` altında tutulur. Örnek içerik bir model sağlayıcısına gönderilmez.
 
-Bu sürümde aktarım bellektedir; süreç kapanınca kaybolur. Ağ taşıma katmanı, kalıcı kuyruk, sağlayıcı adaptörleri, eşzamanlı erişim kilitleri ve araç yetkilendirmesi uygulayan bir servis değildir. `do`, `review pass` veya `done` tek başına araç çalıştırmaz, kullanıcı izni vermez ya da görevi kapatmaz. Ajanlar ve kaynaklar güvenilmeyen içerik olarak ele alınır.
+AKOR/1 `Hub` aktarımı bellektedir; süreç kapanınca kaybolur. ÖZ/2 için ayrı `oz_runtime.Inbox` kalıcı kuyruk sağlar. Paket ağ sunucusu, hazır sağlayıcı adaptörü veya araç yetkilendirmesi uygulayan bir servis değildir. `do`, `review pass` veya `done` tek başına araç çalıştırmaz, kullanıcı izni vermez ya da görevi kapatmaz. Ajanlar ve kaynaklar güvenilmeyen içerik olarak ele alınır.
 
 İlk canlı pilotta aynı görevleri kısa düz yazı, JSON ve AKOR ile çalıştırıp başarı oranı, yanlış anlama, düzeltme turu, gecikme ve sağlayıcının toplam kullanımını karşılaştırmak gerekir. Daha düşük mesaj tokeni tek başına daha düşük toplam maliyet veya daha iyi sonuç anlamına gelmez.

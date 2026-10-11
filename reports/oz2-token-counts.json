@@ -1,0 +1,381 @@
+{
+  "kind": "synthetic_offline_accounting_and_queue_replay",
+  "package": "0.3.0",
+  "tiktoken_version": "0.14.0",
+  "messages": 72,
+  "model_work_messages": 48,
+  "host_event_messages": 24,
+  "prepared_model_batches": 6,
+  "actual_model_calls": 0,
+  "encodings": {
+    "o200k_base": {
+      "domains": [
+        {
+          "domain": "code",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1167,
+          "individual_brief_tokens": 1167,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 334,
+          "batch_brief_tokens": 343,
+          "batch_json_tokens": 334,
+          "batch_oz_tokens": 374,
+          "batch_base_oz_tokens": 350,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "materials",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1259,
+          "individual_brief_tokens": 1259,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 347,
+          "batch_brief_tokens": 356,
+          "batch_json_tokens": 347,
+          "batch_oz_tokens": 387,
+          "batch_base_oz_tokens": 363,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "data",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1223,
+          "individual_brief_tokens": 1223,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 342,
+          "batch_brief_tokens": 351,
+          "batch_json_tokens": 342,
+          "batch_oz_tokens": 382,
+          "batch_base_oz_tokens": 358,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "translation",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1231,
+          "individual_brief_tokens": 1231,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 344,
+          "batch_brief_tokens": 353,
+          "batch_json_tokens": 344,
+          "batch_oz_tokens": 384,
+          "batch_base_oz_tokens": 360,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "support",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1199,
+          "individual_brief_tokens": 1199,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 337,
+          "batch_brief_tokens": 346,
+          "batch_json_tokens": 337,
+          "batch_oz_tokens": 377,
+          "batch_base_oz_tokens": 353,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "planning",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1255,
+          "individual_brief_tokens": 1255,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 345,
+          "batch_brief_tokens": 354,
+          "batch_json_tokens": 345,
+          "batch_oz_tokens": 385,
+          "batch_base_oz_tokens": 361,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        }
+      ],
+      "totals": {
+        "individual_adaptive_tokens": 7334,
+        "individual_brief_tokens": 7334,
+        "batch_selected_tokens": 2049,
+        "batch_brief_tokens": 2103,
+        "batch_json_tokens": 2049,
+        "batch_oz_tokens": 2289,
+        "macro_payload_tokens": 126,
+        "explicit_primitive_payload_tokens": 228
+      },
+      "batch_scaling": [
+        {
+          "messages": 1,
+          "selected": "brief/tuples",
+          "tokens": 163,
+          "brief": 163,
+          "json": 202,
+          "oz": 296
+        },
+        {
+          "messages": 4,
+          "selected": "brief/tuples",
+          "tokens": 240,
+          "brief": 240,
+          "json": 269,
+          "oz": 351
+        },
+        {
+          "messages": 8,
+          "selected": "json/tuples",
+          "tokens": 347,
+          "brief": 356,
+          "json": 347,
+          "oz": 387
+        },
+        {
+          "messages": 16,
+          "selected": "oz_base/tuples",
+          "tokens": 441,
+          "brief": 561,
+          "json": 476,
+          "oz": 448
+        },
+        {
+          "messages": 32,
+          "selected": "oz/tuples",
+          "tokens": 570,
+          "brief": 971,
+          "json": 734,
+          "oz": 570
+        },
+        {
+          "messages": 64,
+          "selected": "oz/tuples",
+          "tokens": 814,
+          "brief": 1791,
+          "json": 1250,
+          "oz": 814
+        }
+      ]
+    },
+    "cl100k_base": {
+      "domains": [
+        {
+          "domain": "code",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1161,
+          "individual_brief_tokens": 1161,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 332,
+          "batch_brief_tokens": 342,
+          "batch_json_tokens": 332,
+          "batch_oz_tokens": 369,
+          "batch_base_oz_tokens": 343,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "materials",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1253,
+          "individual_brief_tokens": 1253,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 345,
+          "batch_brief_tokens": 355,
+          "batch_json_tokens": 345,
+          "batch_oz_tokens": 382,
+          "batch_base_oz_tokens": 356,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "data",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1217,
+          "individual_brief_tokens": 1217,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 340,
+          "batch_brief_tokens": 350,
+          "batch_json_tokens": 340,
+          "batch_oz_tokens": 377,
+          "batch_base_oz_tokens": 351,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "translation",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1233,
+          "individual_brief_tokens": 1233,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 343,
+          "batch_brief_tokens": 353,
+          "batch_json_tokens": 343,
+          "batch_oz_tokens": 380,
+          "batch_base_oz_tokens": 354,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "support",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1201,
+          "individual_brief_tokens": 1201,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 336,
+          "batch_brief_tokens": 346,
+          "batch_json_tokens": 336,
+          "batch_oz_tokens": 373,
+          "batch_base_oz_tokens": 347,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        },
+        {
+          "domain": "planning",
+          "work_messages": 8,
+          "host_messages": 4,
+          "individual_adaptive_tokens": 1265,
+          "individual_brief_tokens": 1265,
+          "batch_selected_mode": "json/tuples",
+          "batch_selected_tokens": 345,
+          "batch_brief_tokens": 355,
+          "batch_json_tokens": 345,
+          "batch_oz_tokens": 382,
+          "batch_base_oz_tokens": 356,
+          "macro_payload_tokens": 21,
+          "explicit_primitive_payload_tokens": 38,
+          "tokenizer_evaluations_in_batch": 43,
+          "round_trip_exact": true
+        }
+      ],
+      "totals": {
+        "individual_adaptive_tokens": 7330,
+        "individual_brief_tokens": 7330,
+        "batch_selected_tokens": 2041,
+        "batch_brief_tokens": 2101,
+        "batch_json_tokens": 2041,
+        "batch_oz_tokens": 2263,
+        "macro_payload_tokens": 126,
+        "explicit_primitive_payload_tokens": 228
+      },
+      "batch_scaling": [
+        {
+          "messages": 1,
+          "selected": "brief/tuples",
+          "tokens": 162,
+          "brief": 162,
+          "json": 200,
+          "oz": 298
+        },
+        {
+          "messages": 4,
+          "selected": "brief/tuples",
+          "tokens": 239,
+          "brief": 239,
+          "json": 267,
+          "oz": 350
+        },
+        {
+          "messages": 8,
+          "selected": "json/tuples",
+          "tokens": 345,
+          "brief": 355,
+          "json": 345,
+          "oz": 382
+        },
+        {
+          "messages": 16,
+          "selected": "oz_base/tuples",
+          "tokens": 427,
+          "brief": 560,
+          "json": 474,
+          "oz": 436
+        },
+        {
+          "messages": 32,
+          "selected": "oz/tuples",
+          "tokens": 544,
+          "brief": 970,
+          "json": 732,
+          "oz": 544
+        },
+        {
+          "messages": 64,
+          "selected": "oz/tuples",
+          "tokens": 760,
+          "brief": 1790,
+          "json": 1248,
+          "oz": 760
+        }
+      ]
+    }
+  },
+  "local_encoder_microbenchmark": {
+    "o200k_base": {
+      "v0_2_base_search": {
+        "median_ms_3_runs": 17.985,
+        "candidate_cap": 4096,
+        "chosen_tokens": 19
+      },
+      "v0_3_bounded_search": {
+        "median_ms_3_runs": 1.288,
+        "candidate_cap": 256,
+        "chosen_tokens": 5
+      }
+    },
+    "cl100k_base": {
+      "v0_2_base_search": {
+        "median_ms_3_runs": 25.273,
+        "candidate_cap": 4096,
+        "chosen_tokens": 22
+      },
+      "v0_3_bounded_search": {
+        "median_ms_3_runs": 1.416,
+        "candidate_cap": 256,
+        "chosen_tokens": 10
+      }
+    }
+  },
+  "limitations": [
+    "Synthetic requests: no LLM task success, comprehension or model latency measurement.",
+    "No universal minimum. Choose cheapest among measured bounded candidates.",
+    "All receiver context and required dictionaries are charged in every batch.",
+    "Individual-to-batch reduction mostly comes from batching and shared context, not alphabet choice.",
+    "Payload comparison excludes dictionary/context and compares to explicit primitive OZ, not all natural languages.",
+    "Sender bootstrap, output, reasoning, provider wrappers and cached history billing are excluded.",
+    "Tokenizers are examples, not validated equivalents of every provider model.",
+    "Fewer prepared calls is a scheduling possibility for independent jobs, not measured model acceleration.",
+    "Local encoder time excludes models, network and tokenizer initialization; machine-dependent, three runs only."
+  ]
+}

@@ -13,7 +13,7 @@ import subprocess
 import time
 
 from examples.oz_demo import example_channel
-from oz import RULES, Error, prompt
+from oz import Atom, Channel, RULES, Error
 
 ROOT = Path(__file__).parent
 FIXTURES = [
@@ -30,31 +30,52 @@ FIXTURES = [
     ('Send this exact new information as a literal: 12.50 ± 0.02 mm; method unknown.', ':12.50 ± 0.02 mm; method unknown.'),
     ('Read source reference 13, retaining exact values and uncertainty.', 'r13'),
 ]
+MACRO_FIXTURES = [
+    ('Read patch 7 preserving constraints, then audit patch 7 preserving API and testing, then request test procedure 14.', 'V'),
+    ('Read sourced observation 13 exactly, then propose plan 12 without applying it.', 'P'),
+    ('Perform the read/audit/test-procedure request sequence on patch 7, then request missing reference 3.', 'V?3'),
+    ('Request the read/audit/test sequence for patch 7, report the existing passed report 8, then mark the assigned step complete.', 'V+8.'),
+    ('Report failed test report 9, then report inability to proceed for reason 11.', '-9!11'),
+    ('Read reference 15 exactly; it says tests were not run. Do not claim success.', 'r15'),
+    ('Request the read/audit/test sequence for patch 7, then read observation 13 and propose plan 12.', 'VP'),
+    ('Send exactly this literal data, including its newline: V7 is data\n12.50 ± 0.02 mm; not validated.',
+     ':V7 is data\n12.50 ± 0.02 mm; not validated.'),
+]
 
 
-def setup_context():
+def fixtures(suite='oz1'):
+    return FIXTURES + MACRO_FIXTURES if suite == 'oz2' else FIXTURES
+
+
+def setup_context(suite='oz1'):
     ch = example_channel()
-    all_atoms = [atom for _, wire in FIXTURES for atom in ch.accept(wire, binding=ch.binding)]
+    if suite == 'oz2':
+        snapshot = ch.snapshot()
+        snapshot['macros'] = [dict(code='V', steps=[vars(a) for a in (Atom('r', 0), Atom('a', 0), Atom('t', 14))]),
+                              dict(code='P', steps=[vars(a) for a in (Atom('r', 13), Atom('>', 12))])]
+        ch = Channel.from_snapshot(snapshot)
+    all_atoms = [atom for _, wire in fixtures(suite) for atom in ch.accept(wire, binding=ch.binding)]
     return ch, ch.context(all_atoms)
 
 
-def encode_prompt():
-    _, context = setup_context()
+def encode_prompt(suite='oz1'):
+    ch, context = setup_context(suite)
     return ('This is a text-only language conformance test. Do not use tools, files, network or agents. '
             'Only supplied synthetic data matters. Return JSON {"frames":[string,...]} in case order, '
-            'with exactly 12 strings. Each is an OZ frame, without explanations or Markdown.\n'
-            + prompt() + '\n' + context + '\nCASES:\n'
-            + '\n'.join(f'{i}. {text}' for i, (text, _) in enumerate(FIXTURES, 1)))
+            f'with exactly {len(fixtures(suite))} strings. Each is an OZ frame, without explanations or Markdown. '
+            'Use declared macros when their exact expansions match; do not invent shorter meanings.\n'
+            + ch.codebook.prompt() + '\n' + context + '\nCASES:\n'
+            + '\n'.join(f'{i}. {text}' for i, (text, _) in enumerate(fixtures(suite), 1)))
 
 
-def decode_prompt(frames):
-    _, context = setup_context()
+def decode_prompt(frames, suite='oz1'):
+    ch, context = setup_context(suite)
     labels = {k: r.name for k, r in RULES.items()}
     return ('This is a text-only language comprehension test. Do not use tools, files, network or agents. '
             'Decode the received frames. Return JSON {"decoded":[[atom,...],...]} in frame order. '
             'Each atom is {"op":label,"ref":integer_or_null}; literal uses '
             '{"op":"literal","ref":null,"text":exact_text}. Do not return code symbols as labels. '
-            'Only return JSON, without Markdown.\n' + prompt() + '\nLabels: '
+            'Expand macros into all primitive atoms, in order. Only return JSON, without Markdown.\n' + ch.codebook.prompt() + '\nLabels: '
             + json.dumps(labels) + '\n' + context + '\nFrames:\n' + json.dumps(frames, ensure_ascii=False))
 
 
@@ -124,10 +145,13 @@ def expected_decoding(atoms):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--live', action='store_true', help='Actually call configured Codex and Claude CLIs')
-    parser.add_argument('--output', type=Path, default=ROOT / 'reports/oz-live.json')
+    parser.add_argument('--suite', choices=['oz1', 'oz2'], default='oz1')
+    parser.add_argument('--output', type=Path)
     args = parser.parse_args()
+    if args.output is None:
+        args.output = ROOT / ('reports/oz2-live.json' if args.suite == 'oz2' else 'reports/oz-live.json')
     if not args.live:
-        print(encode_prompt())
+        print(encode_prompt(args.suite))
         return
     work = ROOT / '.oz-eval'
     work.mkdir(exist_ok=True)
@@ -136,19 +160,19 @@ def main():
     work = work / stamp
     work.mkdir()
     print('Running encoder conformance test through configured Codex CLI.', flush=True)
-    encoder = run_cli('codex', encode_prompt(), work)
-    report = {'kind': 'cross_cli_protocol_smoke_test', 'encoder': encoder,
+    encoder = run_cli('codex', encode_prompt(args.suite), work)
+    report = {'kind': 'cross_cli_protocol_smoke_test', 'suite': args.suite, 'encoder': encoder,
               'limitations': ['One synthetic batch, no repeated trials or held-out task-success comparison.',
                               'CLI defaults and tool/system overhead differ; do not compare latency as a speedup.',
                               'No real coding, test execution, physical validation or production orchestration.']}
     try:
         data = json.loads(encoder.get('answer', ''))
         frames = data['frames']
-        if encoder['status'] != 'completed' or not isinstance(frames, list) or len(frames) != len(FIXTURES):
+        if encoder['status'] != 'completed' or not isinstance(frames, list) or len(frames) != len(fixtures(args.suite)):
             raise ValueError('invalid encoder batch')
-        ch, _ = setup_context()
+        ch, _ = setup_context(args.suite)
         outcomes, expected = [], []
-        for emitted, (_, wire) in zip(frames, FIXTURES):
+        for emitted, (_, wire) in zip(frames, fixtures(args.suite)):
             wanted = ch.accept(wire, binding=ch.binding)
             expected.append(expected_decoding(wanted))
             try:
@@ -162,7 +186,7 @@ def main():
             report['decoder_status'] = 'not_run_due_to_encoder_failure'
         else:
             print('Sending the exact emitted frames to configured Claude CLI for independent decoding.', flush=True)
-            decoder = run_cli('claude', decode_prompt(frames), work)
+            decoder = run_cli('claude', decode_prompt(frames, args.suite), work)
             report['decoder'] = decoder
             decoded = json.loads(decoder.get('answer', ''))['decoded']
             if decoder['status'] != 'completed' or not isinstance(decoded, list) or len(decoded) != len(expected):

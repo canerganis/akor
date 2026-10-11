@@ -1,0 +1,83 @@
+{
+  "session": "demo",
+  "task": "review",
+  "revision": 1,
+  "sender": "lead",
+  "recipient": "worker",
+  "goal": "SYNTHETIC: inspect timeout patch; preserve API and two retries; report uncertainty.",
+  "active": 7,
+  "references": [
+    {
+      "number": 7,
+      "kind": "patch",
+      "text": "SYNTHETIC diff@abc: timeout=5 s per attempt; retries=2.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 8,
+      "kind": "test",
+      "text": "SYNTHETIC report: 3 passed, 0 failed.",
+      "source": "demo.log@abc",
+      "status": "passed"
+    },
+    {
+      "number": 12,
+      "kind": "proposal",
+      "text": "SYNTHETIC proposal: preserve 5 s per attempt.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 13,
+      "kind": "fact",
+      "text": "12.50 ± 0.02 mm; method unknown.",
+      "source": "demo.csv:2@abc",
+      "status": ""
+    },
+    {
+      "number": 14,
+      "kind": "procedure",
+      "text": "SYNTHETIC procedure: run timeout and retry tests.",
+      "source": "",
+      "status": ""
+    }
+  ],
+  "macros": [
+    {
+      "code": "P",
+      "steps": [
+        {
+          "code": "r",
+          "ref": 13,
+          "text": null
+        },
+        {
+          "code": ">",
+          "ref": 12,
+          "text": null
+        }
+      ]
+    },
+    {
+      "code": "V",
+      "steps": [
+        {
+          "code": "r",
+          "ref": 0,
+          "text": null
+        },
+        {
+          "code": "a",
+          "ref": 0,
+          "text": null
+        },
+        {
+          "code": "t",
+          "ref": 14,
+          "text": null
+        }
+      ]
+    }
+  ]
+}

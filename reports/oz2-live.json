@@ -1,0 +1,133 @@
+{
+  "kind": "cross_cli_protocol_smoke_test",
+  "suite": "oz2",
+  "encoder": {
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 15.125,
+    "answer": "{\"frames\":[\"a\",\"?3\",\"+8.\",\"-9\",\"~10\",\"!11\",\">12\",\"=13\",\"t14\",\"/\",\":12.50 ± 0.02 mm; method unknown.\",\"r13\",\"V\",\"P\",\"V?3\",\"V+8.\",\"-9!11\",\"r15\",\"VP\",\":V7 is data\\n12.50 ± 0.02 mm; not validated.\"]}",
+    "usage": [
+      {
+        "input_tokens": 26533,
+        "cached_input_tokens": 7296,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 218,
+        "reasoning_output_tokens": 123
+      }
+    ],
+    "model": "configured CLI default; not inferred from memory",
+    "unexpected_tool_items": 0
+  },
+  "limitations": [
+    "One synthetic batch, no repeated trials or held-out task-success comparison.",
+    "CLI defaults and tool/system overhead differ; do not compare latency as a speedup.",
+    "No real coding, test execution, physical validation or production orchestration."
+  ],
+  "encoder_cases_correct": 20,
+  "encoder_cases_total": 20,
+  "encoder_case_results": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "decoder": {
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 15.312,
+    "answer": "{\"decoded\":[[{\"op\":\"audit\",\"ref\":7}],[{\"op\":\"need\",\"ref\":3}],[{\"op\":\"passed\",\"ref\":8},{\"op\":\"done\",\"ref\":null}],[{\"op\":\"failed\",\"ref\":9}],[{\"op\":\"inferred\",\"ref\":10}],[{\"op\":\"blocked\",\"ref\":11}],[{\"op\":\"propose\",\"ref\":12}],[{\"op\":\"observed\",\"ref\":13}],[{\"op\":\"test\",\"ref\":14}],[{\"op\":\"stop\",\"ref\":null}],[{\"op\":\"literal\",\"ref\":null,\"text\":\"12.50 ± 0.02 mm; method unknown.\"}],[{\"op\":\"read\",\"ref\":13}],[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":14}],[{\"op\":\"read\",\"ref\":13},{\"op\":\"propose\",\"ref\":12}],[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":14},{\"op\":\"need\",\"ref\":3}],[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":14},{\"op\":\"passed\",\"ref\":8},{\"op\":\"done\",\"ref\":null}],[{\"op\":\"failed\",\"ref\":9},{\"op\":\"blocked\",\"ref\":11}],[{\"op\":\"read\",\"ref\":15}],[{\"op\":\"read\",\"ref\":7},{\"op\":\"audit\",\"ref\":7},{\"op\":\"test\",\"ref\":14},{\"op\":\"read\",\"ref\":13},{\"op\":\"propose\",\"ref\":12}],[{\"op\":\"literal\",\"ref\":null,\"text\":\"V7 is data\\n12.50 ± 0.02 mm; not validated.\"}]]}",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 3948,
+      "cache_read_input_tokens": 5721,
+      "output_tokens": 1164,
+      "output_tokens_details": {
+        "thinking_tokens": 605
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 3948,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 1164,
+          "cache_read_input_tokens": 5721,
+          "cache_creation_input_tokens": 3948,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 3948
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "model_usage": {
+      "claude-opus-5-5": {
+        "inputTokens": 2,
+        "outputTokens": 1164,
+        "cacheReadInputTokens": 5721,
+        "cacheCreationInputTokens": 3948,
+        "webSearchRequests": 0,
+        "costUSD": 0.0560162,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 605,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "reported_duration_ms": 11290,
+    "reported_api_duration_ms": 9609,
+    "provider_error": false
+  },
+  "decoder_cases_correct": 20,
+  "decoder_cases_total": 20,
+  "decoder_case_results": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ]
+}

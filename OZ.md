@@ -1,5 +1,7 @@
 # ÖZ/1 — ajanlar için anlam dili
 
+Bu belge 0.2.0'daki temel atom dilini açıklar. Güncel makrolar, 256 adaylı varsayılan arama, toplu girdi seçimi ve kalıcı kuyruk için [ÖZ/2](OZ2.md) belgesine bak. Aşağıdaki eski arama limiti ve raporlar tarihsel sürüme aittir.
+
 ÖZ, kelime ve JSON alanlarını tekrar üretmek yerine tanımlı kavramları birleştiren sembolik bir dildir. Örneğin `a7`, bir yama üzerinde önceden tanımlanmış inceleme işlemini ister. Aktif hedef zaten 7 ise `a` yeterlidir. `+8.` ise 8 numaralı test raporunun başarılı olduğunu bildirir ve atanan adımı tamamlar.
 
 Bu dilin alfabesi görsel yoğunluğa göre seçilmedi. Mısır, Çin ve çivi yazısı gibi yazı sistemlerinden alınan esin, bir işaretin tanımlı bir kavram taşıması ve işaretlerin düzenli birleşmesidir. ÖZ'de bu fikir ortak sözlük, bileşim kuralları ve açık bağlamla uygulanır; tarihsel alfabeler kopyalanmaz. Kod kitabı yaklaşımı kriptografiye benzer görünebilir ama ÖZ şifreleme değildir.
