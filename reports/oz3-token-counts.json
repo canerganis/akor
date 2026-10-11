@@ -1,0 +1,255 @@
+{
+  "package": "0.5.0",
+  "kind": "synthetic_offline_token_accounting",
+  "tiktoken": "0.14.0",
+  "encodings": [
+    "o200k_base",
+    "cl100k_base"
+  ],
+  "response_contract_included": true,
+  "actual_model_calls": 0,
+  "actual_tool_executions": 0,
+  "vector_example": {
+    "frame": "V[1:16]",
+    "primitive_requests": 48,
+    "payload_tokens": {
+      "o200k_base": 6,
+      "cl100k_base": 6
+    }
+  },
+  "cases": [
+    {
+      "case": "single_read",
+      "messages": 1,
+      "primitive_requests": 1,
+      "changed_dictionary": false,
+      "added_macros": [],
+      "compiled_frames": [
+        "r"
+      ],
+      "selected_mode": "brief/objects",
+      "local_compile_seconds": 0.003,
+      "evaluated_dictionaries": 2,
+      "exact_round_trip": true,
+      "counts": {
+        "o200k_base": {
+          "baseline_adaptive": 182,
+          "compiled_adaptive": 182,
+          "brief": 182,
+          "json": 211,
+          "compiled_payload_only": 1,
+          "explicit_payload_only": 2
+        },
+        "cl100k_base": {
+          "baseline_adaptive": 181,
+          "compiled_adaptive": 181,
+          "brief": 181,
+          "json": 209,
+          "compiled_payload_only": 1,
+          "explicit_payload_only": 2
+        }
+      }
+    },
+    {
+      "case": "vector_read",
+      "messages": 1,
+      "primitive_requests": 16,
+      "changed_dictionary": false,
+      "added_macros": [],
+      "compiled_frames": [
+        "rr2r3r4r5r6r7r8r9r10r11r12r13r14r15r16"
+      ],
+      "selected_mode": "json/tuples",
+      "local_compile_seconds": 0.008,
+      "evaluated_dictionaries": 2,
+      "exact_round_trip": true,
+      "counts": {
+        "o200k_base": {
+          "baseline_adaptive": 707,
+          "compiled_adaptive": 707,
+          "brief": 813,
+          "json": 707,
+          "compiled_payload_only": 30,
+          "explicit_payload_only": 32
+        },
+        "cl100k_base": {
+          "baseline_adaptive": 704,
+          "compiled_adaptive": 704,
+          "brief": 811,
+          "json": 704,
+          "compiled_payload_only": 30,
+          "explicit_payload_only": 32
+        }
+      }
+    },
+    {
+      "case": "existing_macro",
+      "messages": 4,
+      "primitive_requests": 192,
+      "changed_dictionary": true,
+      "added_macros": [],
+      "compiled_frames": [
+        "V[1:16]",
+        "V[1:16]",
+        "V[1:16]",
+        "V[1:16]"
+      ],
+      "selected_mode": "oz/tuples",
+      "local_compile_seconds": 0.242,
+      "evaluated_dictionaries": 18,
+      "exact_round_trip": true,
+      "counts": {
+        "o200k_base": {
+          "baseline_adaptive": 921,
+          "compiled_adaptive": 899,
+          "brief": 3180,
+          "json": 1655,
+          "compiled_payload_only": 24,
+          "explicit_payload_only": 384
+        },
+        "cl100k_base": {
+          "baseline_adaptive": 916,
+          "compiled_adaptive": 894,
+          "brief": 3178,
+          "json": 1652,
+          "compiled_payload_only": 24,
+          "explicit_payload_only": 384
+        }
+      }
+    },
+    {
+      "case": "learn_workflow",
+      "messages": 4,
+      "primitive_requests": 192,
+      "changed_dictionary": true,
+      "added_macros": [
+        "A"
+      ],
+      "compiled_frames": [
+        "A[1:16]",
+        "A[1:16]",
+        "A[1:16]",
+        "A[1:16]"
+      ],
+      "selected_mode": "oz/tuples",
+      "local_compile_seconds": 0.416,
+      "evaluated_dictionaries": 34,
+      "exact_round_trip": true,
+      "counts": {
+        "o200k_base": {
+          "baseline_adaptive": 1133,
+          "compiled_adaptive": 899,
+          "brief": 3180,
+          "json": 1655,
+          "compiled_payload_only": 24,
+          "explicit_payload_only": 384
+        },
+        "cl100k_base": {
+          "baseline_adaptive": 1127,
+          "compiled_adaptive": 894,
+          "brief": 3178,
+          "json": 1652,
+          "compiled_payload_only": 24,
+          "explicit_payload_only": 384
+        }
+      }
+    },
+    {
+      "case": "irregular_order",
+      "messages": 1,
+      "primitive_requests": 30,
+      "changed_dictionary": true,
+      "added_macros": [
+        "A"
+      ],
+      "compiled_frames": [
+        "A9AA7A3A9A12A2A19A4A8"
+      ],
+      "selected_mode": "oz/tuples",
+      "local_compile_seconds": 0.106,
+      "evaluated_dictionaries": 34,
+      "exact_round_trip": true,
+      "counts": {
+        "o200k_base": {
+          "baseline_adaptive": 610,
+          "compiled_adaptive": 608,
+          "brief": 812,
+          "json": 634,
+          "compiled_payload_only": 18,
+          "explicit_payload_only": 60
+        },
+        "cl100k_base": {
+          "baseline_adaptive": 607,
+          "compiled_adaptive": 606,
+          "brief": 810,
+          "json": 631,
+          "compiled_payload_only": 18,
+          "explicit_payload_only": 60
+        }
+      }
+    },
+    {
+      "case": "literal",
+      "messages": 1,
+      "primitive_requests": 0,
+      "changed_dictionary": false,
+      "added_macros": [],
+      "compiled_frames": [
+        ":12.50 ± 0.02 mm; n=3; measurement method unknown.\r\nNot experimentally validated."
+      ],
+      "selected_mode": "plain/objects",
+      "local_compile_seconds": 0.002,
+      "evaluated_dictionaries": 2,
+      "exact_round_trip": true,
+      "counts": {
+        "o200k_base": {
+          "baseline_adaptive": 192,
+          "compiled_adaptive": 192,
+          "brief": 192,
+          "json": 220,
+          "compiled_payload_only": 23,
+          "explicit_payload_only": 23
+        },
+        "cl100k_base": {
+          "baseline_adaptive": 192,
+          "compiled_adaptive": 192,
+          "brief": 192,
+          "json": 218,
+          "compiled_payload_only": 24,
+          "explicit_payload_only": 24
+        }
+      }
+    }
+  ],
+  "heldout": {
+    "messages": [
+      [
+        "h1",
+        "r3r19r2"
+      ],
+      [
+        "h2",
+        ":New evidence remains unknown."
+      ]
+    ],
+    "before": [
+      304,
+      302
+    ],
+    "after": [
+      304,
+      302
+    ],
+    "exact_round_trip": true
+  },
+  "limitations": [
+    "No global minimum; bounded candidates and greedy macro search, measured on the supplied corpus.",
+    "Receiver input includes required grammar, dictionary, exact references, IDs and Worker response contract.",
+    "Payload-only figures exclude all context and grammar; they are not API cost reductions.",
+    "Sender bootstrapping/output, model reasoning/output, tools, retries and provider envelopes are not measured.",
+    "No live model comprehension, completed task quality or end-to-end latency measurements for OZ/3.",
+    "Local compiler seconds are one run on this machine; tokenizer startup is excluded.",
+    "Macros describe exact requests; no evidence, completion or tool permission is inferred.",
+    "Provided tokenizers are examples; other providers require their own counters."
+  ]
+}

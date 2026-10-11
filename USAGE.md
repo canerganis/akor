@@ -1,6 +1,8 @@
-# ÖZ 0.4.0 kullanım kılavuzu
+# ÖZ 0.5.0 kullanım kılavuzu
 
 ÖZ, mesaj dilini ve aktarımı yönetir; kullandığın model veya ajan sistemini sen bağlarsın. Python 3.10+ gerekir. Başlangıç, gönderim, durum ve inceleme standart kütüphaneyle çalışır. Token sayımı için isteğe bağlı `tiktoken` kullanılır.
+
+Yeni [ÖZ/3 dil kılavuzu](OZ3.md), hedef listelerini (`V[1:16]`) ve `oz compile` ile maliyete göre sözlük üretimini anlatır. Aşağıdaki çalışma alanı akışı eski ve yeni manifestlerle çalışır. `oz pack --worker`, Worker cevap biçimini de token sayımına ekler.
 
 ## İlk çalışan örnek
 

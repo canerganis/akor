@@ -1,6 +1,22 @@
 # AKOR
 
-**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.4.0 / ÖZ/2.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.5.0 / ÖZ/3.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+
+## 0.5.0: daha az tokenle daha çok işlem isteği
+
+`V[1:16]`, `VN=rNaNt30` sözlüğü altında **48 işlem isteğini 6 komut tokeninde** taşıyor. Bu sayı sözlük ve kaynak bağlamını içermez. ÖZ/3 hedef listelerini ve aralıkları kesin sırayla açar; tekrar eden iş dizilerinden maliyeti ölçülmüş kısa kodlar üretir.
+
+```powershell
+python -m pip install ".[benchmark]"
+oz compile --channel examples/oz3-training-channel.json --messages examples/oz3-training-messages.json --encoding o200k_base --encoding cl100k_base --worker --out .oz-runtime/derlenmis
+oz decode --channel examples/oz3-channel.json "V[1:16]"
+```
+
+`compile`, tam alıcı girdisini karşılaştırır; sözlük maliyeti dahil kazanç bulursa yeni kanal ve kısa mesajlar üretir. Seçilen tokenizer'ların hiçbirinde maliyet artışını kabul etmez. Kazanç yoksa mevcut kanalı korur. Klasörde `channel.json`, `messages.json`, ölçülen `prompt.txt` ve `report.json` oluşur; çalışan kuyruk değiştirilmez.
+
+Sentetik, tekrarlı 192 işlem isteğinde eski uyarlamalı biçime göre toplam girdi **1.133 → 899 / 1.127 → 894 token**: yaklaşık **%20,7** azalma. Sözlük, kaynaklar ve Worker cevap sözleşmesi dahildir. Zaten elle tanımlanmış iyi bir makroya göre ek kazanç yaklaşık **%2,4**; küçük mesajlarda kazanç olmayabilir. Yeni sürümde **161 test geçti**; ÖZ/3 için canlı model anlama/başarı ve toplam hız ölçümü yapılmadı.
+
+[ÖZ/3 dili ve kullanım](OZ3.md) · [Ölçüm ve sınırlar](reports/OZ3-RESULTS.md). Eski ÖZ/1–2 manifestleri ve bağlam hash'leri korunur.
 
 ## 0.4.0: günlük kullanım
 

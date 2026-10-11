@@ -55,7 +55,8 @@ def brief(atoms: Iterable[Atom]) -> str:
 
 def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
            counters: Iterable[Callable[[str], int]], max_tokens: int | None = None,
-           max_bytes: int = 262144, response_contract: str = '', additional_context: str = '') -> Batch:
+           max_bytes: int = 262144, response_contract: str = '', additional_context: str = '',
+           candidate_limit: int = 256) -> Batch:
     """Choose among complete receiver inputs, charging context and dictionaries.
 
     Stateless by design: every batch includes needed context. Provider prefix
@@ -82,7 +83,7 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     frames = tuple(channel.accept(wire, binding=channel.binding) for _, wire in messages)
     # Share this cache across all encodings and final candidate measurements.
     cached = tuple(lambda text, i=i: meter.counts(text)[i] for i in range(len(meter.counters)))
-    wires = tuple(channel.encode(atoms, counters=cached) for atoms in frames)
+    wires = tuple(channel.encode(atoms, counters=cached, candidate_limit=candidate_limit) for atoms in frames)
     flat = tuple(a for frame in frames for a in frame)
     contexts = {'objects': channel.context(flat)}
     snapshot = channel.snapshot()
@@ -100,10 +101,20 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
               'brief': 'Messages (ID, kind, quoted text):\n' + concise}
     primitives = tuple((':' + f[0].text) if f[0].code == ':' else
                        ''.join(a.code + (str(a.ref) if a.ref is not None else '') for a in f) for f in frames)
-    for name, candidate_wires in [('oz', wires), ('oz_base', primitives)]:
+    symbolic = [('oz', wires), ('oz_base', primitives)]
+    if channel.codebook.vectors:
+        # A shorter payload can lose once its grammar is charged. Keep the
+        # original macro renderer as an independent, fully costed fallback.
+        old = channel.snapshot()
+        old.pop('vectors', None)
+        scalar = Channel.from_snapshot(old)
+        scalar_wires = tuple(scalar.encode(atoms, counters=cached, candidate_limit=candidate_limit) for atoms in frames)
+        symbolic.append(('oz_scalar', scalar_wires))
+    for name, candidate_wires in symbolic:
         codes = [a.code for wire in candidate_wires for a in
                  _lex(wire, active=channel.active, codebook=channel.codebook) if a.code != ':']
-        dictionary = channel.codebook.prompt(codes) if codes else 'A frame beginning with : is exact literal text.'
+        vectors = any(not w.startswith(':') and '[' in w for w in candidate_wires)
+        dictionary = channel.codebook.prompt(codes, vectors=vectors) if codes else 'A frame beginning with : is exact literal text.'
         bodies[name] = (dictionary + '\nRows [id,frame]:\n'
                         + _dump(list(zip(ids, candidate_wires))))
     codes = set(a.code for a in flat if a.code != ':')
