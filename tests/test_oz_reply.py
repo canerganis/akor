@@ -44,7 +44,7 @@ class ReplyCodecTests(unittest.TestCase):
         lanes = [{'q': Q, 's': 0, 'v': ['x']}, {'q': Q, 's': [0], 'v': ['x', 'y']}, {'q': Q, 's': True, 'v': ['x', 'y']},
                  {'q': Q, 's': 3, 'v': ['x', 'y']}, {'q': Q, 's': 0, 'v': ['x', '']},
                  {'q': Q, 's': 0, 'v': ['x', 'y' * 65537]}, {'q': Q, 'results': [['a', 0, 'x'], ['b', 0, 'y']]},
-                 {'q': Q.upper(), 's': 0, 'v': ['x', 'y']}]
+                 {'q': Q.upper(), 's': 0, 'v': ['x', 'y']}, {'q': Q, 's': 0, 'v': ['x', '\ud800']}]
         for mode, cases in [('rows', rows), ('lanes', lanes)]:
             for value in cases:
                 with self.subTest(mode=mode, value=str(value)[:60]), self.assertRaises(Error):
@@ -104,7 +104,9 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(self.worker(adapter).run_once()['status'], 'received')
         request = seen[0]
         self.assertEqual(set(request), {'protocol', 'language', 'encoding', 'wire_format', 'reply_mode',
-                                        'binding', 'receipt', 'ids', 'prompt', 'prompt_tokens'})
+                                        'binding', 'receipt', 'ids', 'attempts', 'prompt', 'prompt_tokens'})
+        self.assertEqual(request['attempts'], [1])
+        self.assertNotIn('attempts', request['prompt'])
         self.assertEqual((request['protocol'], request['language'], request['encoding'], request['wire_format'],
                           request['reply_mode']), ('oz.adapter/3', 'OZ/7', 'off', 'json/tuples', 'rows'))
         self.assertIn(REPLY_CONTRACTS['rows'], request['prompt'])

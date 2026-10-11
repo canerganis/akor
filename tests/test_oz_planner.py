@@ -10,6 +10,8 @@ from oz_batch import REPLY_CONTRACTS, BudgetError, render
 from oz_runtime import Inbox, Outcome
 from test_oz2 import extended
 
+R = 'abcdef0123456789'
+
 
 class PlannerTests(unittest.TestCase):
     def setUp(self):
@@ -36,7 +38,7 @@ class PlannerTests(unittest.TestCase):
         plan = self.box.plan(self.ch, counters=[len], max_tokens=budget)
         self.assertEqual([j.id for j in plan.jobs], ['small'])
         self.assertEqual(plan.deferred, ('large',))
-        delivery, packet = self.box.claim_prepared(self.ch, owner='w', counters=[len], max_tokens=budget)
+        delivery, packet = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R, max_tokens=budget)
         self.assertEqual(packet.tokens, (budget,))
         self.assertEqual(delivery.jobs[0].id, 'small')
         self.assertEqual(self.box.inspect('large')['attempts'], 0)
@@ -44,7 +46,7 @@ class PlannerTests(unittest.TestCase):
     def test_no_fitting_job_leaves_all_attempts_untouched(self):
         self.post('one')
         with self.assertRaises(BudgetError):
-            self.box.claim_prepared(self.ch, owner='w', counters=[len], max_tokens=1)
+            self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R, max_tokens=1)
         self.assertEqual(self.box.stats(), {'pending': 1})
         self.assertEqual(self.box.inspect('one')['attempts'], 0)
 
@@ -55,7 +57,7 @@ class PlannerTests(unittest.TestCase):
         budget = render(self.ch, [('m0', wire)], counters=[len]).tokens[0]
         delivered = []
         for _ in range(3):
-            delivery, packet = self.box.claim_prepared(self.ch, owner='w', counters=[len], max_tokens=budget)
+            delivery, packet = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R, max_tokens=budget)
             self.assertEqual(len(delivery.jobs), 1)
             self.assertEqual(delivery.jobs[0].wire, wire)
             self.assertLessEqual(packet.tokens[0], budget)
@@ -74,7 +76,25 @@ class PlannerTests(unittest.TestCase):
         tight = min(rows.tokens[0], lanes.tokens[0]) - 1
         for mode in ['rows', 'lanes', 'auto']:
             with self.subTest(mode=mode), self.assertRaises(BudgetError):
-                self.box.claim_prepared(self.ch, owner='w', counters=[len], max_tokens=tight, reply_mode=mode)
+                self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R, max_tokens=tight, reply_mode=mode)
+        self.assertEqual(self.box.inspect('one')['attempts'], 0)
+
+    def test_largest_feasible_prefix_is_found_when_feasibility_is_not_monotonic(self):
+        for i in range(17):
+            self.post(f'm{i:02d}')
+        # Rows contracts are priced out, so only a 16-job lanes packet fits:
+        # 17 jobs are too long and 1..15 jobs resolve to rows under auto.
+        counter = lambda s: len(s) + (100000 if 'Reply rows' in s else 0)
+        budget = self.box.plan(self.ch, counters=[counter], limit=16, reply_mode='auto').packet.tokens[0]
+        plan = self.box.plan(self.ch, counters=[counter], limit=17, reply_mode='auto', max_tokens=budget)
+        self.assertEqual(len(plan.jobs), 16)
+        self.assertEqual(plan.packet.reply_mode, 'lanes')
+        self.assertEqual(plan.deferred, ())
+
+    def test_claim_refuses_the_preview_receipt(self):
+        self.post('one')
+        with self.assertRaisesRegex(Error, 'fresh receipt'):
+            self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='0' * 16)
         self.assertEqual(self.box.inspect('one')['attempts'], 0)
 
     def test_auto_reply_mode_follows_final_packed_count(self):
@@ -141,7 +161,7 @@ class PlannerTests(unittest.TestCase):
         self.box.complete(self.box.claim(self.ch, owner='w'), {'first': 'X' * 4000})
         budget = render(self.ch, [('next', 'V')], counters=[len]).tokens[0]
         with self.assertRaises(BudgetError):
-            self.box.claim_prepared(self.ch, owner='w', counters=[len], max_tokens=budget)
+            self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R, max_tokens=budget)
         self.assertEqual(self.box.inspect('next')['attempts'], 0)
 
     def test_retry_backoff_persists_and_exhausted_job_can_be_explicitly_requeued(self):
@@ -174,7 +194,7 @@ class PlannerTests(unittest.TestCase):
         self.box.claim(self.ch, owner='w', lease_seconds=1)
         self.now[0] += 2
         self.assertFalse(self.box.plan(self.ch, counters=[len]).jobs)
-        self.assertIsNone(self.box.claim_prepared(self.ch, owner='w', counters=[len]))
+        self.assertIsNone(self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R))
         self.assertEqual(self.box.inspect('one')['state'], 'failed')
 
     def test_concurrent_planners_never_reserve_same_job(self):
@@ -185,7 +205,7 @@ class PlannerTests(unittest.TestCase):
                     box.post(self.ch, f'm{i}', 'V', binding=self.ch.binding)
             def work(owner):
                 with Inbox(path) as box:
-                    claimed = box.claim_prepared(self.ch, owner=owner, counters=[len], limit=16)
+                    claimed = box.claim_prepared(self.ch, owner=owner, counters=[len], receipt=R, limit=16)
                     return {j.id for j in claimed[0].jobs} if claimed else set()
             with ThreadPoolExecutor(max_workers=2) as pool:
                 a, b = list(pool.map(work, ['a', 'b']))

@@ -301,10 +301,14 @@ class Channel:
 
     @classmethod
     def from_snapshot(cls, value: dict) -> Channel:
-        for key in ('vectors', 'basis', 'form'):
-            if isinstance(value, dict) and value.get(key) not in (None, False, []):
-                # Stripping it would change the binding and orphan queued wires.
-                raise Error(f'uses removed OZ/3-5 feature {key}; re-export as OZ/2')
+        if isinstance(value, dict):
+            for key, kind in (('vectors', bool), ('basis', list), ('form', list)):
+                if key in value and type(value[key]) is not kind:
+                    raise Error(f'invalid legacy field {key}')
+            for key in ('vectors', 'basis', 'form'):
+                if value.get(key):
+                    # Stripping it would change the binding and orphan queued wires.
+                    raise Error(f'uses removed OZ/3-5 feature {key}; re-export as OZ/2')
         try:
             args = {k: v for k, v in dict(value).items() if k not in {'vectors', 'basis', 'form'}}
             args['references'] = [Reference(**r) for r in args['references']]

@@ -136,7 +136,8 @@ class Worker:
         ids = tuple(j.id for j in delivery.jobs)
         request = {'protocol': PROTOCOL, 'language': 'OZ/7', 'encoding': packet.encoding,
                    'wire_format': packet.mode, 'reply_mode': packet.reply_mode, 'binding': delivery.binding,
-                   'receipt': receipt, 'ids': list(ids), 'prompt': packet.text,
+                   'receipt': receipt, 'ids': list(ids), 'attempts': [j.attempt for j in delivery.jobs],
+                   'prompt': packet.text,
                    'prompt_tokens': list(packet.tokens)}
         start = time.monotonic()
         report = {'language': 'OZ/7', 'encoding': packet.encoding, 'wire_format': packet.mode,

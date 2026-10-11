@@ -153,9 +153,10 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
 
     snapshot = channel.snapshot()
     context = J([snapshot['goal'], channel.active,
-                 [[r['number'], r['kind'], r['text'], r['source'], r['status']] for r in snapshot['references']]])
+                 [[r['number'], r['kind'], r['text'], r['source'], r['status']]
+                  for r in sorted(snapshot['references'], key=lambda r: r['number'])]])
     head = 'OZ/7\n' + COMMON + '\n' + OPERATION_CONTRACT + '\n' + REPLY_CONTRACTS[reply_mode] + '\n'
-    macros = '\n'.join(_definition(m) for m in channel.codebook.macros.values())
+    macros = '\n'.join(_definition(m) for m in sorted(channel.codebook.macros.values(), key=lambda m: m.code))
 
     def packet(wire_format: str, rows: list, templates: list | None) -> str:
         contract = ENCODING_CONTRACTS['json' if wire_format == JSON_FORMAT else
@@ -190,6 +191,8 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
                 encoded[atoms] = channel.encode(atoms, counters=cached, candidate_limit=candidate_limit)
         for base, frame_wires in [('oz', tuple(encoded[f] for f in frames)),
                                   ('oz_base', tuple(_explicit(f) for f in frames))]:
+            if any(channel.accept(w, binding=channel.binding) != f for w, f in zip(frame_wires, frames)):
+                raise Error('dictionary candidate failed the semantic round-trip')
             texts[base + '/tuples'] = packet(base + '/tuples', [list(p) for p in zip(ids, frame_wires)], None)
             wires[base + '/tuples'] = frame_wires
             unique = list(dict.fromkeys(frame_wires))

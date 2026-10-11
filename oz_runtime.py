@@ -179,11 +179,12 @@ class Inbox:
     def plan(self, channel: Channel, *, counters, limit: int = 16, max_tokens: int | None = None,
              max_bytes: int = 262144, encoding: str = 'off', min_savings: int = 0,
              reply_mode: str = 'rows', receipt: str = PREVIEW_RECEIPT) -> Plan:
-        """Read-only packing. Oversized jobs do not block smaller independent jobs.
+        """Read-only packing: the largest feasible ordered prefix of ready jobs.
 
-        Try the full batch first, then bounded greedy packing. Each candidate
-        count is charged its own resolved reply contract and the actual receipt.
-        This is not optimal bin-packing; token costs need not be monotonic.
+        Feasibility is not monotonic (reply auto switches contracts at 16), so
+        every prefix length is measured, longest first, each with its own
+        resolved reply contract and the actual receipt. Only when even the head
+        job is oversized does greedy packing defer it so it cannot block others.
         """
         if type(limit) is not int or not 1 <= limit <= 64:
             raise Error('plan limit must be 1..64')
@@ -203,11 +204,15 @@ class Inbox:
                           max_tokens=max_tokens, max_bytes=max_bytes, encoding=encoding,
                           min_savings=min_savings, reply_mode=resolve_reply_mode(reply_mode, len(items)),
                           receipt=receipt, handoffs=self._handoffs([r['id'] for r in items]))
-        try:
-            packet = pack(rows)
-            selected, deferred = rows, []
-        except BudgetError:
-            selected, deferred, packet = [], [], None
+        selected, deferred, packet = [], [], None
+        for size in range(len(rows), 0, -1):
+            try:
+                packet = pack(rows[:size])
+            except BudgetError:
+                continue
+            selected = rows[:size]
+            break
+        else:
             for row in rows:
                 try:
                     candidate = pack([*selected, row])
@@ -228,10 +233,10 @@ class Inbox:
             links.extend((mid, r['id'], r['result']) for r in rows)
         return links
 
-    def claim_prepared(self, channel: Channel, *, owner: str, counters, limit: int = 16,
+    def claim_prepared(self, channel: Channel, *, owner: str, counters, receipt: str, limit: int = 16,
                        max_tokens: int | None = None, max_bytes: int = 262144,
                        lease_seconds: float = 60, encoding: str = 'off', min_savings: int = 0,
-                       reply_mode: str = 'rows', receipt: str = PREVIEW_RECEIPT) -> tuple[Delivery, Batch] | None:
+                       reply_mode: str = 'rows') -> tuple[Delivery, Batch] | None:
         """Measure outside the write lock, then atomically reserve the selected jobs.
 
         A budget failure consumes no attempts. Concurrent changes trigger a fresh
@@ -239,6 +244,9 @@ class Inbox:
         """
         if not valid_id(owner) or type(lease_seconds) not in {int, float} or not 0 < lease_seconds <= 86400:
             raise Error('invalid delivery options')
+        if receipt == PREVIEW_RECEIPT:
+            # A real call needs a fresh receipt; the zero receipt is for previews only.
+            raise Error('claim requires a fresh receipt, not the preview receipt')
         counters = tuple(counters)
         for _ in range(4):
             with self._transaction():

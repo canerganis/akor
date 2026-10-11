@@ -41,7 +41,12 @@ def check_capabilities(value: object, reply_mode: str) -> dict:
 
 
 def _text(value: object) -> bool:
-    return isinstance(value, str) and bool(value.strip()) and len(value.encode('utf-8')) <= 65536
+    if not isinstance(value, str) or not value.strip():
+        return False
+    try:
+        return len(value.encode('utf-8')) <= 65536
+    except UnicodeEncodeError:
+        return False
 
 
 def validate_reply(value: object, ids, receipt: str, reply_mode: str) -> dict:

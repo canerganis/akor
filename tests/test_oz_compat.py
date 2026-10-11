@@ -57,6 +57,15 @@ class CompatibilityTests(unittest.TestCase):
             with self.subTest(key=key), self.assertRaisesRegex(Error, f'^uses removed OZ/3-5 feature {key}; re-export as OZ/2$'):
                 Channel.from_snapshot(dict(oz2, **{key: value}))
 
+    def test_malformed_legacy_fields_are_rejected_before_removal_checks(self):
+        oz2 = fixture('oz2-channel.json')['channel']
+        for key, value in [('vectors', None), ('vectors', 0), ('vectors', []), ('basis', False),
+                           ('basis', None), ('form', 0), ('form', {})]:
+            with self.subTest(key=key, value=value), self.assertRaisesRegex(Error, 'invalid legacy field ' + key):
+                Channel.from_snapshot(dict(oz2, **{key: value}))
+        saved = fixture('oz2-channel.json')['binding']
+        self.assertEqual(Channel.from_snapshot(dict(oz2, basis=[], form=[])).binding, saved)
+
     def test_removed_wire_syntax_is_rejected(self):
         channel = Channel.from_snapshot(fixture('oz2-channel.json')['channel'])
         for wire in ['r[1,2]', '^', '^0=r1', '&1']:
