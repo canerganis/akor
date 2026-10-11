@@ -67,7 +67,7 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     if candidate_limit is None:
         # A calibrated relative channel needs only a small candidate search on
         # the communication path; explicit callers can still choose 2..4096.
-        candidate_limit = 32 if channel.basis else 256
+        candidate_limit = 32 if channel.basis or channel.form else 256
     meter = TokenMeter(counters)
     if not meter.counters:
         raise Error('batch rendering requires actual target token counters')
@@ -114,9 +114,20 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     primitives = tuple((':' + f[0].text) if f[0].code == ':' else
                        ''.join(a.code + (str(a.ref) if a.ref is not None else '') for a in f) for f in frames)
     symbolic = [('oz', wires), ('oz_base', primitives)]
-    if channel.basis:
+    if channel.form:
+        previous_snapshot = channel.snapshot()
+        previous_snapshot.pop('form')
+        previous = Channel.from_snapshot(previous_snapshot)
+        symbolic.append(('oz_previous', encode_frames(previous)))
+        # Form matching is linear, and is also measured separately: choosing a
+        # shorter per-frame alias can otherwise hide the cheaper shared grammar.
+        from oz_form import form_spelling
+        form_wires = tuple(form_spelling(channel.form, f) or p for f, p in zip(frames, primitives))
+        symbolic.append(('oz_form', form_wires))
+    if channel.basis or channel.form:
         absolute_snapshot = channel.snapshot()
-        absolute_snapshot.pop('basis')
+        absolute_snapshot.pop('basis', None)
+        absolute_snapshot.pop('form', None)
         absolute = Channel.from_snapshot(absolute_snapshot)
         symbolic.append(('oz_absolute', encode_frames(absolute)))
     if channel.codebook.vectors:
@@ -125,6 +136,7 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
         old = channel.snapshot()
         old.pop('vectors', None)
         old.pop('basis', None)
+        old.pop('form', None)
         scalar = Channel.from_snapshot(old)
         scalar_wires = encode_frames(scalar)
         symbolic.append(('oz_scalar', scalar_wires))
@@ -138,6 +150,11 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
             bodies[name + '_table'] = (dictionary +
                 '\nTemplates indexed from 0; each row [id,template_index] is an independent request.\n'
                 + _dump(unique) + '\n' + _dump([[mid, indices[w]] for mid, w in zip(ids, candidate_wires)]))
+    if channel.form:
+        from oz_weave import matrix_body
+        matrix = matrix_body(channel, ids, frames, counters=cached)
+        if matrix is not None:
+            bodies['oz_matrix'] = matrix
     codes = set(a.code for a in flat if a.code != ':')
     legend = '\n'.join(RULES[c].name + ': ' + RULES[c].meaning for c in RULES if c in codes)
     json_rows = [[mid, [[RULES[a.code].name, a.ref] if a.code != ':' else ['literal', None, a.text]

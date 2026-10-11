@@ -1,6 +1,21 @@
 # AKOR
 
-**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.6.0 / ÖZ/4.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.7.0 / ÖZ/5.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+
+## 0.7.0: ortak işlem biçimi, değişen parametreler
+
+ÖZ/5 bir iş akışındaki birden fazla referansı bağımsız parametre yapar. `Form=r$0a$0t$1` altında `&7,31`, `r7a7t31` anlamına gelir. Toplu görevlerde parametre sütunları ayrıca sıkıştırılır: `(1:24)*2,1:16` tek sütunda 64 hedefi tam sırayla taşır. İş kimlikleri ve sonuçlar ayrı kalır.
+
+Sözlük, bağlam ve cevap biçimi dahil **64 farklı düzenli sentetik görevde 2.743 → 1.524 / 2.680 → 1.521 token**: optimize edilmiş ÖZ/4'e göre **%43–44 ek azalma**. Karışık sırada %14–16, rastgele parametrelerde %9–11 kazanç. Önceki ÖZ/4'ün 64 farklı plan örneği de **2.300 → 1.930 / 2.236 → 1.927** oldu. Kazanç olmayan küçük mesajlarda mevcut biçim korunur.
+
+```powershell
+oz compile --channel examples/oz5-training-channel.json --messages examples/oz5-training-messages.json --forms --relative --worker --encoding o200k_base --encoding cl100k_base --out .oz-runtime/oz5-derlenmis
+oz unpack --channel .oz-runtime/oz5-derlenmis/channel.json --matrix .oz-runtime/oz5-derlenmis/matrix.json
+```
+
+**202 test geçti.** Dil çözümleyici ve kuyruk doğrulandı; canlı model anlama ve gerçek kodlama hızı henüz ölçülmedi. Doğrudan `channel.fill_form(...)` hazır Form'u tokenizer araması olmadan doldurur. Derleme, her mesajda tekrarlanacak bir iletişim adımı değildir.
+
+[ÖZ/5 dili ve kullanım](OZ5.md) · [Ölçüm ve kontrol örnekleri](reports/OZ5-RESULTS.md). Aşağıdaki eski sürüm ölçümleri tarihli sonuçlardır; yeni sürüm daha fazla paket biçimini karşılaştırır.
 
 ## 0.6.0: ortak planı paylaş, yalnız farkı gönder
 

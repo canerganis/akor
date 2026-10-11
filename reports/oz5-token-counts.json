@@ -1,0 +1,269 @@
+{
+  "package": "0.7.0",
+  "kind": "synthetic_offline_code_review_requests",
+  "tiktoken": "0.14.0",
+  "encodings": [
+    "o200k_base",
+    "cl100k_base"
+  ],
+  "actual_model_calls": 0,
+  "actual_tool_executions": 0,
+  "full_dictionary_context_ids_and_response_contract_included": true,
+  "baseline": "Same corpus; bounded macro search (4 new macros), vectors, OZ/4 Base, absolute/table/plain/JSON candidates.",
+  "cases": [
+    {
+      "case": "single_read",
+      "messages": 1,
+      "distinct_programs": 1,
+      "mode": "brief/objects",
+      "form_selected": false,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 0.004,
+      "evaluated_dictionaries": 5,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 188,
+          "oz5": 188,
+          "savings_percent": 0.0
+        },
+        "cl100k_base": {
+          "optimized_oz4": 187,
+          "oz5": 187,
+          "savings_percent": 0.0
+        }
+      }
+    },
+    {
+      "case": "structured_8",
+      "messages": 8,
+      "distinct_programs": 8,
+      "mode": "oz/tuples",
+      "form_selected": false,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 0.512,
+      "evaluated_dictionaries": 45,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 1252,
+          "oz5": 1252,
+          "savings_percent": 0.0
+        },
+        "cl100k_base": {
+          "optimized_oz4": 1243,
+          "oz5": 1243,
+          "savings_percent": 0.0
+        }
+      }
+    },
+    {
+      "case": "structured_32",
+      "messages": 32,
+      "distinct_programs": 32,
+      "mode": "oz_matrix/tuples",
+      "form_selected": true,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 3.733,
+      "evaluated_dictionaries": 77,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 1901,
+          "oz5": 1412,
+          "savings_percent": 25.72
+        },
+        "cl100k_base": {
+          "optimized_oz4": 1870,
+          "oz5": 1409,
+          "savings_percent": 24.65
+        }
+      }
+    },
+    {
+      "case": "structured_64",
+      "messages": 64,
+      "distinct_programs": 64,
+      "mode": "oz_matrix/tuples",
+      "form_selected": true,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 7.518,
+      "evaluated_dictionaries": 77,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 2743,
+          "oz5": 1524,
+          "savings_percent": 44.44
+        },
+        "cl100k_base": {
+          "optimized_oz4": 2680,
+          "oz5": 1521,
+          "savings_percent": 43.25
+        }
+      },
+      "reuse_median_of_5_runs": {
+        "full_batch_render_ms": 355.152,
+        "direct_bind_64_frames_ms": 1.036,
+        "matrix_decode_64_jobs_ms": 1.092
+      },
+      "held_out": {
+        "messages": 17,
+        "exact_round_trip": true,
+        "mode": "oz_scalar/tuples",
+        "tokens": [
+          1496,
+          1480
+        ],
+        "model_accuracy_measured": false
+      }
+    },
+    {
+      "case": "shuffled_64",
+      "messages": 64,
+      "distinct_programs": 64,
+      "mode": "oz_matrix/tuples",
+      "form_selected": true,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 7.445,
+      "evaluated_dictionaries": 77,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 2743,
+          "oz5": 2314,
+          "savings_percent": 15.64
+        },
+        "cl100k_base": {
+          "optimized_oz4": 2680,
+          "oz5": 2311,
+          "savings_percent": 13.77
+        }
+      }
+    },
+    {
+      "case": "irregular_64",
+      "messages": 64,
+      "distinct_programs": 64,
+      "mode": "oz_matrix/tuples",
+      "form_selected": true,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 7.217,
+      "evaluated_dictionaries": 77,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 2745,
+          "oz5": 2456,
+          "savings_percent": 10.53
+        },
+        "cl100k_base": {
+          "optimized_oz4": 2692,
+          "oz5": 2453,
+          "savings_percent": 8.88
+        }
+      }
+    },
+    {
+      "case": "inline_macro_control_64",
+      "messages": 64,
+      "distinct_programs": 64,
+      "mode": "oz_matrix/tuples",
+      "form_selected": true,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 7.48,
+      "evaluated_dictionaries": 77,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 1875,
+          "oz5": 1524,
+          "savings_percent": 18.72
+        },
+        "cl100k_base": {
+          "optimized_oz4": 1810,
+          "oz5": 1521,
+          "savings_percent": 15.97
+        }
+      }
+    },
+    {
+      "case": "identical_64",
+      "messages": 64,
+      "distinct_programs": 1,
+      "mode": "oz_table/tuples",
+      "form_selected": false,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 0.544,
+      "evaluated_dictionaries": 21,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 857,
+          "oz5": 857,
+          "savings_percent": 0.0
+        },
+        "cl100k_base": {
+          "optimized_oz4": 855,
+          "oz5": 855,
+          "savings_percent": 0.0
+        }
+      }
+    },
+    {
+      "case": "oz4_sparse_edits_64",
+      "messages": 64,
+      "distinct_programs": 64,
+      "mode": "oz_matrix/tuples",
+      "form_selected": true,
+      "base_selected": true,
+      "exact_round_trip": true,
+      "local_compile_seconds": 21.544,
+      "evaluated_dictionaries": 77,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 2300,
+          "oz5": 1930,
+          "savings_percent": 16.09
+        },
+        "cl100k_base": {
+          "optimized_oz4": 2236,
+          "oz5": 1927,
+          "savings_percent": 13.82
+        }
+      }
+    },
+    {
+      "case": "literal",
+      "messages": 1,
+      "distinct_programs": 1,
+      "mode": "plain/objects",
+      "form_selected": false,
+      "base_selected": false,
+      "exact_round_trip": true,
+      "local_compile_seconds": 0.002,
+      "evaluated_dictionaries": 4,
+      "counts": {
+        "o200k_base": {
+          "optimized_oz4": 192,
+          "oz5": 192,
+          "savings_percent": 0.0
+        },
+        "cl100k_base": {
+          "optimized_oz4": 191,
+          "oz5": 191,
+          "savings_percent": 0.0
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "No live model comprehension, coding success, network speed or total API cost measured.",
+    "Structured cases intentionally contain reusable parameter patterns; shuffled and irregular controls are separate.",
+    "No job sorting, deduplication of execution, evidence removal or ID renaming.",
+    "Output/reasoning/tool tokens, provider envelope, sender setup and retries excluded.",
+    "Compilation is bounded calibration on the provided corpus, not a global minimum.",
+    "Times are local and machine-specific; direct binding excludes packet/tokenizer work.",
+    "Held-out validation proves codec preservation only, not agent understanding."
+  ]
+}

@@ -1,0 +1,279 @@
+{
+  "session": "oz5-code-review",
+  "task": "review",
+  "revision": 1,
+  "sender": "lead",
+  "recipient": "worker",
+  "goal": "SYNTHETIC code-review requests. Keep API and test requirements; report actual outcomes only.",
+  "active": 1,
+  "references": [
+    {
+      "number": 1,
+      "kind": "patch",
+      "text": "Fixture 1: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p1@1",
+      "status": ""
+    },
+    {
+      "number": 2,
+      "kind": "patch",
+      "text": "Fixture 2: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p2@1",
+      "status": ""
+    },
+    {
+      "number": 3,
+      "kind": "patch",
+      "text": "Fixture 3: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p3@1",
+      "status": ""
+    },
+    {
+      "number": 4,
+      "kind": "patch",
+      "text": "Fixture 4: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p4@1",
+      "status": ""
+    },
+    {
+      "number": 5,
+      "kind": "patch",
+      "text": "Fixture 5: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p5@1",
+      "status": ""
+    },
+    {
+      "number": 6,
+      "kind": "patch",
+      "text": "Fixture 6: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p6@1",
+      "status": ""
+    },
+    {
+      "number": 7,
+      "kind": "patch",
+      "text": "Fixture 7: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p7@1",
+      "status": ""
+    },
+    {
+      "number": 8,
+      "kind": "patch",
+      "text": "Fixture 8: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p8@1",
+      "status": ""
+    },
+    {
+      "number": 9,
+      "kind": "patch",
+      "text": "Fixture 9: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p9@1",
+      "status": ""
+    },
+    {
+      "number": 10,
+      "kind": "patch",
+      "text": "Fixture 10: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p10@1",
+      "status": ""
+    },
+    {
+      "number": 11,
+      "kind": "patch",
+      "text": "Fixture 11: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p11@1",
+      "status": ""
+    },
+    {
+      "number": 12,
+      "kind": "patch",
+      "text": "Fixture 12: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p12@1",
+      "status": ""
+    },
+    {
+      "number": 13,
+      "kind": "patch",
+      "text": "Fixture 13: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p13@1",
+      "status": ""
+    },
+    {
+      "number": 14,
+      "kind": "patch",
+      "text": "Fixture 14: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p14@1",
+      "status": ""
+    },
+    {
+      "number": 15,
+      "kind": "patch",
+      "text": "Fixture 15: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p15@1",
+      "status": ""
+    },
+    {
+      "number": 16,
+      "kind": "patch",
+      "text": "Fixture 16: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p16@1",
+      "status": ""
+    },
+    {
+      "number": 17,
+      "kind": "patch",
+      "text": "Fixture 17: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p17@1",
+      "status": ""
+    },
+    {
+      "number": 18,
+      "kind": "patch",
+      "text": "Fixture 18: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p18@1",
+      "status": ""
+    },
+    {
+      "number": 19,
+      "kind": "patch",
+      "text": "Fixture 19: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p19@1",
+      "status": ""
+    },
+    {
+      "number": 20,
+      "kind": "patch",
+      "text": "Fixture 20: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p20@1",
+      "status": ""
+    },
+    {
+      "number": 21,
+      "kind": "patch",
+      "text": "Fixture 21: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p21@1",
+      "status": ""
+    },
+    {
+      "number": 22,
+      "kind": "patch",
+      "text": "Fixture 22: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p22@1",
+      "status": ""
+    },
+    {
+      "number": 23,
+      "kind": "patch",
+      "text": "Fixture 23: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p23@1",
+      "status": ""
+    },
+    {
+      "number": 24,
+      "kind": "patch",
+      "text": "Fixture 24: timeout=5 s; retries=2; API unchanged.",
+      "source": "fixture:p24@1",
+      "status": ""
+    },
+    {
+      "number": 30,
+      "kind": "procedure",
+      "text": "Check timeout, retry count and API; report actual failures.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 31,
+      "kind": "procedure",
+      "text": "Request boundary and retry tests for the supplied patch.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 32,
+      "kind": "procedure",
+      "text": "Request regression tests; preserve failure details.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 41,
+      "kind": "proposal",
+      "text": "Propose fixture change 1; not applied.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 42,
+      "kind": "proposal",
+      "text": "Propose fixture change 2; not applied.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 43,
+      "kind": "proposal",
+      "text": "Propose fixture change 3; not applied.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 44,
+      "kind": "proposal",
+      "text": "Propose fixture change 4; not applied.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 45,
+      "kind": "proposal",
+      "text": "Propose fixture change 5; not applied.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 46,
+      "kind": "proposal",
+      "text": "Propose fixture change 6; not applied.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 47,
+      "kind": "proposal",
+      "text": "Propose fixture change 7; not applied.",
+      "source": "",
+      "status": ""
+    },
+    {
+      "number": 48,
+      "kind": "proposal",
+      "text": "Propose fixture change 8; not applied.",
+      "source": "",
+      "status": ""
+    }
+  ],
+  "macros": [
+    {
+      "code": "V",
+      "steps": [
+        {
+          "code": "r",
+          "ref": 0,
+          "text": null
+        },
+        {
+          "code": "a",
+          "ref": 0,
+          "text": null
+        },
+        {
+          "code": "t",
+          "ref": 30,
+          "text": null
+        }
+      ]
+    }
+  ],
+  "vectors": true
+}

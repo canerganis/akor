@@ -1,4 +1,4 @@
-"""OZ/1..4: context-bound semantic bytecode for agent messages.
+"""OZ/1..5: context-bound semantic bytecode for agent messages.
 
 The trusted adapter carries routing/version metadata. This module parses and
 renders messages; it never executes requests or treats agent claims as proof.
@@ -292,7 +292,8 @@ class Channel:
 
     def __init__(self, *, session: str, task: str, revision: int, sender: str,
                  recipient: str, goal: str, references: Iterable[Reference], active: int,
-                 codebook: Codebook | None = None, basis: Iterable[Atom] | None = None):
+                 codebook: Codebook | None = None, basis: Iterable[Atom] | None = None,
+                 form: Iterable[Atom] | None = None):
         strings = (session, task, sender, recipient, goal)
         if any(not isinstance(v, str) or not v.strip() for v in strings):
             raise Error('channel identifiers and goal must be nonempty')
@@ -337,6 +338,10 @@ class Channel:
             if not work_program(self._basis) or any(a.ref not in self._refs or
                     self._refs[a.ref].kind not in RULES[a.code].kinds for a in self._basis):
                 raise Error('Base requires 1..64 valid primitive work requests')
+        self._form = tuple(form) if form is not None else ()
+        if form is not None:
+            from oz_form import validate_form
+            validate_form(self._form, self._refs)
         # Protocol meanings are bound too: changed codebooks cannot silently interoperate.
         manifest = [session, task, revision, sender, recipient, goal, active,
                     [vars(ref) for ref in sorted(refs, key=lambda r: r.number)], self.codebook.prompt(),
@@ -344,6 +349,10 @@ class Channel:
         if self._basis:
             from oz_delta import DELTA_GRAMMAR
             manifest.append(['OZ/4', DELTA_GRAMMAR, [vars(a) for a in self._basis]])
+        if self._form:
+            from oz_form import FORM_GRAMMAR
+            from oz_weave import WEAVE_GRAMMAR
+            manifest.append(['OZ/5', FORM_GRAMMAR, WEAVE_GRAMMAR, [vars(a) for a in self._form]])
         self._binding = hashlib.sha256(_dump(manifest).encode('utf-8')).hexdigest()
 
     @property
@@ -357,6 +366,10 @@ class Channel:
     @property
     def basis(self) -> tuple[Atom, ...]:
         return self._basis
+
+    @property
+    def form(self) -> tuple[Atom, ...]:
+        return self._form
 
     @property
     def codebook(self) -> Codebook:
@@ -376,6 +389,8 @@ class Channel:
             result['vectors'] = True
         if self.basis:
             result['basis'] = [vars(a).copy() for a in self.basis]
+        if self.form:
+            result['form'] = [vars(a).copy() for a in self.form]
         return result
 
     @classmethod
@@ -387,6 +402,8 @@ class Channel:
                                         for m in args.pop('macros', [])), vectors=args.pop('vectors', False))
             if 'basis' in args:
                 args['basis'] = [Atom(**a) for a in args['basis']]
+            if 'form' in args:
+                args['form'] = [Atom(**a) for a in args['form']]
             return cls(**args)
         except (KeyError, TypeError) as exc:
             raise Error('invalid channel snapshot') from exc
@@ -410,7 +427,10 @@ class Channel:
     def accept(self, wire: str, *, binding: str) -> tuple[Atom, ...]:
         if binding != self.binding:
             raise Error('channel/context/codebook mismatch; resynchronize')
-        if isinstance(wire, str) and wire.startswith('^'):
+        if isinstance(wire, str) and wire.startswith('&'):
+            from oz_form import apply_form
+            atoms = apply_form(wire, self.form)
+        elif isinstance(wire, str) and wire.startswith('^'):
             from oz_delta import apply_delta
             try:
                 if len(wire.encode('utf-8')) > 8192:
@@ -492,6 +512,10 @@ class Channel:
         explicit = ''.join(a.code + (str(a.ref) if a.ref is not None else '') for a in atoms)
         from oz_delta import delta_spellings
         relative = delta_spellings(self.basis, atoms)
+        from oz_form import form_spelling
+        slotted = form_spelling(self.form, atoms)
+        if slotted is not None:
+            relative = (slotted, *relative)
         smallest = min([shortest[0], *relative], key=lambda s: (len(s), s))
         result = dict.fromkeys([smallest, explicit])
         for value in [*relative, shortest[0]]:
@@ -520,6 +544,18 @@ class Channel:
             raise Error('semantic round-trip failed')
         return best
 
+    def fill_form(self, *references: int) -> str:
+        """Bind a known Form directly, without tokenizer or spelling search.
+
+        This validates meaning, not optimality or task completion. For a fully
+        costed receiver prompt use oz_batch.render after binding the frame.
+        """
+        if any(not _number(ref) for ref in references):
+            raise Error('Form values must be reference IDs 1..9999')
+        wire = '&' + ','.join(map(str, references))
+        self.accept(wire, binding=self.binding)
+        return wire
+
     def describe(self, atoms: Iterable[Atom]) -> str:
         atoms = self.validate(atoms)
         return '\n'.join(atom.text if atom.code == ':' else
@@ -527,13 +563,16 @@ class Channel:
                          if atom.ref is not None else RULES[atom.code].meaning for atom in atoms)
 
     def dictionary(self, wires: Iterable[str]) -> str:
-        """Only used syntax, with the entire immutable Base when referenced."""
+        """Only used syntax, with complete bound programs when referenced."""
         wires = tuple(wires)
         relative = any(w.startswith('^') for w in wires)
+        slotted = any(w.startswith('&') for w in wires)
         codes, vectors = [], False
         for wire in wires:
             atoms = self.accept(wire, binding=self.binding)
-            if wire.startswith('^'):
+            if wire.startswith('&'):
+                codes.extend(a.code for a in self.form)
+            elif wire.startswith('^'):
                 codes.extend(a.code for a in [*self.basis, *atoms])
                 for edit in wire[1:].split(';') if wire != '^' and not wire.startswith('^@') else []:
                     payload = edit.split('=', 1)[1]
@@ -548,6 +587,9 @@ class Channel:
         if relative:
             from oz_delta import DELTA_GRAMMAR, explicit
             dictionary += DELTA_GRAMMAR + '\nBase=' + explicit(self.basis)
+        if slotted:
+            from oz_form import FORM_GRAMMAR, form_text
+            dictionary += FORM_GRAMMAR + '\nForm=' + form_text(self.form)
         return dictionary
 
     def prompt(self) -> str:
@@ -556,6 +598,9 @@ class Channel:
         if self.basis:
             from oz_delta import DELTA_GRAMMAR, explicit
             text += DELTA_GRAMMAR + '\nBase=' + explicit(self.basis)
+        if self.form:
+            from oz_form import FORM_GRAMMAR, form_text
+            text += FORM_GRAMMAR + '\nForm=' + form_text(self.form)
         return text
 
     def context(self, atoms: Iterable[Atom]) -> str:
