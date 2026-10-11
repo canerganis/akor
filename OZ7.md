@@ -561,3 +561,26 @@ Persistent session recovery is left to a later release.
 
 **S7 — ACCEPT.**
 > “Each session belongs exclusively to one host worker instance. Workers MAY share a channel but MUST NOT share a sid, provider conversation or session tables. Only one call may be outstanding per session. Worker replacement or ownership transfer requires a new session.”
+
+### Session decisions S8-S13 (Astra)
+
+Claude's proposals that were accepted as written:
+- S8: session/1 requires explicit rows or lanes; reply_mode auto with session/1 fails before claim/call.
+- S10: the teach DATA object is {"jobs":[],"predecessors":[],"handoffs":[],"q":receipt}.
+- S11: max_tokens/max_bytes apply to the packet being sent (teach or steady); packing uses steady packets; retained history is not counted by the host; state additions are charged in the packet that introduces them.
+
+- **S8 — ACCEPT.**
+- **S9 — Replacement spec:**
+  > “oz.adapter/4 requests add `session`; responses add `session` and replace `reply` with required `reply_text:string`. `reply` is forbidden. `reply_text` MUST preserve the exact model output, without normalization, trimming or reserialization; its UTF-8 bytes enter history_digest. The host strictly parses and validates it, rejecting duplicate keys, non-finite numbers, surrounding prose and invalid Unicode. oz.adapter/3 remains unchanged.”
+
+- **S10 — ACCEPT.**
+- **S11 — ACCEPT.** The teach packet must also fit the budget on its own; overflow never causes silent truncation or fallback.
+- **S12 — Replacement spec:**
+  > “Let F be S3’s ordered role/content length framing. Capabilities MUST declare `session_system_digest`, lowercase hexadecimal SHA-256 of `ASCII("oz.preamble/1\n") || F(fixed system/tool preamble)`. Pin it for the session.
+  >
+  > `history_digest` is lowercase hexadecimal SHA-256 of `ASCII("oz.history/2\n") || ASCII(session_system_digest) || LF || F(host-known conversation history through the current request, excluding the current reply)`.
+  >
+  > Every provider-visible component MUST be covered exactly once. The adapter MUST establish both terms from actual submitted input or losslessly reconstructed retained state. Unknown or unrepresentable components forbid dispatch; preamble changes invalidate the session. This remains trusted-adapter attestation.”
+
+- **S13 — Replacement spec:**
+  > “`["reply",q,id]` requires an earlier fully validated, host-accepted reply in the same session and the same still-valid accepted result revision with identical exact text. Check eligibility when adding the entry and on every consuming turn. Otherwise use `["text",id,text]` from currently eligible host state. Requeued or invalidated results MUST NOT be consumed until accepted again.”

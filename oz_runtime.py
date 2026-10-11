@@ -16,7 +16,6 @@ import uuid
 
 from oz import Channel, Error, TokenMeter, _dump
 from oz_batch import PREVIEW_RECEIPT, Batch, BudgetError, render, valid_id
-from oz_reply import resolve_reply_mode
 
 
 @dataclass(frozen=True)
@@ -177,14 +176,13 @@ class Inbox:
                               (channel.binding, kind, self.clock(), self.clock(), *ids, limit)).fetchall()
 
     def plan(self, channel: Channel, *, counters, limit: int = 16, max_tokens: int | None = None,
-             max_bytes: int = 262144, encoding: str = 'off', min_savings: int = 0,
-             reply_mode: str = 'rows', receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan:
+             max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan:
         """Read-only packing: the largest feasible ordered prefix of ready jobs.
 
-        Feasibility is not monotonic (reply auto switches contracts at 16), so
-        every prefix length is measured, longest first, each with its own
-        resolved reply contract and the actual receipt. Only when even the head
-        job is oversized does greedy packing defer it so it cannot block others.
+        Feasibility is not monotonic (a template table can make more jobs
+        cheaper), so every prefix length is measured, longest first, with the
+        actual receipt. Only when even the head job is oversized does greedy
+        packing defer it so it cannot block others.
         """
         if type(limit) is not int or not 1 <= limit <= 64:
             raise Error('plan limit must be 1..64')
@@ -201,8 +199,7 @@ class Inbox:
         cached = tuple(lambda s, i=i: meter.counts(s)[i] for i in range(len(meter.counters)))
         def pack(items):
             return render(channel, [(r['id'], r['wire']) for r in items], counters=cached,
-                          max_tokens=max_tokens, max_bytes=max_bytes, encoding=encoding,
-                          min_savings=min_savings, reply_mode=resolve_reply_mode(reply_mode, len(items)),
+                          max_tokens=max_tokens, max_bytes=max_bytes,
                           receipt=receipt, handoffs=self._handoffs([r['id'] for r in items]),
                           context_policy=context_policy)
         selected, deferred, packet = [], [], None
@@ -236,8 +233,7 @@ class Inbox:
 
     def claim_prepared(self, channel: Channel, *, owner: str, counters, receipt: str, limit: int = 16,
                        max_tokens: int | None = None, max_bytes: int = 262144,
-                       lease_seconds: float = 60, encoding: str = 'off', min_savings: int = 0,
-                       reply_mode: str = 'rows', context_policy: str = 'needed') -> tuple[Delivery, Batch] | None:
+                       lease_seconds: float = 60, context_policy: str = 'needed') -> tuple[Delivery, Batch] | None:
         """Measure outside the write lock, then atomically reserve the selected jobs.
 
         A budget failure consumes no attempts. Concurrent changes trigger a fresh
@@ -253,8 +249,7 @@ class Inbox:
             with self._transaction():
                 self._recover(channel.binding, 'work')
             plan = self.plan(channel, counters=counters, limit=limit, max_tokens=max_tokens,
-                             max_bytes=max_bytes, encoding=encoding, min_savings=min_savings,
-                             reply_mode=reply_mode, receipt=receipt, context_policy=context_policy)
+                             max_bytes=max_bytes, receipt=receipt, context_policy=context_policy)
             if not plan.jobs:
                 if plan.deferred:
                     raise BudgetError('no ready job fits the budget; attempts unchanged; increase budget')

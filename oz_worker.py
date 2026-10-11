@@ -1,4 +1,4 @@
-"""Provider-neutral OZ/7 worker and opt-in JSON-over-stdio adapter. No API keys needed."""
+"""Provider-neutral OZ/8 worker and opt-in JSON-over-stdio adapter. No API keys needed."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,7 +13,7 @@ import time
 from typing import Callable
 
 from oz import Channel, Error
-from oz_reply import PROTOCOL, check_capabilities, new_receipt, validate_reply, validate_usage
+from oz_reply import LANGUAGE, PROTOCOL, check_capabilities, new_receipt, validate_reply, validate_usage
 from oz_runtime import Inbox, Outcome
 
 class AdapterError(Error):
@@ -109,8 +109,8 @@ class Worker:
 
     def __init__(self, inbox: Inbox, channel: Channel, adapter: Callable[[dict], dict], *,
                  counters, capabilities: dict | None = None, owner: str = 'worker', max_tokens: int = 2048,
-                 batch_size: int = 16, timeout: float = 120, retry_delay: float = 2, reply_mode: str = 'rows',
-                 encoding: str = 'off', min_savings: int = 0, context_policy: str = 'needed'):
+                 batch_size: int = 16, timeout: float = 120, retry_delay: float = 2,
+                 context_policy: str = 'needed'):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
         if isinstance(adapter, StdioAdapter) and adapter.timeout > timeout:
@@ -118,12 +118,10 @@ class Worker:
         if type(retry_delay) not in {int, float} or not 0 <= retry_delay <= 86400:
             raise Error('invalid retry delay')
         # Negotiation happens here, before any claim or call; never from model output.
-        check_capabilities(capabilities if capabilities is not None else getattr(adapter, 'capabilities', None),
-                           reply_mode)
+        check_capabilities(capabilities if capabilities is not None else getattr(adapter, 'capabilities', None))
         self.inbox, self.channel, self.adapter = inbox, channel, adapter
         self.options = dict(counters=tuple(counters), owner=owner, max_tokens=max_tokens, limit=batch_size,
-                            lease_seconds=timeout + 30, encoding=encoding, min_savings=min_savings,
-                            reply_mode=reply_mode, context_policy=context_policy)
+                            lease_seconds=timeout + 30, context_policy=context_policy)
         self.retry_delay = retry_delay
 
     def run_once(self) -> dict:
@@ -134,16 +132,11 @@ class Worker:
             return {'status': 'idle', 'model_calls': 0}
         delivery, packet = claimed
         ids = tuple(j.id for j in delivery.jobs)
-        request = {'protocol': PROTOCOL, 'language': 'OZ/7', 'encoding': packet.encoding,
-                   'wire_format': packet.mode, 'reply_mode': packet.reply_mode, 'binding': delivery.binding,
-                   'receipt': receipt, 'ids': list(ids), 'attempts': [j.attempt for j in delivery.jobs],
+        request = {'protocol': PROTOCOL, 'language': LANGUAGE, 'binding': delivery.binding, 'receipt': receipt, 'ids': list(ids), 'attempts': [j.attempt for j in delivery.jobs],
                    'prompt': packet.text,
                    'prompt_tokens': list(packet.tokens)}
         start = time.monotonic()
-        report = {'language': 'OZ/7', 'encoding': packet.encoding, 'wire_format': packet.mode,
-                  'reply_mode': packet.reply_mode, 'prompt_tokens': list(packet.tokens),
-                  'json_tokens': packet.json_tokens and list(packet.json_tokens),
-                  'saved_tokens': packet.saved_tokens and list(packet.saved_tokens),
+        report = {'language': LANGUAGE, 'mode': packet.mode, 'prompt_tokens': list(packet.tokens),
                   'adapter_calls': 1, 'usage': {}, 'verification': 'unverified'}
         phase = 'adapter'
         try:
@@ -154,7 +147,7 @@ class Worker:
             # Usage is provider accounting; keep it even when the reply is invalid.
             report['usage'] = validate_usage(response.get('usage', {}))
             outcomes = {mid: Outcome(status, text) for mid, (status, text)
-                        in validate_reply(response['reply'], ids, receipt, packet.reply_mode).items()}
+                        in validate_reply(response['reply'], ids, receipt).items()}
             report['status'] = 'received'
         except Exception as exc:
             # Do not store arbitrary provider exception text: it may contain credentials.

@@ -84,7 +84,10 @@ class InboxTests(unittest.TestCase):
         self.assertIsNone(self.claim(kind='host'))
         delivery = self.claim()
         self.assertEqual(delivery.jobs[0].wire, 'V+8.')
-        self.assertIn('m1', delivery.prepare(self.ch, counters=[len]).text)
+        packet = delivery.prepare(self.ch, counters=[len])
+        self.assertEqual(packet.ids, ('m1',))
+        self.assertNotIn('m1', packet.text)
+        self.assertIn('"j":["r7a7t14+8."]', packet.text)
 
     def test_retry_cannot_duplicate_acknowledged_work(self):
         self.post('m1')

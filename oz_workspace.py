@@ -82,9 +82,8 @@ def initialize(path: Path, channel: Channel | None = None):
         'oz plan\noz status\n```\n\n'
         'Gerçek ajan için JSON stdin/stdout adaptörünü açıkça seç:\n\n'
         '`oz run --adapter adapter.json`\n\n'
-        'adapter.json: {"argv":["python","worker.py"],"protocols":["oz.adapter/3"],'
-        '"languages":["OZ/7"],"reply_modes":["rows","lanes"]}\n'
-        'Adaptör istemi modele iletir, {"reply":...,"usage":...} döndürür (OZ7.md).\n'
+        'adapter.json: {"argv":["python","worker.py"],"protocols":["oz.adapter/3"],"languages":["OZ/8"]}\n'
+        'Adaptör istemi modele iletir, {"reply":...,"usage":...} döndürür (OZ8.md).\n'
         'Komut çalışma dizini adaptör dosyasının klasörüdür. oz init hiçbir adaptör çalıştırmaz.\n'
         'oz.json içinde kanallar, hedef tokenizer, girdi bütçesi ve paket büyüklüğü bulunur.\n'
         'Yeni kaynak/sözlük için yeni kanal ekle: oz channel-add yeni kanal.json\n'
@@ -153,32 +152,28 @@ class Workspace:
             if temp.exists():
                 temp.unlink()
 
-    def plan(self, box, name='worker', *, max_tokens=None, reply_mode='rows', encoding='off', min_savings=0,
-             context_policy='needed'):
+    def plan(self, box, name='worker', *, max_tokens=None, context_policy='needed'):
         # A preview gets its own receipt; the real run is planned and measured again.
         return box.plan(self.channel(name), counters=self.counters(), limit=self.config['batch_size'],
                         max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                        encoding=encoding, min_savings=min_savings, reply_mode=reply_mode,
                         receipt=new_receipt(), context_policy=context_policy)
 
-    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, reply_mode='rows',
-            encoding='off', min_savings=0, context_policy='needed'):
+    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, context_policy='needed'):
         if type(max_calls) is not int or not 1 <= max_calls <= 100:
             raise Error('max_calls must be 1..100')
         adapter_path = adapter_path.resolve()
         spec = loads(adapter_path.read_text(encoding='utf-8'))
-        if (not isinstance(spec, dict) or set(spec) != {'argv', 'protocols', 'languages', 'reply_modes'}
+        if (not isinstance(spec, dict) or set(spec) != {'argv', 'protocols', 'languages'}
                 or not isinstance(spec['argv'], list)):
-            raise Error('Adaptör dosyası argv, protocols, languages ve reply_modes içermeli (oz.adapter/3)')
+            raise Error('Adaptör dosyası argv, protocols ve languages içermeli (oz.adapter/3, OZ/8)')
         adapter = StdioAdapter(tuple(spec['argv']), cwd=adapter_path.parent, timeout=timeout,
-                               capabilities={k: spec[k] for k in ('protocols', 'languages', 'reply_modes')})
+                               capabilities={k: spec[k] for k in ('protocols', 'languages')})
         results = []
         counters = self.counters()
         with self.inbox() as box:
             worker = Worker(box, self.channel(name), adapter, counters=counters, owner=name,
                             batch_size=self.config['batch_size'], timeout=timeout,
                             max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                            reply_mode=reply_mode, encoding=encoding, min_savings=min_savings,
                             context_policy=context_policy)
             for _ in range(max_calls):
                 result = worker.run_once()
@@ -189,11 +184,11 @@ class Workspace:
 
 
 DEMO_SCRIPT = (
-    'import json,sys; r=json.load(sys.stdin); t="DEMO receipt only; no model or task execution."; '
-    'json.dump({"reply":{"q":r["receipt"],"results":[[i,0,t] for i in r["ids"]]} if r["reply_mode"]=="rows" '
-    'else {"q":r["receipt"],"s":0,"v":[t for i in r["ids"]]}},sys.stdout)'
+    'import json,sys; r=json.load(sys.stdin); '
+    'json.dump({"reply":{"q":r["receipt"],"s":0,"v":["DEMO receipt only; no model or task execution." '
+    'for i in r["ids"]]}},sys.stdout)'
 )
-DEMO_CAPABILITIES = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/7'], 'reply_modes': ['rows', 'lanes']}
+DEMO_CAPABILITIES = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/8']}
 
 
 def demo(path: Path):

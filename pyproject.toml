@@ -18,4 +18,4 @@ akor = "akor:main"
 oz = "oz_cli:main"
 
 [tool.setuptools]
-py-modules = ["akor", "oz", "oz_batch", "oz_compiler", "oz_runtime", "oz_cli", "oz_worker", "oz_workspace", "oz_reply"]
+py-modules = ["akor", "oz", "oz_batch", "oz_runtime", "oz_cli", "oz_worker", "oz_workspace", "oz_reply"]

@@ -1,22 +1,20 @@
 import json
-from pathlib import Path
 import subprocess
 import sys
-import tempfile
 import unittest
 
 from oz import Error
 from oz_runtime import Inbox
-from oz_batch import REPLY_CONTRACTS
+from oz_batch import REPLY_CONTRACT
 from oz_reply import validate_response
 from oz_worker import AdapterError, StdioAdapter, Worker, loads, process_host
 from test_oz2 import extended
 
-CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/7'], 'reply_modes': ['rows', 'lanes']}
+CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/8']}
 
 
-def rows(request, results):
-    return {'reply': {'q': request['receipt'], 'results': results}}
+def lanes(request, texts, statuses=0):
+    return {'reply': {'q': request['receipt'], 's': statuses, 'v': texts}}
 
 
 class WorkerTests(unittest.TestCase):
@@ -39,11 +37,14 @@ class WorkerTests(unittest.TestCase):
         def adapter(request):
             seen.append(request)
             self.assertEqual(request['prompt_tokens'], [len(request['prompt'])])
-            self.assertIn(REPLY_CONTRACTS['rows'], request['prompt'])
-            return dict(rows(request, [[i, 0, '12.50 ± 0.02 mm; method unknown.'] for i in request['ids']]),
+            self.assertEqual(request['ids'], ['one', 'two'])
+            self.assertIn(REPLY_CONTRACT, request['prompt'])
+            return dict(lanes(request, ['12.50 ± 0.02 mm; method unknown.'] * len(request['ids'])),
                         usage={'input_tokens': 500, 'output_tokens': 30, 'cached_input_tokens': 100})
         result = self.worker(adapter).run_once()
         self.assertEqual(result['status'], 'received')
+        self.assertEqual((result['language'], result['mode']), ('OZ/8', 'frames'))
+        self.assertEqual(result['prompt_tokens'], seen[0]['prompt_tokens'])
         self.assertEqual(len(seen), 1)
         self.assertEqual(self.box.stats(), {'done': 2})
         self.assertEqual(self.box.inspect('one')['result'], '12.50 ± 0.02 mm; method unknown.')
@@ -58,8 +59,8 @@ class WorkerTests(unittest.TestCase):
         def adapter(r):
             calls.append(r['ids'])
             if len(calls) == 1:
-                return rows(r, [['one', 0, 'done'], ['two', 1, 'retry later']])
-            return rows(r, [['two', 0, 'done']])
+                return lanes(r, ['done', 'retry later'], [0, 1])
+            return lanes(r, ['done'])
         worker = self.worker(adapter, retry_delay=5)
         worker.run_once()
         self.assertEqual(worker.run_once()['status'], 'idle')
@@ -72,7 +73,7 @@ class WorkerTests(unittest.TestCase):
     def test_invalid_response_never_unlocks_dependencies(self):
         self.post('one')
         self.post('two', after=['one'])
-        result = self.worker(lambda r: rows(r, [['other', 0, 'wrong id']])).run_once()
+        result = self.worker(lambda r: lanes(r, ['wrong', 'count'])).run_once()
         self.assertEqual(result['status'], 'adapter_error')
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
         self.assertEqual(self.box.inspect('two')['attempts'], 0)
@@ -89,7 +90,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_permanent_outcome_requires_explicit_requeue(self):
         self.post()
-        worker = self.worker(lambda r: rows(r, [['one', 2, 'unsupported request']]))
+        worker = self.worker(lambda r: lanes(r, ['unsupported request'], 2))
         worker.run_once()
         self.assertEqual(self.box.inspect('one')['state'], 'failed')
         self.assertEqual(worker.run_once()['status'], 'idle')
@@ -106,31 +107,43 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(self.box.stats(), {'done': 2})
 
     def test_strict_json_rejects_duplicate_keys_and_nonfinite_values(self):
-        for text in ['{"results":[],"results":[]}', '{"usage":NaN}', '{"usage":Infinity}']:
+        for text in ['{"v":[],"v":[]}', '{"usage":NaN}', '{"usage":Infinity}']:
             with self.subTest(text=text), self.assertRaises(Error):
                 loads(text)
 
     def test_invalid_or_partial_replies_and_usage_are_rejected(self):
         q = '0123456789abcdef'
-        good = {'q': q, 'results': [['one', 0, 'x']]}
-        cases = [None, {}, {'reply': {'q': q, 'results': []}}, {'reply': {'q': q, 'results': [['one', True, 'x']]}},
-                 {'reply': {'q': q, 'results': [['one', 0, '']]}},
-                 {'reply': {'q': q, 'results': [['one', 0, 'x'], ['one', 0, 'x']]}},
+        good = {'q': q, 's': 0, 'v': ['x']}
+        cases = [None, {}, {'reply': {'q': q, 's': 0, 'v': []}}, {'reply': {'q': q, 's': True, 'v': ['x']}},
+                 {'reply': {'q': q, 's': 0, 'v': ['']}}, {'reply': {'q': q, 's': 0, 'v': ['x', 'x']}},
+                 {'reply': {'q': q, 's': [0, 0], 'v': ['x']}}, {'reply': {'q': q, 'results': [['one', 0, 'x']]}},
                  {'reply': good, 'usage': {'input_tokens': -1}}, {'reply': good, 'usage': {'output_tokens': True}},
                  {'reply': good, 'secret': 'ignored?'}, good]
-        self.assertEqual(validate_response({'reply': good}, ('one',), q, 'rows'), ({'one': ('ok', 'x')}, {}))
+        self.assertEqual(validate_response({'reply': good}, ('one',), q), ({'one': ('ok', 'x')}, {}))
         for value in cases:
             with self.subTest(value=value), self.assertRaises(Error):
-                validate_response(value, ('one',), q, 'rows')
+                validate_response(value, ('one',), q)
 
     def test_stdio_adapter_real_process_round_trip_and_unicode(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"reply":{"q":r["receipt"],"results":[[i,0,"12.50 ± 0.02 mm"] for i in r["ids"]]}},sys.stdout)')
+                  'json.dump({"reply":{"q":r["receipt"],"s":0,"v":["12.50 ± 0.02 mm" for i in r["ids"]]}},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post()
         result = self.worker(adapter, timeout=10).run_once()
         self.assertEqual(result['status'], 'received')
         self.assertEqual(self.box.inspect('one')['result'], '12.50 ± 0.02 mm')
+
+    def test_stdio_adapter_receives_oz8_request_without_job_ids_in_prompt(self):
+        script = 'import json,sys; r=json.load(sys.stdin); json.dump({"reply":{"q":r["receipt"],"s":0,"v":[json.dumps(r)]}},sys.stdout)'
+        adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
+        self.post('secret_job')
+        self.worker(adapter, timeout=10).run_once()
+        request = json.loads(self.box.inspect('secret_job')['result'])
+        self.assertEqual(set(request), {'protocol', 'language', 'binding', 'receipt', 'ids', 'attempts',
+                                        'prompt', 'prompt_tokens'})
+        self.assertEqual((request['protocol'], request['language'], request['ids']),
+                         ('oz.adapter/3', 'OZ/8', ['secret_job']))
+        self.assertNotIn('secret_job', request['prompt'])
 
     def test_stdio_does_not_interpret_shell_metacharacters(self):
         text = 'literal ; | $() & < >'
@@ -164,6 +177,23 @@ class WorkerTests(unittest.TestCase):
                 StdioAdapter(**kwargs)
         with self.assertRaises(Error):
             self.worker(StdioAdapter((sys.executable,)), timeout=1)
+
+    def test_removed_worker_options_are_rejected(self):
+        for option in ['reply_mode', 'encoding', 'min_savings']:
+            with self.subTest(option=option), self.assertRaises(TypeError):
+                self.worker(lambda r: r, **{option: 'x'})
+
+    def test_context_policy_full_sends_every_reference(self):
+        self.post('one', 'r13')
+        prompts = []
+        def adapter(request):
+            prompts.append(request['prompt'])
+            return lanes(request, ['ok'])
+        self.worker(adapter, context_policy='full').run_once()
+        self.assertIn('Use 5 seconds per attempt', prompts[0])
+        self.post('two', 'r13')
+        self.worker(adapter).run_once()
+        self.assertNotIn('Use 5 seconds per attempt', prompts[1])
 
 
 if __name__ == '__main__':

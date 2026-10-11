@@ -25,29 +25,19 @@ def read_json(path):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--version', action='version', version='akor-protocol 0.9.0; OZ/1 + OZ/2 + OZ/6 replies')
+    parser.add_argument('--version', action='version', version='akor-protocol 0.9.0; OZ/8 (OZ/1 atoms, OZ/2 host macros)')
     sub = parser.add_subparsers(dest='command', required=True)
-    for command in ['decode', 'pack', 'prompt', 'compile']:
+    for command in ['decode', 'pack', 'prompt']:
         p = sub.add_parser(command)
         p.add_argument('--channel', type=Path, required=True, help='JSON channel snapshot')
         if command == 'decode':
             p.add_argument('frame')
-        if command in {'pack', 'compile'}:
+        if command == 'pack':
             p.add_argument('--messages', type=Path, required=True, help='JSON [[id,frame],...]')
             p.add_argument('--encoding', action='append', help='tiktoken encoding; repeat for multiple targets')
-            p.add_argument('--reply-mode', choices=['rows', 'lanes'], default='rows',
-                           help='Reply contract charged in the packet (OZ/7)')
-        if command == 'pack':
-            p.add_argument('--dictionary', choices=['off', 'auto', 'on'], default='off',
-                           help='Per-call dictionary negotiation (default: off)')
-            p.add_argument('--min-savings', type=int, default=0,
-                           help='Minimum token savings required for auto dictionary selection (default: 0)')
             p.add_argument('--max-tokens', type=int)
             p.add_argument('--context', choices=['needed', 'full'], default='needed',
                            help='needed: only referenced context; full: every reference, stable prefix')
-        if command == 'compile':
-            p.add_argument('--out', type=Path, required=True, help='New directory for channel, messages and cost report')
-            p.add_argument('--max-macros', type=int, default=4)
     for command in ['init', 'demo']:
         p = sub.add_parser(command, help='Create a local workspace' if command == 'init' else 'Run a model-free end-to-end demo')
         p.add_argument('directory', type=Path)
@@ -70,14 +60,8 @@ def main(argv=None):
             p.add_argument('--max-attempts', type=int, default=3)
         if command in {'plan', 'run'}:
             p.add_argument('--max-tokens', type=int)
-            p.add_argument('--dictionary', choices=['off', 'auto', 'on'], default='off',
-                           help='Per-call dictionary negotiation (default: off)')
-            p.add_argument('--min-savings', type=int, default=0,
-                           help='Minimum token savings required for auto dictionary selection (default: 0)')
             p.add_argument('--context', choices=['needed', 'full'], default='needed',
                            help='needed: only referenced context; full: every reference, stable prefix')
-            p.add_argument('--reply-mode', choices=['rows', 'lanes', 'auto'], default='rows',
-                           help='auto: rows below 16 packed jobs, lanes from 16 (adapter must support both)')
         if command == 'plan':
             p.add_argument('--show-prompt', action='store_true')
         if command == 'run':
@@ -97,7 +81,7 @@ def main(argv=None):
             p.add_argument('manifest', type=Path)
     args = parser.parse_args(argv)
     try:
-        if args.command not in {'decode', 'prompt', 'pack', 'compile'}:
+        if args.command not in {'decode', 'prompt', 'pack'}:
             value = workspace_command(args)
             if args.command == 'status' and not args.json:
                 print('Durum: ' + ', '.join(f'{k}={v}' for k, v in value['states'].items()))
@@ -129,39 +113,10 @@ def main(argv=None):
                 raise Error('token counting requires: pip install "akor-protocol[benchmark]"') from None
             encodings = [tiktoken.get_encoding(n) for n in (args.encoding or ['o200k_base'])]
             counters = [lambda s, enc=enc: len(enc.encode(s, disallowed_special=())) for enc in encodings]
-            if args.command == 'compile':
-                from oz_compiler import compile_messages
-                if args.out.exists():
-                    raise Error('compiler output directory must not exist')
-                result = compile_messages(channel, read_json(args.messages), counters=counters,
-                                          max_macros=args.max_macros, reply_mode=args.reply_mode)
-                report = {'changed': result.changed, 'old_binding': channel.binding,
-                          'binding': result.channel.binding, 'encodings': [e.name for e in encodings],
-                          'before_tokens': result.baseline.tokens, 'after_tokens': result.packet.tokens,
-                          'selected_mode': result.packet.mode, 'reply_mode': args.reply_mode,
-                          'added_macros': [m.code for m in result.added_macros],
-                          'search': {'spellings_per_frame': 32, 'templates_per_round': 8,
-                                     'code_trials_per_template': 2, 'max_new_macros': args.max_macros},
-                          'evaluated_dictionaries': result.evaluated_dictionaries,
-                          'tokenizer_evaluations': result.tokenizer_evaluations,
-                          'exact_round_trip': True, 'actual_model_calls': 0,
-                          'scope': 'Supplied corpus only; receiver input, including grammar, dictionary and references.'}
-                files = {'channel.json': result.channel.snapshot(), 'messages.json': result.messages,
-                         'report.json': report}
-                args.out.mkdir(parents=True, exist_ok=False)
-                for name, data in files.items():
-                    (args.out / name).write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-                (args.out / 'prompt.txt').write_bytes(result.packet.text.encode('utf-8'))
-                print(json.dumps(dict(report, directory=str(args.out.resolve())), ensure_ascii=False, indent=2))
-                return 0
             packet = render(channel, read_json(args.messages), max_tokens=args.max_tokens,
-                            counters=counters, encoding=args.dictionary, min_savings=args.min_savings,
-                            reply_mode=args.reply_mode, context_policy=args.context)
-            value = {'language': 'OZ/7', 'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
-                     'binding': packet.binding, 'wires': packet.wires,
-                     'alternatives': dict(packet.alternatives), 'encoding': packet.encoding,
-                     'reply_mode': packet.reply_mode, 'json_tokens': packet.json_tokens,
-                     'saved_tokens': packet.saved_tokens}
+                            counters=counters, context_policy=args.context)
+            value = {'language': 'OZ/8', 'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
+                     'binding': packet.binding, 'wires': packet.wires, 'alternatives': dict(packet.alternatives)}
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, TypeError, sqlite3.Error) as exc:
@@ -187,8 +142,7 @@ def workspace_command(args):
         return {'added': args.name}
     if args.command == 'run':
         return {'runs': workspace.run(args.to, args.adapter, max_calls=args.max_calls,
-                                      max_tokens=args.max_tokens, timeout=args.timeout, reply_mode=args.reply_mode,
-                                      encoding=args.dictionary, min_savings=args.min_savings,
+                                      max_tokens=args.max_tokens, timeout=args.timeout,
                                       context_policy=args.context)}
     with workspace.inbox() as box:
         if args.command == 'send':
@@ -201,14 +155,10 @@ def workspace_command(args):
                                 max_attempts=args.max_attempts)
             return {'id': mid, 'inserted': inserted, 'kind': box.inspect(mid)['kind']}
         if args.command == 'plan':
-            plan = workspace.plan(box, args.to, max_tokens=args.max_tokens, reply_mode=args.reply_mode,
-                                  encoding=args.dictionary, min_savings=args.min_savings,
-                                  context_policy=args.context)
+            plan = workspace.plan(box, args.to, max_tokens=args.max_tokens, context_policy=args.context)
             value = {'ids': [j.id for j in plan.jobs], 'deferred': list(plan.deferred),
                      'mode': plan.packet.mode if plan.packet else None,
-                     'reply_mode': plan.packet.reply_mode if plan.packet else None,
                      'input_tokens': list(plan.packet.tokens) if plan.packet else [],
-                     'saved_tokens': list(plan.packet.saved_tokens or []) if plan.packet else [],
                      'encodings': workspace.config['encodings'], 'attempts_consumed': 0}
             if args.show_prompt:
                 value['prompt'] = plan.packet.text if plan.packet else ''

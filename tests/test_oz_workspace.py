@@ -61,6 +61,11 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['attempts_consumed'], 0)
         self.assertIn('12.50 ± 0.02 mm', json.loads(out)['prompt'])
+        plan = json.loads(out)
+        self.assertEqual((plan['mode'], plan['ids']), ('frames', ['first']))
+        self.assertTrue(plan['prompt'].startswith('OZ/8\n'))
+        self.assertNotIn('first', plan['prompt'].split('\nDATA ')[1])
+        self.assertIn('\nDATA {"j":["r1>2"],"q":"', plan['prompt'])
         code, out, err = self.cli('status', '--json', *base)
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['jobs'][0]['attempts'], 0)
@@ -169,15 +174,51 @@ class WorkspaceTests(unittest.TestCase):
         adapter = self.root / 'adapter.json'
         base = ('--workspace', str(self.root))
         self.cli('send', 'P', '--id', 'first', *base)
-        for spec, mode in [({'argv': [sys.executable, '-c', DEMO_SCRIPT]}, 'rows'),
-                           (dict(DEMO_CAPABILITIES, argv=[sys.executable], reply_modes=['rows']), 'auto')]:
+        argv = [sys.executable]
+        for spec in [{'argv': [sys.executable, '-c', DEMO_SCRIPT]},
+                     dict(DEMO_CAPABILITIES, argv=argv, reply_modes=['lanes']),
+                     {'argv': argv, 'protocols': ['oz.adapter/3']},
+                     {'argv': argv, 'protocols': ['oz.adapter/3'], 'languages': ['OZ/7']},
+                     {'argv': argv, 'protocols': ['oz.adapter/2'], 'languages': ['OZ/8']}]:
             with self.subTest(spec=spec):
                 adapter.write_text(json.dumps(spec), encoding='utf8')
                 with patch('oz_workspace.token_counters', return_value=(len,)):
-                    code, out, err = self.cli('run', '--adapter', str(adapter), '--reply-mode', mode, *base)
+                    code, out, err = self.cli('run', '--adapter', str(adapter), *base)
                 self.assertEqual(code, 2, err)
         code, out, err = self.cli('inspect', 'first', *base)
         self.assertEqual(json.loads(out)['job']['attempts'], 0)
+
+    def test_demo_capabilities_are_oz_adapter_3_and_oz_8(self):
+        self.assertEqual(DEMO_CAPABILITIES, {'protocols': ['oz.adapter/3'], 'languages': ['OZ/8']})
+
+    def test_removed_cli_options_and_commands_are_rejected(self):
+        initialize(self.root)
+        base = ('--workspace', str(self.root))
+        for args in [('run', '--adapter', 'a.json', '--reply-mode', 'lanes'), ('plan', '--reply-mode', 'lanes'),
+                     ('plan', '--dictionary', 'on'), ('plan', '--min-savings', '5'),
+                     ('run', '--adapter', 'a.json', '--dictionary', 'on'),
+                     ('pack', '--channel', 'c.json', '--messages', 'm.json', '--dictionary', 'on'),
+                     ('pack', '--channel', 'c.json', '--messages', 'm.json', '--min-savings', '5'),
+                     ('pack', '--channel', 'c.json', '--messages', 'm.json', '--reply-mode', 'lanes'),
+                     ('compile', 'x')]:
+            with self.subTest(args=args), self.assertRaises(SystemExit) as caught:
+                self.cli(*args, *(base if args[0] in {'plan', 'run'} else ()))
+            self.assertEqual(caught.exception.code, 2)
+
+    def test_context_option_selects_needed_or_full_in_plan_and_pack(self):
+        initialize(self.root)
+        base = ('--workspace', str(self.root))
+        self.cli('send', 'r1', '--id', 'first', *base)
+        prompts = {}
+        for policy in ['needed', 'full']:
+            with patch('oz_workspace.token_counters', return_value=(len,)):
+                code, out, err = self.cli('plan', '--show-prompt', '--context', policy, *base)
+            self.assertEqual(code, 0, err)
+            prompts[policy] = json.loads(out)['prompt']
+        self.assertNotIn('DEMO: ask for the measurement method', prompts['needed'])
+        self.assertIn('DEMO: ask for the measurement method', prompts['full'])
+        with self.assertRaises(SystemExit):
+            self.cli('plan', '--context', 'everything', *base)
 
     def test_host_events_cli_is_model_free(self):
         initialize(self.root)
