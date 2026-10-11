@@ -1,0 +1,361 @@
+{
+  "kind": "synthetic_text_token_accounting",
+  "tiktoken_version": "0.14.0",
+  "dictionary_sha256": "0b87107bee70979b896c595f785878ad4dfd4c68d77182659fe1448b86b21876",
+  "encodings": {
+    "o200k_base": {
+      "dictionary_tokens": 261,
+      "cases": [
+        {
+          "frame": "a",
+          "expanded": "Review patch 7; preserve its public API; run relevant tests; report failures.",
+          "payload_tokens": 1,
+          "expanded_tokens": 17,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 72,
+          "cold_receiver_alternatives": {
+            "plain": 72,
+            "oz": 164
+          }
+        },
+        {
+          "frame": "?3",
+          "expanded": "Request the definition of reference 3; do not guess its contents.",
+          "payload_tokens": 2,
+          "expanded_tokens": 14,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 69,
+          "cold_receiver_alternatives": {
+            "plain": 69,
+            "oz": 161
+          }
+        },
+        {
+          "frame": "+8.",
+          "expanded": "Report that test report 8 says passed; do not infer broader validation.\nAssigned step is complete; no test outcome or global approval is implied.",
+          "payload_tokens": 3,
+          "expanded_tokens": 29,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 118,
+          "cold_receiver_alternatives": {
+            "plain": 118,
+            "oz": 213
+          }
+        },
+        {
+          "frame": "-9",
+          "expanded": "Report that test report 9 says failed.",
+          "payload_tokens": 2,
+          "expanded_tokens": 9,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 97,
+          "cold_receiver_alternatives": {
+            "plain": 97,
+            "oz": 189
+          }
+        },
+        {
+          "frame": "~10",
+          "expanded": "Report the hypothesis in 10 as inference, not established fact.",
+          "payload_tokens": 2,
+          "expanded_tokens": 13,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 90,
+          "cold_receiver_alternatives": {
+            "plain": 90,
+            "oz": 183
+          }
+        },
+        {
+          "frame": "!11",
+          "expanded": "Report inability to proceed for reason 11.",
+          "payload_tokens": 2,
+          "expanded_tokens": 9,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 84,
+          "cold_receiver_alternatives": {
+            "plain": 84,
+            "oz": 177
+          }
+        },
+        {
+          "frame": ">12",
+          "expanded": "Propose plan 12; it has not been applied.",
+          "payload_tokens": 2,
+          "expanded_tokens": 12,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 90,
+          "cold_receiver_alternatives": {
+            "plain": 90,
+            "oz": 182
+          }
+        },
+        {
+          "frame": "=13",
+          "expanded": "Report the sourced observation in 13; independently verify its evidence.",
+          "payload_tokens": 2,
+          "expanded_tokens": 13,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 101,
+          "cold_receiver_alternatives": {
+            "plain": 101,
+            "oz": 193
+          }
+        },
+        {
+          "frame": "t14",
+          "expanded": "Request execution of the test procedure in 14; no outcome is claimed.",
+          "payload_tokens": 2,
+          "expanded_tokens": 15,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 90,
+          "cold_receiver_alternatives": {
+            "plain": 90,
+            "oz": 182
+          }
+        },
+        {
+          "frame": "/",
+          "expanded": "Request stopping this task; host decides termination.",
+          "payload_tokens": 1,
+          "expanded_tokens": 9,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 64,
+          "cold_receiver_alternatives": {
+            "plain": 64,
+            "oz": 154
+          }
+        },
+        {
+          "frame": ":12.50 ± 0.02 mm; measurement method unknown.",
+          "expanded": "12.50 ± 0.02 mm; measurement method unknown.",
+          "payload_tokens": 15,
+          "expanded_tokens": 14,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 69,
+          "cold_receiver_alternatives": {
+            "plain": 69
+          }
+        }
+      ],
+      "payload_total": 34,
+      "expanded_total": 154,
+      "cold_adaptive_total": 944,
+      "single_batch_amortization": [
+        {
+          "requests_in_one_batch": 1,
+          "symbolic_with_dictionary": 110,
+          "expanded": 17
+        },
+        {
+          "requests_in_one_batch": 4,
+          "symbolic_with_dictionary": 119,
+          "expanded": 68
+        },
+        {
+          "requests_in_one_batch": 16,
+          "symbolic_with_dictionary": 155,
+          "expanded": 272
+        },
+        {
+          "requests_in_one_batch": 64,
+          "symbolic_with_dictionary": 299,
+          "expanded": 1088
+        }
+      ]
+    },
+    "cl100k_base": {
+      "dictionary_tokens": 262,
+      "cases": [
+        {
+          "frame": "a",
+          "expanded": "Review patch 7; preserve its public API; run relevant tests; report failures.",
+          "payload_tokens": 1,
+          "expanded_tokens": 17,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 72,
+          "cold_receiver_alternatives": {
+            "plain": 72,
+            "oz": 163
+          }
+        },
+        {
+          "frame": "?3",
+          "expanded": "Request the definition of reference 3; do not guess its contents.",
+          "payload_tokens": 2,
+          "expanded_tokens": 14,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 69,
+          "cold_receiver_alternatives": {
+            "plain": 69,
+            "oz": 162
+          }
+        },
+        {
+          "frame": "+8.",
+          "expanded": "Report that test report 8 says passed; do not infer broader validation.\nAssigned step is complete; no test outcome or global approval is implied.",
+          "payload_tokens": 3,
+          "expanded_tokens": 29,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 118,
+          "cold_receiver_alternatives": {
+            "plain": 118,
+            "oz": 212
+          }
+        },
+        {
+          "frame": "-9",
+          "expanded": "Report that test report 9 says failed.",
+          "payload_tokens": 2,
+          "expanded_tokens": 9,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 97,
+          "cold_receiver_alternatives": {
+            "plain": 97,
+            "oz": 189
+          }
+        },
+        {
+          "frame": "~10",
+          "expanded": "Report the hypothesis in 10 as inference, not established fact.",
+          "payload_tokens": 2,
+          "expanded_tokens": 13,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 91,
+          "cold_receiver_alternatives": {
+            "plain": 91,
+            "oz": 184
+          }
+        },
+        {
+          "frame": "!11",
+          "expanded": "Report inability to proceed for reason 11.",
+          "payload_tokens": 2,
+          "expanded_tokens": 9,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 84,
+          "cold_receiver_alternatives": {
+            "plain": 84,
+            "oz": 177
+          }
+        },
+        {
+          "frame": ">12",
+          "expanded": "Propose plan 12; it has not been applied.",
+          "payload_tokens": 2,
+          "expanded_tokens": 12,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 90,
+          "cold_receiver_alternatives": {
+            "plain": 90,
+            "oz": 182
+          }
+        },
+        {
+          "frame": "=13",
+          "expanded": "Report the sourced observation in 13; independently verify its evidence.",
+          "payload_tokens": 2,
+          "expanded_tokens": 13,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 101,
+          "cold_receiver_alternatives": {
+            "plain": 101,
+            "oz": 193
+          }
+        },
+        {
+          "frame": "t14",
+          "expanded": "Request execution of the test procedure in 14; no outcome is claimed.",
+          "payload_tokens": 2,
+          "expanded_tokens": 15,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 90,
+          "cold_receiver_alternatives": {
+            "plain": 90,
+            "oz": 183
+          }
+        },
+        {
+          "frame": "/",
+          "expanded": "Request stopping this task; host decides termination.",
+          "payload_tokens": 1,
+          "expanded_tokens": 9,
+          "status_only_host_routing_possible": true,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 64,
+          "cold_receiver_alternatives": {
+            "plain": 64,
+            "oz": 155
+          }
+        },
+        {
+          "frame": ":12.50 ± 0.02 mm; measurement method unknown.",
+          "expanded": "12.50 ± 0.02 mm; measurement method unknown.",
+          "payload_tokens": 15,
+          "expanded_tokens": 14,
+          "status_only_host_routing_possible": false,
+          "cold_receiver_choice": "plain",
+          "cold_receiver_tokens": 69,
+          "cold_receiver_alternatives": {
+            "plain": 69
+          }
+        }
+      ],
+      "payload_total": 34,
+      "expanded_total": 154,
+      "cold_adaptive_total": 945,
+      "single_batch_amortization": [
+        {
+          "requests_in_one_batch": 1,
+          "symbolic_with_dictionary": 109,
+          "expanded": 17
+        },
+        {
+          "requests_in_one_batch": 4,
+          "symbolic_with_dictionary": 118,
+          "expanded": 68
+        },
+        {
+          "requests_in_one_batch": 16,
+          "symbolic_with_dictionary": 154,
+          "expanded": 272
+        },
+        {
+          "requests_in_one_batch": 64,
+          "symbolic_with_dictionary": 298,
+          "expanded": 1088
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "No universal token minimum or cross-provider speed claim.",
+    "These two encodings do not represent every current model.",
+    "Expanded payload baseline spells out the full macro contract; concise human shorthand can be cheaper.",
+    "Payload savings exclude dictionaries and contextual definitions; cold receiver totals include them.",
+    "Input choice optimizes only the presented input strings; reasoning, sender bootstrap, provider framing and output are additional.",
+    "Single-batch amortization is not a claim that chat history is free across separate API calls.",
+    "A new arbitrary fact uses literal text; information is not created by reference IDs.",
+    "Protocol and evidence checks verify declared structure and consistency, not source truth."
+  ]
+}

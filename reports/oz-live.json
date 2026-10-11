@@ -1,0 +1,116 @@
+{
+  "kind": "cross_cli_protocol_smoke_test",
+  "encoder": {
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 12.531,
+    "answer": "{\"frames\":[\"a7\",\"?3\",\"+8.\",\"-9\",\"~10\",\"!11\",\">12\",\"=13\",\"t14\",\"/\",\":12.50 ± 0.02 mm; method unknown.\",\"r13\"]}",
+    "usage": [
+      {
+        "input_tokens": 26257,
+        "cached_input_tokens": 7296,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 110,
+        "reasoning_output_tokens": 56
+      }
+    ],
+    "model": "configured CLI default; not inferred from memory",
+    "unexpected_tool_items": 0
+  },
+  "limitations": [
+    "One synthetic batch, no repeated trials or held-out task-success comparison.",
+    "CLI defaults and tool/system overhead differ; do not compare latency as a speedup.",
+    "No real coding, test execution, physical validation or production orchestration."
+  ],
+  "encoder_cases_correct": 12,
+  "encoder_cases_total": 12,
+  "encoder_case_results": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "decoder": {
+    "status": "completed",
+    "returncode": 0,
+    "wall_seconds": 10.797,
+    "answer": "{\"decoded\":[[{\"op\":\"audit\",\"ref\":7}],[{\"op\":\"need\",\"ref\":3}],[{\"op\":\"passed\",\"ref\":8},{\"op\":\"done\",\"ref\":null}],[{\"op\":\"failed\",\"ref\":9}],[{\"op\":\"inferred\",\"ref\":10}],[{\"op\":\"blocked\",\"ref\":11}],[{\"op\":\"propose\",\"ref\":12}],[{\"op\":\"observed\",\"ref\":13}],[{\"op\":\"test\",\"ref\":14}],[{\"op\":\"stop\",\"ref\":null}],[{\"op\":\"literal\",\"ref\":null,\"text\":\"12.50 ± 0.02 mm; method unknown.\"}],[{\"op\":\"read\",\"ref\":13}]]}",
+    "usage": {
+      "input_tokens": 2,
+      "cache_creation_input_tokens": 9489,
+      "cache_read_input_tokens": 0,
+      "output_tokens": 392,
+      "output_tokens_details": {
+        "thinking_tokens": 166
+      },
+      "server_tool_use": {
+        "web_search_requests": 0,
+        "web_fetch_requests": 0
+      },
+      "service_tier": "standard",
+      "cache_creation": {
+        "ephemeral_1h_input_tokens": 9489,
+        "ephemeral_5m_input_tokens": 0
+      },
+      "inference_geo": "global",
+      "iterations": [
+        {
+          "input_tokens": 2,
+          "output_tokens": 392,
+          "cache_read_input_tokens": 0,
+          "cache_creation_input_tokens": 9489,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 9489
+          },
+          "type": "message"
+        }
+      ],
+      "speed": "standard",
+      "fallback_credit": null
+    },
+    "model_usage": {
+      "claude-opus-5-5": {
+        "inputTokens": 2,
+        "outputTokens": 392,
+        "cacheReadInputTokens": 0,
+        "cacheCreationInputTokens": 9489,
+        "webSearchRequests": 0,
+        "costUSD": 0.08375999999999999,
+        "contextWindow": 1000000,
+        "maxOutputTokens": 128000,
+        "thinkingTokens": 166,
+        "canonicalModel": "claude-opus-5-5",
+        "provider": "firstParty",
+        "costBasis": "list"
+      }
+    },
+    "reported_duration_ms": 6340,
+    "reported_api_duration_ms": 4158,
+    "provider_error": false
+  },
+  "decoder_cases_correct": 12,
+  "decoder_cases_total": 12,
+  "decoder_case_results": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ]
+}

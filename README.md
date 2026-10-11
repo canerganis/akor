@@ -1,8 +1,10 @@
 # AKOR
 
-**Ajanlar için Kısa Orkestrasyon Dili — sürüm 0.1.0 / protokol AKOR/1.**
+**Ajanlar için Kısa Orkestrasyon Dili — paket 0.2.0 / protokoller AKOR/1 ve ÖZ/1.**
 
-AKOR, farklı modellerin görev, bulgu, soru, öneri ve sonuçları kısa, denetlenebilir mesajlarla paylaşması için hazırlanmış bağımsız bir prototiptir. Modelin sistem talimatına eklenen küçük bir dil tanımı ve Python ile yazılmış bir mesaj aktarıcısından oluşur. Yeni model eğitimi gerektiren bir yöntem önermez; modelin verilen biçimi takip etmesi gerekir. Bu ilk sürümün canlı modellerle anlaşılabilirliği henüz ölçülmedi.
+**Yeni: [ÖZ/1](OZ.md), sembolik ajan dili.** `a`, `?3`, `+8.` gibi kısa anlam atomlarını çözer; bağlam ve sözlük maliyetine göre alıcı gösterimini seçer. Durum mesajları için ek model çağrısı gerektirmeyen bir aktarım yolu sağlar. Codex → Claude arasındaki 12 örneklik canlı kodlama/çözümleme denemesi geçti. Ayrıntılar ve ölçüm sınırları [ÖZ raporunda](reports/OZ-RESULTS.md).
+
+AKOR, farklı modellerin görev, bulgu, soru, öneri ve sonuçları kısa, denetlenebilir mesajlarla paylaşması için hazırlanmış bağımsız bir prototiptir. Modelin sistem talimatına eklenen küçük bir dil tanımı ve Python ile yazılmış bir mesaj aktarıcısından oluşur. Modelin verilen biçimi takip etmesi gerekir. Aşağıda önceki AKOR/1 metin biçimi anlatılır; yeni ÖZ/1 dili ayrı modüldür. Canlı pilot yalnız ÖZ/1 için yapıldı.
 
 ## Bir mesaj nasıl görünür?
 
