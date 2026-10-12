@@ -67,8 +67,9 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(plan['ids'], ['first'])
         self.assertFalse(prompt.endswith('\n'))
         body = json.loads(prompt)
-        self.assertEqual(body['jobs'], [['first', 'propose', ['d0']]])
-        self.assertEqual(body['refs'], {'d0': 'DEMO: ask for the measurement method before concluding.'})
+        self.assertEqual(body['jobs'], [[0, ['first', 0]]])
+        self.assertEqual(body['refs'], ['DEMO: ask for the measurement method before concluding.'])
+        self.assertEqual(body['goal'], Workspace(self.root).channel().snapshot()['goal'])
         # The receipt is host-side only: no q field in the body, and the plan still works.
         self.assertNotIn('q', body)
         self.assertEqual(plan['system'], SYSTEM)
@@ -293,7 +294,8 @@ class WorkspaceTests(unittest.TestCase):
     def test_run_commits_job_errors_with_the_successes_and_blocks_their_dependants(self):
         initialize(self.root)
         script = ('import json,sys; r=json.load(sys.stdin); j=json.loads(r["prompt"])["jobs"]; '
-                  'rows=[[j[0][0],"error","missing_data","Missing required field y."]]+[[x[0],"done"] for x in j[1:]]; '
+                  'ids=[x[0] for b in j for x in b[1:]]; '
+                  'rows=[[ids[0],"error","missing_data","Missing required field y."]]+[[i,"done"] for i in ids[1:]]; '
                   'json.dump({"reply":"\\n".join(json.dumps(x) for x in rows)},sys.stdout)')
         adapter = self.root / 'adapter.json'
         adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
@@ -328,14 +330,15 @@ class WorkspaceTests(unittest.TestCase):
         value = json.loads(out)
         self.assertEqual((value['mode'], value['system']), ('named', SYSTEM))
         body = json.loads(value['prompt'])
-        self.assertEqual(body['jobs'], [['one', 'propose', ['d0']], ['two', 'literal_0', []]])
-        self.assertEqual(body['refs'], {'d0': 'DEMO: ask for the measurement method before concluding.'})
+        self.assertEqual(body['ops'][1], 'note')
+        self.assertEqual(body['jobs'], [[0, ['one', 0]], [1, ['two']]])
+        self.assertEqual(body['refs'], ['DEMO: ask for the measurement method before concluding.'])
         self.assertEqual(value['job_map'], [['one', 1], ['two', 0]])
         self.assertEqual(value['packet_ids'], ['one', 'two'])
         self.assertNotIn('ref_map', value)
         self.assertNotIn('alternatives', value)
 
-    def test_context_option_accepts_only_needed_in_stage_1e(self):
+    def test_context_option_accepts_only_needed_in_stage_1f(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
         self.cli('send', '>2', '--id', 'first', *base)

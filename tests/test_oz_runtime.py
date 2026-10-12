@@ -90,8 +90,8 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(packet.ids, ('m1',))
         body = json.loads(packet.text)
         # Only model atoms reach the model; the host atoms +8 and . stay behind. One model atom: id = inbox id.
-        self.assertEqual(body['jobs'], [['m1', 'audit', ['d0']]])
-        self.assertEqual(body['refs'], {'d0': 'demo patch at revision a1'})
+        self.assertEqual(body['jobs'], [[0, ['m1', 0]]])
+        self.assertEqual(body['refs'], ['demo patch at revision a1'])
         self.assertEqual(packet.packet_ids, ('m1',))
         self.assertEqual(packet.wires, ('r7a7t14+8.',))
         self.assertEqual(packet.job_map, (('m1', 1),))
@@ -224,9 +224,10 @@ class InboxTests(unittest.TestCase):
         # The text is kept exactly, whitespace included.
         self.post('f', ':  padded\r\n')
         self.assertIn((self.ch.binding, '  padded\r\n', 2), self.literals())
-        names = json.loads(self.box.plan(self.ch, counters=[len]).packet.text)['ops']
-        self.assertEqual(names, {'literal_0': 'alpha', 'literal_1': 'beta', 'propose': names['propose'],
-                                 'literal_2': '  padded\r\n'})
+        # Numbers stay host-side bookkeeping; the 1f wire carries each literal text once, in first-use order.
+        ops = json.loads(self.box.plan(self.ch, counters=[len]).packet.text)['ops']
+        self.assertEqual(sorted(ops[:2]), ['alpha', 'beta'])
+        self.assertIn('  padded\r\n', ops)
 
     def test_literal_names_are_unique_per_binding_in_the_database(self):
         self.post('a', ':alpha')
@@ -239,16 +240,19 @@ class InboxTests(unittest.TestCase):
         for mid, text in (('a', ':one'), ('b', ':two'), ('c', ':three')):
             self.post(mid, text)
         first = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='a', limit=1)
-        self.assertEqual(json.loads(first[1].text)['jobs'], [['a', 'literal_0', []]])
+        self.assertEqual(json.loads(first[1].text)['ops'], ['one'])
+        self.assertEqual(json.loads(first[1].text)['jobs'], [[0, ['a']]])
         self.box.settle(first[0], {'a': Outcome('ok', 'x')})
         # c alone, then b: neither renumbers.
         self.box.db.execute("UPDATE jobs SET seq=seq+10 WHERE id='b'")
         second = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='b', limit=1)
-        self.assertEqual((second[0].jobs[0].id, json.loads(second[1].text)['jobs']), ('c', [['c', 'literal_2', []]]))
+        self.assertEqual((second[0].jobs[0].id, json.loads(second[1].text)['ops'], json.loads(second[1].text)['jobs']),
+                         ('c', ['three'], [[0, ['c']]]))
         self.box.settle(second[0], {'c': Outcome('retry', 'again')})
         third = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='c', limit=2)
-        self.assertEqual([(j.id, n[:2]) for j, n in zip(third[0].jobs, json.loads(third[1].text)['jobs'])],
-                         [('c', ['c', 'literal_2']), ('b', ['b', 'literal_1'])])
+        body = json.loads(third[1].text)
+        self.assertEqual([j.id for j in third[0].jobs], ['c', 'b'])
+        self.assertEqual((body['ops'], body['jobs']), (['three', 'two'], [[0, ['c']], [1, ['b']]]))
 
     def test_schema_two_upgrade_adds_result_json_and_numbers_existing_literals_in_inbox_order(self):
         with tempfile.TemporaryDirectory() as temp:

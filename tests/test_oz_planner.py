@@ -7,6 +7,7 @@ import unittest
 
 from oz import Error
 from oz_batch import SYSTEM, BudgetError, render
+from wire_helpers import job_ids
 from oz_runtime import Inbox, Outcome
 from test_oz2 import extended
 
@@ -94,7 +95,7 @@ class PlannerTests(unittest.TestCase):
             self.post(f'm{i:02d}')
         def jobs_in(text):
             # Each 'V' job is one model job (read and test are host operations).
-            return len(json.loads(text.splitlines()[-1])['jobs'])
+            return len(job_ids(text.splitlines()[-1]))
         counter = lambda s: len(s) + (0 if jobs_in(s) == 16 else 100000)
         budget = self.box.plan(self.ch, counters=[counter], limit=16).packet.tokens[0]
         plan = self.box.plan(self.ch, counters=[counter], limit=17, max_tokens=budget)
@@ -111,7 +112,7 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual([j.id for j in plan.jobs], ['m0', 'm1'])
         self.assertEqual(plan.packet.tokens, (two,))
         self.assertGreater(two, one)
-        self.assertEqual(len(packet_data(plan.packet)['jobs']), 4)
+        self.assertEqual(len(job_ids(plan.packet)), 4)
         self.assertEqual(plan.deferred, ())
 
     def test_claim_refuses_preview_receipt(self):
@@ -158,9 +159,9 @@ class PlannerTests(unittest.TestCase):
         self.box.complete(first, {'first': text})
         plan = self.box.plan(self.ch, counters=[len])
         body = packet_data(plan.packet)
-        self.assertEqual(list(body), ['v', 'ops', 'refs', 'jobs'])
-        self.assertEqual(body['refs'], {'d0': 'Use 5 seconds per attempt', 'p0': text})
-        self.assertEqual(body['jobs'], [['next', 'propose', ['d0', 'p0']]])
+        self.assertEqual(list(body), ['v', 'goal', 'ops', 'refs', 'jobs'])
+        self.assertEqual(body['refs'], ['Use 5 seconds per attempt', text])
+        self.assertEqual(body['jobs'], [[0, ['next', 0, 1]]])
         self.assertEqual(plan.packet.tokens, (len(plan.packet.system) + 1 + len(plan.packet.text),))
 
     def test_shared_predecessor_output_is_serialized_once_and_named_by_every_dependent_job(self):
@@ -169,12 +170,12 @@ class PlannerTests(unittest.TestCase):
         self.post('b', after=['first'])
         self.box.complete(self.box.claim(self.ch, owner='w'), {'first': 'UNIQUE-PREDECESSOR-OUTPUT'})
         plan = self.box.plan(self.ch, counters=[len])
-        # Stage 1e: one refs entry for the predecessor result and one for the record, shared by both dependents.
+        # Stage 1f: one refs entry for the predecessor result and one for the record, shared by both dependents.
         self.assertEqual(plan.packet.text.count('UNIQUE-PREDECESSOR-OUTPUT'), 1)
         self.assertEqual(plan.packet.text.count('demo patch at revision a1'), 1)
         body = packet_data(plan.packet)
-        self.assertEqual(body['refs'], {'d0': 'demo patch at revision a1', 'p0': 'UNIQUE-PREDECESSOR-OUTPUT'})
-        self.assertEqual(body['jobs'], [['a', 'audit', ['d0', 'p0']], ['b', 'audit', ['d0', 'p0']]])
+        self.assertEqual(body['refs'], ['demo patch at revision a1', 'UNIQUE-PREDECESSOR-OUTPUT'])
+        self.assertEqual(body['jobs'], [[0, ['a', 0, 1], ['b', 0, 1]]])
         self.assertEqual([j.id for j in plan.jobs], ['a', 'b'])
 
     def test_large_handoff_cannot_bypass_input_budget(self):

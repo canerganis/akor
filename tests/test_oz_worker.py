@@ -8,7 +8,8 @@ import unittest
 
 from oz import Error
 from oz_runtime import Inbox
-from oz_batch import SYSTEM
+from oz_batch import INSTRUCTIONS, SYSTEM
+from wire_helpers import job_ids, job_instructions, rows
 from oz_reply import validate_response
 from oz_worker import AdapterError, StdioAdapter, Worker, loads, process_host
 from test_oz2 import extended
@@ -18,12 +19,12 @@ CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
 
 def items(request):
     """Number of model jobs (jobs items) in the request body."""
-    return len(json.loads(request['prompt'])['jobs'])
+    return len(job_ids(request['prompt']))
 
 
 def reply(request, texts):
     """Adapter response: raw JSONL text, one [id,result] line per packet job, in request order."""
-    ids = [job[0] for job in json.loads(request['prompt'])['jobs']]
+    ids = job_ids(request['prompt'])
     return {'reply': chr(10).join(json.dumps([mid, text], ensure_ascii=False) for mid, text in zip(ids, texts))}
 
 
@@ -56,9 +57,9 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(seen[0]['prompt_tokens'], [len(seen[0]['system']) + 1 + len(seen[0]['prompt'])])
         self.assertEqual(seen[0]['ids'], ['one', 'two'])
         self.assertEqual(seen[0]['system'], SYSTEM)
-        self.assertEqual([job[:2] for job in json.loads(seen[0]['prompt'])['jobs']],
-                         [['one.0', 'audit'], ['one.1', 'propose'], ['two', 'propose']])
-        self.assertEqual(list(json.loads(seen[0]['prompt'])), ['v', 'ops', 'refs', 'jobs'])
+        self.assertEqual(job_instructions(seen[0]['prompt']),
+                         [['one.0', INSTRUCTIONS['a']], ['one.1', INSTRUCTIONS['>']], ['two', INSTRUCTIONS['>']]])
+        self.assertEqual(list(json.loads(seen[0]['prompt'])), ['v', 'goal', 'ops', 'refs', 'jobs'])
         self.assertEqual(len(seen), 1)
         self.assertEqual(self.box.stats(), {'done': 2})
         text = '12.50 ± 0.02 mm; method unknown.'
@@ -168,7 +169,7 @@ class WorkerTests(unittest.TestCase):
     def test_stdio_adapter_real_process_round_trip_and_unicode(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
                   'j=json.loads(r["prompt"])["jobs"]; '
-                  'json.dump({"reply":json.dumps([j[0][0],"12.50 ± 0.02 mm"],ensure_ascii=False)},sys.stdout)')
+                  'json.dump({"reply":json.dumps([j[0][1][0],"12.50 ± 0.02 mm"],ensure_ascii=False)},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post(wire='>12')
         result = self.worker(adapter, timeout=10).run_once()
@@ -177,7 +178,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_stdio_adapter_receives_oz9_request_with_packet_ids_in_prompt(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"reply":json.dumps([json.loads(r["prompt"])["jobs"][0][0],json.dumps(r)])},sys.stdout)')
+                  'json.dump({"reply":json.dumps([json.loads(r["prompt"])["jobs"][0][1][0],json.dumps(r)])},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post('secret_job', '>12')
         self.worker(adapter, timeout=10).run_once()
@@ -187,8 +188,8 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual((request['protocol'], request['language'], request['ids']),
                          ('oz.adapter/3', 'OZ/9', ['secret_job']))
         self.assertEqual(request['system'], SYSTEM)
-        self.assertEqual(json.loads(request['prompt'])['jobs'], [['secret_job', 'propose', ['d0']]])
-        self.assertEqual(json.loads(request['prompt'])['refs'], {'d0': 'Use 5 seconds per attempt'})
+        self.assertEqual(json.loads(request['prompt'])['jobs'], [[0, ['secret_job', 0]]])
+        self.assertEqual(json.loads(request['prompt'])['refs'], ['Use 5 seconds per attempt'])
         self.assertNotIn('secret_job', request['system'])
 
     def test_stdio_does_not_interpret_shell_metacharacters(self):
@@ -298,7 +299,7 @@ class WorkerTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs), self.assertRaises(Error):
                 self.worker(lambda r: r, **kwargs)
 
-    def test_context_policy_full_is_refused_in_stage_1e(self):
+    def test_context_policy_full_is_refused_in_stage_1f(self):
         self.post('one', '=13')
         with self.assertRaises(Error):
             self.worker(lambda r: reply(r, ['ok']), context_policy='full').run_once()
@@ -425,8 +426,8 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
             expected_results=2, received_results=1, accepted_results=0, failed_results=0,
-            violations=[{'line': 1, 'reason': 'line must be a two-element [id,result] or four-element '
-                                              '[id,"error",code,detail] array'}],
+            violations=[{'line': 1, 'reason': 'line must be a two-element [id,value] or four-element '
+                                              '[id,"error",code,message] array'}],
             binding='declared', semantic_verified=False))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
 

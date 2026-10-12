@@ -1,9 +1,10 @@
-"""OZ/9 stage-1e replies ([id,result] and [id,"error",code,detail] lines), usage, negotiation and atomic Worker acceptance."""
+"""OZ/9 stage-1f replies ([id,value] and [id,"error",code,message] lines), usage, negotiation and atomic Worker acceptance."""
 import json
 import unittest
 
 from oz import Error
-from oz_batch import SYSTEM
+from oz_batch import INSTRUCTIONS, SYSTEM
+from wire_helpers import body_of, job_ids, job_instructions, rows
 from oz_reply import (Failure, check_capabilities, encode_reply, loads, parse_reply, regroup, slot_ids, validate_response,
                       validate_usage)
 from oz_runtime import Inbox
@@ -27,8 +28,13 @@ def reasons(parsed):
 
 def answer(request, *values):
     """Adapter response answering the packet's jobs in prompt order with the given result values."""
-    ids = [job[0] for job in json.loads(request['prompt'])['jobs']]
+    ids = job_ids(request['prompt'])
     return {'reply': text(*([mid, value] for mid, value in zip(ids, values)))}
+
+
+def answer_by_id(request, values):
+    """Adapter response answering each packet job ID with values[id], whatever the body's grouping order."""
+    return {'reply': text(*([mid, values[mid]] for mid in job_ids(request['prompt'])))}
 
 
 class ParseTests(unittest.TestCase):
@@ -105,33 +111,28 @@ class ParseTests(unittest.TestCase):
 
     def test_error_lines_are_job_failures_with_four_elements(self):
         reply = text(['a', 'error', 'missing_data', 'Missing required field y.'],
-                     ['b', 'error', 'cannot_complete', 'x' * 256])
+                     ['b', 'error', 'unsupported', 'x' * 256])
         parsed = parse_reply(reply, IDS)
         self.assertEqual((parsed.accepted, parsed.rejection, parsed.received), ({}, None, 2))
         self.assertEqual(parsed.failed, {'a': ('missing_data', 'Missing required field y.'),
-                                         'b': ('cannot_complete', 'x' * 256)})
+                                         'b': ('unsupported', 'x' * 256)})
 
     def test_each_error_code_is_accepted(self):
-        for code in ('missing_data', 'invalid_input', 'cannot_complete'):
+        for code in ('missing_data', 'invalid_data', 'conflict', 'unsupported'):
             with self.subTest(code=code):
                 parsed = parse_reply(text(['a', 'error', code, 'why'], ['b', 1]), IDS)
                 self.assertEqual((parsed.failed, parsed.accepted), ({'a': (code, 'why')}, {'b': 1}))
-        parsed = parse_reply(text(['a', 'error', 'unknown_operation', 'Operation q is not defined.'], ['b', 1]),
-                             IDS, undefined=('a',))
-        self.assertEqual((parsed.failed, parsed.accepted), ({'a': ('unknown_operation',
-                                                                   'Operation q is not defined.')}, {'b': 1}))
 
-    def test_unknown_operation_is_only_for_undefined_operations(self):
-        line = ['a', 'error', 'unknown_operation', 'Not defined.']
-        # A defined operation (the default) may not answer unknown_operation.
-        self.assertEqual(parse_reply(text(line, ['b', 1]), IDS).accepted, {})
-        self.assertIn('defined operation', parse_reply(text(line, ['b', 1]), IDS).violations[0]['reason'])
-        # An undefined operation may answer nothing else: not a success, not another code.
-        for first in (['a', 1], ['a', 'error', 'missing_data', 'x'], ['a', 'error', 'cannot_complete', 'x']):
-            with self.subTest(first=first):
-                parsed = parse_reply(text(first, ['b', 1]), IDS, undefined=('a',))
+    def test_the_stage_1e_codes_are_no_longer_valid(self):
+        for code in ('unknown_operation', 'invalid_input', 'cannot_complete'):
+            with self.subTest(code=code):
+                parsed = parse_reply(text(['a', 'error', code, 'why'], ['b', 1]), IDS)
                 self.assertEqual((parsed.accepted, parsed.failed), ({}, {}))
                 self.assertIsNotNone(parsed.rejection)
+
+    def test_unknown_is_an_ordinary_result_value_not_an_error(self):
+        parsed = parse_reply(text(['a', 'unknown'], ['b', 'inside']), IDS)
+        self.assertEqual((parsed.accepted, parsed.failed, parsed.rejection), ({'a': 'unknown', 'b': 'inside'}, {}, None))
 
     def test_bad_error_lines_reject_everything(self):
         for name, line in {
@@ -141,22 +142,19 @@ class ParseTests(unittest.TestCase):
             'unknown code': ['a', 'error', 'timeout', 'x'],
             'code case': ['a', 'error', 'Missing_Data', 'x'],
             'code not a string': ['a', 'error', 7, 'x'],
-            'empty detail': ['a', 'error', 'missing_data', ''],
-            'detail too long': ['a', 'error', 'missing_data', 'x' * 257],
-            'detail not a string': ['a', 'error', 'missing_data', ['x']],
-            'null detail': ['a', 'error', 'missing_data', None],
-            'unpaired surrogate detail': ['a', 'error', 'missing_data', '\ud800'],
+            'empty message': ['a', 'error', 'missing_data', ''],
+            'blank message': ['a', 'error', 'missing_data', ' \t'],
+            'message not a string': ['a', 'error', 'missing_data', ['x']],
+            'null message': ['a', 'error', 'missing_data', None],
+            'unpaired surrogate message': ['a', 'error', 'missing_data', '\ud800'],
+            'three elements': ['a', 'error', 'missing_data'],
+            'five elements': ['a', 'error', 'missing_data', 'x', 'y'],
+            'integer id': [1, 'error', 'missing_data', 'x'],
         }.items():
             with self.subTest(name=name):
                 parsed = parse_reply(NL.join([json.dumps(line), '["b",1]']), IDS)
                 self.assertEqual((parsed.accepted, parsed.failed), ({}, {}))
                 self.assertIsNotNone(parsed.rejection)
-
-    def test_detail_length_counts_unicode_code_points(self):
-        self.assertEqual(parse_reply(text(['a', 'error', 'cannot_complete', '\U0001f600' * 256], ['b', 1]),
-                                     IDS).failed['a'][1], '\U0001f600' * 256)
-        self.assertEqual(parse_reply(text(['a', 'error', 'cannot_complete', '\U0001f600' * 257], ['b', 1]),
-                                     IDS).accepted, {})
 
     def test_a_two_element_line_with_error_like_data_is_an_ordinary_success(self):
         value = ['error', 'missing_data', 'This is ordinary result data.']
@@ -166,10 +164,10 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(parse_reply(text(['a', None], ['b', None]), IDS).accepted, {'a': None, 'b': None})
 
     def test_mixed_successes_and_failures_and_all_failures_cover_the_ids(self):
-        mixed = parse_reply(text(['b', 'error', 'invalid_input', 'bad x'], ['a', 5]), IDS)
+        mixed = parse_reply(text(['b', 'error', 'invalid_data', 'bad x'], ['a', 5]), IDS)
         self.assertEqual((mixed.accepted, mixed.failed, mixed.rejection),
-                         ({'a': 5}, {'b': ('invalid_input', 'bad x')}, None))
-        every = parse_reply(text(['a', 'error', 'missing_data', 'm'], ['b', 'error', 'cannot_complete', 'c']), IDS)
+                         ({'a': 5}, {'b': ('invalid_data', 'bad x')}, None))
+        every = parse_reply(text(['a', 'error', 'missing_data', 'm'], ['b', 'error', 'conflict', 'c']), IDS)
         self.assertEqual((every.accepted, set(every.failed), every.rejection), ({}, {'a', 'b'}, None))
         # An error line for an id does not cover a different id.
         self.assertIsNotNone(parse_reply(text(['a', 'error', 'missing_data', 'm'],
@@ -279,37 +277,31 @@ class RegroupTests(unittest.TestCase):
     def test_a_valid_error_line_fails_that_job_and_commits_with_the_successes(self):
         job_map = (('a', 0), ('b', 0), ('c', 0))
         reply = text(['a', 'ok'], ['b', 'error', 'missing_data', 'Missing required field y.'],
-                     ['c', 'error', 'invalid_input', 'x is not a number'])
+                     ['c', 'error', 'invalid_data', 'x is not a number'])
         grouped = regroup(reply, job_map)
         self.assertEqual(grouped.outcomes, {'a': ('ok', 'ok'), 'b': ('failed', 'missing_data: Missing required field y.'),
-                                            'c': ('failed', 'invalid_input: x is not a number')})
+                                            'c': ('failed', 'invalid_data: x is not a number')})
         self.assertEqual(grouped.values, {'a': '"ok"'})
         self.assertIsNone(grouped.parsed.rejection)
 
     def test_every_job_failing_is_still_an_accepted_reply(self):
-        grouped = regroup(text(['a', 'error', 'cannot_complete', 'no'], ['b', 'error', 'cannot_complete', 'no']),
+        grouped = regroup(text(['a', 'error', 'conflict', 'no'], ['b', 'error', 'conflict', 'no']),
                           (('a', 0), ('b', 0)))
         self.assertEqual({m: o[0] for m, o in grouped.outcomes.items()}, {'a': 'failed', 'b': 'failed'})
         self.assertEqual(grouped.values, {})
 
     def test_a_multi_slot_job_with_one_failed_slot_fails_with_the_first_failure(self):
         job_map = (('a', 0), ('a', 1), ('a', 2), ('b', 0))
-        reply = text(['a.0', 'fine'], ['a.1', 'error', 'invalid_input', 'second'],
+        reply = text(['a.0', 'fine'], ['a.1', 'error', 'invalid_data', 'second'],
                      ['a.2', 'error', 'missing_data', 'third'], ['b', 'v'])
         grouped = regroup(reply, job_map, host_slots=(('a', 3, 'cmd'),))
-        self.assertEqual(grouped.outcomes, {'a': ('failed', 'invalid_input: second'), 'b': ('ok', 'v')})
+        self.assertEqual(grouped.outcomes, {'a': ('failed', 'invalid_data: second'), 'b': ('ok', 'v')})
         self.assertEqual(grouped.values, {'b': '"v"'})
 
     def test_a_bad_error_line_rejects_the_successes_too(self):
         grouped = regroup(text(['a', 'ok'], ['b', 'error', 'nope', 'x']), (('a', 0), ('b', 0)))
         self.assertEqual({m: o[0] for m, o in grouped.outcomes.items()}, {'a': 'retry', 'b': 'retry'})
         self.assertEqual(grouped.values, {})
-
-    def test_unknown_operation_follows_the_undefined_ids(self):
-        reply = text(['a', 'error', 'unknown_operation', 'Operation z is not defined.'], ['b', 1])
-        self.assertEqual(regroup(reply, (('a', 0), ('b', 0)), undefined=('a',)).outcomes,
-                         {'a': ('failed', 'unknown_operation: Operation z is not defined.'), 'b': ('ok', '1')})
-        self.assertEqual(regroup(reply, (('a', 0), ('b', 0))).outcomes['a'][0], 'retry')
 
     def test_non_text_reply_is_rejected(self):
         for bad in [None, {'results': ['x']}, ['x'], 3]:
@@ -399,7 +391,7 @@ class ReplyWorkerTests(unittest.TestCase):
         return Worker(self.box, self.ch, adapter, counters=[len], max_tokens=10000,
                       capabilities=kwargs.pop('capabilities', CAPS), **kwargs)
 
-    def test_worker_request_has_adapter3_fields_and_stage_1e_packet(self):
+    def test_worker_request_has_adapter3_fields_and_stage_1f_packet(self):
         self.post('job_zq7')
         seen = []
         def adapter(request):
@@ -413,11 +405,11 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(request['attempts'], [1])
         self.assertEqual(request['ids'], ['job_zq7'])
         self.assertEqual((request['protocol'], request['language']), ('oz.adapter/3', 'OZ/9'))
-        self.assertEqual(json.loads(request['prompt'])['jobs'][0][0], 'job_zq7')
+        self.assertEqual(job_ids(request['prompt']), ['job_zq7'])
         self.assertEqual(request['system'], SYSTEM)
         self.assertNotIn('receipt', request['prompt'] + request['system'])
         self.assertEqual(request['prompt_tokens'], [len(request['system']) + 1 + len(request['prompt'])])
-        self.assertEqual((result['language'], result['wire']), ('OZ/9', 'stage-1e'))
+        self.assertEqual((result['language'], result['wire']), ('OZ/9', 'stage-1f'))
         self.assertNotIn('reply_mode', result)
 
     def test_reply_keeps_exact_result_and_usage(self):
@@ -444,12 +436,14 @@ class ReplyWorkerTests(unittest.TestCase):
         seen = []
         def adapter(request):
             seen.append(request)
-            return answer(request, 'audit text', {'findings': []}, 'observed', 'single value')
+            return answer_by_id(request, {'multi.0': 'audit text', 'multi.1': {'findings': []},
+                                          'multi.2': 'observed', 'single': 'single value'})
         self.worker(adapter, batch_size=2).run_once()
-        body = json.loads(seen[0]['prompt'])
-        self.assertEqual([job[:2] for job in body['jobs']],
-                         [['multi.0', 'audit'], ['multi.1', 'propose'], ['multi.2', 'observed'],
-                          ['single', 'propose']])
+        # The body groups by operation (audit, propose, observed); the reply binds by ID.
+        self.assertEqual(job_ids(seen[0]['prompt']), ['multi.0', 'multi.1', 'single', 'multi.2'])
+        self.assertEqual(job_instructions(seen[0]['prompt']),
+                         [['multi.0', INSTRUCTIONS['a']], ['multi.1', INSTRUCTIONS['>']],
+                          ['single', INSTRUCTIONS['>']], ['multi.2', INSTRUCTIONS['=']]])
         self.assertEqual(self.box.inspect('multi')['result'],
                          '{"results":["audit text",{"findings":[]},"observed"]}')
         self.assertEqual(self.box.inspect('single')['result'], 'single value')
@@ -462,7 +456,7 @@ class ReplyWorkerTests(unittest.TestCase):
             seen.append(request)
             return answer(request, {'findings': []}, 'second')
         self.worker(adapter, batch_size=2).run_once()
-        self.assertEqual([job[0] for job in json.loads(seen[0]['prompt'])['jobs']], ['multi', 'other'])
+        self.assertEqual(job_ids(seen[0]['prompt']), ['multi', 'other'])
         self.assertEqual(self.box.inspect('multi')['result'],
                          '{"results":["",{"findings":[]},"python -m unittest"]}')
         self.assertEqual(self.box.inspect('other')['result'], '{"results":["","second"]}')
@@ -597,7 +591,7 @@ class ReplyWorkerTests(unittest.TestCase):
             self.post(mid)
         def adapter(request):
             self.assertEqual(request['ids'], ['job_a', 'job_b', 'job_c'])
-            self.assertEqual([j[0] for j in json.loads(request['prompt'])['jobs']], ['job_a', 'job_b', 'job_c'])
+            self.assertEqual(job_ids(request['prompt']), ['job_a', 'job_b', 'job_c'])
             return {'reply': text(['job_c', 'three'], ['job_a', 'one'], ['job_b', 'two'])}
         self.worker(adapter, batch_size=3).run_once()
         self.assertEqual([self.box.inspect(m)['result'] for m in ('job_a', 'job_b', 'job_c')],
@@ -680,7 +674,7 @@ class ReplyWorkerTests(unittest.TestCase):
     def test_every_job_failing_is_accepted_and_final(self):
         self.post('a')
         self.post('b')
-        replies = [text(['a', 'error', 'cannot_complete', 'no'], ['b', 'error', 'invalid_input', 'bad'])]
+        replies = [text(['a', 'error', 'conflict', 'no'], ['b', 'error', 'invalid_data', 'bad'])]
         worker = self.worker(lambda r: {'reply': replies.pop()}, batch_size=2)
         report = worker.run_once()
         self.assertEqual((report['status'], report['outcomes']), ('received', {'a': 'failed', 'b': 'failed'}))
@@ -767,10 +761,10 @@ class ReplyWorkerTests(unittest.TestCase):
         request = requests[1]
         self.assertEqual(request['ids'], ['a', 'b'])
         body = json.loads(request['prompt'])
-        self.assertEqual(list(body), ['v', 'ops', 'refs', 'jobs'])
-        self.assertEqual(body['refs'], {'d0': 'Use 5 seconds per attempt', 'p0': 'PREDECESSOR-RESULT'})
+        self.assertEqual(list(body), ['v', 'goal', 'ops', 'refs', 'jobs'])
+        self.assertEqual(body['refs'], ['Use 5 seconds per attempt', 'PREDECESSOR-RESULT'])
         self.assertEqual(request['prompt'].count('PREDECESSOR-RESULT'), 1)
-        self.assertEqual(body['jobs'], [['a', 'propose', ['d0', 'p0']], ['b', 'propose', ['d0', 'p0']]])
+        self.assertEqual(body['jobs'], [[0, ['a', 0, 1], ['b', 0, 1]]])
 
     def test_there_is_no_reply_mode(self):
         with self.assertRaises(TypeError):
@@ -806,12 +800,12 @@ class ReplyWorkerTests(unittest.TestCase):
         worker.run_once()
         self.assertEqual(requests[-1]['ids'], ['z'])
         body = json.loads(requests[-1]['prompt'])
-        # Dependency declaration order q, p, r: keys follow it, values are JSON values (stored text stays a string).
-        self.assertEqual(body['jobs'], [['z', 'propose', ['d0', 'p0', 'p1', 'p2']]])
-        self.assertEqual(body['refs'], {'d0': 'Use 5 seconds per attempt',
-                                        'p0': {'results': ['audit text', {'k': [1, None]}]},
-                                        'p1': '{"older":"text"}', 'p2': '[1, 2]'})
-        self.assertIn('"p0":{"results":["audit text",{"k":[1,null]}]},"p1":"{\\"older\\":\\"text\\"}","p2":"[1, 2]"',
+        # Dependency declaration order q, p, r: indices follow it, values are JSON values (stored text stays a string).
+        self.assertEqual(body['jobs'], [[0, ['z', 0, 1, 2, 3]]])
+        self.assertEqual(body['refs'], ['Use 5 seconds per attempt',
+                                        {'results': ['audit text', {'k': [1, None]}]},
+                                        '{"older":"text"}', '[1, 2]'])
+        self.assertIn(',{"results":["audit text",{"k":[1,null]}]},"{\\"older\\":\\"text\\"}","[1, 2]"]',
                       requests[-1]['prompt'])
 
     def test_a_failed_predecessor_blocks_its_dependant_which_is_never_sent(self):
@@ -831,7 +825,7 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('next')['waiting_for'], [{'id': 'first', 'state': 'failed'}])
         self.assertEqual(self.box.plan(self.ch, counters=[len]).jobs, ())
 
-    def test_literal_names_survive_batch_splits_retries_and_a_reopened_inbox(self):
+    def test_literal_texts_survive_batch_splits_retries_and_a_reopened_inbox(self):
         import tempfile
         from pathlib import Path
         with tempfile.TemporaryDirectory() as temp:
@@ -842,7 +836,7 @@ class ReplyWorkerTests(unittest.TestCase):
             names = []
             def adapter(request):
                 body = json.loads(request['prompt'])
-                names.append((request['ids'], [job[1] for job in body['jobs']], body['ops']))
+                names.append((request['ids'], body['jobs'], body['ops']))
                 if len(names) == 2:
                     return {'reply': 'prose'}
                 return answer(request, *(['ok'] * len(body['jobs'])))
@@ -859,10 +853,12 @@ class ReplyWorkerTests(unittest.TestCase):
             self.assertEqual(box.stats(), {'done': 4})
             box.close()
         by_id = {ids[0]: (j, d) for ids, j, d in names}
-        self.assertEqual(by_id['n1'], (['literal_0'], {'literal_0': 'first note'}))
-        self.assertEqual([j for ids, j, d in names if ids == ['n2']], [['literal_1'], ['literal_1']])
-        self.assertEqual(by_id['n3'], (['literal_0'], {'literal_0': 'first note'}))
-        self.assertEqual(by_id['n4'], (['literal_2'], {'literal_2': 'third'}))
+        # The wire carries the literal text itself, never a persisted number.
+        self.assertEqual(by_id['n1'], ([[0, ['n1']]], ['first note']))
+        self.assertEqual([(j, d) for ids, j, d in names if ids == ['n2']],
+                         [([[0, ['n2']]], ['second note'])] * 2)
+        self.assertEqual(by_id['n3'], ([[0, ['n3']]], ['first note']))
+        self.assertEqual(by_id['n4'], ([[0, ['n4']]], ['third']))
 
 
 if __name__ == '__main__':
