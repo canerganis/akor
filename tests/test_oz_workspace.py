@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from oz import Error
+from oz_batch import REPLY_CONTRACT
 from oz_cli import main
 from oz_workspace import DEMO_SCRIPT, DEMO_CAPABILITIES, Workspace, channel_from_files, demo, initialize
 from test_oz2 import extended
@@ -68,8 +69,9 @@ class WorkspaceTests(unittest.TestCase):
         body = json.loads(prompt.splitlines()[-1])
         self.assertIn('j', body)
         self.assertNotIn('first', prompt)
-        # Previews carry a real-shaped receipt so their token count matches a run.
-        self.assertIn('["1",result per j', prompt)
+        # The receipt is host-side only: no q field in the body, and the plan still works.
+        self.assertNotIn('q', body)
+        self.assertIn(REPLY_CONTRACT, prompt)
         code, out, err = self.cli('status', '--json', *base)
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['jobs'][0]['attempts'], 0)

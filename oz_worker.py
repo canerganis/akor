@@ -147,7 +147,7 @@ class Worker:
             # Usage is provider accounting; keep it even when the reply is invalid.
             report['usage'] = validate_usage(response.get('usage', {}))
             outcomes = {mid: Outcome(status, text) for mid, (status, text)
-                        in validate_reply(response['reply'], ids, receipt).items()}
+                        in validate_reply(response['reply'], ids).items()}
             report['status'] = 'received'
         except Exception as exc:
             # Do not store arbitrary provider exception text: it may contain credentials.

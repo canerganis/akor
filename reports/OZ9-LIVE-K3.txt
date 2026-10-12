@@ -1,0 +1,30 @@
+domain n arm | calls valid | jobs passed | in | out | total | protocol total (in-905+out) | api s median
+code       1 0.8-exec | 3 3 | 3/3 | 1344 | 37 | 1381 | 476 | 1.5
+code       1 oz9      | 3 3 | 3/3 | 1279 | 148 | 1427 | 522 | 2.4
+code       1 oz9A     | 3 3 | 3/3 | 1385 | 107 | 1493 | 588 | 2.0
+code       4 0.8-exec | 3 3 | 12/12 | 1475 | 267 | 1742 | 837 | 2.9
+code       4 oz9      | 3 2 | 8/12 | 1402 | 275 | 1677 | 772 | 3.4
+code       4 oz9A     | 3 3 | 12/12 | 1507 | 284 | 1792 | 887 | 3.6
+code      16 0.8-exec | 3 3 | 48/48 | 2244 | 813 | 3057 | 2152 | 8.1
+code      16 oz9      | 3 3 | 48/48 | 1647 | 779 | 2426 | 1521 | 5.5
+code      16 oz9A     | 3 2 | 32/48 | 1751 | 813 | 2564 | 1659 | 7.2
+materials  1 0.8-exec | 3 3 | 1/3 | 1292 | 84 | 1376 | 471 | 3.5
+materials  1 oz9      | 3 0 | 0/3 | 1230 | 53 | 1283 | 378 | 1.9
+materials  1 oz9A     | 3 2 | 2/3 | 1336 | 81 | 1417 | 512 | 1.7
+materials  4 0.8-exec | 3 3 | 12/12 | 1490 | 372 | 1863 | 958 | 5.2
+materials  4 oz9      | 3 2 | 8/12 | 1403 | 433 | 1836 | 931 | 5.6
+materials  4 oz9A     | 3 3 | 12/12 | 1510 | 399 | 1909 | 1004 | 3.6
+materials 16 0.8-exec | 3 3 | 48/48 | 2432 | 805 | 3238 | 2333 | 5.9
+materials 16 oz9      | 3 3 | 48/48 | 1600 | 877 | 2477 | 1572 | 6.9
+materials 16 oz9A     | 3 3 | 48/48 | 1708 | 813 | 2522 | 1617 | 6.1
+
+Invalid or failing replies (first 220 chars):
+- oz9 materials n=1 INVALID pass 0/1: '["dw",["[\\"12.50 mm\\",\\"0.02 mm\\",\\"3\\",\\"unknown\\",\\"unknown\\",\\"not_claimed\\"]"]]'
+- oz9A materials n=1 INVALID pass 0/1: '["dx",["12.50 mm","0.02 mm","3","unknown","unknown","not_claimed"]]\n\nWait, format: result per j is "text". The result should be a string containing the compact JSON array.\n\n["dx","[\\"12.50 mm\\",\\"0.02 mm\\",\\"3\\",\\"unknow'
+- 0.8-exec materials n=1 valid pass 0/1: '{"results":[["ma_01",0,"[\\"length=12.50 mm\\",\\"uncertainty=0.02 mm\\",\\"n=3\\",\\"method=unknown\\",\\"basis=unknown\\",\\"physical_validation=not_claimed\\"]"]]}'
+- oz9 code n=4 INVALID pass 0/4: '["e9",\n"return None if not xs else sum(xs) / len(xs)",\n"[\\"ZeroDivisionError\\",3.0,3.0]",\n"[null,3.0,3.0]",\n"[0]"]\n\nWait — the format requires one result per j entry, with the first element "e9" followed by the results. '
+- 0.8-exec materials n=1 valid pass 0/1: '{"results":[["ma_01",0,"[\\"length=12.50 mm\\",\\"uncertainty=0.02 mm\\",\\"n=3\\",\\"method=unknown\\",\\"basis=unknown\\",\\"physical_validation=not_claimed\\"]"]]}'
+- oz9 materials n=1 INVALID pass 0/1: '["eg",["12.50 mm","0.02 mm","3","unknown","unknown","not_claimed"]]'
+- oz9 materials n=4 INVALID pass 0/4: '["e1","[\\"12.50 mm\\",\\"0.02 mm\\",\\"3\\",\\"unknown\\",\\"unknown\\",\\"not_claimed\\"]","b1","[\\"12.48 mm\\",\\"12.52 mm\\"]","m1","[\\"method\\",\\"basis\\"]","v1","inside"]'
+- oz9A code n=16 INVALID pass 0/16: '["return sum(xs) / len(xs) if xs else None","[\\"ZeroDivisionError\\",3.0,3.0]","[null,3.0,3.0]","[0]","return xs[0] if xs else None","[null,\\"IndexError\\",9]","[null,7,7]","[1,2]","return max(lo, min(x, hi))","[5,5,8]","['
+- oz9 materials n=1 INVALID pass 0/1: '["ey",["[\\"12.50 mm\\",\\"0.02 mm\\",\\"3\\",\\"unknown\\",\\"unknown\\",\\"not_claimed\\"]"]]'

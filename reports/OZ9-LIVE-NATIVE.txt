@@ -1,0 +1,49 @@
+domain n arm | valid | jobs passed | in | out | total | protocol | api s median
+code       1 0.8-exec | 3/3 | 3/3 | 1346 | 37 | 1383 | 478 | 1.5
+code       1 A        | 3/3 | 3/3 | 1419 | 121 | 1541 | 636 | 2.4
+code       1 B        | 3/3 | 2/3 | 1415 | 59 | 1474 | 569 | 2.0
+code       1 S        | 3/3 | 3/3 | 1330 | 64 | 1394 | 489 | 2.3
+code       4 0.8-exec | 3/3 | 12/12 | 1478 | 345 | 1823 | 918 | 3.1
+code       4 A        | 3/3 | 12/12 | 1544 | 261 | 1805 | 900 | 4.8
+code       4 B        | 3/3 | 12/12 | 1536 | 266 | 1802 | 897 | 2.9
+code       4 S        | 3/3 | 12/12 | 1453 | 243 | 1696 | 791 | 2.5
+code      16 0.8-exec | 3/3 | 48/48 | 2242 | 804 | 3047 | 2142 | 5.7
+code      16 A        | 3/3 | 48/48 | 1786 | 739 | 2525 | 1620 | 6.3
+code      16 B        | 3/3 | 48/48 | 1780 | 790 | 2570 | 1665 | 5.7
+code      16 S        | 3/3 | 48/48 | 1692 | 705 | 2397 | 1492 | 5.1
+materials  1 0.8-exec | 3/3 | 0/3 | 1294 | 91 | 1385 | 480 | 1.7
+materials  1 A        | 3/3 | 1/3 | 1373 | 55 | 1428 | 523 | 1.6
+materials  1 B        | 3/3 | 0/3 | 1366 | 66 | 1432 | 527 | 1.7
+materials  1 S        | 3/3 | 1/3 | 1281 | 55 | 1336 | 431 | 1.8
+materials  4 0.8-exec | 3/3 | 12/12 | 1490 | 285 | 1775 | 870 | 2.9
+materials  4 A        | 3/3 | 12/12 | 1546 | 178 | 1724 | 819 | 2.4
+materials  4 B        | 3/3 | 12/12 | 1538 | 304 | 1842 | 937 | 4.4
+materials  4 S        | 3/3 | 12/12 | 1453 | 284 | 1737 | 832 | 2.7
+materials 16 0.8-exec | 3/3 | 48/48 | 2436 | 848 | 3284 | 2379 | 5.0
+materials 16 A        | 3/3 | 48/48 | 1741 | 646 | 2387 | 1482 | 5.7
+materials 16 B        | 3/3 | 48/48 | 1736 | 754 | 2489 | 1584 | 5.2
+materials 16 S        | 3/3 | 48/48 | 1651 | 615 | 2266 | 1361 | 5.8
+
+0.8-exec valid 18/18 jobs 123/126 in 30859 out 7229 total 38088 (+0.0%) protocol 21798 (+0.0%) out (+0.0%) api median 3.1s mean 3.4s
+A        valid 18/18 jobs 124/126 in 28226 out 6001 total 34227 (-10.1%) protocol 17937 (-17.7%) out (-17.0%) api median 4.1s mean 4.0s
+B        valid 18/18 jobs 122/126 in 28112 out 6716 total 34828 (-8.6%) protocol 18538 (-15.0%) out (-7.1%) api median 3.8s mean 3.8s
+S        valid 18/18 jobs 124/126 in 26578 out 5900 total 32478 (-14.7%) protocol 16188 (-25.7%) out (-18.4%) api median 2.7s mean 3.4s
+
+n=16 only:
+  0.8-exec jobs 96/96 total 18991 protocol 13561
+  A        jobs 96/96 total 14736 protocol 9306
+  B        jobs 96/96 total 15178 protocol 9748
+  S        jobs 96/96 total 13989 protocol 8559
+
+Invalid or failing:
+- A materials n=1 valid pass 0/1: '{"results":[["length=12.50 mm","uncertainty=0.02 mm","n=3","method=unknown","basis=unknown","physical_validation=not_claimed"]]}'
+- B materials n=1 valid pass 0/1: '{"results":[[0,["length=12.50 mm","uncertainty=0.02 mm","n=3","method=unknown","basis=unknown","physical_validation=not_claimed"]]]}'
+- 0.8-exec materials n=1 valid pass 0/1: '{"results":[["ma_01",0,"[\\"length=12.50 mm\\",\\"uncertainty=0.02 mm\\",\\"n=3\\",\\"method=unknown\\",\\"basis=unknown\\",\\"physical_validation=not_claimed\\"]"]]}'
+- S materials n=1 valid pass 0/1: '{"results":[["length=12.50 mm","uncertainty=0.02 mm","n=3","method=unknown","basis=unknown","physical_validation=not_claimed"]]}'
+- B code n=1 valid pass 0/1: '{"results":[[0,"sum(xs) / len(xs) if xs else None"]]}'
+- B materials n=1 valid pass 0/1: '{"results":[[0,["length=12.50 mm","uncertainty=0.02 mm","n=3","method=unknown","basis=unknown","physical_validation=not_claimed"]]]}'
+- A materials n=1 valid pass 0/1: '{"results":[["length=12.50 mm","uncertainty=0.02 mm","n=3","method=unknown","basis=unknown","physical_validation=not_claimed"]]}'
+- 0.8-exec materials n=1 valid pass 0/1: '{"results":[["ma_01",0,"[\\"length=12.50 mm\\",\\"uncertainty=0.02 mm\\",\\"n=3\\",\\"method=unknown\\",\\"basis=unknown\\",\\"physical_validation=not_claimed\\"]"]]}'
+- 0.8-exec materials n=1 valid pass 0/1: '{"results":[["ma_01",0,"[\\"length=12.50 mm\\",\\"uncertainty=0.02 mm\\",\\"n=3\\",\\"method=unknown\\",\\"basis=unknown\\",\\"physical_validation=not_claimed\\"]"]]}'
+- B materials n=1 valid pass 0/1: '{"results":[[0,["length=12.50 mm","uncertainty=0.02 mm","n=3","method=unknown","basis=unknown","physical_validation=not_claimed"]]]}'
+- S materials n=1 valid pass 0/1: '{"results":[["length=12.50 mm","uncertainty=0.02 mm","n=3","method=unknown","basis=unknown","physical_validation=not_claimed"]]}'

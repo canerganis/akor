@@ -2,8 +2,8 @@ import json
 import unittest
 
 from oz import Error
-from oz_batch import (COMMON, HANDOFF_NOTE, LITERAL_LINE, MEANINGS,
-                      NOARG_LINE, PREVIEW_RECEIPT, RESULTS_RULE, SAFETY, TABLE_LINE, explicit, render, reply_contract)
+from oz_batch import (HANDOFF_NOTE, LITERAL_LINE, MEANINGS, NOARG_LINE, PREAMBLE, PROFILES,
+                      REPLY_CONTRACT, TABLE_LINE, explicit, render)
 from test_oz2 import extended
 
 LONG = ':' + 'measurement 12.50 ± 0.02 mm; method unknown. ' * 6
@@ -24,8 +24,9 @@ class BatchTests(unittest.TestCase):
         packet = render(extended(), [('j1', 'V')], counters=[len], receipt='0123456789abcdef')
         lines = packet.text.splitlines()
         self.assertEqual(len(lines), 3)
-        self.assertTrue(lines[0].startswith(COMMON + ' ' + SAFETY + ' '))
-        self.assertIn(reply_contract('0123456789abcdef'), lines[1])
+        self.assertEqual(lines[0], PREAMBLE + ' ' + PROFILES[packet.mode])
+        self.assertTrue(lines[1].startswith(REPLY_CONTRACT))
+        self.assertNotIn('q', data(packet))
         self.assertNotIn('"q"', lines[2])
         self.assertEqual(data(packet)['goal'], extended().snapshot()['goal'])
         self.assertEqual(json.dumps(data(packet), ensure_ascii=False, separators=(',', ':')), lines[2])
@@ -85,11 +86,13 @@ class BatchTests(unittest.TestCase):
         self.assertNotEqual(status.mode, 'direct-inline')
         self.assertEqual(data(status)['c']['9'], {'text': '1 check failed', 'status': 'failed'})
 
-    def test_results_rule_is_opt_in_and_follows_reply_contract(self):
-        plain = render(extended(), [('a', 'V')], counters=[len])
-        self.assertNotIn(RESULTS_RULE, plain.text)
-        ruled = render(extended(), [('a', 'V')], counters=[len], results_rule=True)
-        self.assertIn(reply_contract(PREVIEW_RECEIPT) + ' ' + RESULTS_RULE, ruled.text.splitlines()[1])
+    def test_receipt_is_stored_but_never_sent_to_the_model(self):
+        receipt = 'zq9k2m7p4x1c8v5b'
+        packet = render(extended(), [('a', 'V')], counters=[len], receipt=receipt)
+        self.assertEqual(packet.receipt, receipt)
+        self.assertNotIn(receipt, packet.text)
+        self.assertEqual(packet.text, render(extended(), [('a', 'V')], counters=[len]).text)
+        self.assertNotIn('q', data(packet))
 
     def test_literal_and_no_argument_rules_are_conditional(self):
         literal = render(extended(), [('a', ':hello r13')], counters=[len])

@@ -1,10 +1,14 @@
 """OZ/9 replies, receipts, adapter capabilities and provider usage.
 
-A reply is [q, r0, r1, ...]: r_i answers the i-th delivered job and is a
-string (success) or [1|2, string] (retryable or permanent failure). Receipts
-correlate a reply with one call attempt; they are not authentication or proof.
+A reply is {"results":[v0, v1, ...], "errors":{"<index>": reason}}: v_i is the
+native JSON result of the i-th delivered job, and a job listed in "errors" failed
+with result null. Receipts stay host-side: the adapter request carries one per call
+attempt to correlate the reply; they are not authentication or proof.
 """
 from __future__ import annotations
+
+import json
+import re
 
 from oz import Error
 
@@ -12,7 +16,6 @@ PROTOCOL = 'oz.adapter/3'
 LANGUAGE = 'OZ/9'
 USAGE_FIELDS = ('input_tokens', 'cached_input_tokens', 'cache_creation_input_tokens',
                 'output_tokens', 'reasoning_output_tokens')
-STATUS = {0: 'ok', 1: 'retry', 2: 'failed'}
 
 
 def check_capabilities(value: object) -> dict:
@@ -34,20 +37,39 @@ def _text(value: object) -> bool:
         return False
 
 
-def validate_reply(value: object, ids, receipt: str) -> dict:
-    """Whole-reply validation; any defect rejects every result."""
+def _json(value) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+
+
+def validate_reply(value: object, ids) -> dict:
+    """Whole-reply validation; any defect rejects every result.
+
+    A string result is stored as is; any other JSON value as compact JSON text.
+    """
     ids = tuple(ids)
-    if not isinstance(value, list) or len(value) != len(ids) + 1 or value[0] != receipt:
-        raise Error('reply must be [q, one result per delivered job]')
+    if (not isinstance(value, dict) or 'results' not in value or set(value) - {'results', 'errors'}
+            or not isinstance(value['results'], list) or len(value['results']) != len(ids)):
+        raise Error('reply must be {"results":[one value per delivered job],"errors":{...}}')
+    results, errors = value['results'], value.get('errors', {})
+    if 'errors' in value and (not isinstance(errors, dict) or not errors):
+        raise Error('errors must be a nonempty object when present')
+    for key, reason in errors.items():
+        if (not re.fullmatch(r'0|[1-9][0-9]*', key) or int(key) >= len(ids)
+                or not _text(reason) or results[int(key)] is not None):
+            raise Error('each error needs an in-range index, a null result and a nonblank reason')
     outcomes = {}
-    for mid, item in zip(ids, value[1:]):
-        if _text(item):
-            outcomes[mid] = ('ok', item)
-        elif (isinstance(item, list) and len(item) == 2 and type(item[0]) is int
-                and item[0] in (1, 2) and _text(item[1])):
-            outcomes[mid] = (STATUS[item[0]], item[1])
-        else:
-            raise Error('each result must be a nonblank string or [1|2, nonblank string]')
+    for index, (mid, item) in enumerate(zip(ids, results)):
+        if str(index) in errors:
+            outcomes[mid] = ('failed', errors[str(index)])
+            continue
+        try:
+            text = item if isinstance(item, str) else _json(item)
+            text.encode('utf-8')
+        except (ValueError, UnicodeEncodeError) as exc:
+            raise Error('result is not encodable JSON') from exc
+        if len(text.encode('utf-8')) > 65536:
+            raise Error('result exceeds 65536 bytes')
+        outcomes[mid] = ('ok', text)
     return outcomes
 
 
@@ -66,16 +88,18 @@ def validate_usage(value: object) -> dict:
     return dict(value)
 
 
-def validate_response(value: object, ids, receipt: str) -> tuple[dict, dict]:
+def validate_response(value: object, ids) -> tuple[dict, dict]:
     """Adapter response {"reply":..., "usage":...}; usage comes from provider accounting."""
     if not isinstance(value, dict) or 'reply' not in value or set(value) - {'reply', 'usage'}:
         raise Error('adapter response must be {"reply":...,"usage":...}')
     usage = validate_usage(value.get('usage', {}))
-    return validate_reply(value['reply'], ids, receipt), usage
+    return validate_reply(value['reply'], ids), usage
 
 
-def encode_reply(outcomes: dict, ids, receipt: str) -> list:
+def encode_reply(outcomes: dict, ids) -> dict:
     """Build a valid reply from (status, text) pairs, e.g. for test adapters."""
-    codes = {v: k for k, v in STATUS.items()}
-    return [receipt, *(outcomes[mid][1] if outcomes[mid][0] == 'ok' else [codes[outcomes[mid][0]], outcomes[mid][1]]
-                       for mid in ids)]
+    reply = {'results': [outcomes[mid][1] if outcomes[mid][0] == 'ok' else None for mid in ids]}
+    errors = {str(i): outcomes[mid][1] for i, mid in enumerate(ids) if outcomes[mid][0] != 'ok'}
+    if errors:
+        reply['errors'] = errors
+    return reply

@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from oz import Error
-from oz_batch import HANDOFF_NOTE, TABLE_LINE, BudgetError, render, reply_contract
+from oz_batch import HANDOFF_NOTE, TABLE_LINE, REPLY_CONTRACT, BudgetError, render
 from oz_runtime import Inbox, Outcome
 from test_oz2 import extended
 
@@ -72,10 +72,11 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(delivered, ['m0', 'm1', 'm2'])
         self.assertEqual(self.box.stats(), {'done': 3})
 
-    def test_reply_contract_and_receipt_are_inside_budget(self):
+    def test_reply_contract_is_inside_budget_and_receipt_stays_out_of_packet(self):
         self.post('one')
         packet = self.box.plan(self.ch, counters=[len], receipt='0123456789abcdef').packet
-        self.assertIn(reply_contract('0123456789abcdef'), packet.text)
+        self.assertIn(REPLY_CONTRACT, packet.text)
+        self.assertNotIn('q', packet_data(packet))
         self.assertEqual(packet.receipt, '0123456789abcdef')
         with self.assertRaises(BudgetError):
             self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R,
@@ -83,7 +84,9 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('one')['attempts'], 0)
         claimed = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R,
                                           max_tokens=packet.tokens[0])
-        self.assertIn(reply_contract(R), claimed[1].text)
+        self.assertIn(REPLY_CONTRACT, claimed[1].text)
+        self.assertNotIn('q', packet_data(claimed[1]))
+        self.assertEqual(claimed[1].receipt, R)
 
     def test_largest_feasible_prefix_found_when_feasibility_is_not_monotonic(self):
         for i in range(17):
