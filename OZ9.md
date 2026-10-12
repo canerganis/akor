@@ -483,3 +483,27 @@ A job listed in errors is a final failure; adapter errors and invalid replies st
 host-side retries. Offline request tokens rose (materials n=1 141 -> 162, -28.6%
 vs 0.8; n=64 -52.9%), the price of 18/18 valid replies. Summaries:
 reports/OZ9-LIVE-K3.txt and reports/OZ9-LIVE-NATIVE.txt.
+
+## Live: shorter candidates and large batches (2026-10-12)
+
+Astra's shorter candidates C1/C2 against F (18 calls each, clarified extraction
+job in every arm): F -16.2% total / -28.4% protocol, 18/18 valid; C1 -15.0%;
+C2 -16.7% with one invalid reply (trailing self-correction prose). The spread is
+within run-to-run noise, so F stays. F has been valid in 36 of 36 calls.
+The clarified extraction wording ("excluding names: length, ...") made every arm,
+0.8 included, return an empty array; the original wording is kept.
+
+Large batches (F vs 0.8-exec, 4 calls per cell, jobs cycle over the 16-job list,
+every job verified):
+
+| Jobs per call | Jobs correct (F / 0.8) | Total | Protocol | Output | Median api |
+|---:|---:|---:|---:|---:|---:|
+| 16 (distinct jobs) | 83 / 80 of 96 | -29% | -41% | | |
+| 32 | 128 / 128 | -43.0% | -53.6% | -33.8% | 6.5 s vs 8.0 s |
+| 64 | 256 / 256 | -56.3% | -64.1% | -41.1% | 8.5 s vs 12.5 s |
+
+The 35-40% total target is met from 32 jobs per call. Repeated jobs favour the
+compact encoding (codes and shared d/c), so a workload of 64 distinct jobs is
+still to be measured. Fewer, larger calls are the main lever: use --min-batch
+and --max-wait (06b8095). Summaries: reports/OZ9-LIVE-SHORT.txt and
+reports/OZ9-LIVE-LARGE.txt.
