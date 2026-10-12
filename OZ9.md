@@ -365,3 +365,14 @@ Current F offline request tokens, `o200k_base`, versus OZ 0.8 request fixtures:
 | Materials | 162 (-28.6%) | 213 (-30.6%) | 257 (-38.7%) | 302 (-41.8%) | 339 (-46.3%) | 403 (-52.9%) |
 | Code | 149 (-30.4%) | 200 (-32.0%) | 244 (-39.9%) | 289 (-42.9%) | 326 (-47.2%) | 390 (-53.7%) |
 
+## Appendix: Haiku check (Claude, 2026-10-12)
+
+The large-batch result does not transfer to Haiku as is. On the distinct 32/64-job
+workload, frames cost +13% / +8% total tokens versus 0.8-exec and were slower:
+Haiku spends hidden reasoning tokens decoding the compact codes (visible replies
+were about 40% shorter, billed output was larger). The direct-ids form, with each
+job's meaning written out, got every job right (96/96, 192/192) and cut total
+tokens by 3% at 32 jobs and 24% at 64 jobs. Candidate selection by input tokens
+alone is therefore not enough for reasoning models. Details:
+reports/OZ9-LIVE-HAIKU.txt.
+

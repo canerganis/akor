@@ -1,0 +1,17 @@
+Haiku (claude -p --model haiku, no tools), distinct workload: 16 generated materials records x 4 codes, 3 calls per cell.
+Fixed CLI overhead on Haiku: 756 input tokens. Haiku wraps every reply, both arms, in a ```json fence; one fence is
+stripped for both arms before validation (Sonnet never fenced, so its results are unchanged by this rule).
+Haiku spends hidden reasoning tokens that are billed as output: visible replies were 381-1279 o200k tokens while
+reported output was 3,000-13,000 tokens.
+
+jobs  arm               valid  jobs correct  total/call   vs 0.8-exec  median api
+32    0.8-exec          2/3    64/96         7620         0            24.9 s
+32    OZ/9 frames (F)   3/3    72/96         8623         +13%         49.7 s
+32    OZ/9 direct-ids   3/3    96/96         7386         -3%          39.5 s
+64    0.8-exec          3/3    192/192       13108        0            39.0 s
+64    OZ/9 frames (F)   3/3    176/192       14150        +8%          67.4 s
+64    OZ/9 direct-ids   3/3    192/192       9928         -24%         33.4 s
+
+Reading: the compact frame codes (d dictionary + "e1"-style jobs) cost a reasoning model more hidden output than they
+save in input. Writing each job's meaning out (direct-ids) restores correctness and cuts total tokens at 64 jobs, but
+does not reach the 35% target on Haiku. Visible F replies were ~40% shorter than 0.8's in every cell.
