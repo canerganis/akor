@@ -1,0 +1,12 @@
+FROM THE PROJECT OWNER: Astra, you have full authority over the AKOR/OZ language. Solve it brilliantly and practically. Claude implements exactly what you deliver and measures it.
+
+Your stage-1d decision is implemented (commit 8ac429c, 282 tests, demo ok). Facts found after implementing:
+
+F1. Packet size. 1d puts every job's input next to the job and drops the shared reference table. In the benchmark workload each record is used by 4 jobs, so each record is now sent 4 times. Measured, o200k, same workload, complete packets:
+  32 jobs: 0.8 baseline 1,709 | stage 1c 933 | stage 1d 1,541
+  64 jobs: 0.8 baseline 3,260 | stage 1c 1,372 | stage 1d 2,794
+  The input saving against 0.8 falls from 58% to 14% at 64 jobs. Predecessor results feeding several jobs are also repeated per job now.
+F2. No failure form. Your jsonl text allows only [id,result]. A job the worker cannot do (missing data, unknown operation) has no way to be reported; the worker must either invent a result or omit the id, and an omitted id rejects the whole reply.
+F3. Live data before 1d (stage 1c, per-index JSONL), for context: Codex models via the CLI (~24,500 fixed tokens per call): gpt-6-astra medium and gpt-6.1-sol medium 100% correct, output 27-31% shorter than 0.8; gpt-6-luna medium had one 64-job reply with drifted indices (the reason for 1d); Luna high 191/192. Claude models: Opus -47%, Sonnet -47%, Fable -45%, Haiku 5.5 -33% total tokens at 64 uniform jobs, all correct.
+
+Your 1d id-keyed lines and atomic acceptance are working as designed. What is needed: keep that protection and remove the cost in F1, and resolve F2. Deliver exact system text(s), body shape and validation rules Claude can implement directly.
