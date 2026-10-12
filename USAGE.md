@@ -109,6 +109,8 @@ Modeline yalnız `system` (sistem talimatı) ve `prompt` (kullanıcı mesajı) a
 
 String sonuçlar olduğu gibi, diğer değerler kompakt JSON metni olarak saklanır. `usage` isteğe bağlı sağlayıcı raporudur; yoksa bilinmiyor kabul edilir. Cached input normal input'a tekrar eklenmez. Sistem metni, cevap sözleşmesi ve öncül çıktılar yerel girdi bütçesine dahildir. Çalışma alanında her model çağrısı `calls.jsonl` dosyasına (`akor.call/1`) `call_start` ve `call_end` satırları olarak eklenir; bilinmeyen değerler `null` kalır.
 
+Hazır örnek: [examples/claude_cli_adapter.py](examples/claude_cli_adapter.py) isteği `claude -p` ile çalıştırır; `system` alanı `--system-prompt` olarak, `prompt` stdin olarak gider, model `OZ_MODEL` ortam değişkeniyle seçilir (varsayılan `claude-sonnet-5-5`; tam model kimliği kullan, `haiku` takma adı eski Haiku 4.5'e gidiyor). `adapter.json` içinde `argv` olarak Python yolu ve bu dosya verilir.
+
 Python içinden subprocess olmadan mevcut framework'e bağlamak için:
 
 ```python
