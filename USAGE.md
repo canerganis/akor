@@ -1,10 +1,8 @@
-# ÖZ 0.8.0 kullanım kılavuzu
+# ÖZ 0.9.0 kullanım kılavuzu
 
 ÖZ, mesaj dilini ve aktarımı yönetir; kullandığın model veya ajan sistemini sen bağlarsın. Python 3.10+ gerekir. Başlangıç, gönderim, durum ve inceleme standart kütüphaneyle çalışır. Token sayımı için isteğe bağlı `tiktoken` kullanılır.
 
-[ÖZ/6](OZ6.md) kısa cevap biçimi için `oz plan/run --reply-mode lanes` kullanılabilir. Bunu destekleyen adaptör gerekir; varsayılan `rows` eski sözleşmeyi korur. Küçük paketlerde yeni biçim daha pahalı olabilir. `oz compile --worker` varsayılan satırlı sözleşmeyi ölçer; lanes bütçesini `plan/run` gerçek sözleşmesiyle ölç.
-
-Yeni [ÖZ/5 dil kılavuzu](OZ5.md), çok parametreli Form'ları (`&7,31`), sütun kodlamayı ve `oz compile --forms` seçimini anlatır. Matris çıktısını `oz unpack` ile modelsiz açabilirsin. [ÖZ/4](OZ4.md), ortak programdan farkları (`^2=t31`); [ÖZ/3](OZ3.md) hedef listelerini (`V[1:16]`) ve makroları kapsar. Aşağıdaki çalışma alanı akışı eski ve yeni manifestlerle çalışır. `oz pack --worker`, Worker cevap biçimini de token sayımına ekler.
+Paketler [ÖZ/9](OZ9.md) dilinde gider: iki kural satırı ve tek JSON gövdesi. Model her iş için doğal bir JSON değeri döndürür. Az sayıda büyük çağrı en çok tasarrufu sağlar; `oz run --min-batch` ve `--max-wait` bunun içindir (aşağıda).
 
 ## İlk çalışan örnek
 
@@ -73,10 +71,10 @@ Gönderici cevap gelmediği için yeniden gönderiyorsa **aynı `--id`** kullanm
 `adapter.json`:
 
 ```json
-{"argv":["python","benim_ajanim.py"]}
+{"argv":["python","benim_ajanim.py"],"protocols":["oz.adapter/3"],"languages":["OZ/9"]}
 ```
 
-Argümanlar liste olarak verilir; shell komut dizisi olarak yorumlanmaz. Çalışma dizini adaptör JSON dosyasının klasörüdür. `init`, `send`, `plan` ve `status` adaptör çalıştırmaz. Açıkça çalıştırmak için:
+`protocols` ve `languages`, programın konuşabildiği sürümlerdir; desteklenmeyen sürümde hiçbir iş alınmadan durulur. Argümanlar liste olarak verilir; shell komut dizisi olarak yorumlanmaz. Çalışma dizini adaptör JSON dosyasının klasörüdür. `init`, `send`, `plan` ve `status` adaptör çalıştırmaz. Açıkça çalıştırmak için:
 
 ```powershell
 oz run --adapter adapter.json --max-calls 4 --timeout 120
@@ -86,27 +84,29 @@ Program stdin'den tek UTF-8 JSON nesnesi alır:
 
 ```json
 {
-  "protocol":"oz.adapter/1",
+  "protocol":"oz.adapter/3",
+  "language":"OZ/9",
   "binding":"...",
-  "ids":["plan1"],
-  "attempts":{"plan1":1},
+  "receipt":"2a",
+  "ids":["plan1","plan2"],
+  "attempts":[1,1],
   "prompt":"Bütçesi ölçülmüş tam model girdisi...",
-  "estimated_input_tokens":[312]
+  "prompt_tokens":[312]
 }
 ```
 
-Mevcut ajanına/modeline `prompt` alanını ver. `ids` ve `attempts` host üstverisidir; bunları ayrıca model istemine eklemek zorunda değilsin. `prompt` gerekli mesaj ID'lerini ve cevap sözleşmesini zaten içerir. stdout yalnız aşağıdaki JSON olmalıdır; tanılama için stderr kullanılabilir:
+Modeline yalnız `prompt` alanını ver. `ids`, `attempts` ve `receipt` host üstverisidir; prompt'ta yer almazlar. `receipt` her denemede yenilenen kısa bir sayaçtır; cevabı o çağrıya bağlamak içindir, kimlik doğrulama değildir. stdout yalnız aşağıdaki JSON olmalıdır; tanılama için stderr kullanılabilir:
 
 ```json
 {
-  "results":[["plan1",0,"Gerçek sonuç; belirsizlikler ve kanıt sınırları..."]],
+  "reply":{"results":["Sonuç metni", ["12.48 mm","12.52 mm"], null], "errors":{"2":"kaynak eksik"}},
   "usage":{"input_tokens":312,"output_tokens":44,"cached_input_tokens":0}
 }
 ```
 
-Durum kodları: **0 tamamlandı**, **1 geçici hata**, **2 kalıcı hata**. Her teslim edilen ID tam bir kez bulunmalı; fazladan veya eksik ID, yinelenen JSON anahtarı ve boş sonuç reddedilir. Bir cevaptaki başarılı işler tamamlanırken yalnız 1 kodlu işler yeniden denenir. Bozuk/eksik bütün cevap hiçbir işi kısmen ACK etmez.
+`reply`, modelin cevabıdır: `results` teslim sırasıyla her işe bir değer içerir. Metin ve kod string olur, yapılandırılmış sonuçlar doğal JSON kalır. `errors` içinde sırası verilen iş kalıcı hatadır ve sonucu `null` olmalıdır. Uzunluk eşleşmezse, `errors` boşsa ya da kurala uymayan bir sıra varsa bütün cevap reddedilir ve hiçbir iş kısmen tamamlanmaz. Adaptör hatası, zaman aşımı veya geçersiz cevapta işler yeni bir receipt ile yeniden denenir.
 
-`usage` isteğe bağlı sağlayıcı raporudur; yoksa bilinmiyor kabul edilir. Cached input normal input'a tekrar eklenmez. Araç/sağlayıcı sarmalayıcıları yerel token tahmininden büyük olabilir. Cevap sözleşmesi ve öncül çıktılar yerel girdi bütçesine dahildir.
+String sonuçlar olduğu gibi, diğer değerler kompakt JSON metni olarak saklanır. `usage` isteğe bağlı sağlayıcı raporudur; yoksa bilinmiyor kabul edilir. Cached input normal input'a tekrar eklenmez. Cevap sözleşmesi ve öncül çıktılar yerel girdi bütçesine dahildir.
 
 Python içinden subprocess olmadan mevcut framework'e bağlamak için:
 
@@ -115,9 +115,10 @@ from oz_worker import Worker, loads
 
 def adapter(request):
     text = existing_agent(request["prompt"])  # Kendi mevcut ajan çağrın.
-    return loads(text)
+    return {"reply": loads(text)}
 
-worker = Worker(inbox, channel, adapter, counters=[count_for_model], max_tokens=2048)
+worker = Worker(inbox, channel, adapter, counters=[count_for_model], max_tokens=2048,
+                capabilities={"protocols": ["oz.adapter/3"], "languages": ["OZ/9"]})
 report = worker.run_once()
 ```
 
@@ -128,6 +129,14 @@ report = worker.run_once()
 `oz.json` içindeki `max_tokens` alıcı girdisinin üst sınırıdır. `encodings` hedef tokenizer adlarıdır; birden fazlası varsa her birinde sınır uygulanır. `batch_size` en fazla kaç hazır işin taranacağını belirler (1–64). Varsayılanlar 2048 token ve 16 iş.
 
 `plan` yan etkisizdir: deneme veya lease tüketmez. Önce tam paket denenir; sığmazsa sınırlı, açgözlü seçim yapılır. Büyük bir iş daha küçük bağımsız işleri engellemez. Bu, bütün olası paketler için matematiksel optimum garantisi değildir. Bütçeye sığmayan işlerin metni kesilmez ve deneme hakkı harcanmaz.
+
+Her model çağrısı sabit bir yük taşır (sistem talimatı, araç tanımları). Bu yükü daha çok işe bölmek için:
+
+```powershell
+oz run --adapter adapter.json --min-batch 16 --max-wait 30
+```
+
+Hazır iş sayısı `--min-batch` altındaysa ve en eski hazır iş `--max-wait` saniyeden genç ise `run` çağrı yapmadan `waiting` döner; deneme ve receipt harcanmaz. Varsayılan `--min-batch 1`, yani beklemeden çağırmaktır. Canlı ölçümde 32 işlik çağrılar 0.8'e göre toplam tokeni %43, 64 işlik çağrılar %55 azalttı ([OZ9.md](OZ9.md)).
 
 `run` varsayılan tek adaptör çağrısı yapar; `--max-calls` ile üst sınır artırılır. Boş kuyruk, adaptör hatası veya geçici hata sonucu döndüğünde durur; arka planda sonsuz döngü başlatmaz. Geçici hata için varsayılan iki saniyelik bekleme kalıcı kaydedilir. Zamanı gelince tekrar `run` çağır.
 

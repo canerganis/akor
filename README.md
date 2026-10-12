@@ -1,71 +1,32 @@
 # AKOR
 
-**Bağımsız ajan iletişim dili ve aktarım çekirdeği — paket 0.8.0 / ÖZ/6 cevapları.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+**Bağımsız ajan iletişim dili ve aktarım çekirdeği. Paket 0.9.0, ÖZ/9 dili.** Python 3.10+, çekirdekte yalnız standart kütüphane.
 
-## 0.8.0: cevapları da kısalt
+## 0.9.0: aynı iş, daha az token, daha hızlı cevap
 
-ÖZ/6, sonuç metinlerini teslim sırasına bağlayıp tekrar eden görev kimliklerini cevaptan çıkarır. `{"q":"0123456789abcdef","s":0,"v":["sonuç A","sonuç B"]}` iki ayrı iş için açıkça aynı tamamlanma durumunu bildirir; karışık durumlar `s:[0,1]` gibi ayrı verilir. Her çağrının cevap kimliği değişir; eksik cevap başarı sayılmaz.
+ÖZ/9 her çağrıyı iki kural satırı ve tek bir JSON gövdesi olarak gönderir. Dört kodlama (doğrudan metin, referans numaralı metin, kod çerçeveleri, şablon tablosu) tam paket olarak ölçülür, en ucuzu gider. Model `{"results":[...]}` döndürür: her iş için doğal bir JSON değeri, başarısız iş için `null` ve `"errors":{"<sıra>":"neden"}`. İş kimlikleri ve çağrı kimliği (receipt) modele gitmez, host tarafında kalır.
 
-```powershell
-oz plan --workspace .oz-runtime/ekip --reply-mode lanes --show-prompt
-oz run --workspace .oz-runtime/ekip --adapter adapter.json --reply-mode lanes
-```
+Canlı ölçüm: Sonnet (`claude -p`), gerçek çıktılı işler (malzeme aralık hesabı, kod onarımı), deterministik doğrulayıcı. Karşılaştırma, aynı işi yapan 0.8 paketiyle. Her çağrıda CLI'ın kendi 905 tokenlık sabit yükü dahildir.
 
-Varsayılan eski `rows` biçimidir. `lanes`, destekleyen adaptör için açıkça seçilir; sözleşme ve gerçek cevap kimliği girdi bütçesine dahildir. **Luna'nın 6 canlı biçim çağrısında tüm cevaplar exact denetimi geçti.** 64 işlik örnekte sağlayıcının bildirdiği çıktı **1.574 → 1.262 token** oldu; tam girdi+çıktı **28.058 → 27.807**. Tek ve 16 işlik örneklerde toplam tüketim arttı; bu küçük pilot genel görev başarısı veya hızlanma kanıtı değildir.
+| Çağrı başına iş | Doğru iş (ÖZ/9) | Toplam token | CLI yükü hariç | Medyan süre |
+|---:|---:|---:|---:|---:|
+| 16 | 0.8 ile aynı veya iyi | %29 az | %41 az | benzer |
+| 32 | 96/96 | **%43 az** | %52 az | 7,0 sn (0.8: 7,9) |
+| 64 | 192/192 | **%55 az** | %61 az | 9,2 sn (0.8: 14,0) |
 
-**Luna doğrulaması: 212 test geçti.** Paket 0.8.0 kuruldu; depo dışından import, CLI ve lanes kuyruk/cevap akışı yerel olarak kontrol edildi. Eksik cevap, yanlış çağrı kimliği ve karışık başarı/hata durumlarında yeniden deneme davranışı sınandı.
-
-[ÖZ/6 sözleşmesi ve kullanım](OZ6.md) · [Luna cevap ölçümleri](reports/OZ-REPLY-RESULTS.md).
-
-ÖZ/5 [canlı anlama pilotunda](reports/OZ5-LIVE-LANGUAGE.md) 12/12 vaka doğru yorumlandı; bunlar 6 açılım ve 6 ret vakasıdır. [Kodlama pilotunda](reports/OZ5-LIVE-CODING.md) ise 5 küçük fonksiyon için kompakt girdinin yerel token hesabı açık JSON'a göre yaklaşık **%54 daha pahalıydı**. Sözlük/dilbilgisi yükü kazancı aştı. Kaynak kısıtı ihlalleri ve toplu çıktı talimatındaki çelişki, kod doğruluğu kıyasını sınırladı; genel üstünlük gösterilmedi. Aşağıdaki eski sürüm sayıları çevrimdışı ölçümlerdir.
-
-## 0.7.0: ortak işlem biçimi, değişen parametreler
-
-ÖZ/5 bir iş akışındaki birden fazla referansı bağımsız parametre yapar. `Form=r$0a$0t$1` altında `&7,31`, `r7a7t31` anlamına gelir. Toplu görevlerde parametre sütunları ayrıca sıkıştırılır: `(1:24)*2,1:16` tek sütunda 64 hedefi tam sırayla taşır. İş kimlikleri ve sonuçlar ayrı kalır.
-
-Sözlük, bağlam ve cevap biçimi dahil **64 farklı düzenli sentetik görevde 2.743 → 1.524 / 2.680 → 1.521 token**: optimize edilmiş ÖZ/4'e göre **%43–44 ek azalma**. Karışık sırada %14–16, rastgele parametrelerde %9–11 kazanç. Önceki ÖZ/4'ün 64 farklı plan örneği de **2.300 → 1.930 / 2.236 → 1.927** oldu. Kazanç olmayan küçük mesajlarda mevcut biçim korunur.
+1 ile 4 işlik çağrılarda fark yok: sabit çağrı yükü baskın. En büyük kaldıraç az sayıda büyük çağrıdır. Bunun için:
 
 ```powershell
-oz compile --channel examples/oz5-training-channel.json --messages examples/oz5-training-messages.json --forms --relative --worker --encoding o200k_base --encoding cl100k_base --out .oz-runtime/oz5-derlenmis
-oz unpack --channel .oz-runtime/oz5-derlenmis/channel.json --matrix .oz-runtime/oz5-derlenmis/matrix.json
+oz run --workspace .oz-runtime/ekip --adapter adapter.json --min-batch 16 --max-wait 30
 ```
 
-**0.7.0'da 202 test geçti.** O sürümde dil çözümleyici ve kuyruk doğrulandı; canlı model anlama ve gerçek kodlama hızı ölçülmemişti. Doğrudan `channel.fill_form(...)` hazır Form'u tokenizer araması olmadan doldurur. Derleme, her mesajda tekrarlanacak bir iletişim adımı değildir.
+`--min-batch` kadar iş hazır olana ya da en eski iş `--max-wait` saniye bekleyene kadar çağrı yapılmaz; bekleme sırasında deneme ve receipt harcanmaz.
 
-[ÖZ/5 dili ve kullanım](OZ5.md) · [Ölçüm ve kontrol örnekleri](reports/OZ5-RESULTS.md). Aşağıdaki eski sürüm ölçümleri tarihli sonuçlardır; yeni sürüm daha fazla paket biçimini karşılaştırır.
+Dil spesifikasyonu ve tüm ölçümler: [OZ9.md](OZ9.md), [canlı ölçüm özetleri](reports/). Dili Astra (gpt-6-astra) tasarladı; kod, ölçüm ve eleştiri Claude tarafından yapıldı.
 
-## 0.6.0: ortak planı paylaş, yalnız farkı gönder
+## Önceki sürümler
 
-ÖZ/4 mesajları bağlı bir programdaki değişikliği taşıyabiliyor. `^` ortak programın tamamını, `^2=t31` üçüncü adımın değişmesini, `^@7:9` hedef referansının değiştirilmesini ifade ediyor. Her mesaj özgün Base'den bağımsız çözülür; önceki mesajın hatırlanması varsayılmaz.
-
-```powershell
-oz decode --channel examples/oz4-channel.json "^2=t31"
-oz compile --channel examples/oz4-training-channel.json --messages examples/oz4-training-messages.json --relative --worker --out .oz-runtime/oz4-derlenmis
-```
-
-Örnek 48 adımlı plan `^` ile **1 komut tokeninde** taşınabiliyor; sözlük/bağlam ayrıca sayılır. Sentetik **64 farklı** kod inceleme planında gerekli sözlük, Base, kaynaklar ve cevap biçimi dahil **3.351 → 2.300 / 3.289 → 2.236** girdi tokeni: optimize edilmiş mutlak biçime göre **%31–32 ek azalma**. Aynı frame'lerin tekrarlandığı kontrolde daha ucuz şablon tablosu seçilir; küçük mesajlarda yeni dil zorlanmaz.
-
-**179 test geçti.** Bunlar kodlayıcı, çözümleyici ve kuyruk testleridir; canlı model anlama veya gerçek kodlama hızı ölçümü değildir. Sözlük araştırması tek seferlik hazırlık olarak kullanılmalı; dilbilgisinin kısa olması model hızını tek başına kanıtlamaz.
-
-[ÖZ/4 dili ve örnekler](OZ4.md) · [Ölçüm raporu](reports/OZ4-RESULTS.md).
-
-## 0.5.0: daha az tokenle daha çok işlem isteği
-
-Bu bölümün sayıları 0.5.0 sürümünün tarihli ölçümleridir; 0.6.0 ortak şablon tablosunu da karşılaştırdığı için aynı girdide farklı bir biçim seçebilir.
-
-`V[1:16]`, `VN=rNaNt30` sözlüğü altında **48 işlem isteğini 6 komut tokeninde** taşıyor. Bu sayı sözlük ve kaynak bağlamını içermez. ÖZ/3 hedef listelerini ve aralıkları kesin sırayla açar; tekrar eden iş dizilerinden maliyeti ölçülmüş kısa kodlar üretir.
-
-```powershell
-python -m pip install ".[benchmark]"
-oz compile --channel examples/oz3-training-channel.json --messages examples/oz3-training-messages.json --encoding o200k_base --encoding cl100k_base --worker --out .oz-runtime/derlenmis
-oz decode --channel examples/oz3-channel.json "V[1:16]"
-```
-
-`compile`, tam alıcı girdisini karşılaştırır; sözlük maliyeti dahil kazanç bulursa yeni kanal ve kısa mesajlar üretir. Seçilen tokenizer'ların hiçbirinde maliyet artışını kabul etmez. Kazanç yoksa mevcut kanalı korur. Klasörde `channel.json`, `messages.json`, ölçülen `prompt.txt` ve `report.json` oluşur; çalışan kuyruk değiştirilmez.
-
-Sentetik, tekrarlı 192 işlem isteğinde eski uyarlamalı biçime göre toplam girdi **1.133 → 899 / 1.127 → 894 token**: yaklaşık **%20,7** azalma. Sözlük, kaynaklar ve Worker cevap sözleşmesi dahildir. Zaten elle tanımlanmış iyi bir makroya göre ek kazanç yaklaşık **%2,4**; küçük mesajlarda kazanç olmayabilir. Yeni sürümde **161 test geçti**; ÖZ/3 için canlı model anlama/başarı ve toplam hız ölçümü yapılmadı.
-
-[ÖZ/3 dili ve kullanım](OZ3.md) · [Ölçüm ve sınırlar](reports/OZ3-RESULTS.md). Eski ÖZ/1–2 manifestleri ve bağlam hash'leri korunur.
+0.5.0 ile 0.8.0 arasındaki ÖZ/3, ÖZ/4, ÖZ/5 ve ÖZ/6 katmanları 0.9.0'da kaldırıldı: canlı ölçümde token kazandırmadılar. O sürümlerin belgeleri ve kodu `oz-0.8.0-full` etiketinde duruyor. ÖZ/2 kanalları ve kuyruk dosyaları değişmeden yüklenir; kaldırılan özellikleri kullanan bir kanal açık bir hata mesajıyla reddedilir.
 
 ## 0.4.0: günlük kullanım
 
