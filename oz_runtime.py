@@ -251,8 +251,8 @@ class Inbox:
              reply_mode: str = 'jsonl') -> Plan:
         """Read-only packing: the largest feasible ordered prefix of ready jobs.
 
-        reply_mode is asked of first attempts only; a packet holding any job that was delivered before
-        (a retry or an expired lease) asks for jsonl, the recovery format, whatever reply_mode says.
+        reply_mode is fixed before the call (never chosen from output): jsonl packs up to limit jobs;
+        value packs exactly one job per call (a job with several model atoms is a host error).
 
         Every prefix length is measured, longest first, as the complete model
         input (system text and body). Only when even the head job is oversized
@@ -261,7 +261,7 @@ class Inbox:
         if type(limit) is not int or not 1 <= limit <= 64:
             raise Error('plan limit must be 1..64')
         if reply_mode not in REPLY_MODES:
-            raise Error('reply_mode must be jsonl or array')
+            raise Error('reply_mode must be jsonl or value')
         meter = TokenMeter(counters)
         if not meter.counters:
             raise Error('planning requires tokenizer counters')
@@ -269,7 +269,7 @@ class Inbox:
             raise Error('invalid token budget')
         if type(max_bytes) is not int or max_bytes < 1:
             raise Error('invalid byte budget')
-        rows = self._ready(channel, 'work', limit)
+        rows = self._ready(channel, 'work', 1 if reply_mode == 'value' else limit)
         if not rows:
             return Plan((), None, ())
         cached = tuple(lambda s, i=i: meter.counts(s)[i] for i in range(len(meter.counters)))
@@ -280,7 +280,7 @@ class Inbox:
                           max_tokens=max_tokens, max_bytes=max_bytes,
                           receipt=receipt, handoffs=self._handoffs([r['id'] for r in items]),
                           context_policy=context_policy, literals=literals,
-                          reply_mode='jsonl' if any(r['attempts'] > 0 for r in items) else reply_mode)
+                          reply_mode=reply_mode)
         selected, deferred, packet = [], [], None
         for size in range(len(rows), 0, -1):
             try:

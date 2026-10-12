@@ -159,22 +159,21 @@ class PlannerTests(unittest.TestCase):
         plan = self.box.plan(self.ch, counters=[len])
         body = packet_data(plan.packet)
         self.assertNotIn('p', body)
-        self.assertEqual(body['j'], ['propose 0'])
-        self.assertEqual(body['c'], {'0': {'input': 'Use 5 seconds per attempt', 'prior': [text]}})
+        self.assertEqual(body['j'], [['next', 'propose', 'Use 5 seconds per attempt', [text]]])
+        self.assertNotIn('c', body)
         self.assertEqual(plan.packet.tokens, (len(plan.packet.system) + 1 + len(plan.packet.text),))
-        self.assertNotIn('"next"', plan.packet.text)
 
-    def test_shared_predecessor_output_is_sent_once_with_edge_per_job(self):
+    def test_shared_predecessor_output_is_repeated_as_prior_of_every_dependent_job(self):
         self.post('first')
         self.post('a', after=['first'])
         self.post('b', after=['first'])
         self.box.complete(self.box.claim(self.ch, owner='w'), {'first': 'UNIQUE-PREDECESSOR-OUTPUT'})
         plan = self.box.plan(self.ch, counters=[len])
-        self.assertEqual(plan.packet.text.count('UNIQUE-PREDECESSOR-OUTPUT'), 1)
+        # No shared c table in stage-1d: each dependent carries its own prior.
+        self.assertEqual(plan.packet.text.count('UNIQUE-PREDECESSOR-OUTPUT'), 2)
         body = packet_data(plan.packet)
-        self.assertEqual(body['j'], ['audit 0', 'audit 0'])
-        self.assertEqual(body['c'], {'0': {'input': 'demo patch at revision a1',
-                                           'prior': ['UNIQUE-PREDECESSOR-OUTPUT']}})
+        self.assertEqual(body['j'], [['a', 'audit', 'demo patch at revision a1', ['UNIQUE-PREDECESSOR-OUTPUT']],
+                                     ['b', 'audit', 'demo patch at revision a1', ['UNIQUE-PREDECESSOR-OUTPUT']]])
         self.assertEqual([j.id for j in plan.jobs], ['a', 'b'])
 
     def test_large_handoff_cannot_bypass_input_budget(self):

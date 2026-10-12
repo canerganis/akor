@@ -67,8 +67,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(plan['ids'], ['first'])
         self.assertFalse(prompt.endswith('\n'))
         body = json.loads(prompt)
-        self.assertEqual(body['j'], ['propose 0'])
-        self.assertNotIn('first', prompt)
+        self.assertEqual(body['j'], [['first', 'propose', 'DEMO: ask for the measurement method before concluding.']])
         # The receipt is host-side only: no q field in the body, and the plan still works.
         self.assertNotIn('q', body)
         self.assertEqual(plan['system'], SYSTEM)
@@ -281,7 +280,7 @@ class WorkspaceTests(unittest.TestCase):
         initialize(self.root)
         base = ('--workspace', str(self.root))
         self.cli('send', 'P', '--id', 'first', *base)
-        for args, mode in (((), 'jsonl'), (('--reply-mode', 'jsonl'), 'jsonl'), (('--reply-mode', 'array'), 'array')):
+        for args, mode in (((), 'jsonl'), (('--reply-mode', 'jsonl'), 'jsonl'), (('--reply-mode', 'value'), 'value')):
             with self.subTest(args=args), patch('oz_workspace.token_counters', return_value=(len,)):
                 code, out, err = self.cli('plan', '--show-prompt', *args, *base)
             self.assertEqual(code, 0, err)
@@ -293,23 +292,34 @@ class WorkspaceTests(unittest.TestCase):
                 main([command, '--reply-mode', 'xml', *base] + (['--adapter', 'a.json'] if command == 'run' else []))
             self.assertEqual(exit_.exception.code, 2)
 
-    def test_run_reply_mode_array_uses_the_array_system_text_and_array_replies(self):
+    def test_run_reply_mode_value_uses_the_value_system_text_and_bare_results(self):
         from oz_batch import SYSTEMS
         initialize(self.root)
-        script = ('import json,sys; r=json.load(sys.stdin); n=len(json.loads(r["prompt"])["j"]); '
-                  'json.dump({"reply":json.dumps([[i,r["system"][-30:]] for i in range(n)])},sys.stdout)')
+        script = ('import json,sys; r=json.load(sys.stdin); j=json.loads(r["prompt"])["j"]; '
+                  'json.dump({"reply":json.dumps(r["system"][-30:])+"\n"+json.dumps(j[0])},sys.stdout)')
         adapter = self.root / 'adapter.json'
         adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
         base = ('--workspace', str(self.root))
         self.cli('send', 'P', '--id', 'first', *base)
         with patch('oz_workspace.token_counters', return_value=(len,)):
             code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000',
-                                      '--reply-mode', 'array', *base)
+                                      '--reply-mode', 'value', *base)
+        # Two different result lines are a protocol violation: nothing is accepted and the job retries.
+        self.assertEqual(code, 3, err)
+        run = json.loads(out)['runs'][0]
+        self.assertEqual((run['status'], run['reply_mode'], run['outcomes']), ('adapter_error', 'value', {'first': 'retry'}))
+        script = ('import json,sys; r=json.load(sys.stdin); '
+                  'json.dump({"reply":json.dumps(r["system"][-30:])},sys.stdout)')
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
+        self.cli('send', 'P', '--id', 'second', *base)  # 'first' is backing off after its rejected reply
+        with patch('oz_workspace.token_counters', return_value=(len,)):
+            code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000',
+                                      '--reply-mode', 'value', *base)
         self.assertEqual(code, 0, err)
         run = json.loads(out)['runs'][0]
-        self.assertEqual((run['status'], run['reply_mode']), ('received', 'array'))
+        self.assertEqual((run['status'], run['reply_mode']), ('received', 'value'))
         with Workspace(self.root).inbox() as box:
-            self.assertEqual(json.loads(box.inspect('first')['result']), {'results': ['', SYSTEMS["array"][-30:]]})
+            self.assertEqual(json.loads(box.inspect('second')['result']), {'results': ['', SYSTEMS["value"][-30:]]})
 
     def test_pack_prints_system_prompt_and_job_map(self):
         initialize(self.root)
@@ -325,24 +335,25 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         value = json.loads(out)
         self.assertEqual((value['mode'], value['system']), ('named', SYSTEM))
-        self.assertEqual(json.loads(value['prompt'])['j'], ['propose 0', 'literal_0'])
+        self.assertEqual(json.loads(value['prompt'])['j'],
+                         [['one', 'propose', 'DEMO: ask for the measurement method before concluding.'],
+                          ['two', 'literal_0', None]])
         self.assertEqual(value['job_map'], [['one', 1], ['two', 0]])
+        self.assertEqual(value['packet_ids'], ['one', 'two'])
+        self.assertNotIn('ref_map', value)
         self.assertNotIn('alternatives', value)
 
-    def test_context_option_selects_needed_or_full_in_plan(self):
+    def test_context_option_accepts_only_needed_in_stage_1d(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
         self.cli('send', '>2', '--id', 'first', *base)
-        prompts = {}
-        for policy in ['needed', 'full']:
-            with patch('oz_workspace.token_counters', return_value=(len,)):
-                code, out, err = self.cli('plan', '--show-prompt', '--context', policy, *base)
-            self.assertEqual(code, 0, err)
-            prompts[policy] = json.loads(out)['prompt']
-        self.assertNotIn('DEMO: 12.50', prompts['needed'])
-        self.assertIn('DEMO: 12.50', prompts['full'])
-        with self.assertRaises(SystemExit):
-            self.cli('plan', '--context', 'everything', *base)
+        with patch('oz_workspace.token_counters', return_value=(len,)):
+            code, out, err = self.cli('plan', '--show-prompt', '--context', 'needed', *base)
+        self.assertEqual(code, 0, err)
+        self.assertNotIn('DEMO: 12.50', json.loads(out)['prompt'])
+        for policy in ('full', 'everything'):
+            with self.subTest(policy=policy), contextlib.redirect_stderr(io.StringIO()),                     self.assertRaises(SystemExit):
+                self.cli('plan', '--context', policy, *base)
 
     def test_host_events_cli_is_model_free(self):
         initialize(self.root)

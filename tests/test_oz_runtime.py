@@ -88,10 +88,10 @@ class InboxTests(unittest.TestCase):
         self.assertEqual(delivery.jobs[0].wire, 'V+8.')
         packet = delivery.prepare(self.ch, counters=[len])
         self.assertEqual(packet.ids, ('m1',))
-        self.assertNotIn('m1', packet.text)
         body = json.loads(packet.text)
-        # Only model atoms reach the model; the host atoms +8 and . stay behind.
-        self.assertEqual(body['j'], ['audit 0'])
+        # Only model atoms reach the model; the host atoms +8 and . stay behind. One model atom: id = inbox id.
+        self.assertEqual(body['j'], [['m1', 'audit', 'demo patch at revision a1']])
+        self.assertEqual(packet.packet_ids, ('m1',))
         self.assertEqual(packet.wires, ('r7a7t14+8.',))
         self.assertEqual(packet.job_map, (('m1', 1),))
         self.assertEqual(packet.host_slots, (('m1', 0, ''), ('m1', 2, 'python -m unittest')))
@@ -238,16 +238,16 @@ class InboxTests(unittest.TestCase):
         for mid, text in (('a', ':one'), ('b', ':two'), ('c', ':three')):
             self.post(mid, text)
         first = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='a', limit=1)
-        self.assertEqual(json.loads(first[1].text)['j'], ['literal_0'])
+        self.assertEqual(json.loads(first[1].text)['j'], [['a', 'literal_0', None]])
         self.box.settle(first[0], {'a': Outcome('ok', 'x')})
         # c alone, then b: neither renumbers.
         self.box.db.execute("UPDATE jobs SET seq=seq+10 WHERE id='b'")
         second = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='b', limit=1)
-        self.assertEqual((second[0].jobs[0].id, json.loads(second[1].text)['j']), ('c', ['literal_2']))
+        self.assertEqual((second[0].jobs[0].id, json.loads(second[1].text)['j']), ('c', [['c', 'literal_2', None]]))
         self.box.settle(second[0], {'c': Outcome('retry', 'again')})
         third = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='c', limit=2)
-        self.assertEqual([(j.id, n) for j, n in zip(third[0].jobs, json.loads(third[1].text)['j'])],
-                         [('c', 'literal_2'), ('b', 'literal_1')])
+        self.assertEqual([(j.id, n[:2]) for j, n in zip(third[0].jobs, json.loads(third[1].text)['j'])],
+                         [('c', ['c', 'literal_2']), ('b', ['b', 'literal_1'])])
 
     def test_schema_two_upgrade_adds_result_json_and_numbers_existing_literals_in_inbox_order(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -304,22 +304,32 @@ class InboxTests(unittest.TestCase):
         links = self.box._handoffs(['z', 'y'])
         self.assertEqual(links, [('z', 'r', ''), ('z', 'p', 'legacy text'), ('z', 'q', {'v': [1, 2]})])
 
-    def test_reply_mode_applies_to_first_attempts_only(self):
+    def test_reply_mode_is_fixed_before_the_call_and_value_packs_one_job(self):
         self.post('a', '>12')
         self.post('b', '>12')
         from oz_batch import SYSTEMS
-        plan = self.box.plan(self.ch, counters=[len], reply_mode='array')
-        self.assertEqual((plan.packet.system, plan.packet.reply_mode), (SYSTEMS['array'], 'array'))
-        delivery, packet = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='a', limit=1,
-                                                   reply_mode='array')
-        self.assertEqual(packet.reply_mode, 'array')
+        plan = self.box.plan(self.ch, counters=[len], reply_mode='value')
+        self.assertEqual([j.id for j in plan.jobs], ['a'])
+        self.assertEqual((plan.packet.system, plan.packet.reply_mode), (SYSTEMS['value'], 'value'))
+        delivery, packet = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='a',
+                                                   reply_mode='value')
+        self.assertEqual((packet.reply_mode, [j.id for j in delivery.jobs]), ('value', ['a']))
         self.box.settle(delivery, {'a': Outcome('retry', 'bad reply')}, retry_delay=0)
-        # a has been delivered once: any packet holding it asks for jsonl, even with b beside it.
-        retry = self.box.plan(self.ch, counters=[len], reply_mode='array')
-        self.assertEqual([j.id for j in retry.jobs], ['a', 'b'])
-        self.assertEqual((retry.packet.system, retry.packet.reply_mode), (SYSTEMS['jsonl'], 'jsonl'))
-        with self.assertRaises(Error):
-            self.box.plan(self.ch, counters=[len], reply_mode='x')
+        # A retry keeps the requested mode; nothing is chosen from the earlier output.
+        again = self.box.plan(self.ch, counters=[len], reply_mode='jsonl')
+        self.assertEqual([j.id for j in again.jobs], ['a', 'b'])
+        self.assertEqual((again.packet.system, again.packet.reply_mode), (SYSTEMS['jsonl'], 'jsonl'))
+        for bad in ('x', 'array'):
+            with self.assertRaises(Error):
+                self.box.plan(self.ch, counters=[len], reply_mode=bad)
+
+    def test_value_mode_with_a_multi_atom_job_is_a_host_error_before_dispatch(self):
+        self.post('a', '>12a7')
+        with self.assertRaisesRegex(Error, 'exactly one model job'):
+            self.box.plan(self.ch, counters=[len], reply_mode='value')
+        with self.assertRaisesRegex(Error, 'exactly one model job'):
+            self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt='a', reply_mode='value')
+        self.assertEqual(self.box.inspect('a')['attempts'], 0)
 
 
 if __name__ == '__main__':

@@ -36,8 +36,8 @@ def main(argv=None):
             p.add_argument('--messages', type=Path, required=True, help='JSON [[id,frame],...]')
             p.add_argument('--encoding', action='append', help='tiktoken encoding; repeat for multiple targets')
             p.add_argument('--max-tokens', type=int)
-            p.add_argument('--context', choices=['needed', 'full'], default='needed',
-                           help='needed: only referenced context; full: every reference, stable prefix')
+            p.add_argument('--context', choices=['needed'], default='needed',
+                           help='needed: only referenced context (full is gone with the c table)')
     for command in ['init', 'demo']:
         p = sub.add_parser(command, help='Create a local workspace' if command == 'init' else 'Run a model-free end-to-end demo')
         p.add_argument('directory', type=Path)
@@ -60,10 +60,10 @@ def main(argv=None):
             p.add_argument('--max-attempts', type=int, default=2)
         if command in {'plan', 'run'}:
             p.add_argument('--max-tokens', type=int)
-            p.add_argument('--context', choices=['needed', 'full'], default='needed',
-                           help='needed: only referenced context; full: every reference, stable prefix')
-            p.add_argument('--reply-mode', choices=['jsonl', 'array'], default='jsonl',
-                           help='jsonl: one [i,value] array per line; array: one JSON array (retries use jsonl)')
+            p.add_argument('--context', choices=['needed'], default='needed',
+                           help='needed: only referenced context (full is gone with the c table)')
+            p.add_argument('--reply-mode', choices=['jsonl', 'value'], default='jsonl',
+                           help='jsonl: one [id,result] line per job; value: exactly one model job, bare result')
         if command == 'plan':
             p.add_argument('--show-prompt', action='store_true')
         if command == 'run':
@@ -125,7 +125,7 @@ def main(argv=None):
                      'prompt': packet.text, 'binding': packet.binding, 'wires': packet.wires,
                      'job_map': [list(slot) for slot in packet.job_map],
                      'host_slots': [list(slot) for slot in packet.host_slots],
-                     'ref_map': [list(slot) for slot in packet.ref_map]}
+                     'packet_ids': list(packet.packet_ids)}
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, TypeError, sqlite3.Error) as exc:

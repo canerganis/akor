@@ -16,8 +16,8 @@ import uuid
 from typing import Callable
 
 from oz import Channel, Error
-from oz_batch import REPLY_MODES
-from oz_reply import LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
+from oz_batch import REPLY_MODES, WIRE
+from oz_reply import BINDINGS, LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
 from oz_runtime import Inbox, Outcome
 
 LEDGER_SCHEMA = 'akor.call/1'
@@ -131,7 +131,7 @@ class Worker:
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
         if reply_mode not in REPLY_MODES:
-            raise Error('reply_mode must be jsonl or array')
+            raise Error('reply_mode must be jsonl or value')
         if (type(min_batch) is not int or not 1 <= min_batch <= batch_size
                 or type(max_wait) not in {int, float} or not 0 <= max_wait <= 86400):
             raise Error('min_batch must be 1..batch_size and max_wait 0..86400 seconds')
@@ -215,7 +215,7 @@ class Worker:
                          prompt=self._estimate(packet.text), submitted=packet.tokens[0], response=None)
         ledger_ok = self._append(self._record('call_start', call, started_at=started_at,
                                               token_estimates=estimates))
-        report = {'language': LANGUAGE, 'mode': packet.mode, 'reply_mode': packet.reply_mode,
+        report = {'language': LANGUAGE, 'wire': WIRE, 'mode': packet.mode, 'reply_mode': packet.reply_mode,
                   'prompt_tokens': list(packet.tokens), 'adapter_calls': 1, 'usage': {},
                   'verification': 'unverified', 'call_id': call_id}
         phase, response, usage, failure, grouped = 'adapter', None, None, None, None
@@ -227,9 +227,9 @@ class Worker:
             # Usage is provider accounting; keep it even when the reply is invalid.
             usage = report['usage'] = validate_usage(response.get('usage', {}))
             grouped = regroup(response['reply'], packet.job_map, packet.host_slots, packet.reply_mode)
-            if not grouped.parsed.accepted:
-                raise Error('reply has no accepted result line')
-            # Per-job acceptance: a job with an unaccepted item retries alone, the others settle.
+            if grouped.parsed.rejection:
+                # Atomic acceptance: one bad line rejects the whole reply and every job retries.
+                raise Error('reply rejected: ' + grouped.parsed.rejection)
             outcomes = {mid: Outcome(*grouped.outcomes[mid], grouped.values.get(mid)) for mid in ids}
             report['status'] = 'received'
         except Exception as exc:
@@ -290,11 +290,12 @@ class Worker:
         else:
             outcome = 'process_error'
         validation = dict(expected_results=len(packet.job_map), received_results=None,
-                          accepted_results=None, failed_results=None, violations=[])
+                          accepted_results=None, failed_results=None, violations=[],
+                          binding=BINDINGS[packet.reply_mode], duplicate_lines=None, semantic_verified=False)
         if parsed is not None:
-            failed = sum(1 for status, _ in parsed.accepted.values() if status == 'failed')
             validation.update(received_results=parsed.received, accepted_results=len(parsed.accepted),
-                              failed_results=failed, violations=list(parsed.violations))
+                              failed_results=0, violations=list(parsed.violations),
+                              duplicate_lines=parsed.duplicate_lines)
         exit_code = None
         if isinstance(failure, AdapterError) and re.fullmatch(r'adapter_exit_-?[0-9]{1,10}', code):
             exit_code = int(code.rsplit('_', 1)[1])
