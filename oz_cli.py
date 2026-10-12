@@ -57,7 +57,7 @@ def main(argv=None):
             p.add_argument('--file', type=Path, help='Send UTF-8 file as literal data')
             p.add_argument('--id', help='Reuse for retries; generated when omitted')
             p.add_argument('--after', action='append', default=[])
-            p.add_argument('--max-attempts', type=int, default=3)
+            p.add_argument('--max-attempts', type=int, default=2)
         if command in {'plan', 'run'}:
             p.add_argument('--max-tokens', type=int)
             p.add_argument('--context', choices=['needed', 'full'], default='needed',
@@ -121,7 +121,9 @@ def main(argv=None):
                             counters=counters, context_policy=args.context)
             value = {'language': 'OZ/9', 'mode': packet.mode, 'tokens': packet.tokens, 'system': packet.system,
                      'prompt': packet.text, 'binding': packet.binding, 'wires': packet.wires,
-                     'job_map': [list(slot) for slot in packet.job_map]}
+                     'job_map': [list(slot) for slot in packet.job_map],
+                     'host_slots': [list(slot) for slot in packet.host_slots],
+                     'ref_map': [list(slot) for slot in packet.ref_map]}
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, TypeError, sqlite3.Error) as exc:

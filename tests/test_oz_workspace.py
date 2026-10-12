@@ -62,12 +62,12 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['attempts_consumed'], 0)
         prompt = json.loads(out)['prompt']
-        self.assertIn('12.50 ± 0.02 mm', prompt)
+        self.assertIn('DEMO: ask for the measurement method', prompt)
         plan = json.loads(out)
         self.assertEqual(plan['ids'], ['first'])
         self.assertFalse(prompt.endswith('\n'))
         body = json.loads(prompt)
-        self.assertEqual(body['j'], ['read 1', 'propose 2'])
+        self.assertEqual(body['j'], ['propose 0'])
         self.assertNotIn('first', prompt)
         # The receipt is host-side only: no q field in the body, and the plan still works.
         self.assertNotIn('q', body)
@@ -162,12 +162,41 @@ class WorkspaceTests(unittest.TestCase):
             self.assertEqual(box.inspect('first')['state'], 'done')
             result = json.loads(box.inspect('first')['result'])
             self.assertEqual(len(result['results']), 2)
-            self.assertIn('DEMO', result['results'][0])
+            # read is a host operation (an empty acknowledgement); only propose reached the model.
+            self.assertEqual(result['results'][0], '')
+            self.assertIn('DEMO', result['results'][1])
         ledger = [json.loads(line) for line in (self.root / 'calls.jsonl').read_text(encoding='utf8').splitlines()]
         self.assertEqual([x['event'] for x in ledger], ['call_start', 'call_end'])
         self.assertEqual(ledger[1]['outcome'], 'ok')
         self.assertEqual(ledger[1]['token_estimates']['tokenizer'], 'o200k_base')
-        self.assertEqual(ledger[1]['validation']['expected_results'], 2)
+        self.assertEqual(ledger[1]['validation']['expected_results'], 1)
+
+    def test_cli_send_defaults_to_two_attempts(self):
+        initialize(self.root)
+        base = ('--workspace', str(self.root))
+        self.cli('send', 'P', '--id', 'first', *base)
+        code, out, err = self.cli('inspect', 'first', *base)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['job']['max_attempts'], 2)
+
+    def test_run_continues_past_host_completed_batches_without_spending_max_calls(self):
+        initialize(self.root)
+        adapter = self.root / 'adapter.json'
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', 'raise SystemExit(9)'],
+                                       **DEMO_CAPABILITIES}), encoding='utf8')
+        base = ('--workspace', str(self.root))
+        self.cli('send', 'r1', '--id', 'a', *base)
+        self.cli('send', 'r1', '--id', 'b', '--after', 'a', *base)
+        self.cli('send', 'r1', '--id', 'c', '--after', 'b', *base)
+        with patch('oz_workspace.token_counters', return_value=(len,)):
+            code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000', *base)
+        self.assertEqual(code, 0, err)
+        runs = json.loads(out)['runs']
+        self.assertEqual([r['status'] for r in runs], ['host_completed'] * 3 + ['idle'])
+        self.assertEqual({r.get('adapter_calls', 0) for r in runs}, {0})
+        self.assertFalse((self.root / 'calls.jsonl').exists())
+        with Workspace(self.root).inbox() as box:
+            self.assertEqual(box.stats(), {'done': 3})
 
     def test_cli_run_min_batch_waits_without_attempts(self):
         initialize(self.root)
@@ -261,22 +290,22 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         value = json.loads(out)
         self.assertEqual((value['mode'], value['system']), ('named', SYSTEM))
-        self.assertEqual(json.loads(value['prompt'])['j'], ['read 1', 'propose 2', 'literal_two'])
-        self.assertEqual(value['job_map'], [['one', 0], ['one', 1], ['two', 0]])
+        self.assertEqual(json.loads(value['prompt'])['j'], ['propose 0', 'literal_two'])
+        self.assertEqual(value['job_map'], [['one', 1], ['two', 0]])
         self.assertNotIn('alternatives', value)
 
     def test_context_option_selects_needed_or_full_in_plan(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
-        self.cli('send', 'r1', '--id', 'first', *base)
+        self.cli('send', '>2', '--id', 'first', *base)
         prompts = {}
         for policy in ['needed', 'full']:
             with patch('oz_workspace.token_counters', return_value=(len,)):
                 code, out, err = self.cli('plan', '--show-prompt', '--context', policy, *base)
             self.assertEqual(code, 0, err)
             prompts[policy] = json.loads(out)['prompt']
-        self.assertNotIn('DEMO: ask for the measurement method', prompts['needed'])
-        self.assertIn('DEMO: ask for the measurement method', prompts['full'])
+        self.assertNotIn('DEMO: 12.50', prompts['needed'])
+        self.assertIn('DEMO: 12.50', prompts['full'])
         with self.assertRaises(SystemExit):
             self.cli('plan', '--context', 'everything', *base)
 
@@ -297,10 +326,12 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(result['worker']['adapter_calls'], 1)
         self.assertEqual(result['worker']['outcomes'], {'read': 'ok', 'propose': 'ok'})
         self.assertEqual(result['reviewer']['outcomes'], {'review': 'ok'})
+        # The reviewer's only job is a host read: completed locally, no adapter call, no ledger record.
+        self.assertEqual((result['reviewer']['status'], result['reviewer']['adapter_calls']), ('host_completed', 0))
         with Workspace(self.root).inbox() as box:
             self.assertEqual(len(json.loads(box.inspect('propose')['result'])['results']), 2)
         ledger = (self.root / 'calls.jsonl').read_text(encoding='utf8').splitlines()
-        self.assertEqual(len(ledger), 4)
+        self.assertEqual(len(ledger), 2)
 
     def test_bad_config_duplicate_keys_and_unknown_channel_fail_cleanly(self):
         initialize(self.root)

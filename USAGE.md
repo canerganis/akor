@@ -2,7 +2,7 @@
 
 ÖZ, mesaj dilini ve aktarımı yönetir; kullandığın model veya ajan sistemini sen bağlarsın. Python 3.10+ gerekir. Başlangıç, gönderim, durum ve inceleme standart kütüphaneyle çalışır. Token sayımı için isteğe bağlı `tiktoken` kullanılır.
 
-Paketler [ÖZ/9](OZ9.md) dilinde gider: iki kural satırı ve tek JSON gövdesi. Model her iş için doğal bir JSON değeri döndürür. Az sayıda büyük çağrı en çok tasarrufu sağlar; `oz run --min-batch` ve `--max-wait` bunun içindir (aşağıda).
+Paketler [ÖZ/9](OZ9.md) dilinde gider: OZ9.md 2.1'deki sabit sistem metni ve tek JSON gövdesi `{"goal","d","c","j"}`. `d` işlem adlarını talimatlara, `c` paket içinde `0`dan başlayan numaraları girdilere bağlar, `j` işleri `"op ref"` biçiminde sıralar. Model her iş için doğal bir JSON değeri döndürür. `read` ve `test` modele gitmez: `read` boş string, `test` prosedür metnini aynen döndürür; ikisini host yerelde doldurur. Pakette model işi kalmazsa adaptör hiç çağrılmaz. Az sayıda büyük çağrı en çok tasarrufu sağlar; `oz run --min-batch` ve `--max-wait` bunun içindir (aşağıda).
 
 ## İlk çalışan örnek
 
@@ -15,7 +15,7 @@ oz status --workspace .oz-runtime/deneme
 oz inspect review --workspace .oz-runtime/deneme
 ```
 
-Demo boş bir klasör oluşturur. İki iş bir pakette yerel programa gider; inceleyen ajan bunların sonuçlarını bekler ve sonra alır. Durum olayı model çağrısı olmadan kaydedilir. Demo programının çıktıları açıkça `DEMO receipt only` der; gerçek iş/test yapıldığı iddia edilmez. Aynı klasöre yeniden `demo` uygulamak yerine mevcut durumu incele veya yeni boş klasör seç.
+Demo boş bir klasör oluşturur. `read` işi host'ta, `propose` işi yerel programda tamamlanır; inceleyen ajan bunların sonuçlarını bekler, kendi işi (`read`) model çağrısı olmadan host'ta biter. Durum olayı model çağrısı olmadan kaydedilir. Demo programının çıktıları açıkça `DEMO receipt only` der; gerçek iş/test yapıldığı iddia edilmez. Aynı klasöre yeniden `demo` uygulamak yerine mevcut durumu incele veya yeni boş klasör seç.
 
 Tokenizer ilk kullanımda sözlüğünü indirebilir; bu model çağrısı değildir. `TIKTOKEN_CACHE_DIR` önbellek konumunu seçer. Model anahtarı gerekmez.
 
@@ -64,7 +64,7 @@ oz inspect plan1
 
 Gönderici cevap gelmediği için yeniden gönderiyorsa **aynı `--id`** kullanmalıdır. Aynı ID ve anlam tekrar iş yaratmaz. `--id` verilmezse yeni kısa rastgele ID üretilip gösterilir; her çağrı yeni iş sayılır. `--file` yeni metni literal veri olarak taşır, çalıştırılacak talimat olarak yorumlamaz. Frame sınırı 8192 UTF-8 byte'tır; büyük kaynakları kanal referansı olarak ekle.
 
-Öncül işlerin sonuçları, bağımlı işin `plan`/`Worker` girdisine tam metin olarak eklenir. İş-sonuç bağlantıları açıkça gösterilir; paylaşılan sonuç bir kez bulunur. Bunlar **doğrulanmamış ajan verisidir**, yeni yetki veya kanıt değildir. Sayılar ve belirsizlikler otomatik özetlenmez. Sonuçlar bütçeye sığmıyorsa iş bekler. Düşük seviyeli `Delivery.prepare` yalnız kendi frame'lerini gösterir; otomatik devir için `Inbox.plan`, `claim_prepared` veya `Worker` kullan.
+Öncül işlerin sonuçları, bağımlı işin kendi girdisine `{"input":...,"prior":[...]}` olarak katılır (`prior`, öncül ID sırasıyla tam metinlerdir). Çalışanın göreceği ayrı bir bağımlılık sözdizimi yoktur; özdeş girdiler aynı `c` numarasını paylaşır. Bunlar **doğrulanmamış ajan verisidir**, yeni yetki veya kanıt değildir. Sayılar ve belirsizlikler otomatik özetlenmez. Sonuçlar bütçeye sığmıyorsa iş bekler. Düşük seviyeli `Delivery.prepare` yalnız kendi frame'lerini gösterir; otomatik devir için `Inbox.plan`, `claim_prepared` veya `Worker` kullan.
 
 ## Kendi ajan programını bağla
 
@@ -105,7 +105,7 @@ Modeline yalnız `system` (sistem talimatı) ve `prompt` (kullanıcı mesajı) a
 }
 ```
 
-`reply`, modelin ham metin cevabıdır (JSON ayrıştırma adaptörün işi değil). Her satır tek bir JSON dizisidir: başarıda `[i,değer]`, hatada `[i,null,"gerekçe"]`; `i`, prompt'taki `j` listesinin sıfır tabanlı indeksidir. Çok atomlu bir iş (`r7a7t14` gibi) birkaç `j` öğesine açılır; host sonuçları işe geri toplar ve `{"results":[...]}` olarak saklar. Bir öğe başarısızsa iş, yerel indeksli gerekçelerle başarısız olur. Geçersiz satır (düzyazı, boş satır, aralık dışı veya bool indeks, 65536 byte üstü değer) yalnız kendisini düşürür, onarılmaz. Aynı indeksi taşıyan birden çok satır çakışmadır, hiçbiri kabul edilmez. Kabul edilmeyen indeksi olan iş yeni receipt ile yeniden denenir, kalan işler normal tamamlanır. Hiçbir geçerli satır yoksa, adaptör hatası veya zaman aşımı olursa bütün işler yeniden denenir. Satır hataları `calls.jsonl` içinde `validation.violations` altında görünür.
+`reply`, modelin ham metin cevabıdır (JSON ayrıştırma adaptörün işi değil). Her satır tek bir JSON dizisidir: başarıda `[i,değer]`, hatada `[i,null,"gerekçe"]`; `i`, prompt'taki `j` listesinin sıfır tabanlı indeksidir ve kanonik bir tam sayı olmalıdır (`1.0`, `1e0`, `true` geçersiz). Çok atomlu bir iş (`r7a7t14` gibi) birkaç sonuca açılır; host modelin ve kendi (`read`, `test`) sonuçlarını atom sırasıyla toplar ve `{"results":[...]}` olarak saklar. Bir öğe başarısızsa iş, yerel indeksli gerekçelerle başarısız olur. Boş satırlar ve CRLF yok sayılır. Kod çiti, düzyazı veya dizi olmayan herhangi bir satır bütün cevabı geçersiz kılar, hiçbir sonuç alınmaz ve bütün işler yeniden denenir. Bozuk bir dizi satırı yalnız ayrıştırmanın kesin saptayabildiği indeksi düşürür, indeks tahmin edilmez. Aynı indeksi taşıyan birden çok satır (özdeş olsa da) yalnız o indeksi geçersiz kılar. Aralık dışı indeks atılır. Hata gerekçesi boş olamaz ve en çok 1024 byte, satır en çok 65536 byte olabilir (uzun satır atılır, diğerleri kalır); cevabın tamamı `65536 × iş sayısı + 4096` byte'ı aşarsa bütün cevap geçersizdir. Kabul edilmeyen indeksi olan iş yeni receipt ile yeniden denenir, kalan işler normal tamamlanır. Adaptör hatası veya zaman aşımı olursa da bütün işler yeniden denenir. Satır hataları `calls.jsonl` içinde `validation.violations` altında görünür.
 
 String sonuçlar olduğu gibi, diğer değerler kompakt JSON metni olarak saklanır. `usage` isteğe bağlı sağlayıcı raporudur; yoksa bilinmiyor kabul edilir. Cached input normal input'a tekrar eklenmez. Sistem metni, cevap sözleşmesi ve öncül çıktılar yerel girdi bütçesine dahildir. Çalışma alanında her model çağrısı `calls.jsonl` dosyasına (`akor.call/1`) `call_start` ve `call_end` satırları olarak eklenir; bilinmeyen değerler `null` kalır.
 
@@ -141,7 +141,7 @@ oz run --adapter adapter.json --min-batch 16 --max-wait 30
 
 Hazır iş sayısı `--min-batch` altındaysa ve en eski hazır iş `--max-wait` saniyeden genç ise `run` çağrı yapmadan `waiting` döner; deneme ve receipt harcanmaz. Varsayılan `--min-batch 1`, yani beklemeden çağırmaktır. Canlı ölçümde 32 işlik çağrılar 0.8'e göre toplam tokeni %43, 64 işlik çağrılar %55 azalttı ([OZ9.md](OZ9.md)).
 
-`run` varsayılan tek adaptör çağrısı yapar; `--max-calls` ile üst sınır artırılır. Boş kuyruk, adaptör hatası veya geçici hata sonucu döndüğünde durur; arka planda sonsuz döngü başlatmaz. Geçici hata için varsayılan iki saniyelik bekleme kalıcı kaydedilir. Zamanı gelince tekrar `run` çağır.
+`run` varsayılan tek adaptör çağrısı yapar; `--max-calls` ile üst sınır artırılır. Boş kuyruk, adaptör hatası veya geçici hata sonucu döndüğünde durur; arka planda sonsuz döngü başlatmaz. Yeni işlerin varsayılan deneme hakkı 2'dir (ilk deneme dahil; `oz send --max-attempts` ile değişir). Geçici hata için varsayılan iki saniyelik bekleme kalıcı kaydedilir. Model gerektirmeyen (yalnız `read`/`test`) paketler adaptörsüz, `host_completed` durumuyla biter; bunlar `--max-calls` hakkından düşmez. Zamanı gelince tekrar `run` çağır.
 
 ```powershell
 oz status

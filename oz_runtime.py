@@ -150,7 +150,7 @@ class Inbox:
             self.db.commit()
 
     def post(self, channel: Channel, mid: str, wire: str, *, binding: str,
-             after: Iterable[str] = (), max_attempts: int = 3) -> bool:
+             after: Iterable[str] = (), max_attempts: int = 2) -> bool:
         """Return False for an identical retry; reject ID reuse with new meaning."""
         atoms = channel.accept(wire, binding=binding)
         if not valid_id(mid) or type(max_attempts) is not int or not 1 <= max_attempts <= 100:

@@ -12,6 +12,7 @@ from test_oz2 import extended
 
 CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
 NL = chr(10)
+CR = chr(13)
 
 
 def text(*rows, end=''):
@@ -34,52 +35,78 @@ class ParseTests(unittest.TestCase):
         parsed = parse_reply(text([2, 'c'], [0, 'a'], [1, 'b']), 3)
         self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 1: ('ok', 'b'), 2: ('ok', 'c')})
 
-    def test_trailing_lf_is_ignored_but_other_empty_lines_are_violations(self):
+    def test_blank_lines_and_crlf_are_accepted(self):
         self.assertEqual(parse_reply(text([0, 'a'], end=NL), 1).violations, ())
-        middle = parse_reply('[0,"a"]' + NL + NL + '[1,"b"]', 2)
+        middle = parse_reply('[0,"a"]' + NL + NL + '  ' + NL + '[1,"b"]' + NL + NL, 2)
         self.assertEqual(middle.accepted, {0: ('ok', 'a'), 1: ('ok', 'b')})
-        self.assertEqual(reasons(middle), [(2, 'empty line')])
-        double = parse_reply('[0,"a"]' + NL + NL, 1)
-        self.assertEqual(double.accepted, {0: ('ok', 'a')})
-        self.assertEqual(reasons(double), [(2, 'empty line')])
+        self.assertEqual(middle.violations, ())
+        crlf = parse_reply('[0,"a"]' + CR + NL + '[1,null,"why"]' + CR + NL, 2)
+        self.assertEqual(crlf.accepted, {0: ('ok', 'a'), 1: ('failed', 'why')})
+        self.assertEqual(crlf.violations, ())
         self.assertEqual(parse_reply('', 1).accepted, {})
         self.assertEqual(parse_reply('', 1).violations, ())
+        self.assertEqual(parse_reply(NL + NL, 1).violations, ())
 
     def test_missing_index_is_simply_unaccepted(self):
         parsed = parse_reply(text([0, 'a'], [2, 'c']), 3)
         self.assertEqual(sorted(parsed.accepted), [0, 2])
         self.assertEqual(parsed.violations, ())
 
-    def test_duplicate_index_accepts_none_of_its_lines(self):
+    def test_duplicate_index_invalidates_only_that_index(self):
         parsed = parse_reply(text([0, 'a'], [1, 'b'], [0, 'again']), 2)
         self.assertEqual(parsed.accepted, {1: ('ok', 'b')})
-        self.assertEqual(reasons(parsed), [(1, 'conflicting lines for index 0'), (3, 'conflicting lines for index 0')])
-        # A failure line and a success line for one index also conflict, and so does an invalid twin.
+        self.assertEqual(reasons(parsed), [(1, 'duplicate lines for index 0'), (3, 'duplicate lines for index 0')])
+        self.assertIsNone(parsed.envelope)
+        # Identical duplicates count too, and so does a failure twin or an invalid twin.
+        self.assertEqual(parse_reply(text([0, 'a'], [0, 'a']), 1).accepted, {})
+        self.assertEqual(parse_reply(text([0, None, 'no'], [0, None, 'no']), 1).accepted, {})
         self.assertEqual(parse_reply(text([0, 'a'], [0, None, 'no']), 1).accepted, {})
         self.assertEqual(parse_reply(text([0, 'a'], [0, None, ' ']), 1).accepted, {})
         self.assertEqual(parse_reply(text([0, 'a'], [0, 1, 2, 3]), 1).accepted, {})
 
-    def test_index_must_be_an_in_range_integer(self):
-        for row in ([2, 'x'], [-1, 'x'], [True, 'x'], [False, 'x'], [1.0, 'x'], ['0', 'x'], [None, 'x'], [[0], 'x']):
-            with self.subTest(row=row):
-                parsed = parse_reply(text([0, 'ok'], row), 2)
+    def test_index_must_be_a_canonical_in_range_integer_token(self):
+        for line in ['[2,"x"]', '[-1,"x"]', '[true,"x"]', '[false,"x"]', '[1.0,"x"]', '[1e0,"x"]', '[1E0,"x"]',
+                     '[1.5,"x"]', '[-0,"x"]', '["0","x"]', '[null,"x"]', '[[0],"x"]', '[{"i":0},"x"]',
+                     '[100000000000000000000,"x"]']:
+            with self.subTest(line=line):
+                parsed = parse_reply(text([0, 'ok'], line), 2)
                 self.assertEqual(parsed.accepted, {0: ('ok', 'ok')})
                 self.assertEqual(len(parsed.violations), 1)
+                self.assertIsNone(parsed.envelope)
+        # Whitespace inside the array is JSON whitespace, not part of the token.
+        self.assertEqual(parse_reply('[ 1 , "x" ]', 2).accepted, {1: ('ok', 'x')})
+        self.assertEqual(parse_reply('  [1,"x"]', 2).accepted, {1: ('ok', 'x')})
         self.assertEqual(parse_reply(text([True, 'x']), 2).accepted, {})
 
-    def test_prose_and_malformed_lines_only_drop_themselves(self):
-        parsed = parse_reply(text('Here are the results:', [0, 'a'], '```json', [1, 'b'], '[2,"c"', '```', [2, 'c']), 3)
-        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 1: ('ok', 'b'), 2: ('ok', 'c')})
-        self.assertEqual([v['line'] for v in parsed.violations], [1, 3, 5, 6])
-        self.assertEqual(parsed.received, 3)
-
-    def test_object_or_scalar_lines_are_not_results(self):
-        for line in ['{"results":["a"]}', '"a"', '5', 'null', 'true', '[]', '[0]', '[0,1,2,3]', '[0,"a"] x',
-                     '[0,"a"],[1,"b"]', '[0,NaN]', '[0,Infinity]', '[0,{"k":1,"k":2}]']:
-            with self.subTest(line=line):
-                parsed = parse_reply(line, 2)
+    def test_fence_prose_or_non_array_line_invalidates_the_whole_reply(self):
+        for lines in [('Here are the results:', [0, 'a'], [1, 'b']), ([0, 'a'], '```json', [1, 'b'], '```'),
+                      ([0, 'a'], [1, 'b'], 'Done.'), ('```', [0, 'a'], [1, 'b']),
+                      ([0, 'a'], '{"results":["x"]}', [1, 'b']), ([0, 'a'], '"a"', [1, 'b']),
+                      ([0, 'a'], '5', [1, 'b']), ([0, 'a'], 'null', [1, 'b']), ([0, 'a'], 'true', [1, 'b']),
+                      ([0, 'a'], '- item', [1, 'b']), ([0, 'a'], '`[1,"b"]`', [1, 'b'])]:
+            with self.subTest(lines=lines):
+                parsed = parse_reply(text(*lines), 2)
                 self.assertEqual(parsed.accepted, {})
+                self.assertIsNotNone(parsed.envelope)
+                self.assertTrue(parsed.violations)
+
+    def test_malformed_array_line_only_invalidates_the_index_strict_parsing_can_establish(self):
+        parsed = parse_reply(text([0, 'a'], '[1,"b"', [2, 'c']), 3)
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 2: ('ok', 'c')})
+        self.assertEqual(reasons(parsed), [(2, 'malformed array line')])
+        self.assertIsNone(parsed.envelope)
+        # Nothing is guessed from broken JSON, even when an index looks present.
+        for line in ['[1,', '[1,"b"] x', '[1,"b"]]', '[1,NaN]', '[1,Infinity]', '[1,{"k":1,"k":2}]', '[1 "b"]']:
+            with self.subTest(line=line):
+                parsed = parse_reply(text([0, 'a'], line, [1, 'b']), 2)
+                self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 1: ('ok', 'b')})
                 self.assertEqual(len(parsed.violations), 1)
+        # A valid JSON array of the wrong shape invalidates the index it names.
+        parsed = parse_reply(text([0, 'a'], '[3,1,2,3]'), 4)
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a')})
+        self.assertEqual(parse_reply(text('[3,1,2,3]', [3, 'x']), 4).accepted, {})
+        self.assertEqual(parse_reply(text('[3]', [3, 'x']), 4).accepted, {})
+        self.assertEqual(parse_reply(text('[]', [3, 'x']), 4).accepted, {3: ('ok', 'x')})
 
     def test_failure_needs_null_and_a_nonblank_error_string(self):
         for row in ([0, None, ''], [0, None, ' \t'], [0, None, 5], [0, None, None], [0, 'x', 'why'],
@@ -88,13 +115,52 @@ class ParseTests(unittest.TestCase):
                 self.assertEqual(parse_reply(text(row), 1).accepted, {})
         self.assertEqual(parse_reply(text([0, None, ' why ']), 1).accepted, {0: ('failed', ' why ')})
 
-    def test_oversize_value_makes_only_its_index_unaccepted(self):
+    def test_error_length_is_capped_in_utf8_bytes(self):
+        self.assertEqual(parse_reply(text([0, None, 'e' * 1024]), 1).accepted, {0: ('failed', 'e' * 1024)})
+        self.assertEqual(parse_reply(text([0, None, 'ş' * 512]), 1).accepted, {0: ('failed', 'ş' * 512)})
+        for error in ('e' * 1025, 'ş' * 513):
+            with self.subTest(length=len(error)):
+                parsed = parse_reply(text([0, None, error], [1, 'fine']), 2)
+                self.assertEqual(parsed.accepted, {1: ('ok', 'fine')})
+                self.assertEqual(len(parsed.violations), 1)
+
+    def test_oversize_lines_make_only_their_indexes_unaccepted(self):
         limit = 65536
         parsed = parse_reply(text([0, 'y' * (limit + 1)], [1, 'fine'], [2, ['y' * limit]], [3, 'ş' * (limit // 2 + 1)],
-                                  [4, None, 'w' * (limit + 1)], [5, 'y' * limit]), 6)
+                                  [4, None, 'w' * (limit + 1)], [5, 'y' * (limit - 20)]), 6)
         self.assertEqual(sorted(parsed.accepted), [1, 5])
         self.assertEqual([v['line'] for v in parsed.violations], [1, 3, 4, 5])
-        self.assertEqual(parsed.received, 6)
+        self.assertEqual(parsed.received, 2)
+
+    def test_oversize_line_is_discarded_while_other_lines_survive(self):
+        long_line = '[1,"' + 'y' * 65536 + '"]'
+        parsed = parse_reply(text([0, 'a'], long_line, [2, 'c']), 3)
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 2: ('ok', 'c')})
+        self.assertEqual(reasons(parsed), [(2, 'line exceeds 65536 bytes')])
+        # Even an oversize prose line is only discarded; a bounded line of the same kind would not be.
+        parsed = parse_reply(text([0, 'a'], 'x' * 65537), 1)
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a')})
+        self.assertIsNone(parsed.envelope)
+        # Exactly the limit is a bounded line; CRLF does not count towards it.
+        exact = '[0,"' + 'y' * (65536 - 6) + '"]'
+        self.assertEqual(len(exact.encode('utf-8')), 65536)
+        self.assertEqual(sorted(parse_reply(exact + CR + NL, 1).accepted), [0])
+
+    def test_total_capture_limit_invalidates_the_whole_reply(self):
+        limit = 65536 + 4096
+        exact = '[0,"a"]' + NL + ' ' * (limit - 8)
+        self.assertEqual(len(exact.encode('utf-8')), limit)
+        self.assertEqual(parse_reply(exact, 1).accepted, {0: ('ok', 'a')})
+        over = parse_reply(exact + ' ', 1)
+        self.assertEqual(over.accepted, {})
+        self.assertEqual(over.violations, ({'line': 0, 'reason': 'reply exceeds the total capture limit'},))
+        self.assertEqual(over.envelope, 'reply exceeds the total capture limit')
+        # The limit grows by 65536 bytes for every job in the packet.
+        many = text([0, 'a'], [1, 'y' * 60000], [2, 'y' * 60000])
+        self.assertEqual(parse_reply(many, 1).accepted, {})
+        self.assertEqual(sorted(parse_reply(many, 3).accepted), [0, 1, 2])
+        # The limit counts UTF-8 bytes, not characters.
+        self.assertEqual(parse_reply('[0,"a"]' + NL + chr(0x20ac) * ((limit - 7) // 3 + 1), 1).accepted, {})
 
     def test_unencodable_values_are_unaccepted(self):
         for line in ['[0,"\\ud800"]', '[0,1e999]']:
@@ -108,6 +174,8 @@ class ParseTests(unittest.TestCase):
 
     def test_violations_are_capped_and_ordered(self):
         parsed = parse_reply(text(*(['prose'] * 30)), 1)
+        self.assertEqual([v['line'] for v in parsed.violations], list(range(1, 21)))
+        parsed = parse_reply(text(*(['[1,'] * 30)), 1)
         self.assertEqual([v['line'] for v in parsed.violations], list(range(1, 21)))
 
 
@@ -150,7 +218,7 @@ class RegroupTests(unittest.TestCase):
 
     def test_unaccepted_item_retries_only_its_job(self):
         job_map = (('a', 0), ('a', 1), ('b', 0), ('c', 0), ('d', 0))
-        reply = text([0, 'a0'], [2, 'b'], [3, 'c'], [3, 'c again'], 'prose', [9, 'out of range'], [4, 'd'])
+        reply = text([0, 'a0'], [2, 'b'], [3, 'c'], [3, 'c again'], '[7,', [9, 'out of range'], [4, 'd'])
         outcomes = regroup(reply, job_map).outcomes
         self.assertEqual(outcomes['a'][0], 'retry')
         self.assertEqual(outcomes['b'], ('ok', 'b'))
@@ -232,7 +300,7 @@ class ReplyWorkerTests(unittest.TestCase):
         self.box = Inbox(clock=lambda: self.now[0])
         self.addCleanup(self.box.close)
 
-    def post(self, mid, wire='r13', *, after=()):
+    def post(self, mid, wire='>12', *, after=()):
         self.box.post(self.ch, mid, wire, binding=self.ch.binding, after=after)
 
     def worker(self, adapter, **kwargs):
@@ -281,27 +349,70 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('two')['result'], '[1,2]')
 
     def test_multi_atom_frame_is_flattened_and_regrouped_into_one_stored_result(self):
-        self.post('multi', 'r7a7t14')
-        self.post('single', 'r13')
+        self.post('multi', 'a7>12=13')
+        self.post('single', '>12')
         seen = []
         def adapter(request):
             seen.append(request)
-            return {'reply': text([0, 'read text'], [1, {'findings': []}], [2, 'test requested'],
+            return {'reply': text([0, 'audit text'], [1, {'findings': []}], [2, 'observed'],
                                   [3, 'single value'], end=NL)}
         self.worker(adapter, batch_size=2).run_once()
-        self.assertEqual(json.loads(seen[0]['prompt'])['j'], ['read 7', 'audit 7', 'test 14', 'read 13'])
+        body = json.loads(seen[0]['prompt'])
+        self.assertEqual(body['j'], ['audit 0', 'propose 1', 'observed 2', 'propose 1'])
         self.assertEqual(self.box.inspect('multi')['result'],
-                         '{"results":["read text",{"findings":[]},"test requested"]}')
+                         '{"results":["audit text",{"findings":[]},"observed"]}')
         self.assertEqual(self.box.inspect('single')['result'], 'single value')
+
+    def test_host_slots_join_the_model_slots_in_atom_order(self):
+        self.post('multi', 'V')
+        self.post('other', 'r7a7')
+        seen = []
+        def adapter(request):
+            seen.append(request)
+            return {'reply': text([0, {'findings': []}], [1, 'second'])}
+        self.worker(adapter, batch_size=2).run_once()
+        self.assertEqual(json.loads(seen[0]['prompt'])['j'], ['audit 0', 'audit 0'])
+        self.assertEqual(self.box.inspect('multi')['result'],
+                         '{"results":["",{"findings":[]},"python -m unittest"]}')
+        self.assertEqual(self.box.inspect('other')['result'], '{"results":["","second"]}')
+
+    def test_job_of_only_host_operations_is_completed_without_an_adapter_call(self):
+        import tempfile
+        from pathlib import Path
+        self.post('read', 'r13')
+        self.post('test', 't14')
+        self.post('both', 'r7t14')
+        self.post('after', 'r13', after=['read'])
+        calls = []
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'calls.jsonl'
+            worker = self.worker(lambda request: calls.append(request), batch_size=3, ledger_path=path)
+            report = worker.run_once()
+            self.assertFalse(path.exists())
+        self.assertEqual(calls, [])
+        self.assertEqual((report['status'], report['adapter_calls'], report['model_calls']), ('host_completed', 0, 0))
+        self.assertEqual(report['outcomes'], {'read': 'ok', 'test': 'ok', 'both': 'ok'})
+        self.assertEqual(report['ids'], ['read', 'test', 'both'])
+        self.assertEqual(self.box.inspect('read')['result'], '""')
+        self.assertEqual(self.box.inspect('test')['result'], 'python -m unittest')
+        self.assertEqual(self.box.inspect('both')['result'], '{"results":["","python -m unittest"]}')
+        self.assertEqual(self.box.inspect('read')['attempts'], 1)
+        self.assertEqual(self.box.runs()[0]['report']['status'], 'host_completed')
+        # The dependant is released by the host-completed predecessor and completes the same way.
+        self.assertEqual(worker.run_once()['status'], 'host_completed')
+        self.assertEqual(self.box.inspect('after')['state'], 'done')
+        self.assertEqual(calls, [])
 
     def test_failed_atom_fails_its_job_with_local_index_reasons_and_not_the_sibling(self):
         self.post('multi', 'r7a7t14')
-        self.post('single', 'r13')
-        reply = text([0, 'read text'], [1, None, 'no patch'], [2, None, 'no procedure'], [3, 'single value'])
-        result = self.worker(lambda request: {'reply': reply}, batch_size=2).run_once()
-        self.assertEqual(result['outcomes'], {'multi': 'failed', 'single': 'ok'})
+        self.post('single', '>12')
+        self.post('wide', 'a7>12')
+        reply = text([0, None, 'no patch'], [1, 'single value'], [2, 'fine'], [3, None, 'no plan'])
+        result = self.worker(lambda request: {'reply': reply}, batch_size=3).run_once()
+        self.assertEqual(result['outcomes'], {'multi': 'failed', 'single': 'ok', 'wide': 'failed'})
         multi = self.box.inspect('multi')
-        self.assertEqual((multi['state'], multi['error']), ('failed', '1: no patch; 2: no procedure'))
+        self.assertEqual((multi['state'], multi['error']), ('failed', '1: no patch'))
+        self.assertEqual(self.box.inspect('wide')['error'], '1: no plan')
         self.assertEqual(self.box.inspect('single')['result'], 'single value')
 
     def test_partial_acceptance_settles_accepted_jobs_and_retries_only_the_others(self):
@@ -312,7 +423,7 @@ class ReplyWorkerTests(unittest.TestCase):
             calls.append(request)
             if len(calls) == 1:
                 # Index 1 is missing and index 2 is conflicting; index 0 is fine.
-                return {'reply': text([0, 'one'], 'Done!', [2, 'x'], [2, 'y']), 'usage': {'output_tokens': 7}}
+                return {'reply': text([0, 'one'], '[1,', [2, 'x'], [2, 'y']), 'usage': {'output_tokens': 7}}
             return {'reply': text([0, 'two'], [1, 'three'])}
         worker = self.worker(adapter, batch_size=3)
         first = worker.run_once()
@@ -328,7 +439,7 @@ class ReplyWorkerTests(unittest.TestCase):
         second = worker.run_once()
         self.assertEqual(second['ids'], ['second', 'third'])
         self.assertEqual(calls[1]['ids'], ['second', 'third'])
-        self.assertEqual(json.loads(calls[1]['prompt'])['j'], ['read 13', 'read 13'])
+        self.assertEqual(json.loads(calls[1]['prompt'])['j'], ['propose 0', 'propose 0'])
         self.assertEqual(self.box.inspect('second')['result'], 'two')
         self.assertEqual(self.box.inspect('third')['result'], 'three')
         self.assertEqual(self.box.inspect('first')['attempts'], 1)
@@ -336,14 +447,14 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertNotEqual(calls[0]['receipt'], calls[1]['receipt'])
 
     def test_multi_atom_job_with_one_missing_atom_retries_as_a_whole(self):
-        self.post('multi', 'r7a7t14')
-        self.post('single', 'r13')
+        self.post('multi', 'a7>12')
+        self.post('single', '>12')
         calls = []
         def adapter(request):
             calls.append(request)
             if len(calls) == 1:
-                return {'reply': text([0, 'read text'], [2, 'test requested'], [3, 'single value'])}
-            return {'reply': text([0, 'a'], [1, 'b'], [2, 'c'])}
+                return {'reply': text([0, 'audit text'], [2, 'single value'])}
+            return {'reply': text([0, 'a'], [1, 'b'])}
         worker = self.worker(adapter, batch_size=2)
         result = worker.run_once()
         self.assertEqual(result['outcomes'], {'multi': 'retry', 'single': 'ok'})
@@ -353,8 +464,8 @@ class ReplyWorkerTests(unittest.TestCase):
         self.now[0] += 5
         worker.run_once()
         self.assertEqual(calls[1]['ids'], ['multi'])
-        self.assertEqual(json.loads(calls[1]['prompt'])['j'], ['read 7', 'audit 7', 'test 14'])
-        self.assertEqual(self.box.inspect('multi')['result'], '{"results":["a","b","c"]}')
+        self.assertEqual(json.loads(calls[1]['prompt'])['j'], ['audit 0', 'propose 1'])
+        self.assertEqual(self.box.inspect('multi')['result'], '{"results":["a","b"]}')
 
     def test_partial_acceptance_keeps_dependants_of_retried_jobs_locked(self):
         self.post('first')
@@ -372,18 +483,18 @@ class ReplyWorkerTests(unittest.TestCase):
             path = Path(temp) / 'calls.jsonl'
             self.post('one')
             self.post('two')
-            reply = text([0, 'a'], 'not json', [5, 'out'])
+            reply = text([0, 'a'], '[1,', [5, 'out'])
             self.worker(lambda r: {'reply': reply}, batch_size=2, ledger_path=path).run_once()
             end = [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines()][-1]
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
             expected_results=2, received_results=2, accepted_results=1, failed_results=0,
-            violations=[{'line': 2, 'reason': 'not a single JSON value'},
+            violations=[{'line': 2, 'reason': 'malformed array line'},
                         {'line': 3, 'reason': 'index out of range'}]))
 
     def test_object_reply_retries_every_job(self):
-        self.post('multi', 'r7a7t14')
-        result = self.worker(lambda request: {'reply': '{"results":["a","b","c"]}'}).run_once()
+        self.post('multi', 'a7>12')
+        result = self.worker(lambda request: {'reply': '{"results":["a","b"]}'}).run_once()
         self.assertEqual(result['error_code'], 'adapter_invalid_reply')
         self.assertEqual(result['outcomes'], {'multi': 'retry'})
         self.assertEqual(self.box.inspect('multi')['state'], 'pending')
@@ -395,15 +506,15 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
 
     def test_positional_reply_maps_results_to_delivered_ids(self):
-        for mid in ('first', 'second', 'third'):
+        for mid in ('job_a', 'job_b', 'job_c'):
             self.post(mid)
         def adapter(request):
-            self.assertEqual(request['ids'], ['first', 'second', 'third'])
+            self.assertEqual(request['ids'], ['job_a', 'job_b', 'job_c'])
             for mid in request['ids']:
                 self.assertNotIn(mid, request['prompt'])
             return {'reply': text([2, 'three'], [0, 'one'], [1, 'two'])}
         self.worker(adapter, batch_size=3).run_once()
-        self.assertEqual([self.box.inspect(m)['result'] for m in ('first', 'second', 'third')],
+        self.assertEqual([self.box.inspect(m)['result'] for m in ('job_a', 'job_b', 'job_c')],
                          ['one', 'two', 'three'])
 
     def test_missing_or_legacy_capabilities_fail_before_claim(self):
@@ -488,7 +599,7 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('first')['attempts'], 2)
 
     def test_every_attempt_uses_fresh_receipt(self):
-        self.post('one')
+        self.box.post(self.ch, 'one', '>12', binding=self.ch.binding, max_attempts=3)
         receipts = []
         def adapter(request):
             receipts.append(request['receipt'])
@@ -517,8 +628,9 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(request['ids'], ['a', 'b'])
         self.assertEqual(request['prompt'].count('PREDECESSOR-RESULT'), 1)
         body = json.loads(request['prompt'])
-        self.assertEqual(body['p'], {'first': 'PREDECESSOR-RESULT'})
-        self.assertEqual(body['h'], [['first', 0], ['first', 1]])
+        self.assertNotIn('p', body)
+        self.assertEqual(body['j'], ['propose 0', 'propose 0'])
+        self.assertEqual(body['c'], {'0': {'input': 'Use 5 seconds per attempt', 'prior': ['PREDECESSOR-RESULT']}})
 
 
 if __name__ == '__main__':

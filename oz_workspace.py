@@ -176,11 +176,15 @@ class Workspace:
                             max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
                             context_policy=context_policy, min_batch=min_batch, max_wait=max_wait,
                             ledger_path=self.root / 'calls.jsonl', tokenizer=self.config['encodings'][0])
-            for _ in range(max_calls):
+            calls = 0
+            while calls < max_calls:
                 result = worker.run_once()
                 results.append(result)
-                if result['status'] != 'received' or any(v == 'retry' for v in result.get('outcomes', {}).values()):
+                if (result['status'] not in ('received', 'host_completed')
+                        or any(v == 'retry' for v in result.get('outcomes', {}).values())):
                     break
+                # Host-completed batches make no adapter call and do not use up max_calls.
+                calls += result.get('adapter_calls', 1)
         return results
 
 

@@ -2,16 +2,18 @@
 
 A reply is raw model text, one JSON array per line: [i,value] on success and
 [i,null,error] on failure, where i is the zero-based index of an item in the
-prompt's j list. parse_reply() accepts each index that has exactly one valid
-line and never repairs a line. regroup() folds accepted items back into inbox
-jobs; a job with any unaccepted item is retried alone. Receipts stay host-side:
-the adapter request carries one per call attempt to correlate the reply; they
-are not authentication or proof.
+prompt's j list (OZ9.md 3). parse_reply() accepts each index that has exactly one
+valid line and never repairs a line; a fence, prose or any other non-array line
+invalidates the whole reply. regroup() folds accepted items and the slots the host
+filled itself back into inbox jobs; a job with any unaccepted item is retried alone.
+Receipts stay host-side: the adapter request carries one per call attempt to
+correlate the reply; they are not authentication or proof.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import re
 
 from oz import Error
 
@@ -20,7 +22,12 @@ LANGUAGE = 'OZ/9'
 USAGE_FIELDS = ('input_tokens', 'cached_input_tokens', 'cache_creation_input_tokens',
                 'output_tokens', 'reasoning_output_tokens')
 MAX_RESULT_BYTES = 65536
+MAX_LINE_BYTES = 65536
+MAX_ERROR_BYTES = 1024
+CAPTURE_SLACK = 4096
 MAX_VIOLATIONS = 20
+INDEX_TOKEN = re.compile(r'0|[1-9][0-9]*')
+FIRST_TOKEN = re.compile(r'\s*\[\s*(-?[0-9][0-9.eE+-]*)')
 RETRY_REASON = 'adapter_invalid_reply (Error)'
 
 
@@ -70,62 +77,80 @@ class Parsed:
     """Per-index outcome of one reply text.
 
     accepted maps index -> ('ok', value) or ('failed', reason); received counts the
-    lines that parsed as a JSON array; violations lists {line, reason} (1-based, capped).
+    lines that parsed as a JSON array; violations lists {line, reason} (1-based, capped,
+    line 0 for the whole text). envelope is the reason the whole reply was invalidated, else None.
     """
     expected: int
     accepted: dict
     received: int
     violations: tuple
+    envelope: str | None = None
+
+
+def _canonical_index(line: str, row: list):
+    """The index of a parsed array line, only when its raw token is a canonical nonnegative integer."""
+    if not row or type(row[0]) is not int:
+        return None
+    match = FIRST_TOKEN.match(line)
+    return row[0] if match and INDEX_TOKEN.fullmatch(match.group(1)) else None
 
 
 def parse_reply(text: object, n: int) -> Parsed:
     if not isinstance(text, str):
         raise Error('reply must be raw text, one JSON array per line')
-    lines = text.split('\n')
-    if lines[-1] == '':
-        lines.pop()
-    received, bad, valid, seen = 0, {}, {}, {}
-    for number, line in enumerate(lines, 1):
-        if line == '':
-            bad[number] = 'empty line'
+    if len(text.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES * n + CAPTURE_SLACK:
+        reason = 'reply exceeds the total capture limit'
+        return Parsed(n, {}, 0, ({'line': 0, 'reason': reason},), reason)
+    received, bad, valid, seen, envelope = 0, {}, {}, {}, None
+    for number, line in enumerate(text.split('\n'), 1):
+        if line.endswith('\r'):
+            line = line[:-1]
+        if not line.strip():
+            continue
+        if len(line.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES:
+            bad[number] = f'line exceeds {MAX_LINE_BYTES} bytes'
+            continue
+        if not line.lstrip().startswith('['):
+            envelope = envelope or 'a fence, prose or non-array line invalidates the whole reply'
+            bad[number] = 'not a JSON array line'
             continue
         try:
             row = loads(line)
         except (ValueError, RecursionError, Error):
-            bad[number] = 'not a single JSON value'
-            continue
-        if not isinstance(row, list):
-            bad[number] = 'not a JSON array'
+            bad[number] = 'malformed array line'
             continue
         received += 1
-        index = row[0] if row else None
-        if type(index) is int and 0 <= index < n:
-            seen.setdefault(index, []).append(number)
+        index = _canonical_index(line, row)
+        if index is None:
+            bad[number] = 'index is not a canonical nonnegative integer'
+            continue
+        if index >= n:
+            bad[number] = 'index out of range'
+            continue
+        seen.setdefault(index, []).append(number)
         if len(row) not in (2, 3):
             bad[number] = 'array needs 2 or 3 elements'
-        elif type(index) is not int:
-            bad[number] = 'index is not an integer'
-        elif not 0 <= index < n:
-            bad[number] = 'index out of range'
         elif len(row) == 3 and (row[1] is not None or not isinstance(row[2], str) or not row[2].strip()):
-            bad[number] = 'failure needs null and a nonempty error string'
+            bad[number] = 'failure needs null and a nonblank error string'
         else:
             try:
+                if len(row) == 3 and len(row[2].encode('utf-8')) > MAX_ERROR_BYTES:
+                    raise ValueError('error exceeds 1024 bytes')
                 _store(row[1] if len(row) == 2 else row[2])
             except (ValueError, UnicodeEncodeError):
-                bad[number] = 'result is not storable or exceeds 65536 bytes'
+                bad[number] = 'result is not storable or exceeds its size limit'
             else:
                 valid[number] = row
     accepted = {}
     for index, numbers in seen.items():
         if len(numbers) > 1:
             for number in numbers:
-                bad[number] = f'conflicting lines for index {index}'
+                bad[number] = f'duplicate lines for index {index}'
         elif numbers[0] in valid:
             row = valid[numbers[0]]
             accepted[index] = ('ok', row[1]) if len(row) == 2 else ('failed', row[2])
     violations = tuple({'line': number, 'reason': bad[number]} for number in sorted(bad))[:MAX_VIOLATIONS]
-    return Parsed(n, accepted, received, violations)
+    return Parsed(n, {} if envelope else accepted, received, violations, envelope)
 
 
 @dataclass(frozen=True)
@@ -135,24 +160,28 @@ class Regrouped:
     parsed: Parsed
 
 
-def regroup(text: object, job_map) -> Regrouped:
-    """Parse a reply with one slot per j item, then fold the slots into one outcome per inbox job.
+def regroup(text: object, job_map, host_slots=()) -> Regrouped:
+    """Parse a reply with one slot per j item, then fold all slots into one outcome per inbox job.
 
-    A single-item job keeps its value. A multi-item job stores {"results":[...]} in item
-    order; if any item failed, the job fails with the local-index reasons. A job with an
-    unaccepted item is ('retry', reason) and does not affect the other jobs.
+    job_map lists (inbox job ID, atom index) per j item; host_slots lists (inbox job ID, atom index,
+    value) for slots the host filled itself. A single-slot job keeps its value. A multi-slot job stores
+    {"results":[...]} in atom order; if any slot failed, the job fails with the local-index reasons. A
+    job with an unaccepted model slot is ('retry', reason) and does not affect the other jobs.
     """
     job_map = tuple(job_map)
     parsed = parse_reply(text, len(job_map))
     groups = {}
-    for index, slot in enumerate(job_map):
-        groups.setdefault(slot[0], []).append(index)
+    for index, (mid, atom) in enumerate(job_map):
+        groups.setdefault(mid, []).append((atom, index, True))
+    for mid, atom, value in host_slots:
+        groups.setdefault(mid, []).append((atom, value, False))
     outcomes = {}
-    for mid, indices in groups.items():
-        if any(i not in parsed.accepted for i in indices):
+    for mid, slots in groups.items():
+        slots.sort(key=lambda slot: slot[0])
+        if any(model and index not in parsed.accepted for _, index, model in slots):
             outcomes[mid] = ('retry', RETRY_REASON)
             continue
-        parts = [parsed.accepted[i] for i in indices]
+        parts = [parsed.accepted[index] if model else ('ok', index) for _, index, model in slots]
         failed = [f'{n}: {value}' for n, (status, value) in enumerate(parts) if status != 'ok']
         try:
             if len(parts) == 1:
@@ -182,12 +211,12 @@ def validate_usage(value: object) -> dict:
     return dict(value)
 
 
-def validate_response(value: object, job_map) -> tuple[Regrouped, dict]:
+def validate_response(value: object, job_map, host_slots=()) -> tuple[Regrouped, dict]:
     """Adapter response {"reply": "<raw text>", "usage":...}; usage comes from provider accounting."""
     if not isinstance(value, dict) or 'reply' not in value or set(value) - {'reply', 'usage'}:
         raise Error('adapter response must be {"reply":...,"usage":...}')
     usage = validate_usage(value.get('usage', {}))
-    return regroup(value['reply'], job_map), usage
+    return regroup(value['reply'], job_map, host_slots), usage
 
 
 def encode_reply(outcomes: dict, ids) -> str:

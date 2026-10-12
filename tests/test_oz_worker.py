@@ -35,7 +35,7 @@ class WorkerTests(unittest.TestCase):
         self.box = Inbox(clock=lambda: self.now[0])
         self.addCleanup(self.box.close)
 
-    def post(self, mid='one', wire='V', **kwargs):
+    def post(self, mid='one', wire='a7>12', **kwargs):
         self.box.post(self.ch, mid, wire, binding=self.ch.binding, **kwargs)
 
     def worker(self, adapter, **kwargs):
@@ -44,7 +44,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_callable_adapter_receives_measured_prompt_and_exact_ids(self):
         self.post('one')
-        self.post('two', 'r13')
+        self.post('two', '>12')
         seen = []
         def adapter(request):
             seen.append(request)
@@ -57,13 +57,13 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(seen[0]['prompt_tokens'], [len(seen[0]['system']) + 1 + len(seen[0]['prompt'])])
         self.assertEqual(seen[0]['ids'], ['one', 'two'])
         self.assertEqual(seen[0]['system'], SYSTEM)
-        self.assertEqual(json.loads(seen[0]['prompt'])['j'], ['read 7', 'audit 7', 'test 14', 'read 13'])
+        self.assertEqual(json.loads(seen[0]['prompt'])['j'], ['audit 0', 'propose 1', 'propose 1'])
         self.assertNotIn('q', json.loads(seen[0]['prompt']))
         self.assertEqual(len(seen), 1)
         self.assertEqual(self.box.stats(), {'done': 2})
         text = '12.50 ± 0.02 mm; method unknown.'
         self.assertEqual(self.box.inspect('one')['result'],
-                         json.dumps({'results': [text] * 3}, ensure_ascii=False, separators=(',', ':')))
+                         json.dumps({'results': [text] * 2}, ensure_ascii=False, separators=(',', ':')))
         self.assertEqual(self.box.inspect('two')['result'], text)
         self.assertEqual(self.box.runs()[0]['report']['usage']['input_tokens'], 500)
         self.assertEqual(self.worker(adapter).run_once()['status'], 'idle')
@@ -91,12 +91,12 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('two')['attempts'], 2)
 
     def test_model_reported_failure_is_final_and_siblings_are_not_repeated(self):
-        self.post('one', 'r13')
+        self.post('one', '>12')
         self.post('two')
         calls = []
         def adapter(request):
             calls.append(request['ids'])
-            return reply(request, ['done', 'done', 'cannot do this', 'done'], failed=[2])
+            return reply(request, ['done', 'done', 'cannot do this'], failed=[2])
         worker = self.worker(adapter, retry_delay=5)
         worker.run_once()
         self.now[0] += 60
@@ -126,7 +126,7 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(str(AdapterError('SECRET-FAKE-TOKEN-MUST-NOT-BE-LOGGED')), 'adapter_failure')
 
     def test_permanent_outcome_requires_explicit_requeue(self):
-        self.post(wire='r13')
+        self.post(wire='>12')
         self.worker(lambda r: reply(r, ['unsupported request'], failed=[0])).run_once()
         self.assertEqual(self.box.inspect('one')['state'], 'failed')
         self.assertEqual(self.worker(lambda r: r).run_once()['status'], 'idle')
@@ -167,7 +167,7 @@ class WorkerTests(unittest.TestCase):
         script = ('import json,sys; r=json.load(sys.stdin); '
                   'json.dump({"reply":json.dumps([0,"12.50 ± 0.02 mm"],ensure_ascii=False)},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
-        self.post(wire='r13')
+        self.post(wire='>12')
         result = self.worker(adapter, timeout=10).run_once()
         self.assertEqual(result['status'], 'received')
         self.assertEqual(self.box.inspect('one')['result'], '12.50 ± 0.02 mm')
@@ -176,7 +176,7 @@ class WorkerTests(unittest.TestCase):
         script = ('import json,sys; r=json.load(sys.stdin); '
                   'json.dump({"reply":json.dumps([0,json.dumps(r)])},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
-        self.post('secret_job', 'r13')
+        self.post('secret_job', '>12')
         self.worker(adapter, timeout=10).run_once()
         request = json.loads(self.box.inspect('secret_job')['result'])
         self.assertEqual(set(request), {'protocol', 'language', 'binding', 'receipt', 'ids', 'attempts',
@@ -184,7 +184,7 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual((request['protocol'], request['language'], request['ids']),
                          ('oz.adapter/3', 'OZ/9', ['secret_job']))
         self.assertEqual(request['system'], SYSTEM)
-        self.assertEqual(json.loads(request['prompt'])['j'], ['read 13'])
+        self.assertEqual(json.loads(request['prompt'])['j'], ['propose 0'])
         self.assertNotIn('secret_job', request['prompt'] + request['system'])
 
     def test_stdio_does_not_interpret_shell_metacharacters(self):
@@ -293,14 +293,14 @@ class WorkerTests(unittest.TestCase):
                 self.worker(lambda r: r, **kwargs)
 
     def test_context_policy_full_sends_every_reference(self):
-        self.post('one', 'r13')
+        self.post('one', '=13')
         prompts = []
         def adapter(request):
             prompts.append(request['prompt'])
             return reply(request, ['ok'])
         self.worker(adapter, context_policy='full').run_once()
         self.assertIn('Use 5 seconds per attempt', prompts[0])
-        self.post('two', 'r13')
+        self.post('two', '=13')
         self.worker(adapter).run_once()
         self.assertNotIn('Use 5 seconds per attempt', prompts[1])
 
@@ -315,7 +315,7 @@ class LedgerTests(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         self.path = Path(temp.name) / 'calls.jsonl'
 
-    def post(self, mid='one', wire='V', **kwargs):
+    def post(self, mid='one', wire='a7>12', **kwargs):
         self.box.post(self.ch, mid, wire, binding=self.ch.binding, **kwargs)
 
     def worker(self, adapter, **kwargs):
@@ -328,7 +328,7 @@ class LedgerTests(unittest.TestCase):
 
     def test_call_start_and_call_end_are_linked_and_complete(self):
         self.post('one')
-        self.post('two', 'r13')
+        self.post('two', '>12')
         seen = []
         def adapter(request):
             seen.append(request)
@@ -347,7 +347,6 @@ class LedgerTests(unittest.TestCase):
         self.assertIsNone(end['retry_of'])
         self.assertEqual(end['job_map'], [{'inbox_job_id': 'one', 'expanded_atom_index': 0},
                                           {'inbox_job_id': 'one', 'expanded_atom_index': 1},
-                                          {'inbox_job_id': 'one', 'expanded_atom_index': 2},
                                           {'inbox_job_id': 'two', 'expanded_atom_index': 0}])
         sha = lambda text: hashlib.sha256(text.encode('utf-8')).hexdigest()
         request = seen[0]
@@ -361,8 +360,8 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(end['token_estimates']['system'], len(request['system']))
         self.assertEqual(end['token_estimates']['submitted'], request['prompt_tokens'][0])
         self.assertEqual(end['outcome'], 'ok')
-        self.assertEqual(end['validation'], dict(expected_results=4, received_results=4,
-                                                 accepted_results=4, failed_results=0, violations=[]))
+        self.assertEqual(end['validation'], dict(expected_results=3, received_results=3,
+                                                 accepted_results=3, failed_results=0, violations=[]))
         self.assertIsNotNone(end['started_at'])
         self.assertIsNotNone(end['ended_at'])
         self.assertIsInstance(end['elapsed_ms'], int)
@@ -375,7 +374,7 @@ class LedgerTests(unittest.TestCase):
         self.assertIsNotNone(start['started_at'])
 
     def test_unknown_usage_cost_and_model_are_null_never_zero(self):
-        self.post('one', 'r13')
+        self.post('one', '>12')
         self.worker(lambda r: reply(r, ['ok'])).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['usage'], dict.fromkeys(['source', 'scope', 'raw', 'input_tokens', 'output_tokens',
@@ -389,7 +388,7 @@ class LedgerTests(unittest.TestCase):
         self.assertIs(end['timed_out'], False)
 
     def test_provider_usage_is_mapped(self):
-        self.post('one', 'r13')
+        self.post('one', '>12')
         usage = {'input_tokens': 500, 'cached_input_tokens': 100, 'cache_creation_input_tokens': 20,
                  'output_tokens': 30, 'reasoning_output_tokens': 10}
         self.worker(lambda r: dict(reply(r, ['ok']), usage=usage)).run_once()
@@ -398,7 +397,7 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual((end['input_tokens'], end['output_tokens'], end['cache_read_tokens'],
                           end['cache_write_tokens'], end['reasoning_tokens'], end['total_tokens']),
                          (500, 30, 100, 20, 10, None))
-        self.post('two', 'r13')
+        self.post('two', '>12')
         self.worker(lambda r: dict(reply(r, ['ok']), usage={'output_tokens': 4})).run_once()
         partial = self.lines()[-1]['usage']
         self.assertEqual((partial['output_tokens'], partial['input_tokens'], partial['cache_read_tokens']),
@@ -406,48 +405,56 @@ class LedgerTests(unittest.TestCase):
 
     def test_invalid_response_outcome_keeps_validation_counts(self):
         self.post('one')
-        self.worker(lambda r: {'reply': '[0,"a"]' + chr(10) + 'prose' + chr(10) + '[1,"b"'},
+        self.worker(lambda r: {'reply': '[0,"a"]' + chr(10) + chr(10) + '[1,"b"'},
                     retry_delay=0).run_once()
         end = self.lines()[-1]
-        # One accepted item of three: the job retries as a whole, nothing else changes.
+        # One accepted item of two: the job retries as a whole, nothing else changes.
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
-            expected_results=3, received_results=1, accepted_results=1, failed_results=0,
-            violations=[{'line': 2, 'reason': 'not a single JSON value'},
-                        {'line': 3, 'reason': 'not a single JSON value'}]))
+            expected_results=2, received_results=1, accepted_results=1, failed_results=0,
+            violations=[{'line': 3, 'reason': 'malformed array line'}]))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
 
     def test_reply_without_any_valid_line_keeps_counts_and_violations(self):
         self.post('one')
-        self.worker(lambda r: {'reply': '{"results":["a","b","c"]}'}, retry_delay=0).run_once()
+        self.worker(lambda r: {'reply': '{"results":["a","b"]}'}, retry_delay=0).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
-            expected_results=3, received_results=0, accepted_results=0, failed_results=0,
-            violations=[{'line': 1, 'reason': 'not a JSON array'}]))
+            expected_results=2, received_results=0, accepted_results=0, failed_results=0,
+            violations=[{'line': 1, 'reason': 'not a JSON array line'}]))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
 
     def test_violations_are_capped_at_twenty(self):
-        self.post('one', 'r13')
-        text = chr(10).join(['[0,"ok"]'] + ['prose'] * 30)
+        self.post('one', '>12')
+        text = chr(10).join(['[0,"ok"]'] + ['[7,'] * 30)
         self.worker(lambda r: {'reply': text}).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'ok')
         self.assertEqual(len(end['validation']['violations']), 20)
         self.assertEqual(end['validation']['violations'][0]['line'], 2)
+        # Prose among valid lines invalidates the whole reply: nothing is accepted and the job retries.
+        self.post('two', 'a7>12')
+        text = chr(10).join(['[0,"ok"]', '[1,"ok"]'] + ['prose'] * 30)
+        self.worker(lambda r: {'reply': text}).run_once()
+        end = self.lines()[-1]
+        self.assertEqual(end['outcome'], 'invalid_response')
+        self.assertEqual(end['validation']['accepted_results'], 0)
+        self.assertEqual(len(end['validation']['violations']), 20)
+        self.assertEqual(self.box.inspect('two')['state'], 'pending')
 
     def test_job_error_outcome_counts_failed_items(self):
         self.post('one')
-        self.worker(lambda r: reply(r, ['a', 'b', 'c'], failed=[1])).run_once()
+        self.worker(lambda r: reply(r, ['a', 'b'], failed=[1])).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'job_error')
-        self.assertEqual(end['validation'], dict(expected_results=3, received_results=3,
-                                                 accepted_results=3, failed_results=1, violations=[]))
+        self.assertEqual(end['validation'], dict(expected_results=2, received_results=2,
+                                                 accepted_results=2, failed_results=1, violations=[]))
         self.assertIsNone(end['error'])
 
     def test_process_error_timeout_and_spawn_error_outcomes(self):
-        self.post('one', 'r13', max_attempts=10)
+        self.post('one', '>12', max_attempts=10)
         def broken(_):
             raise RuntimeError('SECRET-FAKE-TOKEN')
         def slow(_):
@@ -469,7 +476,7 @@ class LedgerTests(unittest.TestCase):
             self.assertEqual(x['validation']['received_results'], None)
 
     def test_retry_links_to_the_previous_call(self):
-        self.post('one', 'r13')
+        self.post('one', '>12')
         calls = []
         def adapter(request):
             calls.append(request)
@@ -487,22 +494,22 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(len(self.lines()), 4)
 
     def test_no_ledger_path_writes_nothing_and_idle_waiting_calls_are_not_logged(self):
-        self.post('one', 'r13')
+        self.post('one', '>12')
         self.worker(lambda r: reply(r, ['ok']), ledger_path=None).run_once()
         self.assertFalse(self.path.exists())
         self.assertEqual(self.worker(lambda r: r).run_once()['status'], 'idle')
         self.assertFalse(self.path.exists())
 
     def test_ledger_is_append_only_across_workers(self):
-        self.post('one', 'r13')
-        self.post('two', 'r13')
+        self.post('one', '>12')
+        self.post('two', '>12')
         self.worker(lambda r: reply(r, ['ok']), batch_size=1).run_once()
         self.worker(lambda r: reply(r, ['ok']), batch_size=1).run_once()
         events = [x['event'] for x in self.lines()]
         self.assertEqual(events, ['call_start', 'call_end', 'call_start', 'call_end'])
 
     def test_unwritable_ledger_does_not_lose_the_result(self):
-        self.post('one', 'r13')
+        self.post('one', '>12')
         result = self.worker(lambda r: reply(r, ['ok']), ledger_path=self.path.parent).run_once()
         self.assertEqual(result['ledger_error'], 'write_failed')
         self.assertEqual(self.box.inspect('one')['state'], 'done')

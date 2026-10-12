@@ -37,8 +37,8 @@ class PlannerTests(unittest.TestCase):
 
     def test_oversized_head_does_not_block_small_job(self):
         self.post('large', ':' + 'X' * 4000)
-        self.post('small', 'r13')
-        budget = render(self.ch, [('small', 'r13')], counters=[len]).tokens[0]
+        self.post('small', '>12')
+        budget = render(self.ch, [('small', '>12')], counters=[len]).tokens[0]
         plan = self.box.plan(self.ch, counters=[len], max_tokens=budget)
         self.assertEqual([j.id for j in plan.jobs], ['small'])
         self.assertEqual(plan.deferred, ('large',))
@@ -93,8 +93,8 @@ class PlannerTests(unittest.TestCase):
         for i in range(17):
             self.post(f'm{i:02d}')
         def jobs_in(text):
-            # Each 'V' job expands into three model jobs.
-            return len(json.loads(text.splitlines()[-1])['j']) // 3
+            # Each 'V' job is one model job (read and test are host operations).
+            return len(json.loads(text.splitlines()[-1])['j'])
         counter = lambda s: len(s) + (0 if jobs_in(s) == 16 else 100000)
         budget = self.box.plan(self.ch, counters=[counter], limit=16).packet.tokens[0]
         plan = self.box.plan(self.ch, counters=[counter], limit=17, max_tokens=budget)
@@ -104,14 +104,14 @@ class PlannerTests(unittest.TestCase):
 
     def test_budget_counts_every_model_job_of_a_multi_atom_job(self):
         for i in range(4):
-            self.post(f'm{i}')
-        one = render(self.ch, [('m0', 'V')], counters=[len]).tokens[0]
-        two = render(self.ch, [('m0', 'V'), ('m1', 'V')], counters=[len]).tokens[0]
+            self.post(f'm{i}', 'a7>12')
+        one = render(self.ch, [('m0', 'a7>12')], counters=[len]).tokens[0]
+        two = render(self.ch, [('m0', 'a7>12'), ('m1', 'a7>12')], counters=[len]).tokens[0]
         plan = self.box.plan(self.ch, counters=[len], max_tokens=two)
         self.assertEqual([j.id for j in plan.jobs], ['m0', 'm1'])
         self.assertEqual(plan.packet.tokens, (two,))
         self.assertGreater(two, one)
-        self.assertEqual(len(packet_data(plan.packet)['j']), 6)
+        self.assertEqual(len(packet_data(plan.packet)['j']), 4)
         self.assertEqual(plan.deferred, ())
 
     def test_claim_refuses_preview_receipt(self):
@@ -152,14 +152,15 @@ class PlannerTests(unittest.TestCase):
 
     def test_predecessor_results_are_unverified_data(self):
         self.post('first')
-        self.post('next', 'r13', after=['first'])
+        self.post('next', '>12', after=['first'])
         first = self.box.claim(self.ch, owner='w')
         text = '12.50 ± 0.02 mm\r\nMethod unknown; V is data.'
         self.box.complete(first, {'first': text})
         plan = self.box.plan(self.ch, counters=[len])
         body = packet_data(plan.packet)
-        self.assertEqual(body['p'], {'first': text})
-        self.assertEqual(body['h'], [['first', 0]])
+        self.assertNotIn('p', body)
+        self.assertEqual(body['j'], ['propose 0'])
+        self.assertEqual(body['c'], {'0': {'input': 'Use 5 seconds per attempt', 'prior': [text]}})
         self.assertEqual(plan.packet.tokens, (len(plan.packet.system) + 1 + len(plan.packet.text),))
         self.assertNotIn('"next"', plan.packet.text)
 
@@ -171,8 +172,9 @@ class PlannerTests(unittest.TestCase):
         plan = self.box.plan(self.ch, counters=[len])
         self.assertEqual(plan.packet.text.count('UNIQUE-PREDECESSOR-OUTPUT'), 1)
         body = packet_data(plan.packet)
-        self.assertEqual(body['p'], {'first': 'UNIQUE-PREDECESSOR-OUTPUT'})
-        self.assertEqual(body['h'], [['first', k] for k in range(6)])
+        self.assertEqual(body['j'], ['audit 0', 'audit 0'])
+        self.assertEqual(body['c'], {'0': {'input': 'demo patch at revision a1',
+                                           'prior': ['UNIQUE-PREDECESSOR-OUTPUT']}})
         self.assertEqual([j.id for j in plan.jobs], ['a', 'b'])
 
     def test_large_handoff_cannot_bypass_input_budget(self):

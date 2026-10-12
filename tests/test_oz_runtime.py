@@ -90,9 +90,22 @@ class InboxTests(unittest.TestCase):
         self.assertNotIn('m1', packet.text)
         body = json.loads(packet.text)
         # Only model atoms reach the model; the host atoms +8 and . stay behind.
-        self.assertEqual(body['j'], ['read 7', 'audit 7', 'test 14'])
+        self.assertEqual(body['j'], ['audit 0'])
         self.assertEqual(packet.wires, ('r7a7t14+8.',))
-        self.assertEqual(packet.job_map, (('m1', 0), ('m1', 1), ('m1', 2)))
+        self.assertEqual(packet.job_map, (('m1', 1),))
+        self.assertEqual(packet.host_slots, (('m1', 0, ''), ('m1', 2, 'python -m unittest')))
+
+    def test_new_jobs_default_to_two_attempts_including_the_original(self):
+        self.post('m1')
+        self.assertEqual(self.box.inspect('m1')['max_attempts'], 2)
+        self.box.retry(self.claim(), 'first transport failure')
+        self.assertEqual(self.box.inspect('m1')['state'], 'pending')
+        self.box.retry(self.claim(), 'second transport failure')
+        self.assertEqual(self.box.inspect('m1')['state'], 'failed')
+        self.assertEqual(self.box.inspect('m1')['attempts'], 2)
+        self.assertIsNone(self.claim())
+        self.post('m2', max_attempts=5)
+        self.assertEqual(self.box.inspect('m2')['max_attempts'], 5)
 
     def test_retry_cannot_duplicate_acknowledged_work(self):
         self.post('m1')

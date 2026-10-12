@@ -111,6 +111,9 @@ def _now() -> str:
 class Worker:
     """One bounded attempt per call; no background polling or provider lock-in.
 
+    A batch whose jobs need no model slot (read and test are host operations) is completed
+    locally: status host_completed, adapter_calls 0, no ledger call record.
+
     Callable adapters must return before timeout. StdioAdapter enforces its
     timeout by terminating its child process; an arbitrary Python callable
     cannot be safely forcibly interrupted by this worker.
@@ -189,6 +192,8 @@ class Worker:
             return {'status': 'idle', 'model_calls': 0}
         delivery, packet = claimed
         ids = tuple(j.id for j in delivery.jobs)
+        if not packet.job_map:
+            return self._host_only(delivery, packet, ids)
         request = {'protocol': PROTOCOL, 'language': LANGUAGE, 'binding': delivery.binding, 'receipt': receipt,
                    'ids': list(ids), 'attempts': [j.attempt for j in delivery.jobs],
                    'system': packet.system, 'prompt': packet.text, 'prompt_tokens': list(packet.tokens)}
@@ -216,7 +221,7 @@ class Worker:
                 raise Error('adapter response must be {"reply":...,"usage":...}')
             # Usage is provider accounting; keep it even when the reply is invalid.
             usage = report['usage'] = validate_usage(response.get('usage', {}))
-            grouped = regroup(response['reply'], packet.job_map)
+            grouped = regroup(response['reply'], packet.job_map, packet.host_slots)
             if not grouped.parsed.accepted:
                 raise Error('reply has no accepted result line')
             # Per-job acceptance: a job with an unaccepted item retries alone, the others settle.
@@ -245,6 +250,18 @@ class Worker:
             else:
                 self._last_call.pop(mid, None)
         self.inbox.settle(delivery, outcomes, retry_delay=self.retry_delay, report=report)
+        return dict(report, ids=list(ids), outcomes={mid: o.status for mid, o in outcomes.items()})
+
+    def _host_only(self, delivery, packet, ids) -> dict:
+        """Every slot is filled by the host (read, test): no adapter call, no ledger record."""
+        grouped = regroup('', (), packet.host_slots)
+        # A host result that cannot be stored will not improve on a retry: settle it as failed.
+        outcomes = {mid: Outcome('failed', 'host_result_not_storable') if grouped.outcomes[mid][0] == 'retry'
+                    else Outcome(*grouped.outcomes[mid]) for mid in ids}
+        report = {'language': LANGUAGE, 'mode': packet.mode, 'prompt_tokens': list(packet.tokens),
+                  'adapter_calls': 0, 'model_calls': 0, 'usage': {}, 'verification': 'unverified',
+                  'call_id': None, 'status': 'host_completed'}
+        self.inbox.settle(delivery, outcomes, report=report)
         return dict(report, ids=list(ids), outcomes={mid: o.status for mid, o in outcomes.items()})
 
     def _call_end(self, call, packet, started_at, elapsed, estimates, response, usage, failure, code, outcomes,
