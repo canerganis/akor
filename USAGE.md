@@ -126,7 +126,7 @@ report = worker.run_once()
 
 ## Bütçe, yeniden deneme ve görünürlük
 
-`oz.json` içindeki `max_tokens` alıcı girdisinin üst sınırıdır. `encodings` hedef tokenizer adlarıdır; birden fazlası varsa her birinde sınır uygulanır. `batch_size` en fazla kaç hazır işin taranacağını belirler (1–64). Varsayılanlar 2048 token ve 16 iş.
+`oz.json` içindeki `max_tokens` alıcı girdisinin üst sınırıdır. `encodings` hedef tokenizer adlarıdır; birden fazlası varsa her birinde sınır uygulanır. `batch_size` en fazla kaç hazır işin taranacağını belirler (1–64). Varsayılanlar 2048 token ve 64 iş. Hazır işler bekletilmeden tek çağrıda toplanır; canlı ölçümde büyük çağrılar toplam tokeni en çok azaltan ayardı.
 
 `plan` yan etkisizdir: deneme veya lease tüketmez. Önce tam paket denenir; sığmazsa sınırlı, açgözlü seçim yapılır. Büyük bir iş daha küçük bağımsız işleri engellemez. Bu, bütün olası paketler için matematiksel optimum garantisi değildir. Bütçeye sığmayan işlerin metni kesilmez ve deneme hakkı harcanmaz.
 

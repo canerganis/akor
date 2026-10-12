@@ -211,7 +211,7 @@ class Inbox:
             + ','.join('?' for _ in ready) + ')', [r['id'] for r in ready]).fetchone()[0]
         return oldest is not None and self.clock() - oldest < max_wait
 
-    def plan(self, channel: Channel, *, counters, limit: int = 16, max_tokens: int | None = None,
+    def plan(self, channel: Channel, *, counters, limit: int = 64, max_tokens: int | None = None,
              max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan:
         """Read-only packing: the largest feasible ordered prefix of ready jobs.
 
@@ -267,7 +267,7 @@ class Inbox:
             links.extend((mid, r['id'], r['result']) for r in rows)
         return links
 
-    def claim_prepared(self, channel: Channel, *, owner: str, counters, receipt: str, limit: int = 16,
+    def claim_prepared(self, channel: Channel, *, owner: str, counters, receipt: str, limit: int = 64,
                        max_tokens: int | None = None, max_bytes: int = 262144,
                        lease_seconds: float = 60, context_policy: str = 'needed') -> tuple[Delivery, Batch] | None:
         """Measure outside the write lock, then atomically reserve the selected jobs.

@@ -109,7 +109,7 @@ class Worker:
 
     def __init__(self, inbox: Inbox, channel: Channel, adapter: Callable[[dict], dict], *,
                  counters, capabilities: dict | None = None, owner: str = 'worker', max_tokens: int = 2048,
-                 batch_size: int = 16, timeout: float = 120, retry_delay: float = 2,
+                 batch_size: int = 64, timeout: float = 120, retry_delay: float = 2,
                  context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')

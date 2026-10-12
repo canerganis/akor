@@ -275,7 +275,7 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('three')['attempts'], 0)
 
     def test_invalid_quorum_values_are_rejected(self):
-        cases = [dict(min_batch=0), dict(min_batch=17), dict(min_batch=5, batch_size=4),
+        cases = [dict(min_batch=0), dict(min_batch=65), dict(min_batch=5, batch_size=4),
                  dict(max_wait=-1), dict(min_batch=True), dict(max_wait='5'), dict(max_wait=86401),
                  dict(min_batch=2.0)]
         for kwargs in cases:

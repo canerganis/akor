@@ -65,7 +65,7 @@ def initialize(path: Path, channel: Channel | None = None):
     reviewer = channel.snapshot()
     reviewer['recipient'] = 'reviewer'
     config = dict(version=1, channels={'worker': channel.snapshot(), 'reviewer': reviewer},
-                  encodings=['o200k_base'], max_tokens=2048, batch_size=16)
+                  encodings=['o200k_base'], max_tokens=2048, batch_size=64)
     with (root / 'oz.json').open('x', encoding='utf-8') as file:
         json.dump(config, file, ensure_ascii=False, indent=2)
         file.write('\n')
