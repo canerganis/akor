@@ -140,7 +140,7 @@ Karakter sayısı token sayısı değildir. Bu projede gerçek token sayımı i�
 Çekirdek Python 3.10+ ve standart kütüphaneyi kullanır; model hesabı veya API anahtarı istemez.
 
 ```powershell
-cd C:\Users\can02\Projects\akor
+cd akor
 python demo.py
 python -m akor validate examples/demo.akor
 python -m akor decode examples/demo.akor
