@@ -111,11 +111,12 @@ class BatchTests(unittest.TestCase):
         self.assertEqual(list(c), ['7', '8', '9', '13', '14'])
         self.assertEqual(c['7'], 'demo patch at revision a1')
         self.assertEqual(c['14'], 'python -m unittest')
-        self.assertEqual(c['8'], {'text': '2 checks passed', 'kind': 'test', 'source': 'test.log@a1',
-                                  'status': 'passed'})
-        self.assertEqual(list(c['9']), ['text', 'kind', 'source', 'status'])
-        self.assertEqual(c['13'], {'text': '12.50 ± 0.02 mm', 'kind': 'fact', 'source': 'data.csv:2@v1'})
-        self.assertNotIn('status', c['13'])
+        self.assertEqual(c['8'], {'text': '2 checks passed', 'kind': 'test', 'status': 'passed'})
+        self.assertEqual(list(c['9']), ['text', 'kind', 'status'])
+        # A source without a status stays host-side: the worker gets plain text.
+        self.assertEqual(c['13'], '12.50 ± 0.02 mm')
+        self.assertNotIn('data.csv', packet.text)
+        self.assertNotIn('test.log', packet.text)
 
     def test_needed_and_full_context(self):
         ch = extended()

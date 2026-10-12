@@ -148,8 +148,9 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     c = {}
     for number in sorted(refs if context_policy == 'full' else used):
         ref = refs[number]
-        c[str(number)] = (ref['text'] if not ref['source'] and not ref['status'] else
-                          {'text': ref['text'], **{k: ref[k] for k in ('kind', 'source', 'status') if ref[k]}})
+        # Source identity (paths, hashes) stays host-side; only status changes how a worker reads text.
+        c[str(number)] = (ref['text'] if not ref['status'] else
+                          {'text': ref['text'], **{k: ref[k] for k in ('kind', 'status') if ref[k]}})
     body = {'goal': snapshot['goal'], 'd': d}
     if c:
         body['c'] = c
