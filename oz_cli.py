@@ -119,8 +119,9 @@ def main(argv=None):
             counters = [lambda s, enc=enc: len(enc.encode(s, disallowed_special=())) for enc in encodings]
             packet = render(channel, read_json(args.messages), max_tokens=args.max_tokens,
                             counters=counters, context_policy=args.context)
-            value = {'language': 'OZ/9', 'mode': packet.mode, 'tokens': packet.tokens, 'text': packet.text,
-                     'binding': packet.binding, 'wires': packet.wires, 'alternatives': dict(packet.alternatives)}
+            value = {'language': 'OZ/9', 'mode': packet.mode, 'tokens': packet.tokens, 'system': packet.system,
+                     'prompt': packet.text, 'binding': packet.binding, 'wires': packet.wires,
+                     'job_map': [list(slot) for slot in packet.job_map]}
         print(json.dumps(value, ensure_ascii=False, indent=2))
         return 0
     except (Error, OSError, ValueError, TypeError, sqlite3.Error) as exc:
@@ -166,6 +167,7 @@ def workspace_command(args):
                      'input_tokens': list(plan.packet.tokens) if plan.packet else [],
                      'encodings': workspace.config['encodings'], 'attempts_consumed': 0}
             if args.show_prompt:
+                value['system'] = plan.packet.system if plan.packet else ''
                 value['prompt'] = plan.packet.text if plan.packet else ''
             return value
         if args.command == 'events':

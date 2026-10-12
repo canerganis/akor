@@ -215,10 +215,9 @@ class Inbox:
              max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan:
         """Read-only packing: the largest feasible ordered prefix of ready jobs.
 
-        Feasibility is not monotonic (a template table can make more jobs
-        cheaper), so every prefix length is measured, longest first, with the
-        actual receipt. Only when even the head job is oversized does greedy
-        packing defer it so it cannot block others.
+        Every prefix length is measured, longest first, as the complete model
+        input (system text and body). Only when even the head job is oversized
+        does greedy packing defer it so it cannot block others.
         """
         if type(limit) is not int or not 1 <= limit <= 64:
             raise Error('plan limit must be 1..64')

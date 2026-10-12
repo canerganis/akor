@@ -3,8 +3,8 @@ import json
 import unittest
 
 from oz import Error
-from oz_batch import REPLY_CONTRACT
-from oz_reply import (check_capabilities, encode_reply, validate_reply, validate_response,
+from oz_batch import SYSTEM
+from oz_reply import (check_capabilities, encode_reply, regroup, validate_reply, validate_response,
                       validate_usage)
 from oz_runtime import Inbox
 from oz_worker import Worker
@@ -105,6 +105,41 @@ class ReplyCodecTests(unittest.TestCase):
         with self.assertRaises(Error):
             validate_reply({'results': [None], 'errors': {'0': 'ş' * (limit // 2 + 1)}}, ('a',))
 
+    def test_regroup_single_item_job_keeps_its_value(self):
+        job_map = (('a', 0), ('b', 0), ('c', 0))
+        outcomes = regroup({'results': ['text', {'k': [1, 2]}, 7]}, job_map)
+        self.assertEqual(outcomes, {'a': ('ok', 'text'), 'b': ('ok', '{"k":[1,2]}'), 'c': ('ok', '7')})
+        self.assertEqual(list(outcomes), ['a', 'b', 'c'])
+
+    def test_regroup_multi_item_job_stores_results_object_in_item_order(self):
+        job_map = (('a', 0), ('a', 1), ('a', 2), ('b', 0), ('c', 0), ('c', 2))
+        reply = {'results': ['read', {'v': 1.5}, 'Türkçe', 'single', ['x'], 'last']}
+        outcomes = regroup(reply, job_map)
+        self.assertEqual(outcomes['a'], ('ok', '{"results":["read",{"v":1.5},"Türkçe"]}'))
+        self.assertEqual(outcomes['b'], ('ok', 'single'))
+        self.assertEqual(outcomes['c'], ('ok', '{"results":[["x"],"last"]}'))
+        # Strings stay strings; nothing is stringified twice.
+        self.assertEqual(regroup({'results': ['[1]', 'x']}, (('a', 0), ('a', 1)))['a'],
+                         ('ok', '{"results":["[1]","x"]}'))
+
+    def test_regroup_failed_item_fails_the_job_with_local_index_reasons(self):
+        job_map = (('a', 0), ('a', 1), ('a', 2), ('b', 0), ('c', 0), ('c', 1))
+        reply = {'results': ['ok', None, None, None, 'fine', 'fine'],
+                 'errors': {'1': 'no data', '2': 'unknown reference', '3': 'cannot'}}
+        outcomes = regroup(reply, job_map)
+        self.assertEqual(outcomes['a'], ('failed', '1: no data; 2: unknown reference'))
+        self.assertEqual(outcomes['b'], ('failed', 'cannot'))
+        self.assertEqual(outcomes['c'], ('ok', '{"results":["fine","fine"]}'))
+
+    def test_regroup_keeps_validation_strict(self):
+        job_map = (('a', 0), ('a', 1))
+        for bad in [{'results': ['x']}, {'results': ['x', 'y', 'z']}, {'results': ['x', 'y'], 'q': '0'},
+                    {'results': ['x', 'y'], 'errors': {}}, {'results': ['x', 'y'], 'errors': {'1': 'why'}},
+                    {'results': ['x', None], 'errors': {'2': 'why'}}, {'results': ['x', None], 'errors': {'1': ' '}},
+                    {'results': [['y' * 40000], ['y' * 40000]]}, ['x', 'y'], None]:
+            with self.subTest(bad=str(bad)[:50]), self.assertRaises(Error):
+                regroup(bad, job_map)
+
     def test_usage_subsets_are_checked_and_missing_stays_unknown(self):
         usage = {'input_tokens': 100, 'cached_input_tokens': 60, 'cache_creation_input_tokens': 40,
                  'output_tokens': 30, 'reasoning_output_tokens': 30}
@@ -149,8 +184,8 @@ class ReplyWorkerTests(unittest.TestCase):
         self.box = Inbox(clock=lambda: self.now[0])
         self.addCleanup(self.box.close)
 
-    def post(self, mid, *, after=()):
-        self.box.post(self.ch, mid, 'V', binding=self.ch.binding, after=after)
+    def post(self, mid, wire='r13', *, after=()):
+        self.box.post(self.ch, mid, wire, binding=self.ch.binding, after=after)
 
     def worker(self, adapter, **kwargs):
         kwargs.setdefault('retry_delay', 5)
@@ -167,15 +202,15 @@ class ReplyWorkerTests(unittest.TestCase):
         request = seen[0]
         self.assertEqual(result['status'], 'received')
         self.assertEqual(set(request), {'protocol', 'language', 'binding', 'receipt', 'ids', 'attempts',
-                                        'prompt', 'prompt_tokens'})
+                                        'system', 'prompt', 'prompt_tokens'})
         self.assertEqual(request['attempts'], [1])
         self.assertEqual(request['ids'], ['job_zq7'])
         self.assertEqual((request['protocol'], request['language']), ('oz.adapter/3', 'OZ/9'))
-        self.assertNotIn('job_zq7', request['prompt'])
-        self.assertIn(REPLY_CONTRACT, request['prompt'])
+        self.assertNotIn('job_zq7', request['prompt'] + request['system'])
+        self.assertEqual(request['system'], SYSTEM)
         # The receipt is host-side: the model never sees it.
-        self.assertNotIn('q', json.loads(request['prompt'].splitlines()[-1]))
-        self.assertEqual(request['prompt_tokens'], [len(request['prompt'])])
+        self.assertNotIn('q', json.loads(request['prompt']))
+        self.assertEqual(request['prompt_tokens'], [len(request['system']) + 1 + len(request['prompt'])])
         self.assertEqual((result['language'], result['mode']), ('OZ/9', result['mode']))
 
     def test_reply_keeps_exact_result_and_usage(self):
@@ -196,6 +231,36 @@ class ReplyWorkerTests(unittest.TestCase):
         self.worker(adapter, batch_size=2).run_once()
         self.assertEqual(self.box.inspect('one')['result'], '{"value":12.5,"unit":"mm"}')
         self.assertEqual(self.box.inspect('two')['result'], '[1,2]')
+
+    def test_multi_atom_frame_is_flattened_and_regrouped_into_one_stored_result(self):
+        self.post('multi', 'r7a7t14')
+        self.post('single', 'r13')
+        seen = []
+        def adapter(request):
+            seen.append(request)
+            return {'reply': {'results': ['read text', {'findings': []}, 'test requested', 'single value']}}
+        self.worker(adapter, batch_size=2).run_once()
+        self.assertEqual(json.loads(seen[0]['prompt'])['j'], ['read 7', 'audit 7', 'test 14', 'read 13'])
+        self.assertEqual(self.box.inspect('multi')['result'],
+                         '{"results":["read text",{"findings":[]},"test requested"]}')
+        self.assertEqual(self.box.inspect('single')['result'], 'single value')
+
+    def test_failed_atom_fails_its_job_with_local_index_reasons_and_not_the_sibling(self):
+        self.post('multi', 'r7a7t14')
+        self.post('single', 'r13')
+        reply = {'results': ['read text', None, None, 'single value'],
+                 'errors': {'1': 'no patch', '2': 'no procedure'}}
+        result = self.worker(lambda request: {'reply': reply}, batch_size=2).run_once()
+        self.assertEqual(result['outcomes'], {'multi': 'failed', 'single': 'ok'})
+        multi = self.box.inspect('multi')
+        self.assertEqual((multi['state'], multi['error']), ('failed', '1: no patch; 2: no procedure'))
+        self.assertEqual(self.box.inspect('single')['result'], 'single value')
+
+    def test_reply_count_must_match_model_jobs_not_inbox_jobs(self):
+        self.post('multi', 'r7a7t14')
+        result = self.worker(lambda request: {'reply': {'results': ['one job result']}}).run_once()
+        self.assertEqual(result['error_code'], 'adapter_invalid_reply')
+        self.assertEqual(self.box.inspect('multi')['state'], 'pending')
 
     def test_positional_reply_maps_results_to_delivered_ids(self):
         for mid in ('first', 'second', 'third'):
@@ -314,9 +379,9 @@ class ReplyWorkerTests(unittest.TestCase):
         request = requests[1]
         self.assertEqual(request['ids'], ['a', 'b'])
         self.assertEqual(request['prompt'].count('PREDECESSOR-RESULT'), 1)
-        body = json.loads(request['prompt'].splitlines()[-1])
-        self.assertEqual(body['p'], [['first', 'PREDECESSOR-RESULT']])
-        self.assertEqual(body['h'], [[0, 'first'], [1, 'first']])
+        body = json.loads(request['prompt'])
+        self.assertEqual(body['p'], {'first': 'PREDECESSOR-RESULT'})
+        self.assertEqual(body['h'], [['first', 0], ['first', 1]])
 
 
 if __name__ == '__main__':

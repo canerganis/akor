@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -9,12 +11,19 @@ import re
 import signal
 import subprocess
 import time
+import uuid
 
 from typing import Callable
 
 from oz import Channel, Error
-from oz_reply import LANGUAGE, PROTOCOL, check_capabilities, validate_reply, validate_usage
+from oz_reply import LANGUAGE, PROTOCOL, check_capabilities, regroup, validate_usage
 from oz_runtime import Inbox, Outcome
+
+LEDGER_SCHEMA = 'akor.call/1'
+USAGE_MAP = (('input_tokens', 'input_tokens'), ('output_tokens', 'output_tokens'),
+             ('cache_read_tokens', 'cached_input_tokens'), ('cache_write_tokens', 'cache_creation_input_tokens'),
+             ('reasoning_tokens', 'reasoning_output_tokens'), ('total_tokens', None))
+
 
 class AdapterError(Error):
     def __init__(self, code: str):
@@ -99,18 +108,35 @@ class StdioAdapter:
             raise AdapterError('adapter_invalid_json') from exc
 
 
+def _digest(text: str | None):
+    """(sha256, utf-8 byte length) of text; (None, None) when it is unknown or not encodable."""
+    try:
+        data = text.encode('utf-8')
+    except (AttributeError, UnicodeEncodeError):
+        return None, None
+    return hashlib.sha256(data).hexdigest(), len(data)
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec='milliseconds')
+
+
 class Worker:
     """One bounded attempt per call; no background polling or provider lock-in.
 
     Callable adapters must return before timeout. StdioAdapter enforces its
     timeout by terminating its child process; an arbitrary Python callable
     cannot be safely forcibly interrupted by this worker.
+
+    With ledger_path every call appends call_start and call_end lines
+    (schema akor.call/1) to an append-only JSONL file; unknown values are null.
     """
 
     def __init__(self, inbox: Inbox, channel: Channel, adapter: Callable[[dict], dict], *,
                  counters, capabilities: dict | None = None, owner: str = 'worker', max_tokens: int = 2048,
                  batch_size: int = 64, timeout: float = 120, retry_delay: float = 2,
-                 context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0):
+                 context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0,
+                 ledger_path: str | Path | None = None, tokenizer: str | None = None):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
         if (type(min_batch) is not int or not 1 <= min_batch <= batch_size
@@ -127,6 +153,42 @@ class Worker:
         self.options = dict(counters=tuple(counters), owner=owner, max_tokens=max_tokens, limit=batch_size,
                             lease_seconds=timeout + 30, context_policy=context_policy)
         self.retry_delay = retry_delay
+        self.ledger_path = None if ledger_path is None else Path(ledger_path)
+        self.tokenizer = tokenizer
+        self._last_call: dict[str, str] = {}
+
+    def _append(self, record: dict) -> bool:
+        if self.ledger_path is None:
+            return True
+        try:
+            line = json.dumps(record, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+            with self.ledger_path.open('a', encoding='utf-8', newline='\n') as file:
+                file.write(line + '\n')
+        except (OSError, ValueError):
+            return False
+        return True
+
+    def _record(self, event: str, call: dict, **fields) -> dict:
+        """One ledger line in schema order; fields not yet known stay null."""
+        record = {'event': event, 'schema': LEDGER_SCHEMA, 'call_id': None, 'run_id': None, 'batch_id': None,
+                  'attempt': None, 'retry_of': None, 'channel_binding': None, 'adapter': None,
+                  'model_requested': None, 'model_reported': None, 'started_at': None, 'ended_at': None,
+                  'elapsed_ms': None, 'job_map': None, 'system_sha256': None, 'prompt_sha256': None,
+                  'submitted_sha256': None, 'response_sha256': None, 'system_bytes': None,
+                  'prompt_bytes': None, 'submitted_bytes': None, 'response_bytes': None,
+                  'token_estimates': None,
+                  'usage': dict.fromkeys(('source', 'scope', 'raw', *(key for key, _ in USAGE_MAP))),
+                  'reported_cost': dict.fromkeys(('amount', 'currency', 'source', 'scope')),
+                  'billed_cost': dict.fromkeys(('amount', 'currency', 'source')),
+                  'exit_code': None, 'timed_out': None, 'outcome': None, 'error': None, 'validation': None}
+        record.update(call, **fields)
+        return record
+
+    def _estimate(self, text: str | None):
+        try:
+            return None if text is None else self.options['counters'][0](text)
+        except Exception:
+            return None
 
     def run_once(self) -> dict:
         if self.min_batch > 1 and self.inbox.waiting(self.channel, min_batch=self.min_batch,
@@ -140,25 +202,39 @@ class Worker:
             return {'status': 'idle', 'model_calls': 0}
         delivery, packet = claimed
         ids = tuple(j.id for j in delivery.jobs)
-        request = {'protocol': PROTOCOL, 'language': LANGUAGE, 'binding': delivery.binding, 'receipt': receipt, 'ids': list(ids), 'attempts': [j.attempt for j in delivery.jobs],
-                   'prompt': packet.text,
-                   'prompt_tokens': list(packet.tokens)}
-        start = time.monotonic()
+        request = {'protocol': PROTOCOL, 'language': LANGUAGE, 'binding': delivery.binding, 'receipt': receipt,
+                   'ids': list(ids), 'attempts': [j.attempt for j in delivery.jobs],
+                   'system': packet.system, 'prompt': packet.text, 'prompt_tokens': list(packet.tokens)}
+        call_id = uuid.uuid4().hex
+        digests = [_digest(t) for t in (packet.system, packet.text, packet.system + '\n' + packet.text)]
+        call = dict(call_id=call_id, batch_id=receipt, attempt=max(j.attempt for j in delivery.jobs),
+                    retry_of=next((self._last_call[m] for m in ids if m in self._last_call), None),
+                    channel_binding=delivery.binding,
+                    adapter=getattr(self.adapter, '__name__', type(self.adapter).__name__),
+                    job_map=[{'inbox_job_id': mid, 'expanded_atom_index': i} for mid, i in packet.job_map],
+                    system_sha256=digests[0][0], prompt_sha256=digests[1][0], submitted_sha256=digests[2][0],
+                    system_bytes=digests[0][1], prompt_bytes=digests[1][1], submitted_bytes=digests[2][1])
+        started_at, start = _now(), time.monotonic()
+        estimates = dict(tokenizer=self.tokenizer, system=self._estimate(packet.system),
+                         prompt=self._estimate(packet.text), submitted=packet.tokens[0], response=None)
+        ledger_ok = self._append(self._record('call_start', call, started_at=started_at,
+                                              token_estimates=estimates))
         report = {'language': LANGUAGE, 'mode': packet.mode, 'prompt_tokens': list(packet.tokens),
-                  'adapter_calls': 1, 'usage': {}, 'verification': 'unverified'}
-        phase = 'adapter'
+                  'adapter_calls': 1, 'usage': {}, 'verification': 'unverified', 'call_id': call_id}
+        phase, response, usage, failure = 'adapter', None, None, None
         try:
             response = self.adapter(request)
             phase = 'validation'
             if not isinstance(response, dict) or 'reply' not in response or set(response) - {'reply', 'usage'}:
                 raise Error('adapter response must be {"reply":...,"usage":...}')
             # Usage is provider accounting; keep it even when the reply is invalid.
-            report['usage'] = validate_usage(response.get('usage', {}))
+            usage = report['usage'] = validate_usage(response.get('usage', {}))
             outcomes = {mid: Outcome(status, text) for mid, (status, text)
-                        in validate_reply(response['reply'], ids).items()}
+                        in regroup(response['reply'], packet.job_map).items()}
             report['status'] = 'received'
         except Exception as exc:
             # Do not store arbitrary provider exception text: it may contain credentials.
+            failure = exc
             code = ('adapter_timeout' if isinstance(exc, subprocess.TimeoutExpired) else exc.code
                     if isinstance(exc, AdapterError) else 'adapter_invalid_reply'
                     if phase == 'validation' else 'adapter_exception')
@@ -167,9 +243,59 @@ class Worker:
             report['status'] = 'adapter_error'
             report['error_type'] = type(exc).__name__
             report['error_code'] = code
-        report['wall_seconds'] = round(time.monotonic() - start, 6)
+        elapsed = time.monotonic() - start
+        report['wall_seconds'] = round(elapsed, 6)
+        end = self._call_end(call, packet, started_at, elapsed, estimates, response, usage, failure,
+                             report.get('error_code'), outcomes)
+        if not self._append(end) or not ledger_ok:
+            report['ledger_error'] = 'write_failed'
+        for mid, outcome in outcomes.items():
+            if outcome.status == 'retry':
+                self._last_call[mid] = call_id
+            else:
+                self._last_call.pop(mid, None)
         self.inbox.settle(delivery, outcomes, retry_delay=self.retry_delay, report=report)
         return dict(report, ids=list(ids), outcomes={mid: o.status for mid, o in outcomes.items()})
+
+    def _call_end(self, call, packet, started_at, elapsed, estimates, response, usage, failure, code, outcomes):
+        try:
+            text = json.dumps(response, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+        except (TypeError, ValueError):
+            text = None
+        sha, size = _digest(text)
+        reply = response.get('reply') if isinstance(response, dict) else None
+        results = reply.get('results') if isinstance(reply, dict) else None
+        received = len(results) if isinstance(results, list) else None
+        if failure is None:
+            outcome = 'job_error' if any(o.status == 'failed' for o in outcomes.values()) else 'ok'
+        elif isinstance(failure, subprocess.TimeoutExpired):
+            outcome = 'timeout'
+        elif code == 'adapter_start_failed':
+            outcome = 'spawn_error'
+        elif code in {'adapter_invalid_json', 'adapter_output_too_large', 'adapter_invalid_reply'}:
+            outcome = 'invalid_response'
+        else:
+            outcome = 'process_error'
+        validation = dict(expected_results=len(packet.job_map), received_results=received,
+                          accepted_results=None, failed_results=None)
+        if failure is None:
+            failed = len(reply.get('errors', {}))
+            validation.update(accepted_results=received - failed, failed_results=failed)
+        exit_code = None
+        if isinstance(failure, AdapterError) and re.fullmatch(r'adapter_exit_-?[0-9]{1,10}', code):
+            exit_code = int(code.rsplit('_', 1)[1])
+        elif failure is None and isinstance(self.adapter, StdioAdapter):
+            exit_code = 0
+        fields = dict(started_at=started_at, ended_at=_now(), elapsed_ms=round(elapsed * 1000),
+                      response_sha256=sha, response_bytes=size,
+                      token_estimates=dict(estimates, response=self._estimate(text)),
+                      exit_code=exit_code, timed_out=isinstance(failure, subprocess.TimeoutExpired),
+                      outcome=outcome, validation=validation,
+                      error=None if failure is None else code + ' (' + type(failure).__name__ + ')')
+        if usage:
+            fields['usage'] = dict({'source': 'adapter', 'scope': 'call', 'raw': usage, 'total_tokens': None},
+                                   **{key: usage.get(raw) for key, raw in USAGE_MAP if raw})
+        return self._record('call_end', call, **fields)
 
 
 def process_host(inbox: Inbox, channel: Channel, *, owner='host', limit=64) -> dict:

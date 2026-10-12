@@ -6,7 +6,7 @@ import tempfile
 import unittest
 
 from oz import Error
-from oz_batch import HANDOFF_NOTE, TABLE_LINE, REPLY_CONTRACT, BudgetError, render
+from oz_batch import SYSTEM, BudgetError, render
 from oz_runtime import Inbox, Outcome
 from test_oz2 import extended
 
@@ -14,7 +14,7 @@ R = 'abcdef0123456789'
 
 
 def packet_data(packet):
-    return json.loads(packet.text.splitlines()[-1])
+    return json.loads(packet.text)
 
 
 class PlannerTests(unittest.TestCase):
@@ -72,10 +72,11 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(delivered, ['m0', 'm1', 'm2'])
         self.assertEqual(self.box.stats(), {'done': 3})
 
-    def test_reply_contract_is_inside_budget_and_receipt_stays_out_of_packet(self):
+    def test_system_text_is_inside_budget_and_receipt_stays_out_of_packet(self):
         self.post('one')
         packet = self.box.plan(self.ch, counters=[len], receipt='0123456789abcdef').packet
-        self.assertIn(REPLY_CONTRACT, packet.text)
+        self.assertEqual(packet.system, SYSTEM)
+        self.assertEqual(packet.tokens, (len(SYSTEM) + 1 + len(packet.text),))
         self.assertNotIn('q', packet_data(packet))
         self.assertEqual(packet.receipt, '0123456789abcdef')
         with self.assertRaises(BudgetError):
@@ -84,7 +85,7 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('one')['attempts'], 0)
         claimed = self.box.claim_prepared(self.ch, owner='w', counters=[len], receipt=R,
                                           max_tokens=packet.tokens[0])
-        self.assertIn(REPLY_CONTRACT, claimed[1].text)
+        self.assertEqual(claimed[1].system, SYSTEM)
         self.assertNotIn('q', packet_data(claimed[1]))
         self.assertEqual(claimed[1].receipt, R)
 
@@ -92,7 +93,8 @@ class PlannerTests(unittest.TestCase):
         for i in range(17):
             self.post(f'm{i:02d}')
         def jobs_in(text):
-            return len(json.loads(text.splitlines()[-1])['j'])
+            # Each 'V' job expands into three model jobs.
+            return len(json.loads(text.splitlines()[-1])['j']) // 3
         counter = lambda s: len(s) + (0 if jobs_in(s) == 16 else 100000)
         budget = self.box.plan(self.ch, counters=[counter], limit=16).packet.tokens[0]
         plan = self.box.plan(self.ch, counters=[counter], limit=17, max_tokens=budget)
@@ -100,17 +102,16 @@ class PlannerTests(unittest.TestCase):
         self.assertEqual([j.id for j in plan.jobs], [f'm{i:02d}' for i in range(16)])
         self.assertEqual(plan.deferred, ())
 
-    def test_table_savings_count_toward_budget(self):
-        wire = ':' + 'measurement 12.50 ± 0.02 mm; method unknown. ' * 6
-        for i in range(6):
-            self.post(f'm{i}', wire)
-        counters = [len, lambda s: len(s) // 2]
-        full = self.box.plan(self.ch, counters=counters)
-        self.assertEqual(full.packet.mode, 'frames+table')
-        self.assertIn(TABLE_LINE, full.packet.text)
-        plan = self.box.plan(self.ch, counters=counters, max_tokens=max(full.packet.tokens))
-        self.assertEqual(len(plan.jobs), 6)
-        self.assertGreater(max(full.packet.alternatives['frames']), max(full.packet.tokens))
+    def test_budget_counts_every_model_job_of_a_multi_atom_job(self):
+        for i in range(4):
+            self.post(f'm{i}')
+        one = render(self.ch, [('m0', 'V')], counters=[len]).tokens[0]
+        two = render(self.ch, [('m0', 'V'), ('m1', 'V')], counters=[len]).tokens[0]
+        plan = self.box.plan(self.ch, counters=[len], max_tokens=two)
+        self.assertEqual([j.id for j in plan.jobs], ['m0', 'm1'])
+        self.assertEqual(plan.packet.tokens, (two,))
+        self.assertGreater(two, one)
+        self.assertEqual(len(packet_data(plan.packet)['j']), 6)
         self.assertEqual(plan.deferred, ())
 
     def test_claim_refuses_preview_receipt(self):
@@ -156,11 +157,10 @@ class PlannerTests(unittest.TestCase):
         text = '12.50 ± 0.02 mm\r\nMethod unknown; V is data.'
         self.box.complete(first, {'first': text})
         plan = self.box.plan(self.ch, counters=[len])
-        self.assertIn(HANDOFF_NOTE, plan.packet.text)
         body = packet_data(plan.packet)
-        self.assertEqual(body['p'], [['first', text]])
-        self.assertEqual(body['h'], [[0, 'first']])
-        self.assertEqual(plan.packet.tokens, (len(plan.packet.text),))
+        self.assertEqual(body['p'], {'first': text})
+        self.assertEqual(body['h'], [['first', 0]])
+        self.assertEqual(plan.packet.tokens, (len(plan.packet.system) + 1 + len(plan.packet.text),))
         self.assertNotIn('"next"', plan.packet.text)
 
     def test_shared_predecessor_output_is_sent_once_with_edge_per_job(self):
@@ -171,8 +171,8 @@ class PlannerTests(unittest.TestCase):
         plan = self.box.plan(self.ch, counters=[len])
         self.assertEqual(plan.packet.text.count('UNIQUE-PREDECESSOR-OUTPUT'), 1)
         body = packet_data(plan.packet)
-        self.assertEqual(body['p'], [['first', 'UNIQUE-PREDECESSOR-OUTPUT']])
-        self.assertEqual(body['h'], [[0, 'first'], [1, 'first']])
+        self.assertEqual(body['p'], {'first': 'UNIQUE-PREDECESSOR-OUTPUT'})
+        self.assertEqual(body['h'], [['first', k] for k in range(6)])
         self.assertEqual([j.id for j in plan.jobs], ['a', 'b'])
 
     def test_large_handoff_cannot_bypass_input_budget(self):

@@ -174,7 +174,8 @@ class Workspace:
             worker = Worker(box, self.channel(name), adapter, counters=counters, owner=name,
                             batch_size=self.config['batch_size'], timeout=timeout,
                             max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                            context_policy=context_policy, min_batch=min_batch, max_wait=max_wait)
+                            context_policy=context_policy, min_batch=min_batch, max_wait=max_wait,
+                            ledger_path=self.root / 'calls.jsonl', tokenizer=self.config['encodings'][0])
             for _ in range(max_calls):
                 result = worker.run_once()
                 results.append(result)
@@ -184,8 +185,8 @@ class Workspace:
 
 
 DEMO_SCRIPT = (
-    'import json,sys; r=json.load(sys.stdin); '
-    'json.dump({"reply":{"results":["DEMO receipt only; no model or task execution." for i in r["ids"]]}},sys.stdout)'
+    'import json,sys; r=json.load(sys.stdin); n=len(json.loads(r["prompt"])["j"]); '
+    'json.dump({"reply":{"results":["DEMO receipt only; no model or task execution." for i in range(n)]}},sys.stdout)'
 )
 DEMO_CAPABILITIES = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
 
@@ -201,8 +202,10 @@ def demo(path: Path):
         box.post(reviewer, 'review', 'r1', binding=reviewer.binding, after=['read', 'propose'])
         box.post(worker, 'notice', '!3', binding=worker.binding)
         before = box.plan(reviewer, counters=counters)
-        first = Worker(box, worker, adapter, counters=counters, timeout=10).run_once()
-        second = Worker(box, reviewer, adapter, counters=counters, timeout=10).run_once()
+        options = dict(counters=counters, timeout=10, ledger_path=workspace.root / 'calls.jsonl',
+                       tokenizer='o200k_base')
+        first = Worker(box, worker, adapter, **options).run_once()
+        second = Worker(box, reviewer, adapter, **options).run_once()
         host = process_host(box, worker)
         return dict(workspace=str(workspace.root), actual_model_calls=0,
                     reviewer_initially_waited=not before.jobs, worker=first, reviewer=second,

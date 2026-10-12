@@ -88,12 +88,11 @@ class InboxTests(unittest.TestCase):
         packet = delivery.prepare(self.ch, counters=[len])
         self.assertEqual(packet.ids, ('m1',))
         self.assertNotIn('m1', packet.text)
-        body = json.loads(packet.text.splitlines()[-1])
-        if packet.mode.startswith('frames'):
-            self.assertEqual(packet.wires, ('r7a7t14+8.',))
-        else:
-            self.assertIn('review patch; preserve public API', body['j'][0])
-            self.assertTrue(body['j'][0].endswith('no test outcome or global approval implied'))
+        body = json.loads(packet.text)
+        # Only model atoms reach the model; the host atoms +8 and . stay behind.
+        self.assertEqual(body['j'], ['read 7', 'audit 7', 'test 14'])
+        self.assertEqual(packet.wires, ('r7a7t14+8.',))
+        self.assertEqual(packet.job_map, (('m1', 0), ('m1', 1), ('m1', 2)))
 
     def test_retry_cannot_duplicate_acknowledged_work(self):
         self.post('m1')

@@ -90,12 +90,13 @@ Program stdin'den tek UTF-8 JSON nesnesi alır:
   "receipt":"2a",
   "ids":["plan1","plan2"],
   "attempts":[1,1],
-  "prompt":"Bütçesi ölçülmüş tam model girdisi...",
+  "system":"Sabit sistem metni...",
+  "prompt":"İşleri taşıyan tek satırlık JSON gövdesi...",
   "prompt_tokens":[312]
 }
 ```
 
-Modeline yalnız `prompt` alanını ver. `ids`, `attempts` ve `receipt` host üstverisidir; prompt'ta yer almazlar. `receipt` her denemede yenilenen kısa bir sayaçtır; cevabı o çağrıya bağlamak içindir, kimlik doğrulama değildir. stdout yalnız aşağıdaki JSON olmalıdır; tanılama için stderr kullanılabilir:
+Modeline yalnız `system` (sistem talimatı) ve `prompt` (kullanıcı mesajı) alanlarını ver. `prompt_tokens`, ikisinin birleşik ölçümüdür. `ids`, `attempts` ve `receipt` host üstverisidir; prompt'ta yer almazlar. `receipt` her denemede yenilenen kısa bir sayaçtır; cevabı o çağrıya bağlamak içindir, kimlik doğrulama değildir. stdout yalnız aşağıdaki JSON olmalıdır; tanılama için stderr kullanılabilir:
 
 ```json
 {
@@ -104,9 +105,9 @@ Modeline yalnız `prompt` alanını ver. `ids`, `attempts` ve `receipt` host üs
 }
 ```
 
-`reply`, modelin cevabıdır: `results` teslim sırasıyla her işe bir değer içerir. Metin ve kod string olur, yapılandırılmış sonuçlar doğal JSON kalır. `errors` içinde sırası verilen iş kalıcı hatadır ve sonucu `null` olmalıdır. Uzunluk eşleşmezse, `errors` boşsa ya da kurala uymayan bir sıra varsa bütün cevap reddedilir ve hiçbir iş kısmen tamamlanmaz. Adaptör hatası, zaman aşımı veya geçersiz cevapta işler yeni bir receipt ile yeniden denenir.
+`reply`, modelin cevabıdır: `results`, prompt'taki `j` listesinin her öğesi için sırayla bir değer içerir. Çok atomlu bir iş (`r7a7t14` gibi) birkaç `j` öğesine açılır; host sonuçları işe geri toplar ve `{"results":[...]}` olarak saklar. Bir öğe başarısızsa iş, yerel indeksli gerekçelerle başarısız olur. Metin ve kod string olur, yapılandırılmış sonuçlar doğal JSON kalır. `errors` içinde indeksi verilen öğe kalıcı hatadır ve sonucu `null` olmalıdır. Uzunluk eşleşmezse, `errors` boşsa ya da kurala uymayan bir sıra varsa bütün cevap reddedilir ve hiçbir iş kısmen tamamlanmaz. Adaptör hatası, zaman aşımı veya geçersiz cevapta işler yeni bir receipt ile yeniden denenir.
 
-String sonuçlar olduğu gibi, diğer değerler kompakt JSON metni olarak saklanır. `usage` isteğe bağlı sağlayıcı raporudur; yoksa bilinmiyor kabul edilir. Cached input normal input'a tekrar eklenmez. Cevap sözleşmesi ve öncül çıktılar yerel girdi bütçesine dahildir.
+String sonuçlar olduğu gibi, diğer değerler kompakt JSON metni olarak saklanır. `usage` isteğe bağlı sağlayıcı raporudur; yoksa bilinmiyor kabul edilir. Cached input normal input'a tekrar eklenmez. Sistem metni, cevap sözleşmesi ve öncül çıktılar yerel girdi bütçesine dahildir. Çalışma alanında her model çağrısı `calls.jsonl` dosyasına (`akor.call/1`) `call_start` ve `call_end` satırları olarak eklenir; bilinmeyen değerler `null` kalır.
 
 Python içinden subprocess olmadan mevcut framework'e bağlamak için:
 
@@ -114,7 +115,7 @@ Python içinden subprocess olmadan mevcut framework'e bağlamak için:
 from oz_worker import Worker, loads
 
 def adapter(request):
-    text = existing_agent(request["prompt"])  # Kendi mevcut ajan çağrın.
+    text = existing_agent(request["system"], request["prompt"])  # Kendi mevcut ajan çağrın.
     return {"reply": loads(text)}
 
 worker = Worker(inbox, channel, adapter, counters=[count_for_model], max_tokens=2048,
@@ -122,7 +123,7 @@ worker = Worker(inbox, channel, adapter, counters=[count_for_model], max_tokens=
 report = worker.run_once()
 ```
 
-`existing_agent`, `inbox`, `channel` ve tokenizer kendi uygulamandan gelir. İstenen JSON sözleşmesi prompt'a eklenir. Python callable zaman aşımını kendi sağlayıcı istemcisinde uygulamalıdır; keyfi Python fonksiyonu zorla durdurulmaz. Stdio adaptörü zaman aşımında başlattığı süreç ağacını sonlandırır. Stdio çıktı boyutu yakalama sonrasında denetlenir; bu bir bellek kotası veya araç sandbox'ı değildir.
+`existing_agent`, `inbox`, `channel` ve tokenizer kendi uygulamandan gelir. İstenen JSON sözleşmesi `system` metninde yer alır. Python callable zaman aşımını kendi sağlayıcı istemcisinde uygulamalıdır; keyfi Python fonksiyonu zorla durdurulmaz. Stdio adaptörü zaman aşımında başlattığı süreç ağacını sonlandırır. Stdio çıktı boyutu yakalama sonrasında denetlenir; bu bir bellek kotası veya araç sandbox'ı değildir.
 
 ## Bütçe, yeniden deneme ve görünürlük
 

@@ -1,8 +1,8 @@
 """OZ/9 replies, receipts, adapter capabilities and provider usage.
 
 A reply is {"results":[v0, v1, ...], "errors":{"<index>": reason}}: v_i is the
-native JSON result of the i-th delivered job, and a job listed in "errors" failed
-with result null. Receipts stay host-side: the adapter request carries one per call
+native JSON result of the i-th model job (one per j item), and an item listed in
+"errors" failed with result null. regroup() folds the items back into inbox jobs. Receipts stay host-side: the adapter request carries one per call
 attempt to correlate the reply; they are not authentication or proof.
 """
 from __future__ import annotations
@@ -70,6 +70,33 @@ def validate_reply(value: object, ids) -> dict:
         if len(text.encode('utf-8')) > 65536:
             raise Error('result exceeds 65536 bytes')
         outcomes[mid] = ('ok', text)
+    return outcomes
+
+
+def regroup(value: object, job_map) -> dict:
+    """Validate a reply with one slot per j item, then fold the slots into one outcome per inbox job.
+
+    A single-item job keeps its value. A multi-item job stores {"results":[...]} in
+    item order; if any item failed, the job fails with the local-index reasons.
+    """
+    job_map = tuple(job_map)
+    flat = validate_reply(value, job_map)
+    groups = {}
+    for slot, item in zip(job_map, value['results']):
+        groups.setdefault(slot[0], []).append((flat[slot], item))
+    outcomes = {}
+    for mid, parts in groups.items():
+        if len(parts) == 1:
+            outcomes[mid] = parts[0][0]
+            continue
+        failed = [f'{i}: {outcome[1]}' for i, (outcome, _) in enumerate(parts) if outcome[0] != 'ok']
+        if failed:
+            text = '; '.join(failed)
+        else:
+            text = _json({'results': [item for _, item in parts]})
+        if len(text.encode('utf-8')) > 65536:
+            raise Error('result exceeds 65536 bytes')
+        outcomes[mid] = ('failed' if failed else 'ok', text)
     return outcomes
 
 

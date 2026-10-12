@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 from oz import Error
-from oz_batch import REPLY_CONTRACT
+from oz_batch import SYSTEM
 from oz_cli import main
 from oz_workspace import DEMO_SCRIPT, DEMO_CAPABILITIES, Workspace, channel_from_files, demo, initialize
 from test_oz2 import extended
@@ -65,13 +65,14 @@ class WorkspaceTests(unittest.TestCase):
         self.assertIn('12.50 ± 0.02 mm', prompt)
         plan = json.loads(out)
         self.assertEqual(plan['ids'], ['first'])
-        self.assertTrue(prompt.endswith('\n'))
-        body = json.loads(prompt.splitlines()[-1])
-        self.assertIn('j', body)
+        self.assertFalse(prompt.endswith('\n'))
+        body = json.loads(prompt)
+        self.assertEqual(body['j'], ['read 1', 'propose 2'])
         self.assertNotIn('first', prompt)
         # The receipt is host-side only: no q field in the body, and the plan still works.
         self.assertNotIn('q', body)
-        self.assertIn(REPLY_CONTRACT, prompt)
+        self.assertEqual(plan['system'], SYSTEM)
+        self.assertEqual(plan['mode'], 'named')
         code, out, err = self.cli('status', '--json', *base)
         self.assertEqual(code, 0, err)
         self.assertEqual(json.loads(out)['jobs'][0]['attempts'], 0)
@@ -159,7 +160,14 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(json.loads(out)['runs'][0]['status'], 'received')
         with Workspace(self.root).inbox() as box:
             self.assertEqual(box.inspect('first')['state'], 'done')
-            self.assertIn('DEMO', box.inspect('first')['result'])
+            result = json.loads(box.inspect('first')['result'])
+            self.assertEqual(len(result['results']), 2)
+            self.assertIn('DEMO', result['results'][0])
+        ledger = [json.loads(line) for line in (self.root / 'calls.jsonl').read_text(encoding='utf8').splitlines()]
+        self.assertEqual([x['event'] for x in ledger], ['call_start', 'call_end'])
+        self.assertEqual(ledger[1]['outcome'], 'ok')
+        self.assertEqual(ledger[1]['token_estimates']['tokenizer'], 'o200k_base')
+        self.assertEqual(ledger[1]['validation']['expected_results'], 2)
 
     def test_cli_run_min_batch_waits_without_attempts(self):
         initialize(self.root)
@@ -229,6 +237,34 @@ class WorkspaceTests(unittest.TestCase):
                 self.cli(*args, *(base if args[0] in {'plan', 'run'} else ()))
             self.assertEqual(caught.exception.code, 2)
 
+    def test_plan_without_show_prompt_hides_system_and_prompt(self):
+        initialize(self.root)
+        base = ('--workspace', str(self.root))
+        self.cli('send', 'r1', '--id', 'first', *base)
+        with patch('oz_workspace.token_counters', return_value=(len,)):
+            code, out, err = self.cli('plan', *base)
+        self.assertEqual(code, 0, err)
+        self.assertNotIn('prompt', json.loads(out))
+        self.assertNotIn('system', json.loads(out))
+
+    def test_pack_prints_system_prompt_and_job_map(self):
+        initialize(self.root)
+        channel = Workspace(self.root).channel()
+        manifest = Path(self.temp.name) / 'channel.json'
+        manifest.write_text(json.dumps(channel.snapshot()), encoding='utf8')
+        messages = Path(self.temp.name) / 'messages.json'
+        messages.write_text(json.dumps([['one', 'P'], ['two', ':note']]), encoding='utf8')
+        fake = type('Tiktoken', (), {'get_encoding': staticmethod(lambda name: type('E', (), {
+            'encode': staticmethod(lambda text, disallowed_special=(): list(text))})())})
+        with patch.dict(sys.modules, {'tiktoken': fake}):
+            code, out, err = self.cli('pack', '--channel', str(manifest), '--messages', str(messages))
+        self.assertEqual(code, 0, err)
+        value = json.loads(out)
+        self.assertEqual((value['mode'], value['system']), ('named', SYSTEM))
+        self.assertEqual(json.loads(value['prompt'])['j'], ['read 1', 'propose 2', 'literal_two'])
+        self.assertEqual(value['job_map'], [['one', 0], ['one', 1], ['two', 0]])
+        self.assertNotIn('alternatives', value)
+
     def test_context_option_selects_needed_or_full_in_plan(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
@@ -259,6 +295,12 @@ class WorkspaceTests(unittest.TestCase):
         self.assertTrue(result['reviewer_initially_waited'])
         self.assertEqual(result['states'], {'done': 4})
         self.assertEqual(result['worker']['adapter_calls'], 1)
+        self.assertEqual(result['worker']['outcomes'], {'read': 'ok', 'propose': 'ok'})
+        self.assertEqual(result['reviewer']['outcomes'], {'review': 'ok'})
+        with Workspace(self.root).inbox() as box:
+            self.assertEqual(len(json.loads(box.inspect('propose')['result'])['results']), 2)
+        ledger = (self.root / 'calls.jsonl').read_text(encoding='utf8').splitlines()
+        self.assertEqual(len(ledger), 4)
 
     def test_bad_config_duplicate_keys_and_unknown_channel_fail_cleanly(self):
         initialize(self.root)
