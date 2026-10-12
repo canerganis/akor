@@ -1,203 +1,117 @@
+<div align="center">
+
 # AKOR
 
-**Bağımsız ajan iletişim dili ve aktarım çekirdeği. Paket 0.9.0, ÖZ/9 dili.** Python 3.10+, çekirdekte yalnız standart kütüphane.
+**Fewer tokens per finished job when AI agents hand work to each other.**
 
-## 0.9.0: aynı iş, daha az token, daha hızlı cevap
+AKOR packs the ready work of many agents into one compact call, keeps deterministic work off the model,
+and accepts every answer line on its own, so one bad line never costs a whole batch.
 
-ÖZ/9 her çağrıyı iki kural satırı ve tek bir JSON gövdesi olarak gönderir. Dört kodlama (doğrudan metin, referans numaralı metin, kod çerçeveleri, şablon tablosu) tam paket olarak ölçülür, en ucuzu gider. Model `{"results":[...]}` döndürür: her iş için doğal bir JSON değeri, başarısız iş için `null` ve `"errors":{"<sıra>":"neden"}`. İş kimlikleri ve çağrı kimliği (receipt) modele gitmez, host tarafında kalır.
+![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
+![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
+![Tests](https://img.shields.io/badge/tests-296%20passing-1a7f4b)
+![Protocol](https://img.shields.io/badge/wire-%C3%96Z%2F9-52514e)
 
-Canlı ölçüm: Sonnet (`claude -p`), gerçek çıktılı işler (malzeme aralık hesabı, kod onarımı), deterministik doğrulayıcı. Karşılaştırma, aynı işi yapan 0.8 paketiyle. Her çağrıda CLI'ın kendi 905 tokenlık sabit yükü dahildir.
+<img src="docs/assets/flow.svg" alt="Ready jobs from several agents are packed into one call; the model answers one line per job; each line is accepted on its own and a broken line sends only its own job back." width="100%">
 
-| Çağrı başına iş | Doğru iş (ÖZ/9) | Toplam token | CLI yükü hariç | Medyan süre |
-|---:|---:|---:|---:|---:|
-| 16 | 0.8 ile aynı veya iyi | %29 az | %41 az | benzer |
-| 32 | 96/96 | **%43 az** | %52 az | 7,0 sn (0.8: 7,9) |
-| 64 | 192/192 | **%55 az** | %61 az | 9,2 sn (0.8: 14,0) |
+</div>
 
-1 ile 4 işlik çağrılarda fark yok: sabit çağrı yükü baskın. En büyük kaldıraç az sayıda büyük çağrıdır. Bunun için:
+## Why
 
-```powershell
-oz run --workspace .oz-runtime/ekip --adapter adapter.json --min-batch 16 --max-wait 30
-```
+Multi-agent setups spend most of their tokens on overhead: every call repeats the same rules, the same context
+and a verbose reply format, and one malformed answer forces a full retry. AKOR attacks that overhead and nothing
+else. The work itself, the quality checks and the correctness bar stay the same.
 
-`--min-batch` kadar iş hazır olana ya da en eski iş `--max-wait` saniye bekleyene kadar çağrı yapılmaz; bekleme sırasında deneme ve receipt harcanmaz.
+On a live benchmark where every job is checked by a deterministic oracle, AKOR used **35% to 47% fewer total
+tokens** than its own JSON-based predecessor (0.8) at 32 to 64 jobs per call, across Opus, Sonnet and Fable,
+with every job correct and faster answers.
 
-Dil spesifikasyonu ve tüm ölçümler: [OZ9.md](OZ9.md), [canlı ölçüm özetleri](reports/). Dili Astra (gpt-6-astra) tasarladı; kod, ölçüm ve eleştiri Claude tarafından yapıldı.
+<img src="docs/assets/results.svg" alt="Bar chart of total-token savings versus AKOR 0.8 for the same verified work." width="100%">
 
-## Önceki sürümler
-
-0.5.0 ile 0.8.0 arasındaki ÖZ/3, ÖZ/4, ÖZ/5 ve ÖZ/6 katmanları 0.9.0'da kaldırıldı: canlı ölçümde token kazandırmadılar. O sürümlerin belgeleri ve kodu `oz-0.8.0-full` etiketinde duruyor. ÖZ/2 kanalları ve kuyruk dosyaları değişmeden yüklenir; kaldırılan özellikleri kullanan bir kanal açık bir hata mesajıyla reddedilir.
-
-## 0.4.0: günlük kullanım
-
-Artık Python entegrasyonu yazmadan çalışma alanı oluşturabilir, mesaj gönderebilir, bütçeyi önceden görebilir ve kendi ajan adaptörünü çalıştırabilirsin. [Hızlı başlangıç ve adaptör sözleşmesi](USAGE.md).
-
-```powershell
-python -m pip install ".[benchmark]"
-oz demo .oz-runtime/ilk-deneme
-oz status --workspace .oz-runtime/ilk-deneme
-```
-
-Demo gerçek tokenizer ve yerel stdin/stdout aktarımını kullanır; model hesabı/API anahtarı veya model çağrısı gerektirmez. Boş bir klasör seç. Gerçek bir görev için:
-
-```powershell
-oz init .oz-runtime/ekip --goal "Kaynağı incele; sayı, birim ve belirsizlikleri koru." --source veri.txt
-oz send r --id incele --workspace .oz-runtime/ekip
-oz plan --workspace .oz-runtime/ekip
-oz run --workspace .oz-runtime/ekip --adapter adapter.json
-```
-
-`adapter.json` çalıştıracağın ajan programının `argv` listesidir. Program JSON stdin alıp JSON stdout döndürür; otomatik seçilen bir model veya gizli ücretli çağrı yoktur. Yalnız `run` açıkça seçtiğin programı çalıştırır.
-
-- **Otomatik paketleme:** Sığan bağımsız işler seçilir; büyük mesaj diğerlerini bekletmez, sığmayan iş deneme harcamaz.
-- **Gerçek devir:** Önceki ajanın sonuçları bağımlı ajana eksiksiz, doğrulanmamış veri olarak gider. Ortak sonuç bir kez gönderilir; maliyeti bütçeye dahildir.
-- **İş bazında sonuç:** Başarılı işler tamamlanır; yalnız geçici hata alanlar gecikmeyle yeniden denenir. Eksik/yanlış cevap hiçbir işi sessizce tamamlamaz.
-- **Kaldığı yerden devam:** İşler, sonuçlar, geçmiş ve raporlar kalıcıdır. Başarısız iş `oz retry ID` ile yeniden açılır.
-- **Görünür durum:** `status`, `inspect` ve `plan` ile kimin neyi beklediği ve ölçülen girdi maliyeti görülebilir.
-- **Dosyadan başlangıç:** `--source`, `--kind patch` ve `--procedure` ile elle manifest yazmadan kanal oluşturulur. Kaynak metni ve satır sonları korunur, SHA-256 kaynak kimliği kaydedilir.
-
-**143 test geçti.** Çevrimdışı uçtan uca denemede 20 iş, iş paketi başına **350 girdi tokeni** sınırında **3 pakette** işlendi. Yalnız geçici hata verilen iş tekrarlandı. İnceleyici, 20 öncül sonucunu ayrıca 2.048 token bütçesi altında aldı. Model çağrısı sıfır; bu, gerçek model görev başarısı veya hız ölçümü değildir. [0.4.0 doğrulama raporu](reports/WORKFLOW-RESULTS.md).
-
-## Dil ve önceki ölçümler
-
-**Yeni: [ÖZ/2](OZ2.md).** Tek bir `V` işareti, tanımlanmış sözlükte “kaynağı oku → yamayı incele → belirli test prosedürünü iste” dizisini taşıyabiliyor. Bir işaret ancak sözlüğü ve bağlamı biliniyorsa anlamlı; bu şifreleme veya bilgiyi yoktan üretme değildir.
-
-- **Anlam makroları:** Parametreli/sabit makrolar kesin işlem dizilerine açılır. Kanıt veya başarı iddiaları makrolarda gizlenmez.
-- **Ölçülen maliyete göre seçim:** ÖZ, makrosuz ÖZ, kısa metin, açık metin ve kompakt JSON karşılaştırılır; sözlük ve bağlam dahil en ucuz aday kullanılır.
-- **Toplu aktarım:** Bağımsız mesajlar tek girdide paylaşılır; ortak kaynak bir kez yer alır. Bütçe aşılırsa metin kesilmez.
-- **Kalıcı kuyruk:** SQLite; farklı ajan bağımlılıkları, tekrar ayıklama, teslim süresi, yeniden deneme ve eski cevabı reddetme.
-- **Modelsiz olay yolu:** Durum mesajları ayrı host kuyruğunda kaydedilebilir. İş içeren mesajlar alıcı modele hazırlanır.
-- **Daha az kodlama işi:** Varsayılan en fazla 256 aday; tekrarlanan metin için tokenizer sonucu yeniden kullanılır.
-
-0.3.0 canlı dil denemesinde Codex kodlama **20/20**, aynı mesajların Claude tarafından çözülmesi **20/20** doğru. Aşağıdaki token karşılaştırması o sürümün tarihli ölçümüdür; yeni Worker'ın cevap sözleşmesi ve öncül sonuçları ayrıca sayılır.
-
-Sentetik 64 mesajlık pakette, **sözlük ve gerekli bağlam dahil alıcı girdi tokenleri**:
-
-| Tokenizer | Kısa metin | Kompakt JSON | ÖZ/2 |
+| 64 jobs per call | Correct jobs | Total tokens vs 0.8 | Median time (0.8 to AKOR) |
 |---|---:|---:|---:|
-| o200k_base | 1.791 | 1.250 | **814** |
-| cl100k_base | 1.790 | 1.248 | **760** |
+| Opus 5.5 | 192/192 | **-47%** | 18.4 s to 13.4 s |
+| Sonnet 5.5 | 320/320 | **-47%** | 14.7 s to 11.0 s |
+| Fable 5.1 | 192/192 | **-45%** | 23.9 s to 18.6 s |
+| Haiku 5.5 | 320/320 | **-33%** | 19.5 s to 17.4 s |
 
-Bu örnekte kısa metne göre **%54,6–57,5**, JSON'a göre **%34,9–39,1** azalma. Küçük paketlerde metin/JSON kazanabiliyor; seçici onu kullanıyor. Altı alandaki 48 işi ayrı girdilerden 6 toplu girdiye taşımak yaklaşık **%72** azalma sağladı; bu ayrı karşılaştırmada bağlam tekrarının kaldırılması belirleyici. Gerçek görev başarısı veya toplam API hızlanması ölçülmedi. [Yöntem ve sınırlar](reports/OZ2-RESULTS.md).
+Totals include everything that was billed: the prompt, the CLI's own fixed overhead (about 950 tokens per call),
+the visible answer and hidden reasoning. Raw data and the harness are in [`bench/`](bench/).
 
-```powershell
-python -X utf8 -m examples.oz2_demo
-python -m unittest discover -s tests -v
-python -X utf8 -m oz_cli decode --channel examples/oz2-channel.json V
+## Quick start
+
+```bash
+pip install .
+oz demo ./demo
+oz status --workspace ./demo
 ```
 
-Yerel demo bağımsız işleri toplu teslim eder, inceleme ajanını öncüllerinin ACK'sine kadar bekletir ve durum kaydını model çağrısı olmadan işler. Gerçek araç/test yürütmez.
+<img src="docs/assets/demo.gif" alt="Terminal session: create a workspace, send a job, inspect the packet that reaches the model, run the demo and check status." width="100%">
 
-Kurulum: `python -m pip install .`. Komutlar: `oz decode`, `oz prompt`, `oz pack`. Token ölçümü için isteğe bağlı kurulum: `python -m pip install ".[benchmark]"`.
+Connect a real agent with the bundled `claude -p` adapter ([`examples/claude_cli_adapter.py`](examples/claude_cli_adapter.py)),
+or any program that reads one JSON request on stdin and prints one JSON reply. No API key is needed; AKOR uses
+the CLI login you already have.
 
-```powershell
-oz pack --channel examples/oz2-channel.json --messages examples/oz2-messages.json --encoding o200k_base --encoding cl100k_base --max-tokens 1200
+```bash
+oz init team --kind patch --source fix.diff --procedure checks.txt
+oz send V --id review --workspace team
+oz run --adapter adapter.json --workspace team --min-batch 32 --max-wait 30
 ```
 
-Kendi ajanına bağlamak için [ÖZ/2 sözleşmesi ve örnekleri](OZ2.md), [çalışan demo](examples/oz2_demo.py), [taşınabilir kanal](examples/oz2-channel.json). Çekirdek sağlayıcı hesabı/anahtarı gerektirmez; model ve araç adaptörü host'a aittir. Mevcut Orchestra Board veya başka projeler otomatik değiştirilmez.
+## What makes it work
 
-AKOR, farklı modellerin görev, bulgu, soru, öneri ve sonuçları kısa, denetlenebilir mesajlarla paylaşması için bağımsız bir prototiptir. Aşağıda desteklenmeye devam eden önceki **AKOR/1** metin biçimi anlatılır. Güncel ÖZ/2 kullanımı ayrı belgededir; canlı pilotlar ÖZ diline aittir.
+| | |
+|---|---|
+| **One call, many jobs** | Ready jobs are packed into one packet (64 by default). Rules, operation definitions and shared inputs are written once, not once per job. `--min-batch` and `--max-wait` let small jobs wait briefly for a bigger, cheaper call. |
+| **Deterministic work stays on the host** | Reading, test requests and status events never reach a model. A batch made only of such work completes with zero model calls. |
+| **One line per job, accepted per line** | The worker answers `[i,value]` or `[i,null,"reason"]` per line. Valid lines are kept; a missing, broken or duplicated line retries only its own job, at most twice. |
+| **Inputs are data, never instructions** | References and predecessor results travel as `{"input":…,"prior":[…]}`. The worker is told it has no tools and may not claim execution or verification. |
+| **Durable queue** | SQLite inbox with dependencies, retries, leases and resume. Exactly-once insertion, at-least-once delivery. |
+| **Every call on the books** | An append-only ledger (`calls.jsonl`) records tokens, cache use, time, validation and retries for each call. |
+| **Provider-neutral** | Adapters are plain stdin/stdout programs. Works with `claude -p` and `codex exec` logins. |
+| **Small core** | Python 3.10+, standard library only. `tiktoken` is optional for token counting. |
 
-## Bir mesaj nasıl görünür?
+A packet as the model sees it (from `oz plan --show-prompt`):
 
-```text
-do T1 lead>coder {"v":1,"goal":"Zaman aşımını düzelt.","refs":["R1"]}
-ask T1 coder>lead {"v":1,"q":"Sınır her deneme için mi toplam süre için mi?"}
-offer T1 lead>coder {"v":1,"change":"Her denemede 5 saniye; iki tekrar korunsun."}
-done T1 coder>lead {"v":1,"result":"Değişiklik hazır.","check":"not_run"}
+```json
+{"goal":"Review the timeout patch; keep the public API.",
+ "d":{"audit":"Review the supplied patch for defects and unintended public-API changes. …"},
+ "c":{"0":{"input":"--- a/retry.py … TIMEOUT = 5  # seconds per attempt"}},
+ "j":["audit 0"]}
 ```
 
-`do`: görev. `T1`: görev kimliği. `lead>coder`: gönderici ve alıcı. `v`: görevin bağlam revizyonu. `R1`: ortak görev tanımı, kısıtlar veya kanıtın değişmez referansı. İçerik Türkçe, İngilizce veya başka bir dilde olabilir.
+The job `V` asked for three steps (read, audit, test). Read and test ran on the host, so one job reached the model.
 
-| Komut | Anlamı | Gövdenin zorunlu alanları (`v` dışında) |
-|---|---|---|
-| `do` | Görev ver | `goal` |
-| `fact` | Bulgu veya çıkarım bildir | `claim`, `state` |
-| `ask` | Belirsizliği sor | `q` |
-| `need` | Eksik referansı iste | `ids` |
-| `offer` | Değişiklik öner | `change` |
-| `review` | Belirli bir öneriyi/sonucu incele | `on`, `verdict`, `reason` |
-| `block` | Engeli bildir | `why` |
-| `done` | Sonucu ve kontrol durumunu bildir | `result`, `check` |
-| `stop` | Durma isteğini bildir | `why` |
+## How it was built and measured
 
-`fact.state`: `observed`, `inferred`, `unknown`. Gözlem bir kanıt referansı gerektirir; referansın bulunması iddianın doğru olduğunu ispatlamaz. `done.check`: `passed`, `failed`, `not_run`. Yapılmayan test açıkça `not_run` olur. `review.on`, incelenen mesajın kimliğidir; `verdict` değeri `pass` veya `fail` olur.
+The wire format (ÖZ/9) was designed by one model and implemented and measured by another. Every proposal went
+through the same gate: a live run against a baseline doing the same work, fresh records every repetition,
+deterministic oracles for every job, strict validation as in the product, and failed calls counted.
 
-## Token nereden azalır?
+That gate caught real problems along the way: a model alias that silently pointed at an older model, a test
+harness that repaired replies the product would reject, and a compressed reply format that looked 55% cheaper
+offline but cost more live because of parsing failures. The full specification is in [`OZ9.md`](OZ9.md).
 
-- Uzun üstveri alanları yerine kısa ve sabit bir başlık kullanılır.
-- Tam konuşma dökümü yerine işlenmemiş mesajlar ilgili ajana gider.
-- Uzun ortak bilgi değişmez referanslarla paylaşılır. Tanım alıcının mevcut bağlamındaysa yeniden eklenmeyebilir.
-- Görev bağlamı, gerekli kanıtlar ve incelemenin hedefi eksikse paket bunları içerir. Yeni veya bağlamı özetlenmiş model oturumunda referans tanımları yeniden gönderilir.
-- Ajanlardan yeni bilgi vermeleri, önemli belirsizlikleri sormaları ve tamamlanan görevde durmaları istenir.
+## Limits
 
-Bu son davranış kuralları model talimatıdır. Aktarıcı içerik kalitesini veya modelin durmasını zorla garanti etmez. Sayılar, birimler, dosya konumları, olumsuz koşullar ve belirsizlikler kısaltma uğruna silinmez.
+- Savings come from batching. With 1 to 4 jobs per call there is no gain; the fixed per-call overhead dominates.
+- Mixed, sparse workloads save less: 28% on Sonnet 5.5 and 11% on Haiku 5.5 for 64 jobs across 3 domains.
+- Numbers come from one task family with oracles (field extraction, interval arithmetic, code repair, log reading). Your workload may differ; [`bench/`](bench/) lets you measure it.
+- Codex-based models are measured separately ([`bench/codex_kit`](bench/codex_kit/)); the Codex CLI adds about 24,500 fixed tokens per call.
 
-Karakter sayısı token sayısı değildir. Bu projede gerçek token sayımı için [OpenAI'nin tiktoken kütüphanesi](https://github.com/openai/tiktoken) kullanıldı. Sonuçlar yalnız seçilen tokenizer ve örnekler için geçerlidir.
+## Related work
 
-## Hemen dene
+AKOR combines known ideas and measures them strictly. Batch prompting ([Cheng et al. 2023](https://arxiv.org/abs/2301.08721))
+showed large savings from answering several samples in one call. LLMCompiler ([Kim et al. 2024](https://arxiv.org/abs/2312.04511))
+plans function calls as a dependency graph. LDP ([2026](https://arxiv.org/html/2603.08852v1)) and BabelTele
+([2026](https://arxiv.org/abs/2606.19857)) report 37% to 44% fewer tokens from structured or compressed agent messages.
+[Protocol Compression Changes Which Party Pays](https://arxiv.org/abs/2609.06129) shows that compression can raise total
+cost through parsing failures, the failure mode AKOR's per-line acceptance is built to contain. These works use
+different baselines, so their numbers are not directly comparable.
 
-Çekirdek Python 3.10+ ve standart kütüphaneyi kullanır; model hesabı veya API anahtarı istemez.
+## Documentation
 
-```powershell
-cd C:\Users\can02\Projects\akor
-python demo.py
-python -m akor validate examples/demo.akor
-python -m akor decode examples/demo.akor
-python -m unittest discover -s tests -v
-```
-
-Demo, iki sahte ajanın altı mesajını aktarır. İçindeki test sonuçları açıkça işaretlenmiş sentetik örneklerdir; demo gerçek model çağırmaz veya dosya düzeltmez.
-
-İsteğe bağlı yerel paket kurulumu: `python -m pip install .`. Kurulumdan sonra `akor validate examples/demo.akor` komutu da kullanılabilir. Bu klasörün dışından import etmek için paketi kurabilir veya modülü kendi projenize ekleyebilirsiniz.
-
-## Kendi ajan sistemine bağla
-
-1. [prompts/agent.txt](prompts/agent.txt) içeriğini her ajanın sistem talimatına ekle. Kullanılan model, ajan kimliği, görev ve yetkiler adaptör tarafından belirlenir.
-2. Her çalışma oturumu için bir `Hub` oluştur. Görevin amacını, kısıtlarını ve güncel kararlarını kısa bir referansa yaz; `set_task` ile bağla.
-3. Modelden gelen her satırı `post` ile doğrula. Göndericiyi modelin iddiasından değil kendi oturumundan belirle; tekrar denemede aynı mesaj kimliğini kullan.
-4. `prepare` çıktısını ilgili modele ver. Mesaj işlendiğinde `ack` çağır. Başarısız model çağrısında ACK verme; aynı paket yeniden hazırlanabilir.
-5. Hedef model oturumunda gerçekten bulunan referanslar biliniyorsa `retained_refs` belirt. Emin değilsen varsayılan boş değeri koru.
-
-```python
-from akor import Hub
-
-hub = Hub(["lead", "coder"])
-hub.add_ref("R1", "Amaç: zaman aşımı ekle. İki tekrar korunsun. Birim: saniye.")
-hub.set_task("T1", 1, ["R1"])
-
-hub.post("m1", 'do T1 lead>coder {"v":1,"goal":"İstemciyi incele.","refs":["R1"]}',
-         sender="lead")
-packet = hub.prepare("coder", max_bytes=16384)
-model_input = packet.render()  # Kendi model adaptörüne gönder.
-# Model çağrısı ve cevabın işlenmesi başarıyla tamamlandıktan sonra:
-# hub.ack("coder", packet.ids)
-```
-
-Gerçek tokenizer ile paket bütçesi de uygulanabilir:
-
-```python
-packet = hub.prepare("coder", max_tokens=1200, count_tokens=your_token_counter)
-```
-
-Bu bütçe yalnız paketi kapsar. Sistem talimatı, model çıktısı, araç çağrıları ve düşünme tokenleri ayrı bütçelenir. Bütçe aşılırsa içerik sessizce kesilmez; hata döner. `need` mesajını karşılamak, kaynağı doğrulamak ve modele gerekli içeriği vermek adaptörün sorumluluğudur.
-
-Adaptör için arayüz sözleşmesi [PROTOCOL.md](PROTOCOL.md) içinde. Hazır OpenAI, Claude, Gemini, CrewAI veya LangGraph bağlantısı eklenmedi; çekirdek bunlardan bağımsızdır.
-
-## Ölçüm ve sınırlar
-
-İngilizce kod ve Türkçe malzeme verisi olmak üzere iki sentetik konuşma, `o200k_base` ve `cl100k_base` ile sayıldı. Her format aynı alanları, referansları ve içeriği taşıyor. Karşılaştırmada hem kısa JSON nesnesi hem daha ekonomik JSON dizisi var. Dil talimatı ve gerekli bağlamı her çağrıda yeniden sayan ölçüm ayrıca raporlanıyor.
-
-Sonuçlar ve yöntem: [reports/RESULTS.md](reports/RESULTS.md). Ham sayımlar: [reports/token-counts.json](reports/token-counts.json).
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements-benchmark.txt
-.\.venv\Scripts\python.exe benchmark.py --output reports/token-counts.json
-```
-
-Ölçüm bağımlılığı yalnız proje içindeki sanal ortama kurulur. Tokenizer ilk çalışmada sözlük dosyalarını indirebilir; bunlar `.token-cache` altında tutulur. Örnek içerik bir model sağlayıcısına gönderilmez.
-
-AKOR/1 `Hub` aktarımı bellektedir; süreç kapanınca kaybolur. ÖZ/2 için ayrı `oz_runtime.Inbox` kalıcı kuyruk sağlar. Paket ağ sunucusu, hazır sağlayıcı adaptörü veya araç yetkilendirmesi uygulayan bir servis değildir. `do`, `review pass` veya `done` tek başına araç çalıştırmaz, kullanıcı izni vermez ya da görevi kapatmaz. Ajanlar ve kaynaklar güvenilmeyen içerik olarak ele alınır.
-
-İlk canlı pilotta aynı görevleri kısa düz yazı, JSON ve AKOR ile çalıştırıp başarı oranı, yanlış anlama, düzeltme turu, gecikme ve sağlayıcının toplam kullanımını karşılaştırmak gerekir. Daha düşük mesaj tokeni tek başına daha düşük toplam maliyet veya daha iyi sonuç anlamına gelmez.
+- [`OZ9.md`](OZ9.md): the protocol and host design, normative.
+- [`USAGE.md`](USAGE.md): command-line guide (Turkish).
+- [`bench/`](bench/): live measurement harness, raw results and the Codex kit.
+- [`docs/HISTORY.tr.md`](docs/HISTORY.tr.md): earlier releases 0.4 to 0.9 (Turkish).

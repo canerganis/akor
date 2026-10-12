@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="t d">
+  <title id="t">How AKOR moves work between agents</title>
+  <desc id="d">Ready jobs from several agents are packed into one worker call. The model answers one line per job. Each valid line is accepted on its own; one bad line sends only its own job back to the queue.</desc>
+  <style>
+    .bg { fill: #fcfcfb; }
+    .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
+    .ink { fill: #0b0b0b; }
+    .ink2 { fill: #52514e; }
+    .mono { font-family: "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace; }
+    .sans { font-family: -apple-system, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+    .job { fill: #2a78d6; }
+    .job-host { fill: #8a8984; }
+    .wire { stroke: #b9b8b2; stroke-width: 2; fill: none; stroke-dasharray: 6 6; animation: dash 1.2s linear infinite; }
+    .packet { fill: #2a78d6; }
+    .ok { fill: #1a7f4b; }
+    .warn { fill: #b45f00; }
+    .line { fill: #f3f2ee; stroke: #e2e1dc; }
+    @keyframes dash { to { stroke-dashoffset: -24; } }
+
+    /* 9 s loop: jobs gather (0-25%), one call (25-45%), lines return (45-80%), accept + one retry (80-100%) */
+    .j { animation: gather 9s ease-in-out infinite; }
+    @keyframes gather {
+      0%, 6% { transform: translate(0, 0); opacity: 1; }
+      24% { transform: translate(var(--dx), var(--dy)); opacity: 1; }
+      27%, 100% { transform: translate(var(--dx), var(--dy)); opacity: 0; }
+    }
+    .pk { animation: pk 9s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    @keyframes pk {
+      0%, 22% { opacity: 0; transform: translateX(0) scale(.9); }
+      27% { opacity: 1; transform: translateX(0) scale(1); }
+      42% { opacity: 1; transform: translateX(250px) scale(1); }
+      46%, 100% { opacity: 0; transform: translateX(250px) scale(.9); }
+    }
+    .model-glow { animation: glow 9s ease-in-out infinite; }
+    @keyframes glow {
+      0%, 40% { opacity: 0; } 48%, 58% { opacity: 1; } 66%, 100% { opacity: 0; }
+    }
+    .ln { opacity: 0; animation: ln 9s ease-out infinite; animation-delay: var(--t); }
+    @keyframes ln {
+      0%, 52% { opacity: 0; transform: translateX(-14px); }
+      58%, 96% { opacity: 1; transform: translateX(0); }
+      100% { opacity: 0; transform: translateX(0); }
+    }
+    .mark { opacity: 0; animation: mark 9s ease-out infinite; }
+    @keyframes mark { 0%, 80% { opacity: 0; } 84%, 96% { opacity: 1; } 100% { opacity: 0; } }
+    .back { opacity: 0; animation: back 9s ease-in-out infinite; }
+    @keyframes back {
+      0%, 84% { opacity: 0; transform: translate(0, 0); }
+      86% { opacity: 1; transform: translate(0, 0); }
+      97% { opacity: 1; transform: translate(-632px, -150px); }
+      100% { opacity: 0; transform: translate(-632px, -150px); }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #1a1a19; }
+      .panel { fill: #232322; stroke: #3a3a38; }
+      .ink { fill: #ffffff; }
+      .ink2 { fill: #c3c2b7; }
+      .job, .packet { fill: #3987e5; }
+      .job-host { fill: #75746f; }
+      .wire { stroke: #55554f; }
+      .ok { fill: #3cb371; }
+      .warn { fill: #e08a1e; }
+      .line { fill: #2b2b29; stroke: #3a3a38; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .j, .pk, .model-glow, .ln, .mark, .back, .wire { animation: none; }
+      .ln, .mark { opacity: 1; }
+    }
+  </style>
+
+  <rect class="bg" width="960" height="360" rx="16"/>
+
+  <!-- Column 1: ready jobs -->
+  <rect class="panel" x="24" y="56" width="236" height="272" rx="12"/>
+  <text class="ink sans" x="40" y="44" font-size="15" font-weight="600">1  Ready jobs</text>
+  <text class="ink2 sans" x="40" y="318" font-size="12">from planner, reviewer, coder</text>
+
+  <g class="sans" font-size="12">
+    <g class="j" style="--dx:118px; --dy:62px"><rect class="job" x="44" y="76" width="88" height="26" rx="6"/><text x="56" y="93" fill="#fff">extract 0</text></g>
+    <g class="j" style="--dx:18px; --dy:62px"><rect class="job" x="144" y="76" width="96" height="26" rx="6"/><text x="156" y="93" fill="#fff">bounds 0</text></g>
+    <g class="j" style="--dx:118px; --dy:24px"><rect class="job" x="44" y="114" width="88" height="26" rx="6"/><text x="56" y="131" fill="#fff">review 1</text></g>
+    <g class="j" style="--dx:18px; --dy:24px"><rect class="job" x="144" y="114" width="96" height="26" rx="6"/><text x="156" y="131" fill="#fff">propose 2</text></g>
+    <g class="j" style="--dx:118px; --dy:-14px"><rect class="job" x="44" y="152" width="88" height="26" rx="6"/><text x="56" y="169" fill="#fff">classify 3</text></g>
+    <g class="j" style="--dx:18px; --dy:-14px"><rect class="job" x="144" y="152" width="96" height="26" rx="6"/><text x="156" y="169" fill="#fff">extract 4</text></g>
+    <g><rect class="job-host" x="44" y="206" width="196" height="26" rx="6"/><text x="56" y="223" fill="#fff">read · test · status → host, no call</text></g>
+  </g>
+  <text class="ink2 sans" x="44" y="262" font-size="12">deterministic work never reaches</text>
+  <text class="ink2 sans" x="44" y="278" font-size="12">a model</text>
+
+  <!-- wire 1 -> 2 -->
+  <path class="wire" d="M262 190 H 318"/>
+
+  <!-- Column 2: one call -->
+  <rect class="panel" x="320" y="56" width="236" height="272" rx="12"/>
+  <text class="ink sans" x="336" y="44" font-size="15" font-weight="600">2  One call, many jobs</text>
+  <g class="pk">
+    <rect class="packet" x="340" y="140" width="196" height="96" rx="10"/>
+    <text class="mono" x="356" y="168" font-size="12" fill="#fff">{"goal":…,"d":{…},</text>
+    <text class="mono" x="356" y="186" font-size="12" fill="#fff"> "c":{"0":…},</text>
+    <text class="mono" x="356" y="204" font-size="12" fill="#fff"> "j":["extract 0",…]}</text>
+    <text class="sans" x="356" y="226" font-size="11" fill="#dbe8f8">rules once · refs once</text>
+  </g>
+  <text class="ink2 sans" x="336" y="290" font-size="12">shared rules and inputs sent once,</text>
+  <text class="ink2 sans" x="336" y="306" font-size="12">not repeated per job</text>
+
+  <!-- wire 2 -> 3 -->
+  <path class="wire" d="M558 190 H 614"/>
+
+  <!-- Column 3: model reply, accepted per line -->
+  <rect class="panel" x="616" y="56" width="320" height="272" rx="12"/>
+  <rect class="model-glow" x="616" y="56" width="320" height="272" rx="12" fill="none" stroke="#2a78d6" stroke-width="3"/>
+  <text class="ink sans" x="632" y="44" font-size="15" font-weight="600">3  One line per job, accepted per line</text>
+
+  <g class="mono" font-size="12">
+    <g class="ln" style="--t:0s"><rect class="line" x="636" y="80" width="230" height="28" rx="6"/><text class="ink" x="648" y="99">[0,["12.50 mm","0.02 mm"]]</text></g>
+    <g class="ln" style="--t:.15s"><rect class="line" x="636" y="116" width="230" height="28" rx="6"/><text class="ink" x="648" y="135">[1,["12.48 mm","12.52 mm"]]</text></g>
+    <g class="ln" style="--t:.3s"><rect class="line" x="636" y="152" width="230" height="28" rx="6"/><text class="ink" x="648" y="171">[2,"Looks safe: API kept"]</text></g>
+    <g class="ln" style="--t:.45s"><rect class="line" x="636" y="188" width="230" height="28" rx="6"/><text class="ink" x="648" y="207">[3,"Plan: 3 steps"]</text></g>
+    <g class="ln" style="--t:.6s"><rect class="line" x="636" y="224" width="230" height="28" rx="6"/><text class="ink" x="648" y="243">[4,"inside"]</text></g>
+    <g class="ln" style="--t:.75s"><rect class="line" x="636" y="260" width="230" height="28" rx="6"/><text class="ink" x="648" y="279">[5,"12.4</text></g>
+  </g>
+
+  <g class="sans" font-size="12" font-weight="600">
+    <g class="mark"><circle class="ok" cx="888" cy="94" r="10"/><path d="M883 94 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
+    <g class="mark"><circle class="ok" cx="888" cy="130" r="10"/><path d="M883 130 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
+    <g class="mark"><circle class="ok" cx="888" cy="166" r="10"/><path d="M883 166 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
+    <g class="mark"><circle class="ok" cx="888" cy="202" r="10"/><path d="M883 202 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
+    <g class="mark"><circle class="ok" cx="888" cy="238" r="10"/><path d="M883 238 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
+    <g class="mark"><circle class="warn" cx="888" cy="274" r="10"/><text x="884" y="279" fill="#fff">!</text></g>
+    <g class="mark"><text class="ink2" x="790" y="318" font-weight="400">broken line: only job 5 retries</text></g>
+  </g>
+
+  <!-- the retried job travels back to the queue -->
+  <g class="back sans" font-size="12"><rect class="warn" x="676" y="262" width="88" height="26" rx="6"/><text x="688" y="279" fill="#fff">extract 5</text></g>
+</svg>

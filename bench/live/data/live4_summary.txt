@@ -1,0 +1,34 @@
+Live, FIX_E applied to every arm (clarified extraction job). 18 calls per arm.
+0.8-exec valid 17/18 jobs 110/126 in 30775 out 7208 total 37983 (+0.0%) protocol 21693 (+0.0%) out (+0.0%) median 3.4s
+F        valid 18/18 jobs 110/126 in 26258 out 5569 total 31827 (-16.2%) protocol 15537 (-28.4%) out (-22.7%) median 3.2s
+C1       valid 18/18 jobs 109/126 in 26051 out 6252 total 32303 (-15.0%) protocol 16013 (-26.2%) out (-13.3%) median 2.7s
+C2       valid 17/18 jobs 114/126 in 25822 out 5834 total 31656 (-16.7%) protocol 15366 (-29.2%) out (-19.1%) median 3.5s
+
+Per n (total per call, protocol per call):
+  n=1: 0.8-exec 1373 (+0%) prot 468 (+0%) jobs 6/6 | F 1397 (+2%) prot 492 (+5%) jobs 6/6 | C1 1442 (+5%) prot 537 (+15%) jobs 4/6 | C2 1362 (-1%) prot 457 (-2%) jobs 5/6
+  n=4: 0.8-exec 1789 (+0%) prot 884 (+0%) jobs 24/24 | F 1668 (-7%) prot 763 (-14%) jobs 21/24 | C1 1653 (-8%) prot 748 (-15%) jobs 21/24 | C2 1634 (-9%) prot 729 (-18%) jobs 21/24
+  n=16: 0.8-exec 3169 (+0%) prot 2264 (+0%) jobs 80/96 | F 2240 (-29%) prot 1335 (-41%) jobs 83/96 | C1 2288 (-28%) prot 1383 (-39%) jobs 84/96 | C2 2280 (-28%) prot 1375 (-39%) jobs 88/96
+
+Invalid or failing:
+- C2 materials n=1 INVALID Extra data: line 3 column 1 (char 76) pass 0/1: '{"results":[["12.50 mm","0.02 mm","3","unknown","unknown","not_claimed"]]}\n\nWait — the instruction says to exclude the named fields and return only va'
+- C2 materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- F materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- C1 materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- F materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- C2 materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- C1 materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- C1 materials n=1 valid pass 0/1: '{"results":[[]]}'
+- C1 materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- F materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- C2 materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- C1 materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- F materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- C2 materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- 0.8-exec code n=16 INVALID no results pass 0/16: '{"results":[["co_01",0,"return sum(xs) / len(xs) if xs else None"],["co_02",0,"[null,3.0,3.0]".replace("null","null")],["co_03",0,"[null,3.0,3.0]"],["'
+- C1 materials n=1 valid pass 0/1: '{"results":[[]]}'
+- F materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- C2 materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- C1 materials n=4 valid pass 3/4: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside"]}'
+- F materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- C1 materials n=16 valid pass 12/16: '{"results":[[],["12.48 mm","12.52 mm"],["method","basis"],"inside",[],["12.44 mm","12.50 mm"],[],"outside",[],["12.50 mm","12.52 mm"],[],"inside",[],"'
+- F code n=16 valid pass 15/16: '{"results":["return sum(xs) / len(xs) if xs else None","[\\"ZeroDivisionError\\",3.0,3.0]",[null,3.0,3.0],[0],"return xs[0] if xs else None",[null,"Inde'

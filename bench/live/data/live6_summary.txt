@@ -1,0 +1,7 @@
+Distinct jobs: 16 generated materials records x 4 codes (e,b,m,v); 3 calls per cell.
+  n=32 0.8-exec calls 3 valid 3 jobs 96/96 in/call 3691 out/call 1503 total/call 5194 median 7.9s
+  n=32 F        calls 3 valid 3 jobs 96/96 in/call 1897 out/call 1063 total/call 2961 median 7.0s
+  n=32 F vs 0.8-exec: total -43.0%, protocol -52.1%, output -29.3%
+  n=64 0.8-exec calls 3 valid 3 jobs 192/192 in/call 6211 out/call 2883 total/call 9093 median 14.0s
+  n=64 F        calls 3 valid 3 jobs 192/192 in/call 2425 out/call 1690 total/call 4115 median 9.2s
+  n=64 F vs 0.8-exec: total -54.7%, protocol -60.8%, output -41.4%
