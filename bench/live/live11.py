@@ -293,6 +293,30 @@ def _s1e(n):
     return system, body, lambda reply: stage1e_flat(reply, ids), True
 
 
+def stage1f_packet(n):
+    """Stage 1f: {v,goal,ops[],refs[],jobs:[[op_index,[id,ref_index],...],...]}."""
+    import oz_batch
+    _, body, _, _ = ARMS['N'](n)
+    b = json.loads(body)
+    jobs = X.V.jobs('materials', n)
+    ops, op_idx, refs, ref_idx, blocks = [], {}, [], {}, {}
+    for job, item in zip(jobs, b['j']):
+        op, _, ref = item.partition(' ')
+        if op not in op_idx:
+            op_idx[op] = len(ops); ops.append(b['d'][op]); blocks[op] = [op_idx[op]]
+        if ref not in ref_idx:
+            ref_idx[ref] = len(refs); refs.append(b['c'][ref])
+        blocks[op].append([job, ref_idx[ref]])
+    body = {'v': '1f', 'goal': b['goal'], 'ops': ops, 'refs': refs, 'jobs': list(blocks.values())}
+    return oz_batch.SYSTEM, json.dumps(body, ensure_ascii=False, separators=(',', ':')), jobs
+
+
+@arm('S1f')
+def _s1f(n):
+    system, body, ids = stage1f_packet(n)
+    return system, body, lambda reply: stage1e_flat(reply, ids), True
+
+
 if __name__ == '__main__':
     run(os.environ.get('ARMS', '0.8-exec,F,R1').split(','), [int(x) for x in os.environ.get('SIZES', '32,64').split(',')],
         int(os.environ.get('REPS', '5')))
