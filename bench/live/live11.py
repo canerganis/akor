@@ -262,6 +262,37 @@ def _s1d(n):
     return system, body, lambda reply: stage1d_flat(reply, ids), True
 
 
+def stage1e_packet(n):
+    """Stage 1e: {v,ops,refs,jobs}; jobs [id,op,[key]]; records once in refs as d0, d1, ..."""
+    import oz_batch
+    _, body, _, _ = ARMS['N'](n)
+    b = json.loads(body)
+    jobs = X.V.jobs('materials', n)
+    refs, key_of, j = {}, {}, []
+    for job, item in zip(jobs, b['j']):
+        op, _, ref = item.partition(' ')
+        if ref not in key_of:
+            key_of[ref] = f'd{len(key_of)}'
+            refs[key_of[ref]] = b['c'][ref]
+        j.append([job, op, [key_of[ref]]])
+    return oz_batch.SYSTEM, json.dumps({'v': 'oz/1e', 'ops': b['d'], 'refs': refs, 'jobs': j},
+                                       ensure_ascii=False, separators=(',', ':')), jobs
+
+
+def stage1e_flat(reply, ids):
+    from oz_reply import parse_reply
+    parsed = parse_reply(reply, ids)
+    if parsed.rejection:
+        raise ValueError(parsed.rejection)
+    return [(i in parsed.accepted, parsed.accepted.get(i)) for i in ids]
+
+
+@arm('S1e')
+def _s1e(n):
+    system, body, ids = stage1e_packet(n)
+    return system, body, lambda reply: stage1e_flat(reply, ids), True
+
+
 if __name__ == '__main__':
     run(os.environ.get('ARMS', '0.8-exec,F,R1').split(','), [int(x) for x in os.environ.get('SIZES', '32,64').split(',')],
         int(os.environ.get('REPS', '5')))

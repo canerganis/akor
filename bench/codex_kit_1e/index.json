@@ -1,0 +1,86 @@
+[
+ {
+  "file": "rep0_n32_0.8-exec.txt",
+  "rep": 0,
+  "n": 32,
+  "arm": "0.8-exec",
+  "o200k": 1713
+ },
+ {
+  "file": "rep0_n32_S1e.txt",
+  "rep": 0,
+  "n": 32,
+  "arm": "S1e",
+  "o200k": 1159
+ },
+ {
+  "file": "rep0_n64_0.8-exec.txt",
+  "rep": 0,
+  "n": 64,
+  "arm": "0.8-exec",
+  "o200k": 3268
+ },
+ {
+  "file": "rep0_n64_S1e.txt",
+  "rep": 0,
+  "n": 64,
+  "arm": "S1e",
+  "o200k": 1810
+ },
+ {
+  "file": "rep1_n32_0.8-exec.txt",
+  "rep": 1,
+  "n": 32,
+  "arm": "0.8-exec",
+  "o200k": 1709
+ },
+ {
+  "file": "rep1_n32_S1e.txt",
+  "rep": 1,
+  "n": 32,
+  "arm": "S1e",
+  "o200k": 1155
+ },
+ {
+  "file": "rep1_n64_0.8-exec.txt",
+  "rep": 1,
+  "n": 64,
+  "arm": "0.8-exec",
+  "o200k": 3259
+ },
+ {
+  "file": "rep1_n64_S1e.txt",
+  "rep": 1,
+  "n": 64,
+  "arm": "S1e",
+  "o200k": 1801
+ },
+ {
+  "file": "rep2_n32_0.8-exec.txt",
+  "rep": 2,
+  "n": 32,
+  "arm": "0.8-exec",
+  "o200k": 1705
+ },
+ {
+  "file": "rep2_n32_S1e.txt",
+  "rep": 2,
+  "n": 32,
+  "arm": "S1e",
+  "o200k": 1151
+ },
+ {
+  "file": "rep2_n64_0.8-exec.txt",
+  "rep": 2,
+  "n": 64,
+  "arm": "0.8-exec",
+  "o200k": 3254
+ },
+ {
+  "file": "rep2_n64_S1e.txt",
+  "rep": 2,
+  "n": 64,
+  "arm": "S1e",
+  "o200k": 1796
+ }
+]
