@@ -67,7 +67,8 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(plan['ids'], ['first'])
         self.assertFalse(prompt.endswith('\n'))
         body = json.loads(prompt)
-        self.assertEqual(body['j'], [['first', 'propose', 'DEMO: ask for the measurement method before concluding.']])
+        self.assertEqual(body['jobs'], [['first', 'propose', ['d0']]])
+        self.assertEqual(body['refs'], {'d0': 'DEMO: ask for the measurement method before concluding.'})
         # The receipt is host-side only: no q field in the body, and the plan still works.
         self.assertNotIn('q', body)
         self.assertEqual(plan['system'], SYSTEM)
@@ -275,51 +276,42 @@ class WorkspaceTests(unittest.TestCase):
         self.assertNotIn('prompt', json.loads(out))
         self.assertNotIn('system', json.loads(out))
 
-    def test_plan_reply_mode_selects_the_system_text(self):
-        from oz_batch import SYSTEMS
+    def test_plan_sends_the_one_system_text_and_has_no_reply_mode_option(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
         self.cli('send', 'P', '--id', 'first', *base)
-        for args, mode in (((), 'jsonl'), (('--reply-mode', 'jsonl'), 'jsonl'), (('--reply-mode', 'value'), 'value')):
-            with self.subTest(args=args), patch('oz_workspace.token_counters', return_value=(len,)):
-                code, out, err = self.cli('plan', '--show-prompt', *args, *base)
-            self.assertEqual(code, 0, err)
-            self.assertEqual(json.loads(out)['system'], SYSTEMS[mode])
-        self.assertEqual(SYSTEMS['jsonl'], SYSTEM)
+        with patch('oz_workspace.token_counters', return_value=(len,)):
+            code, out, err = self.cli('plan', '--show-prompt', *base)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['system'], SYSTEM)
         for command in ('plan', 'run'):
             with self.subTest(command=command), self.assertRaises(SystemExit) as exit_, \
                     contextlib.redirect_stderr(io.StringIO()):
-                main([command, '--reply-mode', 'xml', *base] + (['--adapter', 'a.json'] if command == 'run' else []))
+                main([command, '--reply-mode', 'jsonl', *base] + (['--adapter', 'a.json'] if command == 'run' else []))
             self.assertEqual(exit_.exception.code, 2)
 
-    def test_run_reply_mode_value_uses_the_value_system_text_and_bare_results(self):
-        from oz_batch import SYSTEMS
+    def test_run_commits_job_errors_with_the_successes_and_blocks_their_dependants(self):
         initialize(self.root)
-        script = ('import json,sys; r=json.load(sys.stdin); j=json.loads(r["prompt"])["j"]; '
-                  'json.dump({"reply":json.dumps(r["system"][-30:])+"\n"+json.dumps(j[0])},sys.stdout)')
+        script = ('import json,sys; r=json.load(sys.stdin); j=json.loads(r["prompt"])["jobs"]; '
+                  'rows=[[j[0][0],"error","missing_data","Missing required field y."]]+[[x[0],"done"] for x in j[1:]]; '
+                  'json.dump({"reply":"\\n".join(json.dumps(x) for x in rows)},sys.stdout)')
         adapter = self.root / 'adapter.json'
         adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
         base = ('--workspace', str(self.root))
         self.cli('send', 'P', '--id', 'first', *base)
+        self.cli('send', 'P', '--id', 'second', *base)
+        self.cli('send', 'P', '--id', 'third', '--after', 'first', *base)
         with patch('oz_workspace.token_counters', return_value=(len,)):
-            code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000',
-                                      '--reply-mode', 'value', *base)
-        # Two different result lines are a protocol violation: nothing is accepted and the job retries.
+            code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000', '--max-calls', '3', *base)
+        # A failed job is a non-ok outcome: exit code 3, like any other unfinished run.
         self.assertEqual(code, 3, err)
-        run = json.loads(out)['runs'][0]
-        self.assertEqual((run['status'], run['reply_mode'], run['outcomes']), ('adapter_error', 'value', {'first': 'retry'}))
-        script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"reply":json.dumps(r["system"][-30:])},sys.stdout)')
-        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
-        self.cli('send', 'P', '--id', 'second', *base)  # 'first' is backing off after its rejected reply
-        with patch('oz_workspace.token_counters', return_value=(len,)):
-            code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000',
-                                      '--reply-mode', 'value', *base)
-        self.assertEqual(code, 0, err)
-        run = json.loads(out)['runs'][0]
-        self.assertEqual((run['status'], run['reply_mode']), ('received', 'value'))
+        runs = json.loads(out)['runs']
+        self.assertEqual(runs[0]['outcomes'], {'first': 'failed', 'second': 'ok'})
+        self.assertEqual(runs[1]['status'], 'idle')
         with Workspace(self.root).inbox() as box:
-            self.assertEqual(json.loads(box.inspect('second')['result']), {'results': ['', SYSTEMS["value"][-30:]]})
+            self.assertEqual(box.inspect('first')['error'], 'missing_data: Missing required field y.')
+            self.assertEqual(box.inspect('second')['result'], '{"results":["","done"]}')
+            self.assertEqual((box.inspect('third')['state'], box.inspect('third')['attempts']), ('pending', 0))
 
     def test_pack_prints_system_prompt_and_job_map(self):
         initialize(self.root)
@@ -335,15 +327,15 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         value = json.loads(out)
         self.assertEqual((value['mode'], value['system']), ('named', SYSTEM))
-        self.assertEqual(json.loads(value['prompt'])['j'],
-                         [['one', 'propose', 'DEMO: ask for the measurement method before concluding.'],
-                          ['two', 'literal_0', None]])
+        body = json.loads(value['prompt'])
+        self.assertEqual(body['jobs'], [['one', 'propose', ['d0']], ['two', 'literal_0', []]])
+        self.assertEqual(body['refs'], {'d0': 'DEMO: ask for the measurement method before concluding.'})
         self.assertEqual(value['job_map'], [['one', 1], ['two', 0]])
         self.assertEqual(value['packet_ids'], ['one', 'two'])
         self.assertNotIn('ref_map', value)
         self.assertNotIn('alternatives', value)
 
-    def test_context_option_accepts_only_needed_in_stage_1d(self):
+    def test_context_option_accepts_only_needed_in_stage_1e(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
         self.cli('send', '>2', '--id', 'first', *base)

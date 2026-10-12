@@ -17,13 +17,13 @@ CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
 
 
 def items(request):
-    """Number of model jobs (j items) in the request body."""
-    return len(json.loads(request['prompt'])['j'])
+    """Number of model jobs (jobs items) in the request body."""
+    return len(json.loads(request['prompt'])['jobs'])
 
 
 def reply(request, texts):
     """Adapter response: raw JSONL text, one [id,result] line per packet job, in request order."""
-    ids = [job[0] for job in json.loads(request['prompt'])['j']]
+    ids = [job[0] for job in json.loads(request['prompt'])['jobs']]
     return {'reply': chr(10).join(json.dumps([mid, text], ensure_ascii=False) for mid, text in zip(ids, texts))}
 
 
@@ -56,9 +56,9 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual(seen[0]['prompt_tokens'], [len(seen[0]['system']) + 1 + len(seen[0]['prompt'])])
         self.assertEqual(seen[0]['ids'], ['one', 'two'])
         self.assertEqual(seen[0]['system'], SYSTEM)
-        self.assertEqual([job[:2] for job in json.loads(seen[0]['prompt'])['j']],
+        self.assertEqual([job[:2] for job in json.loads(seen[0]['prompt'])['jobs']],
                          [['one.0', 'audit'], ['one.1', 'propose'], ['two', 'propose']])
-        self.assertNotIn('q', json.loads(seen[0]['prompt']))
+        self.assertEqual(list(json.loads(seen[0]['prompt'])), ['v', 'ops', 'refs', 'jobs'])
         self.assertEqual(len(seen), 1)
         self.assertEqual(self.box.stats(), {'done': 2})
         text = '12.50 ± 0.02 mm; method unknown.'
@@ -167,7 +167,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_stdio_adapter_real_process_round_trip_and_unicode(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'j=json.loads(r["prompt"])["j"]; '
+                  'j=json.loads(r["prompt"])["jobs"]; '
                   'json.dump({"reply":json.dumps([j[0][0],"12.50 ± 0.02 mm"],ensure_ascii=False)},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post(wire='>12')
@@ -177,7 +177,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_stdio_adapter_receives_oz9_request_with_packet_ids_in_prompt(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"reply":json.dumps([json.loads(r["prompt"])["j"][0][0],json.dumps(r)])},sys.stdout)')
+                  'json.dump({"reply":json.dumps([json.loads(r["prompt"])["jobs"][0][0],json.dumps(r)])},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post('secret_job', '>12')
         self.worker(adapter, timeout=10).run_once()
@@ -187,8 +187,8 @@ class WorkerTests(unittest.TestCase):
         self.assertEqual((request['protocol'], request['language'], request['ids']),
                          ('oz.adapter/3', 'OZ/9', ['secret_job']))
         self.assertEqual(request['system'], SYSTEM)
-        self.assertEqual(json.loads(request['prompt'])['j'],
-                         [['secret_job', 'propose', 'Use 5 seconds per attempt']])
+        self.assertEqual(json.loads(request['prompt'])['jobs'], [['secret_job', 'propose', ['d0']]])
+        self.assertEqual(json.loads(request['prompt'])['refs'], {'d0': 'Use 5 seconds per attempt'})
         self.assertNotIn('secret_job', request['system'])
 
     def test_stdio_does_not_interpret_shell_metacharacters(self):
@@ -228,9 +228,8 @@ class WorkerTests(unittest.TestCase):
         for option in ['encoding', 'min_savings']:
             with self.subTest(option=option), self.assertRaises(TypeError):
                 self.worker(lambda r: r, **{option: 'x'})
-        for mode in ['x', 'JSONL', '', None]:
-            with self.subTest(reply_mode=mode), self.assertRaises(Error):
-                self.worker(lambda r: r, reply_mode=mode)
+        with self.assertRaises(TypeError):
+            self.worker(lambda r: r, reply_mode='jsonl')
 
     def _counting_adapter(self, calls):
         def adapter(request):
@@ -299,7 +298,7 @@ class WorkerTests(unittest.TestCase):
             with self.subTest(kwargs=kwargs), self.assertRaises(Error):
                 self.worker(lambda r: r, **kwargs)
 
-    def test_context_policy_full_is_refused_in_stage_1d(self):
+    def test_context_policy_full_is_refused_in_stage_1e(self):
         self.post('one', '=13')
         with self.assertRaises(Error):
             self.worker(lambda r: reply(r, ['ok']), context_policy='full').run_once()
@@ -363,7 +362,7 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(end['outcome'], 'ok')
         self.assertEqual(end['validation'], dict(expected_results=3, received_results=3,
                                                  accepted_results=3, failed_results=0, violations=[],
-                                                 binding='declared', duplicate_lines=0, semantic_verified=False))
+                                                 binding='declared', semantic_verified=False))
         self.assertIsNotNone(end['started_at'])
         self.assertIsNotNone(end['ended_at'])
         self.assertIsInstance(end['elapsed_ms'], int)
@@ -407,15 +406,15 @@ class LedgerTests(unittest.TestCase):
 
     def test_invalid_response_outcome_keeps_validation_counts(self):
         self.post('one')
-        self.worker(lambda r: {'reply': '["one.0","a"]' + chr(10) + chr(10) + '["one.1","b"'},
+        self.worker(lambda r: {'reply': '["one.0","a"]' + chr(10) + '["one.1","b"'},
                     retry_delay=0).run_once()
         end = self.lines()[-1]
         # One valid line of two: nothing is accepted, the job retries as a whole.
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
             expected_results=2, received_results=1, accepted_results=0, failed_results=0,
-            violations=[{'line': 3, 'reason': 'malformed JSON line'}],
-            binding='declared', duplicate_lines=0, semantic_verified=False))
+            violations=[{'line': 2, 'reason': 'malformed JSON line'}],
+            binding='declared', semantic_verified=False))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
 
@@ -426,8 +425,9 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
             expected_results=2, received_results=1, accepted_results=0, failed_results=0,
-            violations=[{'line': 1, 'reason': 'line must be a two-element [id,result] array'}],
-            binding='declared', duplicate_lines=0, semantic_verified=False))
+            violations=[{'line': 1, 'reason': 'line must be a two-element [id,result] or four-element '
+                                              '[id,"error",code,detail] array'}],
+            binding='declared', semantic_verified=False))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
 
     def test_violations_are_capped_at_twenty(self):
@@ -435,7 +435,7 @@ class LedgerTests(unittest.TestCase):
         text = chr(10).join(['["one","ok"]'] + ['[7,'] * 30)
         self.worker(lambda r: {'reply': text}, retry_delay=0).run_once()
         end = self.lines()[-1]
-        # More than 2N non-blank lines: the whole reply is refused without judging line by line.
+        # Every line fails to parse: the whole reply is refused and the violation list stays capped.
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation']['accepted_results'], 0)
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
@@ -451,34 +451,36 @@ class LedgerTests(unittest.TestCase):
         self.worker(lambda r: {'reply': many}, retry_delay=0, batch_size=1).run_once()
         self.assertEqual(self.lines()[-1]['validation']['accepted_results'], 0)
 
-    def test_value_mode_records_host_binding_and_tolerated_duplicate_lines(self):
-        self.post('one', '>12')
-        self.worker(lambda r: {'reply': '"ok"' + chr(10) + ' "ok" 	' + chr(13)}, reply_mode='value').run_once()
-        end = self.lines()[-1]
-        self.assertEqual(end['outcome'], 'ok')
-        self.assertEqual(end['validation'], dict(
-            expected_results=1, received_results=2, accepted_results=1, failed_results=0, violations=[],
-            binding='host', duplicate_lines=1, semantic_verified=False))
-        self.assertEqual(self.box.inspect('one')['result'], 'ok')
-
-    def test_jsonl_tolerates_a_byte_identical_repeat_but_not_a_conflicting_one(self):
+    def test_job_errors_are_recorded_as_failed_results_and_a_job_error_outcome(self):
         self.post('one', '>12')
         self.post('two', '>12')
+        reply = '["one","error","missing_data","Missing x."]' + chr(10) + '["two","fine"]'
+        report = self.worker(lambda r: {'reply': reply}).run_once()
+        end = self.lines()[-1]
+        self.assertEqual((report['status'], report['outcomes']), ('received', {'one': 'failed', 'two': 'ok'}))
+        self.assertEqual(end['outcome'], 'job_error')
+        self.assertEqual(end['validation'], dict(
+            expected_results=2, received_results=2, accepted_results=1, failed_results=1, violations=[],
+            binding='declared', semantic_verified=False))
+        self.assertEqual(self.box.inspect('one')['error'], 'missing_data: Missing x.')
+        self.assertEqual(self.box.inspect('two')['result'], 'fine')
+
+    def test_a_repeated_line_is_rejected_whether_identical_or_conflicting(self):
+        self.post('one', '>12', max_attempts=5)
+        self.post('two', '>12', max_attempts=5)
         def twice(request):
             line = json.dumps(['one', 'a']) + chr(10) + json.dumps(['two', 'b'])
             return {'reply': line + chr(10) + chr(10).join(line.split(chr(10)))}
-        self.worker(twice).run_once()
+        self.worker(twice, retry_delay=0).run_once()
         end = self.lines()[-1]
-        self.assertEqual((end['outcome'], end['validation']['duplicate_lines']), ('ok', 2))
-        self.assertEqual((self.box.inspect('one')['result'], self.box.inspect('two')['result']), ('a', 'b'))
-        self.post('three', '>12')
-        self.post('four', '>12')
+        self.assertEqual((end['outcome'], end['validation']['accepted_results']), ('invalid_response', 0))
+        self.assertEqual(self.box.stats(), {'pending': 2})
         def conflicting(request):
-            return {'reply': '["three","a"]' + chr(10) + '["four","b"]' + chr(10) + '["three","c"]'}
+            return {'reply': '["one","a"]' + chr(10) + '["two","b"]' + chr(10) + '["one","c"]'}
         self.worker(conflicting, retry_delay=0).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'invalid_response')
-        self.assertEqual(self.box.stats(), {'done': 2, 'pending': 2})
+        self.assertEqual(self.box.stats(), {'pending': 2})
 
     def test_process_error_timeout_and_spawn_error_outcomes(self):
         self.post('one', '>12', max_attempts=10)

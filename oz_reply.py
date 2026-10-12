@@ -1,16 +1,15 @@
-"""OZ/9 replies, receipts, adapter capabilities and provider usage (wire stage-1d).
+"""OZ/9 replies, receipts, adapter capabilities and provider usage (wire stage-1e).
 
-A reply is raw model text in one of two modes (docs/design/stage-1d-astra.md). jsonl: one
-[id,result] array per line, id being the packet job ID. value: one result line for the single
-job. Acceptance is atomic: the whole reply is accepted or none of it. Lines are split on LF with
-only ASCII space, tab and CR stripped at both ends and blank lines ignored; byte-identical repeats
-count once (recorded as duplicate_lines); an unknown or conflicting ID, a malformed line, more than
-2N non-blank lines or an ID set that is not exactly the expected set rejects everything. Nothing
-is repaired or merged. The host, not the model, decides routing: an ID written by the model proves
-nothing about the answer next to it, so the ledger records binding "declared" (jsonl) or "host"
-(value) and semantic_verified false. regroup() folds the accepted results and the slots the host
-filled itself back into inbox jobs. Receipts stay host-side: the adapter request carries one per
-call attempt to correlate the reply; they are not authentication or proof.
+A reply is raw model text, one compact JSON array per packet job (docs/design/stage-1e-astra.md): [id,result]
+for a success, [id,"error",code,detail] for a job failure, id being the packet job ID. Acceptance is atomic:
+the whole reply is accepted or none of it. Lines are split on LF (CRLF accepted, one trailing line end optional);
+a blank line, a malformed line, an unknown, duplicate or missing ID, a line of any other length than two or four,
+a bad error code or detail, an unknown_operation for a defined operation or a success for an undefined one
+rejects everything. Nothing is repaired or merged. Valid successes and valid job failures are committed together.
+The host, not the model, decides routing: an ID written by the model proves nothing about the answer next to it,
+so the ledger records binding "declared" and semantic_verified false. regroup() folds the accepted results, the
+job failures and the slots the host filled itself back into inbox jobs. Receipts stay host-side: the adapter
+request carries one per call attempt to correlate the reply; they are not authentication or proof.
 """
 from __future__ import annotations
 
@@ -28,8 +27,9 @@ MAX_RESULT_BYTES = 65536
 MAX_LINE_BYTES = 65536
 CAPTURE_SLACK = 4096
 MAX_VIOLATIONS = 20
-STRIP = ' \t\r'
-BINDINGS = {'jsonl': 'declared', 'value': 'host'}
+BINDING = 'declared'
+ERROR_CODES = ('unknown_operation', 'missing_data', 'invalid_input', 'cannot_complete')
+MAX_DETAIL = 256
 RETRY_REASON = 'adapter_invalid_reply (Error)'
 
 
@@ -92,44 +92,55 @@ def slot_ids(job_map) -> tuple[str, ...]:
 class Parsed:
     """Outcome of one reply text, accepted or rejected as a whole.
 
-    accepted maps packet job ID -> result value (empty when rejected); received counts the lines that
-    parsed as JSON; duplicate_lines counts byte-identical repeated lines that were tolerated;
-    violations lists {line, reason} (1-based, capped, line 0 for the whole text);
-    rejection is the reason the whole reply was refused, else None.
+    accepted maps packet job ID -> result value and failed maps packet job ID -> (code, detail) for a valid
+    job failure; both are empty when the reply is rejected. received counts the lines that parsed as JSON;
+    violations lists {line, reason} (1-based, capped, line 0 for the whole text); rejection is the reason
+    the whole reply was refused, else None.
     """
     expected: int
     accepted: dict
     received: int
     violations: tuple
     rejection: str | None = None
-    duplicate_lines: int = 0
+    failed: dict = field(default_factory=dict)
 
 
-def _rejected(n: int, received: int, bad: dict, reason: str, duplicates: int = 0) -> Parsed:
+def _rejected(n: int, received: int, bad: dict, reason: str) -> Parsed:
     violations = tuple({'line': number, 'reason': bad[number]} for number in sorted(bad))[:MAX_VIOLATIONS]
-    return Parsed(n, {}, received, violations or ({'line': 0, 'reason': reason},), reason, duplicates)
+    return Parsed(n, {}, received, violations or ({'line': 0, 'reason': reason},), reason)
 
 
-def parse_reply(text: object, ids, mode: str = 'jsonl') -> Parsed:
-    """Judge a reply for the expected packet job IDs (one ID in value mode, where lines carry no ID)."""
-    if mode not in BINDINGS:
-        raise Error('reply mode must be jsonl or value')
+def _encodable(text: str) -> bool:
+    try:
+        text.encode('utf-8')
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def parse_reply(text: object, ids, undefined=()) -> Parsed:
+    """Judge a reply for the expected packet job IDs.
+
+    undefined lists the IDs whose operation is absent from the request's ops: those jobs may only answer
+    unknown_operation, and no other job may."""
     ids = tuple(ids)
     n = len(ids)
-    if mode == 'value' and n != 1:
-        raise Error('value mode expects exactly one job')
+    undefined = frozenset(undefined)
     if not isinstance(text, str):
         raise Error('reply must be raw text')
     if len(text.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES * n + CAPTURE_SLACK:
         return _rejected(n, 0, {}, 'reply exceeds the total capture limit')
-    lines = [(number, raw.strip(STRIP)) for number, raw in enumerate(text.split('\n'), 1)]
-    lines = [(number, line) for number, line in lines if line]
-    if len(lines) > 2 * n:
-        return _rejected(n, 0, {}, f'more than {2 * n} non-blank lines')
+    lines = text.split('\n')
+    if lines[-1] == '':
+        lines.pop()
     if not lines:
         return _rejected(n, 0, {}, 'reply has no result line')
-    bad, received, rows = {}, 0, []
-    for number, line in lines:
+    bad, received, seen = {}, 0, {}
+    for number, line in enumerate(lines, 1):
+        line = line[:-1] if line.endswith('\r') else line
+        if not line.strip(' \t'):
+            bad[number] = 'blank line'
+            continue
         if len(line.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES:
             bad[number] = f'line exceeds {MAX_LINE_BYTES} bytes'
             continue
@@ -139,34 +150,45 @@ def parse_reply(text: object, ids, mode: str = 'jsonl') -> Parsed:
             bad[number] = 'malformed JSON line'
             continue
         received += 1
-        if mode == 'jsonl':
-            if not isinstance(value, list) or len(value) != 2:
-                bad[number] = 'line must be a two-element [id,result] array'
-                continue
-            if not isinstance(value[0], str) or value[0] not in ids:
-                bad[number] = 'unknown or non-string id'
-                continue
-            key, result = value
-        else:
-            key, result = ids[0], value
-        try:
-            _store(result)
-        except (ValueError, UnicodeEncodeError):
-            bad[number] = 'result is not storable or exceeds its size limit'
+        if not isinstance(value, list) or len(value) not in (2, 4):
+            bad[number] = 'line must be a two-element [id,result] or four-element [id,"error",code,detail] array'
             continue
-        rows.append((number, key, line, result))
+        key = value[0]
+        if not isinstance(key, str) or key not in ids:
+            bad[number] = 'unknown or non-string id'
+            continue
+        if key in seen:
+            bad[number] = f'duplicate id {key}'
+            continue
+        if len(value) == 2:
+            if key in undefined:
+                bad[number] = f'id {key} has an undefined operation and can only answer unknown_operation'
+                continue
+            try:
+                _store(value[1])
+            except (ValueError, UnicodeEncodeError):
+                bad[number] = 'result is not storable or exceeds its size limit'
+                continue
+            seen[key] = (True, value[1])
+            continue
+        _, marker, code, detail = value
+        if not isinstance(marker, str) or marker != 'error':
+            bad[number] = 'a four-element line must have "error" as its second element'
+        elif not isinstance(code, str) or code not in ERROR_CODES:
+            bad[number] = 'error code must be one of ' + ', '.join(ERROR_CODES)
+        elif not isinstance(detail, str) or not 1 <= len(detail) <= MAX_DETAIL or not _encodable(detail):
+            bad[number] = f'error detail must be a string of 1..{MAX_DETAIL} Unicode code points'
+        elif (code == 'unknown_operation') != (key in undefined):
+            bad[number] = (f'unknown_operation for defined operation of id {key}' if code == 'unknown_operation'
+                           else f'id {key} has an undefined operation and can only answer unknown_operation')
+        else:
+            seen[key] = (False, (code, detail))
     if bad:
         return _rejected(n, received, bad, 'a malformed or unknown line rejects the whole reply')
-    seen = {}
-    for number, key, line, result in rows:
-        if seen.setdefault(key, (line, result))[0] != line:
-            bad[number] = f'conflicting lines for id {key}' if mode == 'jsonl' else 'conflicting result lines'
-    duplicates = len(rows) - len(seen)
-    if bad:
-        return _rejected(n, received, bad, 'conflicting lines reject the whole reply', duplicates)
     if set(seen) != set(ids):
-        return _rejected(n, received, {}, 'the reply does not cover exactly the expected jobs', duplicates)
-    return Parsed(n, {key: result for key, (_, result) in seen.items()}, received, (), None, duplicates)
+        return _rejected(n, received, {}, 'the reply does not cover exactly the expected jobs')
+    return Parsed(n, {k: v for k, (ok, v) in seen.items() if ok}, received, (), None,
+                  {k: v for k, (ok, v) in seen.items() if not ok})
 
 
 @dataclass(frozen=True)
@@ -175,22 +197,24 @@ class Regrouped:
 
     values maps the ID of every ok job to the compact JSON of its accepted native value
     (single slot: the value; several slots: {"results":[...]}), which is what dependents receive.
+    A failed job's text is "<code>: <detail>" of its first failing slot (atom order).
     """
     outcomes: dict
     parsed: Parsed
     values: dict = field(default_factory=dict)
 
 
-def regroup(text: object, job_map, host_slots=(), mode: str = 'jsonl') -> Regrouped:
+def regroup(text: object, job_map, host_slots=(), undefined=()) -> Regrouped:
     """Parse a reply with one slot per job_map entry, then fold all slots into one outcome per inbox job.
 
     job_map lists (inbox job ID, atom index) per model slot; host_slots lists (inbox job ID, atom index,
-    value) for slots the host filled itself. A single-slot job keeps its value. A multi-slot job stores
-    {"results":[...]} in atom order. The reply is accepted whole or rejected whole: after a rejection every
-    model job is ('retry', reason).
+    value) for slots the host filled itself; undefined lists packet job IDs whose operation the request did
+    not define. A single-slot job keeps its value. A multi-slot job stores {"results":[...]} in atom order and
+    fails when any of its slots reported a job error. The reply is accepted whole or rejected whole: after a
+    rejection every model job is ('retry', reason).
     """
     job_map = tuple(job_map)
-    parsed = parse_reply(text, slot_ids(job_map), mode) if job_map else Parsed(0, {}, 0, ())
+    parsed = parse_reply(text, slot_ids(job_map), undefined) if job_map else Parsed(0, {}, 0, ())
     groups = {}
     for pid, (mid, atom) in zip(slot_ids(job_map), job_map):
         groups.setdefault(mid, []).append((atom, pid, True))
@@ -199,8 +223,12 @@ def regroup(text: object, job_map, host_slots=(), mode: str = 'jsonl') -> Regrou
     outcomes, values = {}, {}
     for mid, slots in groups.items():
         slots.sort(key=lambda slot: slot[0])
-        if any(model and pid not in parsed.accepted for _, pid, model in slots):
+        if any(model and pid not in parsed.accepted and pid not in parsed.failed for _, pid, model in slots):
             outcomes[mid] = ('retry', RETRY_REASON)
+            continue
+        failure = next((parsed.failed[pid] for _, pid, model in slots if model and pid in parsed.failed), None)
+        if failure is not None:
+            outcomes[mid] = ('failed', f'{failure[0]}: {failure[1]}')
             continue
         parts = [parsed.accepted[pid] if model else pid for _, pid, model in slots]
         try:
@@ -231,14 +259,26 @@ def validate_usage(value: object) -> dict:
     return dict(value)
 
 
-def validate_response(value: object, job_map, host_slots=(), mode: str = 'jsonl') -> tuple[Regrouped, dict]:
+def validate_response(value: object, job_map, host_slots=(), undefined=()) -> tuple[Regrouped, dict]:
     """Adapter response {"reply": "<raw text>", "usage":...}; usage comes from provider accounting."""
     if not isinstance(value, dict) or 'reply' not in value or set(value) - {'reply', 'usage'}:
         raise Error('adapter response must be {"reply":...,"usage":...}')
     usage = validate_usage(value.get('usage', {}))
-    return regroup(value['reply'], job_map, host_slots, mode), usage
+    return regroup(value['reply'], job_map, host_slots, undefined), usage
+
+
+@dataclass(frozen=True)
+class Failure:
+    """A job failure for encode_reply."""
+    code: str
+    detail: str
 
 
 def encode_reply(results: dict, ids=None) -> str:
-    """Build jsonl reply text from {packet job ID: result value}, e.g. for test adapters: one line per ID."""
-    return '\n'.join(_json([mid, results[mid]]) for mid in (results if ids is None else ids))
+    """Build reply text from {packet job ID: result value}, e.g. for test adapters: one line per ID.
+
+    A Failure value becomes the error line [id,"error",code,detail]."""
+    def line(mid):
+        value = results[mid]
+        return _json([mid, 'error', value.code, value.detail] if isinstance(value, Failure) else [mid, value])
+    return '\n'.join(line(mid) for mid in (results if ids is None else ids))

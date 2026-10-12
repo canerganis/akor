@@ -16,8 +16,8 @@ import uuid
 from typing import Callable
 
 from oz import Channel, Error
-from oz_batch import REPLY_MODES, WIRE
-from oz_reply import BINDINGS, LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
+from oz_batch import WIRE
+from oz_reply import BINDING, LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
 from oz_runtime import Inbox, Outcome
 
 LEDGER_SCHEMA = 'akor.call/1'
@@ -127,11 +127,9 @@ class Worker:
                  counters, capabilities: dict | None = None, owner: str = 'worker', max_tokens: int = 2048,
                  batch_size: int = 64, timeout: float = 120, retry_delay: float = 2,
                  context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0,
-                 ledger_path: str | Path | None = None, tokenizer: str | None = None, reply_mode: str = 'jsonl'):
+                 ledger_path: str | Path | None = None, tokenizer: str | None = None):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
-        if reply_mode not in REPLY_MODES:
-            raise Error('reply_mode must be jsonl or value')
         if (type(min_batch) is not int or not 1 <= min_batch <= batch_size
                 or type(max_wait) not in {int, float} or not 0 <= max_wait <= 86400):
             raise Error('min_batch must be 1..batch_size and max_wait 0..86400 seconds')
@@ -144,8 +142,7 @@ class Worker:
         check_capabilities(capabilities if capabilities is not None else getattr(adapter, 'capabilities', None))
         self.inbox, self.channel, self.adapter = inbox, channel, adapter
         self.options = dict(counters=tuple(counters), owner=owner, max_tokens=max_tokens, limit=batch_size,
-                            lease_seconds=timeout + 30, context_policy=context_policy,
-                            reply_mode=reply_mode)
+                            lease_seconds=timeout + 30, context_policy=context_policy)
         self.retry_delay = retry_delay
         self.ledger_path = None if ledger_path is None else Path(ledger_path)
         self.tokenizer = tokenizer
@@ -215,7 +212,7 @@ class Worker:
                          prompt=self._estimate(packet.text), submitted=packet.tokens[0], response=None)
         ledger_ok = self._append(self._record('call_start', call, started_at=started_at,
                                               token_estimates=estimates))
-        report = {'language': LANGUAGE, 'wire': WIRE, 'mode': packet.mode, 'reply_mode': packet.reply_mode,
+        report = {'language': LANGUAGE, 'wire': WIRE, 'mode': packet.mode,
                   'prompt_tokens': list(packet.tokens), 'adapter_calls': 1, 'usage': {},
                   'verification': 'unverified', 'call_id': call_id}
         phase, response, usage, failure, grouped = 'adapter', None, None, None, None
@@ -226,9 +223,10 @@ class Worker:
                 raise Error('adapter response must be {"reply":...,"usage":...}')
             # Usage is provider accounting; keep it even when the reply is invalid.
             usage = report['usage'] = validate_usage(response.get('usage', {}))
-            grouped = regroup(response['reply'], packet.job_map, packet.host_slots, packet.reply_mode)
+            grouped = regroup(response['reply'], packet.job_map, packet.host_slots)
             if grouped.parsed.rejection:
-                # Atomic acceptance: one bad line rejects the whole reply and every job retries.
+                # Atomic acceptance: one bad line rejects the whole reply and every job retries. Valid job
+                # failures are not rejections: they commit with the successes.
                 raise Error('reply rejected: ' + grouped.parsed.rejection)
             outcomes = {mid: Outcome(*grouped.outcomes[mid], grouped.values.get(mid)) for mid in ids}
             report['status'] = 'received'
@@ -291,11 +289,10 @@ class Worker:
             outcome = 'process_error'
         validation = dict(expected_results=len(packet.job_map), received_results=None,
                           accepted_results=None, failed_results=None, violations=[],
-                          binding=BINDINGS[packet.reply_mode], duplicate_lines=None, semantic_verified=False)
+                          binding=BINDING, semantic_verified=False)
         if parsed is not None:
             validation.update(received_results=parsed.received, accepted_results=len(parsed.accepted),
-                              failed_results=0, violations=list(parsed.violations),
-                              duplicate_lines=parsed.duplicate_lines)
+                              failed_results=len(parsed.failed), violations=list(parsed.violations))
         exit_code = None
         if isinstance(failure, AdapterError) and re.fullmatch(r'adapter_exit_-?[0-9]{1,10}', code):
             exit_code = int(code.rsplit('_', 1)[1])
