@@ -276,6 +276,41 @@ class WorkspaceTests(unittest.TestCase):
         self.assertNotIn('prompt', json.loads(out))
         self.assertNotIn('system', json.loads(out))
 
+    def test_plan_reply_mode_selects_the_system_text(self):
+        from oz_batch import SYSTEMS
+        initialize(self.root)
+        base = ('--workspace', str(self.root))
+        self.cli('send', 'P', '--id', 'first', *base)
+        for args, mode in (((), 'jsonl'), (('--reply-mode', 'jsonl'), 'jsonl'), (('--reply-mode', 'array'), 'array')):
+            with self.subTest(args=args), patch('oz_workspace.token_counters', return_value=(len,)):
+                code, out, err = self.cli('plan', '--show-prompt', *args, *base)
+            self.assertEqual(code, 0, err)
+            self.assertEqual(json.loads(out)['system'], SYSTEMS[mode])
+        self.assertEqual(SYSTEMS['jsonl'], SYSTEM)
+        for command in ('plan', 'run'):
+            with self.subTest(command=command), self.assertRaises(SystemExit) as exit_, \
+                    contextlib.redirect_stderr(io.StringIO()):
+                main([command, '--reply-mode', 'xml', *base] + (['--adapter', 'a.json'] if command == 'run' else []))
+            self.assertEqual(exit_.exception.code, 2)
+
+    def test_run_reply_mode_array_uses_the_array_system_text_and_array_replies(self):
+        from oz_batch import SYSTEMS
+        initialize(self.root)
+        script = ('import json,sys; r=json.load(sys.stdin); n=len(json.loads(r["prompt"])["j"]); '
+                  'json.dump({"reply":json.dumps([[i,r["system"][-30:]] for i in range(n)])},sys.stdout)')
+        adapter = self.root / 'adapter.json'
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
+        base = ('--workspace', str(self.root))
+        self.cli('send', 'P', '--id', 'first', *base)
+        with patch('oz_workspace.token_counters', return_value=(len,)):
+            code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000',
+                                      '--reply-mode', 'array', *base)
+        self.assertEqual(code, 0, err)
+        run = json.loads(out)['runs'][0]
+        self.assertEqual((run['status'], run['reply_mode']), ('received', 'array'))
+        with Workspace(self.root).inbox() as box:
+            self.assertEqual(json.loads(box.inspect('first')['result']), {'results': ['', SYSTEMS["array"][-30:]]})
+
     def test_pack_prints_system_prompt_and_job_map(self):
         initialize(self.root)
         channel = Workspace(self.root).channel()
@@ -290,7 +325,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(code, 0, err)
         value = json.loads(out)
         self.assertEqual((value['mode'], value['system']), ('named', SYSTEM))
-        self.assertEqual(json.loads(value['prompt'])['j'], ['propose 0', 'literal_two'])
+        self.assertEqual(json.loads(value['prompt'])['j'], ['propose 0', 'literal_0'])
         self.assertEqual(value['job_map'], [['one', 1], ['two', 0]])
         self.assertNotIn('alternatives', value)
 

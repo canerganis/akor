@@ -15,7 +15,7 @@ from typing import Callable, Iterable
 import uuid
 
 from oz import Channel, Error, TokenMeter, _dump
-from oz_batch import PREVIEW_RECEIPT, Batch, BudgetError, render, valid_id
+from oz_batch import PREVIEW_RECEIPT, REPLY_MODES, Batch, BudgetError, render, valid_id
 
 
 @dataclass(frozen=True)
@@ -50,8 +50,20 @@ class Plan:
 
 @dataclass(frozen=True)
 class Outcome:
+    """status ok, retry or failed; text is the stored result or reason. value, for an ok job, is the
+    compact JSON of the accepted native value; dependents receive it as a JSON value, never as a string."""
     status: str
     text: str
+    value: str | None = None
+
+
+def _is_json(text: object) -> bool:
+    """True when text is one valid JSON document (a result record is stored as its compact text)."""
+    try:
+        json.loads(text, parse_constant=lambda _: 1 / 0)
+        return True
+    except (TypeError, ValueError, ZeroDivisionError, RecursionError):
+        return False
 
 
 def _base36(n: int) -> str:
@@ -78,7 +90,7 @@ class Inbox:
     def _initialize(self):
         with self._transaction():
             version = self.db.execute('PRAGMA user_version').fetchone()[0]
-            if version not in {0, 1, 2}:
+            if version not in {0, 1, 2, 3}:
                 raise Error('unsupported inbox schema version')
             schema = '''
             CREATE TABLE IF NOT EXISTS channels(binding TEXT PRIMARY KEY, snapshot TEXT NOT NULL);
@@ -102,6 +114,9 @@ class Inbox:
             CREATE TABLE IF NOT EXISTS runs(
                 seq INTEGER PRIMARY KEY, binding TEXT NOT NULL, at REAL NOT NULL,
                 ids TEXT NOT NULL, report TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS literal_names(
+                binding TEXT NOT NULL REFERENCES channels(binding), text TEXT NOT NULL, n INTEGER NOT NULL,
+                PRIMARY KEY(binding,text), UNIQUE(binding,n));
             '''
             for statement in schema.split(';'):
                 if statement.strip():
@@ -109,7 +124,25 @@ class Inbox:
             columns = {r['name'] for r in self.db.execute('PRAGMA table_info(jobs)')}
             if 'available_at' not in columns:
                 self.db.execute('ALTER TABLE jobs ADD COLUMN available_at REAL NOT NULL DEFAULT 0')
-            self.db.execute('PRAGMA user_version=2')
+            if 'result_json' not in columns:
+                self.db.execute('ALTER TABLE jobs ADD COLUMN result_json TEXT')
+            if version < 3:
+                # Literal jobs posted before literal_<n> naming keep inbox order: number them by seq.
+                for row in self.db.execute("SELECT binding,wire FROM jobs WHERE substr(wire,1,1)=':' ORDER BY seq").fetchall():
+                    self._literal_number(row['binding'], row['wire'][1:])
+            self.db.execute('PRAGMA user_version=3')
+
+    def _literal_number(self, binding: str, text: str) -> int:
+        """Operation number of a literal text in a channel binding, allocated once and persisted.
+
+        The smallest number not yet used for a different text; call inside a write transaction."""
+        row = self.db.execute('SELECT n FROM literal_names WHERE binding=? AND text=?', (binding, text)).fetchone()
+        if row is not None:
+            return row['n']
+        used = {r['n'] for r in self.db.execute('SELECT n FROM literal_names WHERE binding=?', (binding,))}
+        n = next(i for i in range(len(used) + 1) if i not in used)
+        self.db.execute('INSERT INTO literal_names VALUES (?,?,?)', (binding, text, n))
+        return n
 
     def new_receipt(self) -> str:
         """Next attempt receipt: a never-reused counter in base 36, a few tokens long.
@@ -175,6 +208,8 @@ class Inbox:
             self.db.execute('''INSERT INTO jobs(id,binding,wire,identity,kind,max_attempts)
                                VALUES (?,?,?,?,?,?)''', (mid, binding, wire, identity, kind, max_attempts))
             self.db.executemany('INSERT INTO dependencies VALUES (?,?)', [(mid, d) for d in after])
+            if atoms[0].code == ':':
+                self._literal_number(binding, atoms[0].text)
             self._event(mid, 'posted', kind=kind)
         return True
 
@@ -212,8 +247,12 @@ class Inbox:
         return oldest is not None and self.clock() - oldest < max_wait
 
     def plan(self, channel: Channel, *, counters, limit: int = 64, max_tokens: int | None = None,
-             max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan:
+             max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed',
+             reply_mode: str = 'jsonl') -> Plan:
         """Read-only packing: the largest feasible ordered prefix of ready jobs.
+
+        reply_mode is asked of first attempts only; a packet holding any job that was delivered before
+        (a retry or an expired lease) asks for jsonl, the recovery format, whatever reply_mode says.
 
         Every prefix length is measured, longest first, as the complete model
         input (system text and body). Only when even the head job is oversized
@@ -221,6 +260,8 @@ class Inbox:
         """
         if type(limit) is not int or not 1 <= limit <= 64:
             raise Error('plan limit must be 1..64')
+        if reply_mode not in REPLY_MODES:
+            raise Error('reply_mode must be jsonl or array')
         meter = TokenMeter(counters)
         if not meter.counters:
             raise Error('planning requires tokenizer counters')
@@ -232,11 +273,14 @@ class Inbox:
         if not rows:
             return Plan((), None, ())
         cached = tuple(lambda s, i=i: meter.counts(s)[i] for i in range(len(meter.counters)))
+        literals = {r['text']: r['n'] for r in self.db.execute(
+            'SELECT text,n FROM literal_names WHERE binding=?', (channel.binding,))}
         def pack(items):
             return render(channel, [(r['id'], r['wire']) for r in items], counters=cached,
                           max_tokens=max_tokens, max_bytes=max_bytes,
                           receipt=receipt, handoffs=self._handoffs([r['id'] for r in items]),
-                          context_policy=context_policy)
+                          context_policy=context_policy, literals=literals,
+                          reply_mode='jsonl' if any(r['attempts'] > 0 for r in items) else reply_mode)
         selected, deferred, packet = [], [], None
         for size in range(len(rows), 0, -1):
             try:
@@ -258,17 +302,22 @@ class Inbox:
                     packet, tuple(deferred))
 
     def _handoffs(self, ids):
-        """[job, predecessor, exact result] per delivered job; unverified agent data."""
+        """[job, predecessor, result record] per delivered job, in dependency declaration order.
+
+        Only direct predecessors that are done. The record is the accepted JSON value (result_json);
+        a job settled without one yields its stored result text as a string. Unverified agent data."""
         links = []
         for mid in ids:
-            rows = self.db.execute('''SELECT p.id,p.result FROM dependencies d JOIN jobs p ON p.id=d.prior
-                WHERE d.job=? AND p.state='done' ORDER BY p.seq''', (mid,)).fetchall()
-            links.extend((mid, r['id'], r['result']) for r in rows)
+            rows = self.db.execute('''SELECT p.id,p.result,p.result_json FROM dependencies d JOIN jobs p ON p.id=d.prior
+                WHERE d.job=? AND p.state='done' ORDER BY d.rowid''', (mid,)).fetchall()
+            links.extend((mid, r['id'], r['result'] if r['result_json'] is None else json.loads(r['result_json']))
+                         for r in rows)
         return links
 
     def claim_prepared(self, channel: Channel, *, owner: str, counters, receipt: str, limit: int = 64,
                        max_tokens: int | None = None, max_bytes: int = 262144,
-                       lease_seconds: float = 60, context_policy: str = 'needed') -> tuple[Delivery, Batch] | None:
+                       lease_seconds: float = 60, context_policy: str = 'needed',
+                       reply_mode: str = 'jsonl') -> tuple[Delivery, Batch] | None:
         """Measure outside the write lock, then atomically reserve the selected jobs.
 
         A budget failure consumes no attempts. Concurrent changes trigger a fresh
@@ -284,7 +333,8 @@ class Inbox:
             with self._transaction():
                 self._recover(channel.binding, 'work')
             plan = self.plan(channel, counters=counters, limit=limit, max_tokens=max_tokens,
-                             max_bytes=max_bytes, receipt=receipt, context_policy=context_policy)
+                             max_bytes=max_bytes, receipt=receipt, context_policy=context_policy,
+                             reply_mode=reply_mode)
             if not plan.jobs:
                 if plan.deferred:
                     raise BudgetError('no ready job fits the budget; attempts unchanged; increase budget')
@@ -343,7 +393,7 @@ class Inbox:
             raise Error('one bounded result string per job is required')
         with self._transaction():
             self._check(delivery)
-            self.db.executemany('''UPDATE jobs SET state='done',result=?,lease=NULL,owner=NULL,
+            self.db.executemany('''UPDATE jobs SET state='done',result=?,result_json=NULL,lease=NULL,owner=NULL,
                 deadline=NULL,error='' WHERE id=?''', [(results[j.id], j.id) for j in delivery.jobs])
             for job in delivery.jobs:
                 self._event(job.id, 'done')
@@ -368,7 +418,9 @@ class Inbox:
                 or set(outcomes) != {j.id for j in delivery.jobs}
                 or any(not isinstance(o, Outcome) or o.status not in {'ok', 'retry', 'failed'}
                        or not isinstance(o.text, str) or not o.text.strip()
-                       or len(o.text.encode('utf-8')) > 65536 for o in outcomes.values())):
+                       or len(o.text.encode('utf-8')) > 65536
+                       or (o.value is not None and (o.status != 'ok' or not _is_json(o.value)))
+                       for o in outcomes.values())):
             raise Error('exactly one valid outcome per delivered job is required')
         if type(retry_delay) not in {int, float} or not 0 <= retry_delay <= 86400:
             raise Error('invalid retry delay')
@@ -381,9 +433,10 @@ class Inbox:
                 outcome = outcomes[row['id']]
                 state = ('done' if outcome.status == 'ok' else 'pending'
                          if outcome.status == 'retry' and row['attempts'] < row['max_attempts'] else 'failed')
-                self.db.execute('''UPDATE jobs SET state=?,result=?,error=?,available_at=?,
+                self.db.execute('''UPDATE jobs SET state=?,result=?,result_json=?,error=?,available_at=?,
                     lease=NULL,owner=NULL,deadline=NULL WHERE id=?''',
                                 (state, outcome.text if state == 'done' else None,
+                                 outcome.value if state == 'done' else None,
                                  '' if state == 'done' else outcome.text,
                                  self.clock() + retry_delay if state == 'pending' else 0, row['id']))
                 self._event(row['id'], state, outcome=outcome.status)

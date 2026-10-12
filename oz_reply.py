@@ -1,17 +1,18 @@
 """OZ/9 replies, receipts, adapter capabilities and provider usage.
 
-A reply is raw model text, one JSON array per line: [i,value] on success and
-[i,null,error] on failure, where i is the zero-based index of an item in the
+A reply is raw model text in one of two modes. jsonl: one JSON array per line.
+array: the whole reply is exactly one JSON array. Either way each item is [i,value] on
+success or [i,null,error] on failure, where i is the zero-based index of an item in the
 prompt's j list (OZ9.md 3). parse_reply() accepts each index that has exactly one
-valid line and never repairs a line; a fence, prose or any other non-array line
-invalidates the whole reply. regroup() folds accepted items and the slots the host
+valid item and never repairs one; a fence, prose, a non-array line or element, or a
+second array invalidates the whole reply, and a repeated index is rejected, never merged. regroup() folds accepted items and the slots the host
 filled itself back into inbox jobs; a job with any unaccepted item is retried alone.
 Receipts stay host-side: the adapter request carries one per call attempt to
 correlate the reply; they are not authentication or proof.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import re
 
@@ -95,29 +96,95 @@ def _canonical_index(line: str, row: list):
     return row[0] if match and INDEX_TOKEN.fullmatch(match.group(1)) else None
 
 
-def parse_reply(text: object, n: int) -> Parsed:
+JSON_SPACE = ' \t\n\r'
+
+
+def _skip(text: str, i: int) -> int:
+    while i < len(text) and text[i] in JSON_SPACE:
+        i += 1
+    return i
+
+
+def _array_elements(text: str):
+    """(value, raw slice) of every element of a reply that is exactly one JSON array, else None.
+
+    Only the array structure is decided here; the elements are judged one by one afterwards, so
+    non-finite constants and duplicate keys inside one element do not invalidate the others.
+    """
+    decoder = json.JSONDecoder(parse_constant=lambda _: None)
+    i = _skip(text, 0)
+    if text[i:i + 1] != '[':
+        return None
+    i = _skip(text, i + 1)
+    elements = []
+    if text[i:i + 1] == ']':
+        i += 1
+    else:
+        while True:
+            try:
+                value, end = decoder.raw_decode(text, i)
+            except (ValueError, RecursionError):
+                return None
+            elements.append((value, text[i:end]))
+            i = _skip(text, end)
+            if text[i:i + 1] == ',':
+                i = _skip(text, i + 1)
+            elif text[i:i + 1] == ']':
+                i += 1
+                break
+            else:
+                return None
+    return elements if _skip(text, i) == len(text) else None
+
+
+def parse_reply(text: object, n: int, mode: str = 'jsonl') -> Parsed:
+    """Judge a reply for n slots. mode jsonl: one array per line; mode array: the whole reply is one array.
+
+    Either way every [i,value] / [i,null,"reason"] item follows the same rules, and the first violation
+    of the envelope (fence, prose, a non-array line or element, a second array) rejects the whole reply.
+    """
+    if mode not in ('jsonl', 'array'):
+        raise Error('reply mode must be jsonl or array')
     if not isinstance(text, str):
-        raise Error('reply must be raw text, one JSON array per line')
+        raise Error('reply must be raw text, one JSON array per line or one JSON array')
     if len(text.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES * n + CAPTURE_SLACK:
         reason = 'reply exceeds the total capture limit'
         return Parsed(n, {}, 0, ({'line': 0, 'reason': reason},), reason)
-    received, bad, valid, seen, envelope = 0, {}, {}, {}, None
-    for number, line in enumerate(text.split('\n'), 1):
-        if line.endswith('\r'):
-            line = line[:-1]
-        if not line.strip():
-            continue
+    # items: (1-based line or element number, raw text of one candidate item) in reply order.
+    items, bad, envelope = [], {}, None
+    if mode == 'jsonl':
+        for number, line in enumerate(text.split('\n'), 1):
+            if line.endswith('\r'):
+                line = line[:-1]
+            if not line.strip():
+                continue
+            if len(line.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES:
+                items.append((number, line))  # judged (and dropped) as too long below, whatever it holds
+            elif not line.lstrip().startswith('['):
+                envelope = envelope or 'a fence, prose or non-array line invalidates the whole reply'
+                bad[number] = 'not a JSON array line'
+            else:
+                items.append((number, line))
+    else:
+        elements = _array_elements(text)
+        if elements is None:
+            envelope = 'the reply is not exactly one JSON array'
+            return Parsed(n, {}, 0, ({'line': 0, 'reason': envelope},), envelope)
+        for number, (value, raw) in enumerate(elements, 1):
+            if not isinstance(value, list):
+                envelope = envelope or 'a non-array element invalidates the whole reply'
+                bad[number] = 'not a JSON array element'
+            else:
+                items.append((number, raw))
+    received, valid, seen = 0, {}, {}
+    for number, line in items:
         if len(line.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES:
-            bad[number] = f'line exceeds {MAX_LINE_BYTES} bytes'
-            continue
-        if not line.lstrip().startswith('['):
-            envelope = envelope or 'a fence, prose or non-array line invalidates the whole reply'
-            bad[number] = 'not a JSON array line'
+            bad[number] = f'{"line" if mode == "jsonl" else "element"} exceeds {MAX_LINE_BYTES} bytes'
             continue
         try:
             row = loads(line)
         except (ValueError, RecursionError, Error):
-            bad[number] = 'malformed array line'
+            bad[number] = 'malformed array line' if mode == 'jsonl' else 'malformed array element'
             continue
         received += 1
         index = _canonical_index(line, row)
@@ -144,6 +211,7 @@ def parse_reply(text: object, n: int) -> Parsed:
     accepted = {}
     for index, numbers in seen.items():
         if len(numbers) > 1:
+            # A reply that repeats itself is never deduplicated: every copy of the index is rejected.
             for number in numbers:
                 bad[number] = f'duplicate lines for index {index}'
         elif numbers[0] in valid:
@@ -155,12 +223,17 @@ def parse_reply(text: object, n: int) -> Parsed:
 
 @dataclass(frozen=True)
 class Regrouped:
-    """outcomes maps inbox job ID -> (status, text); status is ok, failed or retry."""
+    """outcomes maps inbox job ID -> (status, text); status is ok, failed or retry.
+
+    values maps the ID of every ok job to the compact JSON of its accepted native value
+    (single slot: the value; several slots: {"results":[...]}), which is what dependents receive.
+    """
     outcomes: dict
     parsed: Parsed
+    values: dict = field(default_factory=dict)
 
 
-def regroup(text: object, job_map, host_slots=()) -> Regrouped:
+def regroup(text: object, job_map, host_slots=(), mode: str = 'jsonl') -> Regrouped:
     """Parse a reply with one slot per j item, then fold all slots into one outcome per inbox job.
 
     job_map lists (inbox job ID, atom index) per j item; host_slots lists (inbox job ID, atom index,
@@ -169,13 +242,13 @@ def regroup(text: object, job_map, host_slots=()) -> Regrouped:
     job with an unaccepted model slot is ('retry', reason) and does not affect the other jobs.
     """
     job_map = tuple(job_map)
-    parsed = parse_reply(text, len(job_map))
+    parsed = parse_reply(text, len(job_map), mode)
     groups = {}
     for index, (mid, atom) in enumerate(job_map):
         groups.setdefault(mid, []).append((atom, index, True))
     for mid, atom, value in host_slots:
         groups.setdefault(mid, []).append((atom, value, False))
-    outcomes = {}
+    outcomes, values = {}, {}
     for mid, slots in groups.items():
         slots.sort(key=lambda slot: slot[0])
         if any(model and index not in parsed.accepted for _, index, model in slots):
@@ -187,13 +260,17 @@ def regroup(text: object, job_map, host_slots=()) -> Regrouped:
             if len(parts) == 1:
                 status, value = parts[0]
                 outcomes[mid] = (status, _store(value))
+                if status == 'ok':
+                    values[mid] = _json(value)
             elif failed:
                 outcomes[mid] = ('failed', _store('; '.join(failed)))
             else:
-                outcomes[mid] = ('ok', _store(_json({'results': [value for _, value in parts]})))
+                combined = _json({'results': [value for _, value in parts]})
+                outcomes[mid] = ('ok', _store(combined))
+                values[mid] = combined
         except (ValueError, UnicodeEncodeError):
             outcomes[mid] = ('retry', RETRY_REASON)
-    return Regrouped(outcomes, parsed)
+    return Regrouped(outcomes, parsed, values)
 
 
 def validate_usage(value: object) -> dict:
@@ -211,12 +288,12 @@ def validate_usage(value: object) -> dict:
     return dict(value)
 
 
-def validate_response(value: object, job_map, host_slots=()) -> tuple[Regrouped, dict]:
+def validate_response(value: object, job_map, host_slots=(), mode: str = 'jsonl') -> tuple[Regrouped, dict]:
     """Adapter response {"reply": "<raw text>", "usage":...}; usage comes from provider accounting."""
     if not isinstance(value, dict) or 'reply' not in value or set(value) - {'reply', 'usage'}:
         raise Error('adapter response must be {"reply":...,"usage":...}')
     usage = validate_usage(value.get('usage', {}))
-    return regroup(value['reply'], job_map, host_slots), usage
+    return regroup(value['reply'], job_map, host_slots, mode), usage
 
 
 def encode_reply(outcomes: dict, ids) -> str:

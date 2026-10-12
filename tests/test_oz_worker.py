@@ -221,9 +221,12 @@ class WorkerTests(unittest.TestCase):
             self.worker(StdioAdapter((sys.executable,)), timeout=1)
 
     def test_removed_worker_options_are_rejected(self):
-        for option in ['reply_mode', 'encoding', 'min_savings']:
+        for option in ['encoding', 'min_savings']:
             with self.subTest(option=option), self.assertRaises(TypeError):
                 self.worker(lambda r: r, **{option: 'x'})
+        for mode in ['x', 'JSONL', '', None]:
+            with self.subTest(reply_mode=mode), self.assertRaises(Error):
+                self.worker(lambda r: r, reply_mode=mode)
 
     def _counting_adapter(self, calls):
         def adapter(request):

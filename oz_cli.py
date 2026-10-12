@@ -62,6 +62,8 @@ def main(argv=None):
             p.add_argument('--max-tokens', type=int)
             p.add_argument('--context', choices=['needed', 'full'], default='needed',
                            help='needed: only referenced context; full: every reference, stable prefix')
+            p.add_argument('--reply-mode', choices=['jsonl', 'array'], default='jsonl',
+                           help='jsonl: one [i,value] array per line; array: one JSON array (retries use jsonl)')
         if command == 'plan':
             p.add_argument('--show-prompt', action='store_true')
         if command == 'run':
@@ -151,7 +153,7 @@ def workspace_command(args):
         return {'runs': workspace.run(args.to, args.adapter, max_calls=args.max_calls,
                                       max_tokens=args.max_tokens, timeout=args.timeout,
                                       context_policy=args.context, min_batch=args.min_batch,
-                                      max_wait=args.max_wait)}
+                                      max_wait=args.max_wait, reply_mode=args.reply_mode)}
     with workspace.inbox() as box:
         if args.command == 'send':
             if (args.frame is None) == (args.file is None):
@@ -163,7 +165,8 @@ def workspace_command(args):
                                 max_attempts=args.max_attempts)
             return {'id': mid, 'inserted': inserted, 'kind': box.inspect(mid)['kind']}
         if args.command == 'plan':
-            plan = workspace.plan(box, args.to, max_tokens=args.max_tokens, context_policy=args.context)
+            plan = workspace.plan(box, args.to, max_tokens=args.max_tokens, context_policy=args.context,
+                                  reply_mode=args.reply_mode)
             value = {'ids': [j.id for j in plan.jobs], 'deferred': list(plan.deferred),
                      'mode': plan.packet.mode if plan.packet else None,
                      'input_tokens': list(plan.packet.tokens) if plan.packet else [],

@@ -255,7 +255,9 @@ class PlannerTests(unittest.TestCase):
                 self.assertEqual(box.inspect('old')['result'], 'original result')
                 self.assertIsNone(box.claim(self.ch, owner='w'))
                 self.assertEqual(box.channel(self.ch.binding).binding, self.ch.binding)
-                self.assertEqual(box.db.execute('PRAGMA user_version').fetchone()[0], 2)
+                self.assertEqual(box.db.execute('PRAGMA user_version').fetchone()[0], 3)
+                self.assertIsNone(box.db.execute('SELECT result_json FROM jobs').fetchone()[0])
+                self.assertEqual(box.db.execute('SELECT COUNT(*) FROM literal_names').fetchone()[0], 0)
 
 
 if __name__ == '__main__':

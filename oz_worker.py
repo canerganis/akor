@@ -16,6 +16,7 @@ import uuid
 from typing import Callable
 
 from oz import Channel, Error
+from oz_batch import REPLY_MODES
 from oz_reply import LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
 from oz_runtime import Inbox, Outcome
 
@@ -126,9 +127,11 @@ class Worker:
                  counters, capabilities: dict | None = None, owner: str = 'worker', max_tokens: int = 2048,
                  batch_size: int = 64, timeout: float = 120, retry_delay: float = 2,
                  context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0,
-                 ledger_path: str | Path | None = None, tokenizer: str | None = None):
+                 ledger_path: str | Path | None = None, tokenizer: str | None = None, reply_mode: str = 'jsonl'):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
+        if reply_mode not in REPLY_MODES:
+            raise Error('reply_mode must be jsonl or array')
         if (type(min_batch) is not int or not 1 <= min_batch <= batch_size
                 or type(max_wait) not in {int, float} or not 0 <= max_wait <= 86400):
             raise Error('min_batch must be 1..batch_size and max_wait 0..86400 seconds')
@@ -141,7 +144,8 @@ class Worker:
         check_capabilities(capabilities if capabilities is not None else getattr(adapter, 'capabilities', None))
         self.inbox, self.channel, self.adapter = inbox, channel, adapter
         self.options = dict(counters=tuple(counters), owner=owner, max_tokens=max_tokens, limit=batch_size,
-                            lease_seconds=timeout + 30, context_policy=context_policy)
+                            lease_seconds=timeout + 30, context_policy=context_policy,
+                            reply_mode=reply_mode)
         self.retry_delay = retry_delay
         self.ledger_path = None if ledger_path is None else Path(ledger_path)
         self.tokenizer = tokenizer
@@ -211,8 +215,9 @@ class Worker:
                          prompt=self._estimate(packet.text), submitted=packet.tokens[0], response=None)
         ledger_ok = self._append(self._record('call_start', call, started_at=started_at,
                                               token_estimates=estimates))
-        report = {'language': LANGUAGE, 'mode': packet.mode, 'prompt_tokens': list(packet.tokens),
-                  'adapter_calls': 1, 'usage': {}, 'verification': 'unverified', 'call_id': call_id}
+        report = {'language': LANGUAGE, 'mode': packet.mode, 'reply_mode': packet.reply_mode,
+                  'prompt_tokens': list(packet.tokens), 'adapter_calls': 1, 'usage': {},
+                  'verification': 'unverified', 'call_id': call_id}
         phase, response, usage, failure, grouped = 'adapter', None, None, None, None
         try:
             response = self.adapter(request)
@@ -221,11 +226,11 @@ class Worker:
                 raise Error('adapter response must be {"reply":...,"usage":...}')
             # Usage is provider accounting; keep it even when the reply is invalid.
             usage = report['usage'] = validate_usage(response.get('usage', {}))
-            grouped = regroup(response['reply'], packet.job_map, packet.host_slots)
+            grouped = regroup(response['reply'], packet.job_map, packet.host_slots, packet.reply_mode)
             if not grouped.parsed.accepted:
                 raise Error('reply has no accepted result line')
             # Per-job acceptance: a job with an unaccepted item retries alone, the others settle.
-            outcomes = {mid: Outcome(*grouped.outcomes[mid]) for mid in ids}
+            outcomes = {mid: Outcome(*grouped.outcomes[mid], grouped.values.get(mid)) for mid in ids}
             report['status'] = 'received'
         except Exception as exc:
             # Do not store arbitrary provider exception text: it may contain credentials.
@@ -257,7 +262,7 @@ class Worker:
         grouped = regroup('', (), packet.host_slots)
         # A host result that cannot be stored will not improve on a retry: settle it as failed.
         outcomes = {mid: Outcome('failed', 'host_result_not_storable') if grouped.outcomes[mid][0] == 'retry'
-                    else Outcome(*grouped.outcomes[mid]) for mid in ids}
+                    else Outcome(*grouped.outcomes[mid], grouped.values.get(mid)) for mid in ids}
         report = {'language': LANGUAGE, 'mode': packet.mode, 'prompt_tokens': list(packet.tokens),
                   'adapter_calls': 0, 'model_calls': 0, 'usage': {}, 'verification': 'unverified',
                   'call_id': None, 'status': 'host_completed'}

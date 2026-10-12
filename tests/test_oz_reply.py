@@ -1,9 +1,9 @@
-"""OZ/9 JSONL replies, usage, negotiation and Worker per-job acceptance."""
+"""OZ/9 JSONL and array replies, usage, negotiation and Worker per-job acceptance."""
 import json
 import unittest
 
 from oz import Error
-from oz_batch import SYSTEM
+from oz_batch import SYSTEM, SYSTEMS as SYSTEM_TEXTS
 from oz_reply import (check_capabilities, encode_reply, parse_reply, regroup, validate_response,
                       validate_usage)
 from oz_runtime import Inbox
@@ -291,6 +291,165 @@ class UsageAndCapabilityTests(unittest.TestCase):
                      dict(CAPS, protocols='oz.adapter/3'), dict(CAPS, languages=[8])]:
             with self.subTest(caps=caps), self.assertRaises(Error):
                 check_capabilities(caps)
+
+
+def arr(*rows):
+    """Array-mode reply: one compact JSON array of the given rows."""
+    return json.dumps(list(rows), ensure_ascii=False, separators=(',', ':'))
+
+
+class ArrayParseTests(unittest.TestCase):
+    def test_success_failure_null_and_order(self):
+        parsed = parse_reply(arr([2, None], [0, 'done'], [1, None, 'no data'], [3, {'a': [1, 2.5, None]}]), 4, 'array')
+        self.assertEqual(parsed.accepted, {0: ('ok', 'done'), 1: ('failed', 'no data'), 2: ('ok', None),
+                                           3: ('ok', {'a': [1, 2.5, None]})})
+        self.assertEqual((parsed.received, parsed.violations, parsed.envelope), (4, (), None))
+        # The mode defaults to jsonl, where the same text is one line holding one wrong-shaped array.
+        self.assertEqual(parse_reply(arr([0, 'done']), 1).accepted, {})
+
+    def test_whole_reply_must_be_exactly_one_array(self):
+        good = arr([0, 'a'], [1, 'b'])
+        for reply in [good, ' ' + good + NL, NL + good, good.replace(',[1', ',' + NL + ' [1'), '[ ]', '[' + NL + ']']:
+            with self.subTest(reply=reply):
+                self.assertIsNone(parse_reply(reply, 2, 'array').envelope)
+        self.assertEqual(parse_reply('[]', 2, 'array').accepted, {})
+        for reply in ['', ' ', 'prose', '```json' + NL + good + NL + '```', 'Here: ' + good, good + ' Done.',
+                      good + good, good + NL + good, good + NL + arr([0, 'x']), '{"results":[[0,"a"]]}',
+                      '"a"', '5', 'null', good[:-1], '[[0,"a"],]', '[,[0,"a"]]', '[[0,"a"] [1,"b"]]',
+                      '[[0,"a"]' + NL + '[1,"b"]]', '`' + good + '`', NL.join(json.dumps(r) for r in [[0, 'a'], [1, 'b']])]:
+            with self.subTest(reply=reply):
+                parsed = parse_reply(reply, 2, 'array')
+                self.assertEqual(parsed.accepted, {})
+                self.assertIsNotNone(parsed.envelope)
+                self.assertTrue(parsed.violations)
+
+    def test_a_non_array_element_invalidates_the_whole_reply(self):
+        for reply in ['[[0,"a"],"x",[1,"b"]]', '[[0,"a"],5,[1,"b"]]', '[[0,"a"],null,[1,"b"]]',
+                      '[[0,"a"],{"i":1},[1,"b"]]', '[[0,"a"],true,[1,"b"]]', '["a"]']:
+            with self.subTest(reply=reply):
+                parsed = parse_reply(reply, 2, 'array')
+                self.assertEqual(parsed.accepted, {})
+                self.assertEqual(parsed.envelope, 'a non-array element invalidates the whole reply')
+
+    def test_elements_follow_the_jsonl_line_rules(self):
+        # Wrong shape, bad index tokens, out of range, bad failures and oversize errors only cost their index.
+        parsed = parse_reply('[[0,"a"],[1,"b",3],[2.0,"x"],[1e0,"x"],[-1,"x"],[true,"x"],[9,"x"],[3,null,""],'
+                             '[4,null,"ok"],[5],[]]', 6, 'array')
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 4: ('failed', 'ok')})
+        self.assertIsNone(parsed.envelope)
+        self.assertEqual(sorted(reasons(parsed))[0], (2, 'failure needs null and a nonblank error string'))
+        self.assertEqual(parse_reply(arr([0, None, 'e' * 1024]), 1, 'array').accepted, {0: ('failed', 'e' * 1024)})
+        self.assertEqual(parse_reply(arr([0, None, 'e' * 1025], [1, 'fine']), 2, 'array').accepted,
+                         {1: ('ok', 'fine')})
+        self.assertEqual(parse_reply(arr([0, None, 'ş' * 513], [1, 'fine']), 2, 'array').accepted, {1: ('ok', 'fine')})
+
+    def test_noncanonical_index_tokens_cost_only_their_element_or_the_envelope(self):
+        # Valid JSON numbers that are not canonical integers: the element is dropped, the rest survives.
+        for token in ['1.0', '1e0', '1E0', '-0', '0.0']:
+            with self.subTest(token=token):
+                parsed = parse_reply('[[0,"a"],[' + token + ',"b"]]', 2, 'array')
+                self.assertEqual(parsed.accepted, {0: ('ok', 'a')})
+                self.assertIsNone(parsed.envelope)
+        # Tokens that are not JSON at all make the reply something other than one valid JSON array.
+        for token in ['01', '+1', '0x1', '.5']:
+            with self.subTest(token=token):
+                parsed = parse_reply('[[0,"a"],[' + token + ',"b"]]', 2, 'array')
+                self.assertEqual((parsed.accepted, parsed.envelope is None), ({}, False))
+
+    def test_duplicate_index_invalidates_only_that_index_and_out_of_range_is_discarded(self):
+        parsed = parse_reply(arr([0, 'a'], [1, 'b'], [1, 'b'], [2, 'c'], [7, 'out']), 3, 'array')
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 2: ('ok', 'c')})
+        self.assertEqual(reasons(parsed), [(2, 'duplicate lines for index 1'), (3, 'duplicate lines for index 1'),
+                                           (5, 'index out of range')])
+        # Different content for the same index is no better, in either order.
+        self.assertEqual(parse_reply(arr([0, 'a'], [0, None, 'no']), 1, 'array').accepted, {})
+
+    def test_a_reply_that_repeats_itself_is_not_deduplicated(self):
+        rows = [[0, 'a'], [1, 'b']]
+        for mode, reply in (('jsonl', text(*rows, *rows)), ('array', arr(*rows, *rows))):
+            with self.subTest(mode=mode):
+                parsed = parse_reply(reply, 2, mode)
+                self.assertEqual(parsed.accepted, {})
+                self.assertEqual(len(parsed.violations), 4)
+                self.assertIsNone(parsed.envelope)
+        partial = parse_reply(arr([0, 'a'], [1, 'b'], [0, 'a']), 2, 'array')
+        self.assertEqual(partial.accepted, {1: ('ok', 'b')})
+        # Two arrays are an invalid envelope, not a repeat to be merged.
+        self.assertIsNotNone(parse_reply(arr(*rows) + arr(*rows), 2, 'array').envelope)
+
+    def test_one_bad_element_does_not_cost_the_others(self):
+        # Duplicate keys and non-finite constants are judged per element; the index is not guessed.
+        for element in ['[1,{"k":1,"k":2}]', '[1,NaN]', '[1,Infinity]', '[1,-Infinity]', '[1,1e999]', '[1,"\\ud800"]']:
+            with self.subTest(element=element):
+                parsed = parse_reply('[[0,"a"],' + element + ',[2,"c"]]', 3, 'array')
+                self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 2: ('ok', 'c')})
+                self.assertIsNone(parsed.envelope)
+                self.assertEqual(len(parsed.violations), 1)
+
+    def test_element_size_limit_and_total_capture_limit(self):
+        limit = 65536
+        exact = '[0,"' + 'y' * (limit - 6) + '"]'
+        self.assertEqual(len(exact.encode('utf-8')), limit)
+        self.assertEqual(sorted(parse_reply('[' + exact + ']', 1, 'array').accepted), [0])
+        parsed = parse_reply('[[0,"a"],[1,"' + 'y' * limit + '"],[2,"c"],[3,"' + 'ş' * (limit // 2 + 1) + '"]]', 4, 'array')
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 2: ('ok', 'c')})
+        self.assertEqual([v['reason'] for v in parsed.violations], ['element exceeds 65536 bytes'] * 2)
+        over = parse_reply(' ' * (limit + 4096) + '[]', 1, 'array')
+        self.assertEqual(over.envelope, 'reply exceeds the total capture limit')
+
+    def test_envelope_violation_is_reported_at_line_zero(self):
+        parsed = parse_reply('```json' + NL + arr([0, 'a']) + NL + '```', 1, 'array')
+        self.assertEqual(parsed.violations, ({'line': 0, 'reason': 'the reply is not exactly one JSON array'},))
+        self.assertEqual(parsed.envelope, 'the reply is not exactly one JSON array')
+
+    def test_unknown_mode_and_non_text_are_rejected(self):
+        for mode in ['', 'JSONL', None, 'both']:
+            with self.subTest(mode=mode), self.assertRaises(Error):
+                parse_reply(text([0, 'a']), 1, mode)
+        for value in [None, [[0, 'a']], b'[[0,"a"]]', 5]:
+            with self.subTest(value=str(value)), self.assertRaises(Error):
+                parse_reply(value, 1, 'array')
+
+    def test_regroup_folds_array_replies_like_jsonl_ones(self):
+        job_map = (('a', 0), ('a', 1), ('b', 0), ('c', 0))
+        reply = arr([3, None, 'cannot'], [0, 'read'], [1, {'v': 1}], [2, 'single'])
+        grouped = regroup(reply, job_map, mode='array')
+        self.assertEqual(grouped.outcomes, {'a': ('ok', '{"results":["read",{"v":1}]}'), 'b': ('ok', 'single'),
+                                            'c': ('failed', 'cannot')})
+        self.assertEqual(grouped.outcomes, regroup(text(*json.loads(reply)), job_map).outcomes)
+        self.assertEqual(regroup(text(*json.loads(reply)), job_map, mode='array').parsed.accepted, {})
+        self.assertEqual(regroup(reply, job_map, mode='array').parsed.envelope, None)
+        self.assertEqual(regroup('prose', job_map, mode='array').outcomes['a'][0], 'retry')
+        self.assertEqual(validate_response({'reply': arr([0, 'x'])}, (('a', 0),), mode='array')[0].outcomes,
+                         {'a': ('ok', 'x')})
+
+
+class RegroupValueTests(unittest.TestCase):
+    def test_values_are_the_compact_json_of_the_accepted_native_value(self):
+        job_map = (('a', 0), ('b', 0), ('c', 0), ('d', 0), ('e', 0), ('f', 0), ('g', 0))
+        reply = text([0, 'text'], [1, {'k': [1, 2.5, None]}], [2, None], [3, ''], [4, '[1, 2]'], [5, None, 'no'],
+                     [6, 'Türkçe ± "q"'])
+        grouped = regroup(reply, job_map)
+        self.assertEqual(grouped.values, {'a': '"text"', 'b': '{"k":[1,2.5,null]}', 'c': 'null', 'd': '""',
+                                          'e': '"[1, 2]"', 'g': '"Türkçe ± \\"q\\""'})
+        self.assertNotIn('f', grouped.values)
+
+    def test_multi_slot_and_host_slot_values(self):
+        job_map = (('a', 1), ('a', 2), ('b', 0), ('c', 0), ('c', 1))
+        host = (('a', 0, ''), ('a', 3, 'python -m unittest'))
+        reply = text([0, {'v': 1}], [1, 'x'], [2, 'single'], [3, None, 'no'], [4, 'y'])
+        grouped = regroup(reply, job_map, host)
+        self.assertEqual(grouped.values['a'], '{"results":["",{"v":1},"x","python -m unittest"]}')
+        self.assertEqual(grouped.outcomes['a'], ('ok', grouped.values['a']))
+        self.assertEqual(grouped.values['b'], '"single"')
+        self.assertEqual(grouped.outcomes['c'], ('failed', '0: no'))
+        self.assertNotIn('c', grouped.values)
+        only_host = regroup('', (), (('h', 0, ''), ('t', 0, 'pytest')))
+        self.assertEqual(only_host.values, {'h': '""', 't': '"pytest"'})
+
+    def test_retried_jobs_have_no_value(self):
+        grouped = regroup(text([0, 'a']), (('a', 0), ('b', 0)))
+        self.assertEqual(grouped.values, {'a': '"a"'})
 
 
 class ReplyWorkerTests(unittest.TestCase):
@@ -631,6 +790,201 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertNotIn('p', body)
         self.assertEqual(body['j'], ['propose 0', 'propose 0'])
         self.assertEqual(body['c'], {'0': {'input': 'Use 5 seconds per attempt', 'prior': ['PREDECESSOR-RESULT']}})
+
+    def test_array_mode_sends_the_array_system_text_and_settles_an_array_reply(self):
+        self.post('one')
+        self.post('two', 'a7>12')
+        seen = []
+        def adapter(request):
+            seen.append(request)
+            return {'reply': arr([2, {'k': [1]}], [0, 'first'], [1, 'second'])}
+        result = self.worker(adapter, reply_mode='array').run_once()
+        self.assertEqual((result['status'], result['reply_mode']), ('received', 'array'))
+        self.assertEqual(seen[0]['system'], SYSTEM_TEXTS['array'])
+        self.assertNotEqual(seen[0]['system'], SYSTEM)
+        self.assertEqual(self.box.inspect('one')['result'], 'first')
+        self.assertEqual(self.box.inspect('two')['result'], '{"results":["second",{"k":[1]}]}')
+        self.assertEqual(self.worker(lambda r: r).run_once()['status'], 'idle')
+        # The default stays jsonl.
+        self.post('three')
+        self.worker(lambda r: seen.append(r) or {'reply': text([0, 'x'])}).run_once()
+        self.assertEqual(seen[1]['system'], SYSTEM)
+
+    def test_array_envelope_failure_is_recovered_in_jsonl_mode_with_reindexed_packet(self):
+        self.post('a', '>12')
+        self.post('b', 'a7')
+        self.post('c', '=13')
+        calls = []
+        def adapter(request):
+            calls.append(request)
+            if len(calls) == 1:
+                # Valid values, but wrapped in a fence: the envelope is invalid and nothing is accepted.
+                return {'reply': '```json' + NL + arr([0, 'x'], [1, 'y'], [2, 'z']) + NL + '```'}
+            return {'reply': text(*([i, 'r%d' % i] for i in range(len(json.loads(request['prompt'])['j']))))}
+        worker = self.worker(adapter, batch_size=3, reply_mode='array')
+        first = worker.run_once()
+        self.assertEqual(first['outcomes'], {'a': 'retry', 'b': 'retry', 'c': 'retry'})
+        self.assertEqual(calls[0]['system'], SYSTEM_TEXTS['array'])
+        self.now[0] += 5
+        second = worker.run_once()
+        self.assertEqual((second['status'], second['reply_mode']), ('received', 'jsonl'))
+        self.assertEqual(calls[1]['system'], SYSTEM)
+        self.assertEqual(calls[1]['ids'], ['a', 'b', 'c'])
+        self.assertEqual(self.box.inspect('b')['result'], 'r1')
+        self.assertEqual(self.box.stats(), {'done': 3})
+        self.assertEqual(self.box.inspect('a')['attempts'], 2)
+
+    def test_partial_array_acceptance_resends_only_unresolved_jobs_in_jsonl_and_reassigns_refs(self):
+        self.post('a', '>12')
+        self.post('b', 'a7')
+        self.post('c', '=13')
+        calls = []
+        def adapter(request):
+            calls.append(request)
+            if len(calls) == 1:
+                # Index 1 accepted; index 0 repeated (rejected); index 2 missing.
+                return {'reply': arr([1, 'audit done'], [0, 'x'], [0, 'x'])}
+            return {'reply': text([0, 'p'], [1, 'o'])}
+        worker = self.worker(adapter, batch_size=3, reply_mode='array')
+        first = worker.run_once()
+        self.assertEqual(first['outcomes'], {'a': 'retry', 'b': 'ok', 'c': 'retry'})
+        first_body = json.loads(calls[0]['prompt'])
+        self.assertEqual(first_body['j'], ['propose 0', 'audit 1', 'observed 2'])
+        self.now[0] += 5
+        worker.run_once()
+        self.assertEqual(calls[1]['ids'], ['a', 'c'])
+        self.assertEqual(calls[1]['system'], SYSTEM)
+        body = json.loads(calls[1]['prompt'])
+        # Reindexed from 0, references reassigned in first-use order, the accepted job is not resent.
+        self.assertEqual(body['j'], ['propose 0', 'observed 1'])
+        self.assertEqual(body['c'], {'0': {'input': 'Use 5 seconds per attempt'}, '1': {'input': '12.50 ± 0.02 mm'}})
+        self.assertNotIn('demo patch', calls[1]['prompt'])
+        self.assertEqual(self.box.inspect('b')['attempts'], 1)
+        self.assertEqual((self.box.inspect('a')['result'], self.box.inspect('c')['result']), ('p', 'o'))
+
+    def test_recovery_is_capped_at_two_attempts_per_job(self):
+        self.post('a')
+        calls = []
+        def adapter(request):
+            calls.append(request['system'])
+            return {'reply': 'prose'}
+        worker = self.worker(adapter, reply_mode='array', retry_delay=0)
+        for _ in range(4):
+            worker.run_once()
+        self.assertEqual(calls, [SYSTEM_TEXTS['array'], SYSTEM_TEXTS['jsonl']])
+        self.assertEqual(self.box.inspect('a')['state'], 'failed')
+        self.assertEqual(self.box.inspect('a')['attempts'], 2)
+
+    def test_explicit_failures_are_not_retried_in_either_mode(self):
+        for mode, make in (('array', arr), ('jsonl', lambda *rows: text(*rows))):
+            with self.subTest(mode=mode):
+                box = Inbox(clock=lambda: 100.0)
+                self.addCleanup(box.close)
+                box.post(self.ch, 'a', '>12', binding=self.ch.binding)
+                calls = []
+                def adapter(request):
+                    calls.append(request)
+                    return {'reply': make([0, None, 'the evidence is missing'])}
+                worker = Worker(box, self.ch, adapter, counters=[len], max_tokens=10000, capabilities=CAPS,
+                                reply_mode=mode, retry_delay=0)
+                self.assertEqual(worker.run_once()['outcomes'], {'a': 'failed'})
+                self.assertEqual(worker.run_once()['status'], 'idle')
+                self.assertEqual(len(calls), 1)
+                self.assertEqual(box.inspect('a')['error'], 'the evidence is missing')
+
+    def test_a_reply_that_repeats_itself_accepts_nothing_and_is_retried(self):
+        for mode, make in (('jsonl', lambda *rows: text(*rows, *rows)), ('array', lambda *rows: arr(*rows, *rows))):
+            with self.subTest(mode=mode):
+                box = Inbox(clock=lambda: 100.0)
+                self.addCleanup(box.close)
+                box.post(self.ch, 'a', '>12', binding=self.ch.binding)
+                box.post(self.ch, 'b', '>12', binding=self.ch.binding)
+                worker = Worker(box, self.ch, lambda r: {'reply': make([0, 'x'], [1, 'y'])}, counters=[len],
+                                max_tokens=10000, capabilities=CAPS, reply_mode=mode)
+                self.assertEqual(worker.run_once()['outcomes'], {'a': 'retry', 'b': 'retry'})
+                self.assertEqual(box.stats(), {'pending': 2})
+
+    def test_accepted_results_are_stored_as_json_values_and_used_as_prior_in_dependency_order(self):
+        self.post('p', '>12')
+        self.post('q', 'a7>12')
+        self.post('r', '>12')
+        self.post('z', '>12', after=('q', 'p', 'r'))
+        legacy = self.box.claim(self.ch, owner='old', limit=1)
+        self.assertEqual([j.id for j in legacy.jobs], ['p'])
+        self.box.complete(legacy, {'p': '{"older":"text"}'})
+        self.assertIsNone(self.box.db.execute("SELECT result_json FROM jobs WHERE id='p'").fetchone()[0])
+        requests = []
+        def adapter(request):
+            requests.append(request)
+            if 'z' in request['ids']:
+                return {'reply': text([0, 'final'])}
+            return {'reply': text([0, 'audit text'], [1, {'k': [1, None]}], [2, '[1, 2]'])}
+        worker = self.worker(adapter)
+        worker.run_once()
+        self.assertEqual(self.box.stats(), {'done': 3, 'pending': 1})
+        stored = {r['id']: r['result_json'] for r in self.box.db.execute('SELECT id,result_json FROM jobs')}
+        self.assertEqual(stored, {'p': None, 'q': '{"results":["audit text",{"k":[1,null]}]}',
+                                  'r': '"[1, 2]"', 'z': None})
+        worker.run_once()
+        self.assertEqual(requests[-1]['ids'], ['z'])
+        body = json.loads(requests[-1]['prompt'])
+        # Dependency declaration order (q, p, r), not job order or ID order.
+        self.assertEqual(body['c'], {'0': {'input': 'Use 5 seconds per attempt', 'prior': [
+            {'results': ['audit text', {'k': [1, None]}]}, '{"older":"text"}', '[1, 2]']}})
+        # Records are JSON values: JSON text appears inside a string only when the result really is a string.
+        self.assertIn('"prior":[{"results":["audit text",{"k":[1,null]}]},"{\\"older\\":\\"text\\"}","[1, 2]"]',
+                      requests[-1]['prompt'])
+
+    def test_a_failed_predecessor_blocks_its_dependant_which_is_never_sent(self):
+        self.post('first')
+        self.post('next', after=('first',))
+        requests = []
+        def adapter(request):
+            requests.append(request)
+            return {'reply': text([0, None, 'cannot proceed'])}
+        worker = self.worker(adapter, retry_delay=0)
+        self.assertEqual(worker.run_once()['outcomes'], {'first': 'failed'})
+        for _ in range(3):
+            self.assertEqual(worker.run_once()['status'], 'idle')
+        self.assertEqual(len(requests), 1)
+        self.assertNotIn('prior', requests[0]['prompt'])
+        self.assertEqual(self.box.inspect('next')['attempts'], 0)
+        self.assertEqual(self.box.inspect('next')['waiting_for'], [{'id': 'first', 'state': 'failed'}])
+        self.assertEqual(self.box.plan(self.ch, counters=[len]).jobs, ())
+
+    def test_literal_names_survive_batch_splits_retries_and_a_reopened_inbox(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'inbox.sqlite'
+            box = Inbox(path, clock=lambda: self.now[0])
+            for mid, wire in (('n1', ':first note'), ('n2', ':second note'), ('n3', ':first note'), ('n4', ':third')):
+                box.post(self.ch, mid, wire, binding=self.ch.binding)
+            names = []
+            def adapter(request):
+                body = json.loads(request['prompt'])
+                names.append((request['ids'], body['j'], body['d']))
+                if len(names) == 2:
+                    return {'reply': 'prose'}
+                return {'reply': text(*([i, 'ok'] for i in range(len(body['j']))))}
+            Worker(box, self.ch, adapter, counters=[len], max_tokens=10000, capabilities=CAPS,
+                   batch_size=1, retry_delay=0).run_once()
+            Worker(box, self.ch, adapter, counters=[len], max_tokens=10000, capabilities=CAPS,
+                   batch_size=1, retry_delay=0).run_once()
+            box.close()
+            box = Inbox(path, clock=lambda: self.now[0])
+            worker = Worker(box, self.ch, adapter, counters=[len], max_tokens=10000, capabilities=CAPS,
+                            batch_size=1, retry_delay=0)
+            for _ in range(4):
+                worker.run_once()
+            self.assertEqual(box.stats(), {'done': 4})
+            box.close()
+        by_id = {ids[0]: (j, d) for ids, j, d in names}
+        self.assertEqual(by_id['n1'], (['literal_0'], {'literal_0': 'first note'}))
+        # n2 was split into its own packet, failed once, and came back under the same name.
+        self.assertEqual([j for ids, j, d in names if ids == ['n2']], [['literal_1'], ['literal_1']])
+        self.assertEqual(by_id['n3'], (['literal_0'], {'literal_0': 'first note'}))
+        self.assertEqual(by_id['n4'], (['literal_2'], {'literal_2': 'third'}))
 
 
 if __name__ == '__main__':
