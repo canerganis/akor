@@ -157,7 +157,8 @@ class Workspace:
                         max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
                         receipt=box.next_receipt(), context_policy=context_policy)
 
-    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, context_policy='needed'):
+    def run(self, name, adapter_path, *, max_calls=1, max_tokens=None, timeout=120, context_policy='needed',
+            min_batch=1, max_wait=0):
         if type(max_calls) is not int or not 1 <= max_calls <= 100:
             raise Error('max_calls must be 1..100')
         adapter_path = adapter_path.resolve()
@@ -173,7 +174,7 @@ class Workspace:
             worker = Worker(box, self.channel(name), adapter, counters=counters, owner=name,
                             batch_size=self.config['batch_size'], timeout=timeout,
                             max_tokens=max_tokens if max_tokens is not None else self.config['max_tokens'],
-                            context_policy=context_policy)
+                            context_policy=context_policy, min_batch=min_batch, max_wait=max_wait)
             for _ in range(max_calls):
                 result = worker.run_once()
                 results.append(result)

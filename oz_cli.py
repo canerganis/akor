@@ -68,6 +68,10 @@ def main(argv=None):
             p.add_argument('--adapter', type=Path, required=True, help='Explicit JSON file containing an argv list')
             p.add_argument('--max-calls', type=int, default=1)
             p.add_argument('--timeout', type=float, default=120)
+            p.add_argument('--min-batch', type=int, default=1,
+                           help='Wait for this many ready jobs before calling (fewer, larger calls)')
+            p.add_argument('--max-wait', type=float, default=0,
+                           help='Seconds the oldest ready job may wait for --min-batch')
         if command == 'status':
             p.add_argument('--json', action='store_true')
             p.add_argument('--limit', type=int, default=100)
@@ -143,7 +147,8 @@ def workspace_command(args):
     if args.command == 'run':
         return {'runs': workspace.run(args.to, args.adapter, max_calls=args.max_calls,
                                       max_tokens=args.max_tokens, timeout=args.timeout,
-                                      context_policy=args.context)}
+                                      context_policy=args.context, min_batch=args.min_batch,
+                                      max_wait=args.max_wait)}
     with workspace.inbox() as box:
         if args.command == 'send':
             if (args.frame is None) == (args.file is None):

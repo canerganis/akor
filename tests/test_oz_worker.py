@@ -215,6 +215,73 @@ class WorkerTests(unittest.TestCase):
             with self.subTest(option=option), self.assertRaises(TypeError):
                 self.worker(lambda r: r, **{option: 'x'})
 
+    def _counting_adapter(self, calls):
+        def adapter(request):
+            calls.append(request)
+            return reply(request, ['ok'] * len(request['ids']))
+        return adapter
+
+    def test_quorum_waits_without_claiming_calling_or_spending_a_receipt(self):
+        self.post('one')
+        self.post('two')
+        calls = []
+        worker = self.worker(self._counting_adapter(calls), min_batch=3, max_wait=10)
+        receipt = self.box.next_receipt()
+        self.assertEqual(worker.run_once(), {'status': 'waiting', 'model_calls': 0})
+        self.now[0] += 5
+        self.assertEqual(worker.run_once()['status'], 'waiting')
+        self.assertEqual(calls, [])
+        self.assertEqual(self.box.next_receipt(), receipt)
+        for mid in ('one', 'two'):
+            self.assertEqual(self.box.inspect(mid)['attempts'], 0)
+            self.assertEqual(self.box.inspect(mid)['state'], 'pending')
+
+    def test_quorum_releases_partial_batch_after_max_wait(self):
+        self.post('one')
+        self.post('two')
+        calls = []
+        worker = self.worker(self._counting_adapter(calls), min_batch=3, max_wait=10)
+        self.assertEqual(worker.run_once()['status'], 'waiting')
+        self.now[0] += 10
+        self.assertEqual(worker.run_once()['status'], 'received')
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(sorted(calls[0]['ids']), ['one', 'two'])
+        self.assertEqual(self.box.stats(), {'done': 2})
+
+    def test_quorum_met_calls_immediately(self):
+        for mid in ('one', 'two', 'three'):
+            self.post(mid)
+        calls = []
+        result = self.worker(self._counting_adapter(calls), min_batch=3, max_wait=10).run_once()
+        self.assertEqual(result['status'], 'received')
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(sorted(calls[0]['ids']), ['one', 'three', 'two'])
+
+    def test_default_min_batch_never_waits(self):
+        self.post('one')
+        calls = []
+        worker = self.worker(self._counting_adapter(calls), max_wait=60)
+        self.assertEqual(worker.run_once()['status'], 'received')
+        self.assertEqual(len(calls), 1)
+
+    def test_blocked_dependency_does_not_count_toward_quorum(self):
+        self.post('one')
+        self.post('two')
+        self.post('three', after=['one'])
+        calls = []
+        worker = self.worker(self._counting_adapter(calls), min_batch=3, max_wait=10)
+        self.assertEqual(worker.run_once()['status'], 'waiting')
+        self.assertEqual(calls, [])
+        self.assertEqual(self.box.inspect('three')['attempts'], 0)
+
+    def test_invalid_quorum_values_are_rejected(self):
+        cases = [dict(min_batch=0), dict(min_batch=17), dict(min_batch=5, batch_size=4),
+                 dict(max_wait=-1), dict(min_batch=True), dict(max_wait='5'), dict(max_wait=86401),
+                 dict(min_batch=2.0)]
+        for kwargs in cases:
+            with self.subTest(kwargs=kwargs), self.assertRaises(Error):
+                self.worker(lambda r: r, **kwargs)
+
     def test_context_policy_full_sends_every_reference(self):
         self.post('one', 'r13')
         prompts = []

@@ -110,9 +110,13 @@ class Worker:
     def __init__(self, inbox: Inbox, channel: Channel, adapter: Callable[[dict], dict], *,
                  counters, capabilities: dict | None = None, owner: str = 'worker', max_tokens: int = 2048,
                  batch_size: int = 16, timeout: float = 120, retry_delay: float = 2,
-                 context_policy: str = 'needed'):
+                 context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
+        if (type(min_batch) is not int or not 1 <= min_batch <= batch_size
+                or type(max_wait) not in {int, float} or not 0 <= max_wait <= 86400):
+            raise Error('min_batch must be 1..batch_size and max_wait 0..86400 seconds')
+        self.min_batch, self.max_wait = min_batch, max_wait
         if isinstance(adapter, StdioAdapter) and adapter.timeout > timeout:
             raise Error('stdio adapter timeout must not exceed worker timeout')
         if type(retry_delay) not in {int, float} or not 0 <= retry_delay <= 86400:
@@ -125,6 +129,10 @@ class Worker:
         self.retry_delay = retry_delay
 
     def run_once(self) -> dict:
+        if self.min_batch > 1 and self.inbox.waiting(self.channel, min_batch=self.min_batch,
+                                                     max_wait=self.max_wait):
+            # Fewer calls with more jobs each; nothing is claimed and no receipt is used.
+            return {'status': 'waiting', 'model_calls': 0}
         # A fresh receipt per attempt, made before planning so it is charged.
         receipt = self.inbox.new_receipt()
         claimed = self.inbox.claim_prepared(self.channel, receipt=receipt, **self.options)

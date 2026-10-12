@@ -198,6 +198,19 @@ class Inbox:
             + only + ' ORDER BY j.seq LIMIT ?',
                               (channel.binding, kind, self.clock(), self.clock(), *ids, limit)).fetchall()
 
+    def waiting(self, channel: Channel, *, min_batch: int, max_wait: float) -> bool:
+        """True while fewer than min_batch work jobs are ready and the oldest is younger than max_wait.
+
+        Waiting trades latency for fewer calls: each call pays a fixed prompt cost.
+        """
+        ready = self._ready(channel, 'work', min_batch)
+        if not ready or len(ready) >= min_batch:
+            return False
+        oldest = self.db.execute(
+            "SELECT MIN(at) FROM events WHERE event IN ('posted','requeued') AND mid IN ("
+            + ','.join('?' for _ in ready) + ')', [r['id'] for r in ready]).fetchone()[0]
+        return oldest is not None and self.clock() - oldest < max_wait
+
     def plan(self, channel: Channel, *, counters, limit: int = 16, max_tokens: int | None = None,
              max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan:
         """Read-only packing: the largest feasible ordered prefix of ready jobs.

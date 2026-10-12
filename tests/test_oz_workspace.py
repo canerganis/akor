@@ -161,6 +161,22 @@ class WorkspaceTests(unittest.TestCase):
             self.assertEqual(box.inspect('first')['state'], 'done')
             self.assertIn('DEMO', box.inspect('first')['result'])
 
+    def test_cli_run_min_batch_waits_without_attempts(self):
+        initialize(self.root)
+        adapter = self.root / 'adapter.json'
+        adapter.write_text(json.dumps({'argv': [sys.executable, '-c', DEMO_SCRIPT],
+                                       **DEMO_CAPABILITIES}), encoding='utf8')
+        base = ('--workspace', str(self.root))
+        self.assertEqual(self.cli('send', 'P', '--id', 'first', *base)[0], 0)
+        with patch('oz_workspace.token_counters', return_value=(len,)):
+            code, out, err = self.cli('run', '--adapter', str(adapter), '--max-tokens', '10000',
+                                      '--min-batch', '2', '--max-wait', '60', *base)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(json.loads(out)['runs'][0]['status'], 'waiting')
+        with Workspace(self.root).inbox() as box:
+            self.assertEqual(box.inspect('first')['attempts'], 0)
+            self.assertEqual(box.inspect('first')['state'], 'pending')
+
     def test_cli_failure_returns_nonzero_and_explains_safe_error_code(self):
         initialize(self.root)
         adapter = self.root / 'adapter.json'
