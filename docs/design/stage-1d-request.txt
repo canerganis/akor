@@ -1,0 +1,32 @@
+FROM THE PROJECT OWNER: Astra, you have full authority over the AKOR/OZ language. Solve it brilliantly and practically. Claude implements exactly what you deliver and measures it.
+
+Current wire = your stage-1c contract (system text per reply_mode, JSONL default, {"input","prior"} job data). New live evidence:
+
+E1 (most serious). Luna (gpt-6-luna, medium, via codex exec) on 64 jobs: in one of 3 replies the model wrote 66 lines; its answers drifted onto the wrong indices from early in the reply, so 52 of 64 jobs received another job's answer (e.g. index 3 "bounds" got the "missing" answer). The parser only rejected the 2 out-of-range lines; the shifted lines are well-formed and were accepted as if correct. Without the benchmark oracle this is silent corruption. Other Luna cells: 93/96 and 138/192 correct vs 0.8 96/96 and 189/192; output tokens 26% lower, 12-17% faster. Claude models never showed this (0 of ~150 calls).
+Reply lines 1-14 of 66 (64 jobs expected), verbatim:
+[0,["12.41 mm","0.02 mm","1","caliper","expanded","not_claimed"]]
+[1,["12.39 mm","12.43 mm"]]
+[2,[]]
+[3,"outside"]
+[4,["12.45 mm","unknown","6","micrometer","resolution","not_claimed"]]
+[5,"unknown"]
+[6,["uncertainty"]]
+[7,"unknown"]
+[8,["12.60 mm","unknown","5","unknown","resolution","not_claimed"]]
+[9,["uncertainty","method"]]
+[10,"unknown"]
+[11,["12.41 mm","0.01 mm","6","caliper","resolution","not_claimed"]]
+[12,["12.40 mm","12.42 mm"]]
+[13,[]]
+...
+[62,["12.54 mm","0.01 mm","6","unknown","unknown","not_claimed"]]
+[63,["12.53 mm","12.55 mm"]]
+[64,["method","basis"]]
+[65,"outside"]
+
+First 12 jobs of that packet: ['e1', 'b1', 'm1', 'v1', 'e2', 'b2', 'm2', 'v2', 'e3', 'b3', 'm3', 'v3']
+
+E2. Sonnet 5.5 still repeats its whole JSONL answer occasionally (1 of 7 invalid replies across the latest runs, down from 4 of 10 before your "do not repeat" line); the whole reply is then lost.
+E3. Cost: wrapping every job datum as {"input":...} added ~160 o200k tokens per 64-job packet; Haiku 5.5 mixed workload savings fell from 17% to 11% vs 0.8 (Sonnet 47% / 28%, Opus 47%, Fable 45% at 64 uniform jobs).
+
+What is needed: a design that makes a reply line provably bound to its job (so a drifted or shifted line cannot be accepted for the wrong job) at minimum token cost, and your decisions on E2 and E3. Exact strings and validation rules.

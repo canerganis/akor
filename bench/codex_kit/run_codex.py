@@ -2,7 +2,7 @@
 
 Run from the repository root:
     python bench/codex_kit/run_codex.py --model gpt-6-luna --effort medium
-Results go to bench/codex_kit/results_<model>.jsonl (one line per call, resumable).
+Results go to bench/codex_kit/results_<model>_<effort>.jsonl (one line per call, resumable).
 """
 import argparse, json, random, shutil, subprocess, time
 from pathlib import Path
@@ -29,7 +29,7 @@ def main():
     ap.add_argument('--model', required=True)
     ap.add_argument('--effort', default='medium')
     args = ap.parse_args()
-    out = KIT / f'results_{args.model}.jsonl'
+    out = KIT / f'results_{args.model}_{args.effort}.jsonl'
     done = {json.loads(l)['file'] for l in out.read_text('utf-8').splitlines()} if out.exists() else set()
     index = json.loads((KIT / 'index.json').read_text('utf-8'))
     random.Random(11).shuffle(index)            # interleave arms so drift hits both

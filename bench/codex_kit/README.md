@@ -16,7 +16,7 @@ python bench/codex_kit/run_codex.py --model gpt-6-luna --effort medium
 ```
 
 ```bash
-python bench/codex_kit/score.py bench/codex_kit/results_gpt-6-luna.jsonl
+python bench/codex_kit/score.py bench/codex_kit/results_gpt-6-luna_medium.jsonl
 ```
 
 Aynısını `gpt-6-astra` ve Sol için de çalıştır (model adını Codex'teki adıyla ver). Kesilirse aynı komut kaldığı
