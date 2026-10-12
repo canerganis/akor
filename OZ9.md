@@ -502,8 +502,10 @@ every job verified):
 | 32 | 128 / 128 | -43.0% | -53.6% | -33.8% | 6.5 s vs 8.0 s |
 | 64 | 256 / 256 | -56.3% | -64.1% | -41.1% | 8.5 s vs 12.5 s |
 
-The 35-40% total target is met from 32 jobs per call. Repeated jobs favour the
-compact encoding (codes and shared d/c), so a workload of 64 distinct jobs is
-still to be measured. Fewer, larger calls are the main lever: use --min-batch
+The 35-40% total target is met from 32 jobs per call. Distinct jobs confirm it
+(16 generated materials records x 4 codes, oracles in Decimal, 3 calls per cell):
+32 jobs 96/96 correct, total -43.0%, protocol -52.1%, output -29.3%; 64 jobs
+192/192 correct, total -54.7%, protocol -60.8%, output -41.4%, median 9.2 s vs
+14.0 s. Summary: reports/OZ9-LIVE-DISTINCT.txt. Fewer, larger calls are the main lever: use --min-batch
 and --max-wait (06b8095). Summaries: reports/OZ9-LIVE-SHORT.txt and
 reports/OZ9-LIVE-LARGE.txt.
