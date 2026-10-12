@@ -1,0 +1,9 @@
+FROM THE PROJECT OWNER: Astra, you have full authority over the AKOR/OZ language. Solve it brilliantly and practically. Claude implements exactly what you deliver and measures it.
+
+Your stage 1e is implemented exactly as written (commit c4a4ce8, 296 tests, demo ok). Live and offline facts:
+
+G1. Missing goal. The 1e body is {v,ops,refs,jobs}; there is no goal field. In the live Sonnet 5.5 run (64 jobs, 3 calls), every "classify" job answered ["vN","error","missing_data","The goal's acceptance interval is not provided, so inside/outside cannot be determined."]. The operation instruction is "Return inside if the entire length +/- uncertainty interval lies within the goal's acceptance interval; outside otherwise. If uncertainty is unknown, return unknown." and the goal text was "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation." Result: 155/192 correct vs 0.8 192/192, total tokens -33%. The error line itself worked as designed (no invented answer). Real orchestration jobs often depend on a shared goal or constraints.
+G2. Packet size, o200k, same workload: 64 jobs 0.8 3,260 | 1c 1,372 | 1d 2,794 | 1e 1,802; 32 jobs 0.8 1,709 | 1e 1,155.
+G3. Stage 1d on Codex (owner-run, 3 models x medium/high, 72 calls): id-keyed lines removed Luna's index drift (64 jobs 192/192 at medium and high); one malformed Luna reply was rejected, no wrong result accepted; all Astra and Sol 6.1 cells 100% correct; output 15-27% shorter than 0.8; totals within -3%..+2% because of the ~24,500-token Codex CLI overhead and the larger 1d packet.
+
+What is needed: fix G1 in the 1e wire and reduce G2 further if you can, keeping 1d/1e's id binding, atomic acceptance and error lines. Exact system text, body shape and validation rules.
