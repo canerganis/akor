@@ -7,11 +7,11 @@
   "o200k": 1713
  },
  {
-  "file": "rep0_n32_S1c.txt",
+  "file": "rep0_n32_S1d.txt",
   "rep": 0,
   "n": 32,
-  "arm": "S1c",
-  "o200k": 937
+  "arm": "S1d",
+  "o200k": 1557
  },
  {
   "file": "rep0_n64_0.8-exec.txt",
@@ -21,11 +21,11 @@
   "o200k": 3268
  },
  {
-  "file": "rep0_n64_S1c.txt",
+  "file": "rep0_n64_S1d.txt",
   "rep": 0,
   "n": 64,
-  "arm": "S1c",
-  "o200k": 1380
+  "arm": "S1d",
+  "o200k": 2825
  },
  {
   "file": "rep1_n32_0.8-exec.txt",
@@ -35,11 +35,11 @@
   "o200k": 1709
  },
  {
-  "file": "rep1_n32_S1c.txt",
+  "file": "rep1_n32_S1d.txt",
   "rep": 1,
   "n": 32,
-  "arm": "S1c",
-  "o200k": 933
+  "arm": "S1d",
+  "o200k": 1541
  },
  {
   "file": "rep1_n64_0.8-exec.txt",
@@ -49,11 +49,11 @@
   "o200k": 3259
  },
  {
-  "file": "rep1_n64_S1c.txt",
+  "file": "rep1_n64_S1d.txt",
   "rep": 1,
   "n": 64,
-  "arm": "S1c",
-  "o200k": 1371
+  "arm": "S1d",
+  "o200k": 2789
  },
  {
   "file": "rep2_n32_0.8-exec.txt",
@@ -63,11 +63,11 @@
   "o200k": 1705
  },
  {
-  "file": "rep2_n32_S1c.txt",
+  "file": "rep2_n32_S1d.txt",
   "rep": 2,
   "n": 32,
-  "arm": "S1c",
-  "o200k": 929
+  "arm": "S1d",
+  "o200k": 1525
  },
  {
   "file": "rep2_n64_0.8-exec.txt",
@@ -77,10 +77,10 @@
   "o200k": 3254
  },
  {
-  "file": "rep2_n64_S1c.txt",
+  "file": "rep2_n64_S1d.txt",
   "rep": 2,
   "n": 64,
-  "arm": "S1c",
-  "o200k": 1366
+  "arm": "S1d",
+  "o200k": 2769
  }
 ]

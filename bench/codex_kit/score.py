@@ -33,11 +33,12 @@ def score(item, text):
             values = [got.get(f'ma_{i + 1:02d}') for i in range(n)]
             ok = [v is not None for v in values]
         else:
-            parsed = parse_reply(text, n)
-            if not parsed.accepted:
+            ids = json.loads((KIT / 'oracles' / f"rep{item['rep']}_n{item['n']}.json").read_text('utf-8'))['jobs']
+            parsed = parse_reply(text, ids, 'jsonl')
+            if parsed.rejection:
                 return False, 0
-            ok = [i in parsed.accepted and parsed.accepted[i][0] == 'ok' for i in range(n)]
-            values = [parsed.accepted.get(i, (None, None))[1] for i in range(n)]
+            ok = [True] * n
+            values = [parsed.accepted[i] for i in ids]
     except (ValueError, KeyError, TypeError):
         return False, 0
     return True, sum(g and same(v, want) for g, v, want in zip(ok, values, oracle))
@@ -55,7 +56,7 @@ def main():
     print('n | arm | valid | correct | input | output | total | vs 0.8 | median s')
     for n in (32, 64):
         base = None
-        for arm in ('0.8-exec', 'S1c'):
+        for arm in ('0.8-exec', 'S1d', 'S1c'):
             v = [r for r in rows if r['n'] == n and r['arm'] == arm]
             if not v:
                 continue

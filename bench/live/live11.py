@@ -234,6 +234,34 @@ def _s1c(n):
     _, body, _, native = ARMS['N'](n)
     return oz_batch.SYSTEMS['jsonl'], stage1c_body(body), lambda reply: jsonl_flat(reply, n), native
 
+def stage1d_packet(n):
+    """Stage 1d: jobs are [id,task,input]; ids are the workload job names (e1, b1, ...)."""
+    import oz_batch
+    _, body, _, _ = ARMS['N'](n)
+    b = json.loads(body)
+    jobs = X.V.jobs('materials', n)
+    j = []
+    for job, item in zip(jobs, b['j']):
+        op, _, ref = item.partition(' ')
+        j.append([job, op, b['c'][ref]])
+    return oz_batch.SYSTEMS['jsonl'], json.dumps({'goal': b['goal'], 'd': b['d'], 'j': j},
+                                                 ensure_ascii=False, separators=(',', ':')), jobs
+
+
+def stage1d_flat(reply, ids):
+    from oz_reply import parse_reply
+    parsed = parse_reply(reply, ids, 'jsonl')
+    if parsed.rejection:
+        raise ValueError(parsed.rejection)
+    return [(True, parsed.accepted[i]) for i in ids]
+
+
+@arm('S1d')
+def _s1d(n):
+    system, body, ids = stage1d_packet(n)
+    return system, body, lambda reply: stage1d_flat(reply, ids), True
+
+
 if __name__ == '__main__':
     run(os.environ.get('ARMS', '0.8-exec,F,R1').split(','), [int(x) for x in os.environ.get('SIZES', '32,64').split(',')],
         int(os.environ.get('REPS', '5')))

@@ -1,7 +1,7 @@
 """Write a self-contained Codex measurement kit: exact prompts, a runner and a scorer.
 
 Same workload as the Claude runs (16 generated materials records x 4 operations, fresh records per rep,
-Decimal oracles), arms 0.8-exec and S1c (current wire), sizes 32 and 64, reps 0..2.
+Decimal oracles), arms 0.8-exec and S1d (current wire), sizes 32 and 64, reps 0..2.
 Codex has no separate system field, so the OZ system text is placed before the body under fixed headings.
 """
 import json, sys
@@ -22,7 +22,7 @@ for rep in range(3):
         name = f'rep{rep}_n{n}'
         (OUT / 'oracles' / f'{name}.json').write_text(json.dumps({'jobs': jobs, 'oracle': oracle,
                                                                   'records': Z.X.C}, ensure_ascii=False), 'utf-8')
-        for arm in ('0.8-exec', 'S1c'):
+        for arm in ('0.8-exec', 'S1d'):
             system, user, _, _ = Z.ARMS[arm](n)
             text = user if system is None else f'SYSTEM RULES:\n{system}\n\nINPUT:\n{user}'
             fn = f'{name}_{arm}.txt'
