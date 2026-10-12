@@ -22,12 +22,10 @@ def items(request):
 
 
 def reply(request, texts, failed=()):
-    """Adapter response: texts by position; indexes in `failed` become errors with a null result."""
-    results = [None if i in failed else text for i, text in enumerate(texts)]
-    body = {'results': results}
-    if failed:
-        body['errors'] = {str(i): texts[i] for i in failed}
-    return {'reply': body}
+    """Adapter response: raw JSONL text, one line per position; indexes in `failed` become failure lines."""
+    lines = [json.dumps([i, None, text] if i in failed else [i, text], ensure_ascii=False)
+             for i, text in enumerate(texts)]
+    return {'reply': chr(10).join(lines)}
 
 
 class WorkerTests(unittest.TestCase):
@@ -112,7 +110,7 @@ class WorkerTests(unittest.TestCase):
     def test_invalid_response_never_unlocks_dependencies(self):
         self.post('one')
         self.post('two', after=['one'])
-        result = self.worker(lambda r: {'reply': {'results': ['wrong', 'count']}}).run_once()
+        result = self.worker(lambda r: {'reply': 'no result lines here'}).run_once()
         self.assertEqual(result['status'], 'adapter_error')
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
         self.assertEqual(self.box.inspect('two')['attempts'], 0)
@@ -150,27 +148,24 @@ class WorkerTests(unittest.TestCase):
                 loads(text)
 
     def test_invalid_responses_and_usage_are_rejected(self):
-        good = {'results': ['x']}
-        cases = [None, {}, {'reply': {'results': []}}, {'reply': {'results': [True, 'y']}},
-                 {'reply': {'results': ['x', 'x']}}, {'reply': {'results': ['x'], 'errors': {}}},
-                 {'reply': {'results': ['x'], 'errors': {'0': 'why'}}},
-                 {'reply': {'results': [None], 'errors': {'01': 'why'}}},
-                 {'reply': {'results': [None], 'errors': {'0': ' '}}},
-                 {'reply': ['0123456789abcdef', 'x']},
-                 {'reply': {'q': '0123456789abcdef', 'results': ['x']}},
+        good = '[0,"x"]'
+        job_map = (('one', 0),)
+        cases = [None, {}, {'reply': {'results': ['x']}}, {'reply': ['0123456789abcdef', 'x']},
+                 {'reply': 5}, {'reply': None},
                  {'reply': good, 'usage': {'input_tokens': -1}},
                  {'reply': good, 'usage': {'output_tokens': True}},
                  {'reply': good, 'secret': 'ignored?'}, good]
-        self.assertEqual(validate_response({'reply': good}, ('one',)), ({'one': ('ok', 'x')}, {}))
-        self.assertEqual(validate_response({'reply': {'results': [None], 'errors': {'0': 'why'}}}, ('one',)),
-                         ({'one': ('failed', 'why')}, {}))
+        grouped, usage = validate_response({'reply': good}, job_map)
+        self.assertEqual((grouped.outcomes, usage), ({'one': ('ok', 'x')}, {}))
+        grouped, _ = validate_response({'reply': '[0,null,"why"]'}, job_map)
+        self.assertEqual(grouped.outcomes, {'one': ('failed', 'why')})
         for value in cases:
             with self.subTest(value=value), self.assertRaises(Error):
-                validate_response(value, ('one',))
+                validate_response(value, job_map)
 
     def test_stdio_adapter_real_process_round_trip_and_unicode(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"reply":{"results":["12.50 ± 0.02 mm" for i in r["ids"]]}},sys.stdout)')
+                  'json.dump({"reply":json.dumps([0,"12.50 ± 0.02 mm"],ensure_ascii=False)},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post(wire='r13')
         result = self.worker(adapter, timeout=10).run_once()
@@ -179,7 +174,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_stdio_adapter_receives_oz9_request_without_ids_in_prompt(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"reply":{"results":[json.dumps(r)]}},sys.stdout)')
+                  'json.dump({"reply":json.dumps([0,json.dumps(r)])},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post('secret_job', 'r13')
         self.worker(adapter, timeout=10).run_once()
@@ -367,7 +362,7 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(end['token_estimates']['submitted'], request['prompt_tokens'][0])
         self.assertEqual(end['outcome'], 'ok')
         self.assertEqual(end['validation'], dict(expected_results=4, received_results=4,
-                                                 accepted_results=4, failed_results=0))
+                                                 accepted_results=4, failed_results=0, violations=[]))
         self.assertIsNotNone(end['started_at'])
         self.assertIsNotNone(end['ended_at'])
         self.assertIsInstance(end['elapsed_ms'], int)
@@ -411,12 +406,36 @@ class LedgerTests(unittest.TestCase):
 
     def test_invalid_response_outcome_keeps_validation_counts(self):
         self.post('one')
-        self.worker(lambda r: {'reply': {'results': ['wrong', 'count']}}, retry_delay=0).run_once()
+        self.worker(lambda r: {'reply': '[0,"a"]' + chr(10) + 'prose' + chr(10) + '[1,"b"'},
+                    retry_delay=0).run_once()
+        end = self.lines()[-1]
+        # One accepted item of three: the job retries as a whole, nothing else changes.
+        self.assertEqual(end['outcome'], 'invalid_response')
+        self.assertEqual(end['validation'], dict(
+            expected_results=3, received_results=1, accepted_results=1, failed_results=0,
+            violations=[{'line': 2, 'reason': 'not a single JSON value'},
+                        {'line': 3, 'reason': 'not a single JSON value'}]))
+        self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
+        self.assertEqual(self.box.inspect('one')['state'], 'pending')
+
+    def test_reply_without_any_valid_line_keeps_counts_and_violations(self):
+        self.post('one')
+        self.worker(lambda r: {'reply': '{"results":["a","b","c"]}'}, retry_delay=0).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'invalid_response')
-        self.assertEqual(end['validation'], dict(expected_results=3, received_results=2,
-                                                 accepted_results=None, failed_results=None))
+        self.assertEqual(end['validation'], dict(
+            expected_results=3, received_results=0, accepted_results=0, failed_results=0,
+            violations=[{'line': 1, 'reason': 'not a JSON array'}]))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
+
+    def test_violations_are_capped_at_twenty(self):
+        self.post('one', 'r13')
+        text = chr(10).join(['[0,"ok"]'] + ['prose'] * 30)
+        self.worker(lambda r: {'reply': text}).run_once()
+        end = self.lines()[-1]
+        self.assertEqual(end['outcome'], 'ok')
+        self.assertEqual(len(end['validation']['violations']), 20)
+        self.assertEqual(end['validation']['violations'][0]['line'], 2)
 
     def test_job_error_outcome_counts_failed_items(self):
         self.post('one')
@@ -424,7 +443,7 @@ class LedgerTests(unittest.TestCase):
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'job_error')
         self.assertEqual(end['validation'], dict(expected_results=3, received_results=3,
-                                                 accepted_results=2, failed_results=1))
+                                                 accepted_results=3, failed_results=1, violations=[]))
         self.assertIsNone(end['error'])
 
     def test_process_error_timeout_and_spawn_error_outcomes(self):

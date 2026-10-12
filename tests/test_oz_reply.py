@@ -1,145 +1,192 @@
-"""OZ/9 JSON object replies, usage, negotiation and Worker retry integration."""
+"""OZ/9 JSONL replies, usage, negotiation and Worker per-job acceptance."""
 import json
 import unittest
 
 from oz import Error
 from oz_batch import SYSTEM
-from oz_reply import (check_capabilities, encode_reply, regroup, validate_reply, validate_response,
+from oz_reply import (check_capabilities, encode_reply, parse_reply, regroup, validate_response,
                       validate_usage)
 from oz_runtime import Inbox
 from oz_worker import Worker
 from test_oz2 import extended
 
 CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
+NL = chr(10)
 
 
-class ReplyCodecTests(unittest.TestCase):
-    def test_results_preserve_text_and_native_values(self):
-        ids = ('short', 'longer_id')
-        exact = '  12.50 ± 0.02 mm\r\nmethod unknown.  '
-        self.assertEqual(validate_reply({'results': [exact, 'done']}, ids),
-                         {'short': ('ok', exact), 'longer_id': ('ok', 'done')})
-        outcomes = validate_reply({'results': [{'a': [1, 2.5, None], 'b': 'Türkçe'}, 7]}, ids)
-        self.assertEqual(outcomes, {'short': ('ok', '{"a":[1,2.5,null],"b":"Türkçe"}'),
-                                    'longer_id': ('ok', '7')})
+def text(*rows, end=''):
+    """Reply text: each row is a JSON value dumped on its own line, or a str kept raw."""
+    return NL.join(row if isinstance(row, str) else json.dumps(row, ensure_ascii=False) for row in rows) + end
 
-    def test_non_string_results_become_compact_json_text(self):
-        ids = ('a', 'b', 'c', 'd', 'e')
-        outcomes = validate_reply({'results': [3, [1, 'x'], {'k': 'v'}, None, True]}, ids)
-        self.assertEqual([outcomes[i] for i in ids],
-                         [('ok', '3'), ('ok', '[1,"x"]'), ('ok', '{"k":"v"}'),
-                          ('ok', 'null'), ('ok', 'true')])
-        # A string that happens to look like JSON stays the exact string.
-        self.assertEqual(validate_reply({'results': ['[1, 2]']}, ('a',)), {'a': ('ok', '[1, 2]')})
 
-    def test_errors_map_marks_failed_jobs_by_index(self):
-        ids = ('zeta', 'alpha', 'mid')
-        reply = {'results': ['first', None, 'third'], 'errors': {'1': 'no data supplied'}}
-        outcomes = validate_reply(reply, ids)
-        self.assertEqual(list(outcomes), list(ids))
-        self.assertEqual(outcomes, {'zeta': ('ok', 'first'), 'alpha': ('failed', 'no data supplied'),
-                                    'mid': ('ok', 'third')})
-        both = validate_reply({'results': [None, None], 'errors': {'0': 'a', '1': ' b\n'}}, ('x', 'y'))
-        self.assertEqual(both, {'x': ('failed', 'a'), 'y': ('failed', ' b\n')})
+def reasons(parsed):
+    return [(v['line'], v['reason']) for v in parsed.violations]
 
-    def test_reply_is_positional_and_ids_are_host_side(self):
-        with self.assertRaises(Error):
-            validate_reply({'results': [['zeta', 0, 'x']], 'q': '0'}, ('zeta', 'alpha'))
-        with self.assertRaises(Error):
-            validate_reply({'zeta': 'x', 'alpha': 'y'}, ('zeta', 'alpha'))
 
-    def test_encode_reply_round_trips_in_request_order(self):
-        outcomes = {'a': ('ok', 'A'), 'b': ('failed', '  B\n')}
-        reply = encode_reply(outcomes, ('a', 'b'))
-        self.assertEqual(reply, {'results': ['A', None], 'errors': {'1': '  B\n'}})
-        self.assertEqual(validate_reply(reply, ('a', 'b')), outcomes)
-        reordered = encode_reply(outcomes, ('b', 'a'))
-        self.assertEqual(reordered, {'results': [None, 'A'], 'errors': {'0': '  B\n'}})
-        self.assertEqual(validate_reply(reordered, ('b', 'a')), outcomes)
-        clean = encode_reply({'a': ('ok', 'A')}, ('a',))
-        self.assertEqual(clean, {'results': ['A']})
-        self.assertEqual(validate_reply(clean, ('a',)), {'a': ('ok', 'A')})
-        # Anything that is not ok is reported as a model-side failure.
-        self.assertEqual(encode_reply({'a': ('retry', 'later')}, ('a',)),
-                         {'results': [None], 'errors': {'0': 'later'}})
+class ParseTests(unittest.TestCase):
+    def test_success_failure_and_success_null(self):
+        parsed = parse_reply(text([0, 'done'], [1, None, 'no data'], [2, None], [3, {'a': [1, 2.5, None]}]), 4)
+        self.assertEqual(parsed.accepted, {0: ('ok', 'done'), 1: ('failed', 'no data'), 2: ('ok', None),
+                                           3: ('ok', {'a': [1, 2.5, None]})})
+        self.assertEqual((parsed.expected, parsed.received, parsed.violations), (4, 4, ()))
 
-    def test_whole_reply_is_rejected_on_any_defect(self):
-        ids = ('a', 'b')
-        cases = [None, [], 'text', 3, ['x', 'y'], {}, {'errors': {'0': 'x'}},
-                 {'results': 'xy'}, {'results': {'0': 'x', '1': 'y'}},
-                 {'results': ['x']}, {'results': ['x', 'y', 'z']}, {'results': []},
-                 {'results': ['x', 'y'], 'q': '0'}, {'results': ['x', 'y'], 'extra': 1},
-                 {'results': ['x', 'y'], 'errors': {}},
-                 {'results': ['x', 'y'], 'errors': []},
-                 {'results': ['x', None], 'errors': {'01': 'why'}},
-                 {'results': [None, 'y'], 'errors': {'00': 'why'}},
-                 {'results': ['x', None], 'errors': {'-1': 'why'}},
-                 {'results': ['x', None], 'errors': {'+1': 'why'}},
-                 {'results': ['x', None], 'errors': {'1.0': 'why'}},
-                 {'results': ['x', None], 'errors': {'one': 'why'}},
-                 {'results': ['x', None], 'errors': {'2': 'why'}},
-                 {'results': ['x', None], 'errors': {'1': 'why', '9': 'why'}},
-                 {'results': ['x', 'y'], 'errors': {'1': 'why'}},
-                 {'results': ['x', ''], 'errors': {'1': 'why'}},
-                 {'results': ['x', None], 'errors': {'1': ''}},
-                 {'results': ['x', None], 'errors': {'1': '  \n'}},
-                 {'results': ['x', None], 'errors': {'1': 5}},
-                 {'results': ['x', None], 'errors': {'1': None}},
-                 {'results': ['x', None], 'errors': {'1': 'w' * 65537}},
-                 {'results': ['x', 'y' * 65537]},
-                 {'results': ['x', ['y' * 65537]]},
-                 {'results': ['x', '\ud800']},
-                 {'results': ['x', float('nan')]},
-                 {'results': ['x', float('inf')]}]
-        for value in cases:
-            with self.subTest(value=str(value)[:60]), self.assertRaises(Error):
-                validate_reply(value, ids)
+    def test_order_does_not_matter_and_indexes_are_positions(self):
+        parsed = parse_reply(text([2, 'c'], [0, 'a'], [1, 'b']), 3)
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 1: ('ok', 'b'), 2: ('ok', 'c')})
 
-    def test_size_limits_are_in_bytes(self):
+    def test_trailing_lf_is_ignored_but_other_empty_lines_are_violations(self):
+        self.assertEqual(parse_reply(text([0, 'a'], end=NL), 1).violations, ())
+        middle = parse_reply('[0,"a"]' + NL + NL + '[1,"b"]', 2)
+        self.assertEqual(middle.accepted, {0: ('ok', 'a'), 1: ('ok', 'b')})
+        self.assertEqual(reasons(middle), [(2, 'empty line')])
+        double = parse_reply('[0,"a"]' + NL + NL, 1)
+        self.assertEqual(double.accepted, {0: ('ok', 'a')})
+        self.assertEqual(reasons(double), [(2, 'empty line')])
+        self.assertEqual(parse_reply('', 1).accepted, {})
+        self.assertEqual(parse_reply('', 1).violations, ())
+
+    def test_missing_index_is_simply_unaccepted(self):
+        parsed = parse_reply(text([0, 'a'], [2, 'c']), 3)
+        self.assertEqual(sorted(parsed.accepted), [0, 2])
+        self.assertEqual(parsed.violations, ())
+
+    def test_duplicate_index_accepts_none_of_its_lines(self):
+        parsed = parse_reply(text([0, 'a'], [1, 'b'], [0, 'again']), 2)
+        self.assertEqual(parsed.accepted, {1: ('ok', 'b')})
+        self.assertEqual(reasons(parsed), [(1, 'conflicting lines for index 0'), (3, 'conflicting lines for index 0')])
+        # A failure line and a success line for one index also conflict, and so does an invalid twin.
+        self.assertEqual(parse_reply(text([0, 'a'], [0, None, 'no']), 1).accepted, {})
+        self.assertEqual(parse_reply(text([0, 'a'], [0, None, ' ']), 1).accepted, {})
+        self.assertEqual(parse_reply(text([0, 'a'], [0, 1, 2, 3]), 1).accepted, {})
+
+    def test_index_must_be_an_in_range_integer(self):
+        for row in ([2, 'x'], [-1, 'x'], [True, 'x'], [False, 'x'], [1.0, 'x'], ['0', 'x'], [None, 'x'], [[0], 'x']):
+            with self.subTest(row=row):
+                parsed = parse_reply(text([0, 'ok'], row), 2)
+                self.assertEqual(parsed.accepted, {0: ('ok', 'ok')})
+                self.assertEqual(len(parsed.violations), 1)
+        self.assertEqual(parse_reply(text([True, 'x']), 2).accepted, {})
+
+    def test_prose_and_malformed_lines_only_drop_themselves(self):
+        parsed = parse_reply(text('Here are the results:', [0, 'a'], '```json', [1, 'b'], '[2,"c"', '```', [2, 'c']), 3)
+        self.assertEqual(parsed.accepted, {0: ('ok', 'a'), 1: ('ok', 'b'), 2: ('ok', 'c')})
+        self.assertEqual([v['line'] for v in parsed.violations], [1, 3, 5, 6])
+        self.assertEqual(parsed.received, 3)
+
+    def test_object_or_scalar_lines_are_not_results(self):
+        for line in ['{"results":["a"]}', '"a"', '5', 'null', 'true', '[]', '[0]', '[0,1,2,3]', '[0,"a"] x',
+                     '[0,"a"],[1,"b"]', '[0,NaN]', '[0,Infinity]', '[0,{"k":1,"k":2}]']:
+            with self.subTest(line=line):
+                parsed = parse_reply(line, 2)
+                self.assertEqual(parsed.accepted, {})
+                self.assertEqual(len(parsed.violations), 1)
+
+    def test_failure_needs_null_and_a_nonblank_error_string(self):
+        for row in ([0, None, ''], [0, None, ' \t'], [0, None, 5], [0, None, None], [0, 'x', 'why'],
+                    [0, 0, 'why'], [0, False, 'why']):
+            with self.subTest(row=row):
+                self.assertEqual(parse_reply(text(row), 1).accepted, {})
+        self.assertEqual(parse_reply(text([0, None, ' why ']), 1).accepted, {0: ('failed', ' why ')})
+
+    def test_oversize_value_makes_only_its_index_unaccepted(self):
         limit = 65536
-        self.assertEqual(validate_reply({'results': ['y' * limit]}, ('a',)), {'a': ('ok', 'y' * limit)})
-        self.assertEqual(validate_reply({'results': [None], 'errors': {'0': 'w' * limit}}, ('a',))['a'][0],
-                         'failed')
-        with self.assertRaises(Error):
-            validate_reply({'results': ['ş' * (limit // 2 + 1)]}, ('a',))
-        with self.assertRaises(Error):
-            validate_reply({'results': [None], 'errors': {'0': 'ş' * (limit // 2 + 1)}}, ('a',))
+        parsed = parse_reply(text([0, 'y' * (limit + 1)], [1, 'fine'], [2, ['y' * limit]], [3, 'ş' * (limit // 2 + 1)],
+                                  [4, None, 'w' * (limit + 1)], [5, 'y' * limit]), 6)
+        self.assertEqual(sorted(parsed.accepted), [1, 5])
+        self.assertEqual([v['line'] for v in parsed.violations], [1, 3, 4, 5])
+        self.assertEqual(parsed.received, 6)
 
-    def test_regroup_single_item_job_keeps_its_value(self):
+    def test_unencodable_values_are_unaccepted(self):
+        for line in ['[0,"\\ud800"]', '[0,1e999]']:
+            with self.subTest(line=line):
+                self.assertEqual(parse_reply(line, 1).accepted, {})
+
+    def test_reply_must_be_text(self):
+        for value in [None, {'results': ['x']}, ['[0,"x"]'], 5, b'[0,"x"]']:
+            with self.subTest(value=str(value)), self.assertRaises(Error):
+                parse_reply(value, 1)
+
+    def test_violations_are_capped_and_ordered(self):
+        parsed = parse_reply(text(*(['prose'] * 30)), 1)
+        self.assertEqual([v['line'] for v in parsed.violations], list(range(1, 21)))
+
+
+class RegroupTests(unittest.TestCase):
+    def test_single_item_job_keeps_its_value(self):
         job_map = (('a', 0), ('b', 0), ('c', 0))
-        outcomes = regroup({'results': ['text', {'k': [1, 2]}, 7]}, job_map)
-        self.assertEqual(outcomes, {'a': ('ok', 'text'), 'b': ('ok', '{"k":[1,2]}'), 'c': ('ok', '7')})
-        self.assertEqual(list(outcomes), ['a', 'b', 'c'])
+        grouped = regroup(text([0, 'text'], [1, {'k': [1, 2]}], [2, 7]), job_map)
+        self.assertEqual(grouped.outcomes, {'a': ('ok', 'text'), 'b': ('ok', '{"k":[1,2]}'), 'c': ('ok', '7')})
+        self.assertEqual(list(grouped.outcomes), ['a', 'b', 'c'])
 
-    def test_regroup_multi_item_job_stores_results_object_in_item_order(self):
+    def test_success_null_and_blank_strings_are_stored_as_json_text(self):
+        grouped = regroup(text([0, None], [1, ''], [2, '  '], [3, True]), tuple((m, 0) for m in 'abcd'))
+        self.assertEqual(grouped.outcomes, {'a': ('ok', 'null'), 'b': ('ok', '""'), 'c': ('ok', '"  "'),
+                                            'd': ('ok', 'true')})
+
+    def test_exact_text_is_preserved(self):
+        exact = '  12.50 ± 0.02 mm' + chr(13) + NL + 'method unknown.  '
+        self.assertEqual(regroup(text([0, exact]), (('a', 0),)).outcomes, {'a': ('ok', exact)})
+        # A string that looks like JSON stays the exact string.
+        self.assertEqual(regroup(text([0, '[1, 2]']), (('a', 0),)).outcomes, {'a': ('ok', '[1, 2]')})
+
+    def test_multi_item_job_stores_results_object_in_item_order(self):
         job_map = (('a', 0), ('a', 1), ('a', 2), ('b', 0), ('c', 0), ('c', 2))
-        reply = {'results': ['read', {'v': 1.5}, 'Türkçe', 'single', ['x'], 'last']}
-        outcomes = regroup(reply, job_map)
-        self.assertEqual(outcomes['a'], ('ok', '{"results":["read",{"v":1.5},"Türkçe"]}'))
-        self.assertEqual(outcomes['b'], ('ok', 'single'))
-        self.assertEqual(outcomes['c'], ('ok', '{"results":[["x"],"last"]}'))
-        # Strings stay strings; nothing is stringified twice.
-        self.assertEqual(regroup({'results': ['[1]', 'x']}, (('a', 0), ('a', 1)))['a'],
+        reply = text([5, 'last'], [0, 'read'], [1, {'v': 1.5}], [2, 'Türkçe'], [3, 'single'], [4, ['x']])
+        grouped = regroup(reply, job_map)
+        self.assertEqual(grouped.outcomes['a'], ('ok', '{"results":["read",{"v":1.5},"Türkçe"]}'))
+        self.assertEqual(grouped.outcomes['b'], ('ok', 'single'))
+        self.assertEqual(grouped.outcomes['c'], ('ok', '{"results":[["x"],"last"]}'))
+        self.assertEqual(regroup(text([0, '[1]'], [1, 'x']), (('a', 0), ('a', 1))).outcomes['a'],
                          ('ok', '{"results":["[1]","x"]}'))
 
-    def test_regroup_failed_item_fails_the_job_with_local_index_reasons(self):
+    def test_failed_item_fails_the_job_with_local_index_reasons(self):
         job_map = (('a', 0), ('a', 1), ('a', 2), ('b', 0), ('c', 0), ('c', 1))
-        reply = {'results': ['ok', None, None, None, 'fine', 'fine'],
-                 'errors': {'1': 'no data', '2': 'unknown reference', '3': 'cannot'}}
-        outcomes = regroup(reply, job_map)
+        reply = text([0, 'ok'], [1, None, 'no data'], [2, None, 'unknown reference'], [3, None, 'cannot'],
+                     [4, 'fine'], [5, 'fine'])
+        outcomes = regroup(reply, job_map).outcomes
         self.assertEqual(outcomes['a'], ('failed', '1: no data; 2: unknown reference'))
         self.assertEqual(outcomes['b'], ('failed', 'cannot'))
         self.assertEqual(outcomes['c'], ('ok', '{"results":["fine","fine"]}'))
 
-    def test_regroup_keeps_validation_strict(self):
-        job_map = (('a', 0), ('a', 1))
-        for bad in [{'results': ['x']}, {'results': ['x', 'y', 'z']}, {'results': ['x', 'y'], 'q': '0'},
-                    {'results': ['x', 'y'], 'errors': {}}, {'results': ['x', 'y'], 'errors': {'1': 'why'}},
-                    {'results': ['x', None], 'errors': {'2': 'why'}}, {'results': ['x', None], 'errors': {'1': ' '}},
-                    {'results': [['y' * 40000], ['y' * 40000]]}, ['x', 'y'], None]:
-            with self.subTest(bad=str(bad)[:50]), self.assertRaises(Error):
-                regroup(bad, job_map)
+    def test_unaccepted_item_retries_only_its_job(self):
+        job_map = (('a', 0), ('a', 1), ('b', 0), ('c', 0), ('d', 0))
+        reply = text([0, 'a0'], [2, 'b'], [3, 'c'], [3, 'c again'], 'prose', [9, 'out of range'], [4, 'd'])
+        outcomes = regroup(reply, job_map).outcomes
+        self.assertEqual(outcomes['a'][0], 'retry')
+        self.assertEqual(outcomes['b'], ('ok', 'b'))
+        self.assertEqual(outcomes['c'][0], 'retry')
+        self.assertEqual(outcomes['d'], ('ok', 'd'))
+        self.assertIn('adapter_invalid_reply', outcomes['a'][1])
 
+    def test_aggregate_over_the_size_limit_retries_that_job_only(self):
+        job_map = (('a', 0), ('a', 1), ('b', 0))
+        reply = text([0, 'y' * 40000], [1, 'y' * 40000], [2, 'fine'])
+        outcomes = regroup(reply, job_map).outcomes
+        self.assertEqual(outcomes['a'][0], 'retry')
+        self.assertEqual(outcomes['b'], ('ok', 'fine'))
+
+    def test_no_accepted_line_retries_everything(self):
+        for reply in ['', 'prose', '{"results":["x"]}', text([0, 'x'], [0, 'y'])]:
+            with self.subTest(reply=reply):
+                grouped = regroup(reply, (('a', 0),))
+                self.assertEqual(grouped.parsed.accepted, {})
+                self.assertEqual(grouped.outcomes['a'][0], 'retry')
+
+    def test_non_text_reply_is_rejected(self):
+        for bad in [None, {'results': ['x']}, ['x'], 3]:
+            with self.subTest(bad=str(bad)), self.assertRaises(Error):
+                regroup(bad, (('a', 0),))
+
+    def test_encode_reply_round_trips_in_request_order(self):
+        outcomes = {'a': ('ok', 'A'), 'b': ('failed', '  B' + NL)}
+        reply = encode_reply(outcomes, ('a', 'b'))
+        self.assertEqual(reply, '[0,"A"]' + NL + '[1,null,"  B' + chr(92) + 'n"]')
+        self.assertEqual(regroup(reply, (('a', 0), ('b', 0))).outcomes, outcomes)
+        reordered = encode_reply(outcomes, ('b', 'a'))
+        self.assertEqual(regroup(reordered, (('b', 0), ('a', 0))).outcomes, outcomes)
+
+
+class UsageAndCapabilityTests(unittest.TestCase):
     def test_usage_subsets_are_checked_and_missing_stays_unknown(self):
         usage = {'input_tokens': 100, 'cached_input_tokens': 60, 'cache_creation_input_tokens': 40,
                  'output_tokens': 30, 'reasoning_output_tokens': 30}
@@ -153,16 +200,17 @@ class ReplyCodecTests(unittest.TestCase):
                 validate_usage(bad)
 
     def test_validate_response_wraps_reply_and_usage(self):
-        reply = {'results': ['x']}
-        self.assertEqual(validate_response({'reply': reply}, ('a',)), ({'a': ('ok', 'x')}, {}))
-        self.assertEqual(validate_response({'reply': reply, 'usage': {'input_tokens': 9}}, ('a',)),
-                         ({'a': ('ok', 'x')}, {'input_tokens': 9}))
+        reply = '[0,"x"]'
+        job_map = (('a', 0),)
+        grouped, usage = validate_response({'reply': reply}, job_map)
+        self.assertEqual((grouped.outcomes, usage), ({'a': ('ok', 'x')}, {}))
+        self.assertEqual(validate_response({'reply': reply, 'usage': {'input_tokens': 9}}, job_map)[1],
+                         {'input_tokens': 9})
         for bad in [None, reply, {}, {'reply': reply, 'secret': 1},
-                    {'reply': reply, 'usage': {'input_tokens': -1}},
-                    {'reply': {'results': []}}, {'reply': {'results': ['x', 'y']}},
+                    {'reply': reply, 'usage': {'input_tokens': -1}}, {'reply': {'results': ['x']}},
                     {'reply': ['x']}]:
             with self.subTest(bad=str(bad)[:60]), self.assertRaises(Error):
-                validate_response(bad, ('a',))
+                validate_response(bad, job_map)
 
     def test_capabilities_require_protocol_and_language_support(self):
         self.assertEqual(check_capabilities(CAPS), CAPS)
@@ -197,7 +245,7 @@ class ReplyWorkerTests(unittest.TestCase):
         seen = []
         def adapter(request):
             seen.append(request)
-            return {'reply': {'results': ['done']}}
+            return {'reply': text([0, 'done'])}
         result = self.worker(adapter).run_once()
         request = seen[0]
         self.assertEqual(result['status'], 'received')
@@ -216,18 +264,18 @@ class ReplyWorkerTests(unittest.TestCase):
     def test_reply_keeps_exact_result_and_usage(self):
         self.post('one')
         def adapter(request):
-            return {'reply': {'results': ['  exact result\r\n']},
+            return {'reply': text([0, '  exact result' + chr(13) + NL]),
                     'usage': {'input_tokens': 900, 'cached_input_tokens': 800, 'output_tokens': 12}}
         report = self.worker(adapter).run_once()
         self.assertEqual(report['status'], 'received')
         self.assertEqual(report['verification'], 'unverified')
-        self.assertEqual(self.box.inspect('one')['result'], '  exact result\r\n')
+        self.assertEqual(self.box.inspect('one')['result'], '  exact result' + chr(13) + NL)
         self.assertEqual(self.box.runs()[0]['report']['usage']['cached_input_tokens'], 800)
 
     def test_native_json_results_are_stored_as_compact_text(self):
         self.post('one')
         self.post('two')
-        adapter = lambda request: {'reply': {'results': [{'value': 12.5, 'unit': 'mm'}, [1, 2]]}}
+        adapter = lambda request: {'reply': text([0, {'value': 12.5, 'unit': 'mm'}], [1, [1, 2]])}
         self.worker(adapter, batch_size=2).run_once()
         self.assertEqual(self.box.inspect('one')['result'], '{"value":12.5,"unit":"mm"}')
         self.assertEqual(self.box.inspect('two')['result'], '[1,2]')
@@ -238,7 +286,8 @@ class ReplyWorkerTests(unittest.TestCase):
         seen = []
         def adapter(request):
             seen.append(request)
-            return {'reply': {'results': ['read text', {'findings': []}, 'test requested', 'single value']}}
+            return {'reply': text([0, 'read text'], [1, {'findings': []}], [2, 'test requested'],
+                                  [3, 'single value'], end=NL)}
         self.worker(adapter, batch_size=2).run_once()
         self.assertEqual(json.loads(seen[0]['prompt'])['j'], ['read 7', 'audit 7', 'test 14', 'read 13'])
         self.assertEqual(self.box.inspect('multi')['result'],
@@ -248,19 +297,102 @@ class ReplyWorkerTests(unittest.TestCase):
     def test_failed_atom_fails_its_job_with_local_index_reasons_and_not_the_sibling(self):
         self.post('multi', 'r7a7t14')
         self.post('single', 'r13')
-        reply = {'results': ['read text', None, None, 'single value'],
-                 'errors': {'1': 'no patch', '2': 'no procedure'}}
+        reply = text([0, 'read text'], [1, None, 'no patch'], [2, None, 'no procedure'], [3, 'single value'])
         result = self.worker(lambda request: {'reply': reply}, batch_size=2).run_once()
         self.assertEqual(result['outcomes'], {'multi': 'failed', 'single': 'ok'})
         multi = self.box.inspect('multi')
         self.assertEqual((multi['state'], multi['error']), ('failed', '1: no patch; 2: no procedure'))
         self.assertEqual(self.box.inspect('single')['result'], 'single value')
 
-    def test_reply_count_must_match_model_jobs_not_inbox_jobs(self):
+    def test_partial_acceptance_settles_accepted_jobs_and_retries_only_the_others(self):
+        for mid in ('first', 'second', 'third'):
+            self.post(mid)
+        calls = []
+        def adapter(request):
+            calls.append(request)
+            if len(calls) == 1:
+                # Index 1 is missing and index 2 is conflicting; index 0 is fine.
+                return {'reply': text([0, 'one'], 'Done!', [2, 'x'], [2, 'y']), 'usage': {'output_tokens': 7}}
+            return {'reply': text([0, 'two'], [1, 'three'])}
+        worker = self.worker(adapter, batch_size=3)
+        first = worker.run_once()
+        self.assertEqual(first['status'], 'received')
+        self.assertEqual(first['outcomes'], {'first': 'ok', 'second': 'retry', 'third': 'retry'})
+        self.assertEqual(first['usage'], {'output_tokens': 7})
+        self.assertEqual(self.box.inspect('first')['state'], 'done')
+        self.assertEqual(self.box.inspect('first')['result'], 'one')
+        for mid in ('second', 'third'):
+            self.assertEqual(self.box.inspect(mid)['state'], 'pending')
+        self.assertEqual(worker.run_once()['status'], 'idle')
+        self.now[0] += 5
+        second = worker.run_once()
+        self.assertEqual(second['ids'], ['second', 'third'])
+        self.assertEqual(calls[1]['ids'], ['second', 'third'])
+        self.assertEqual(json.loads(calls[1]['prompt'])['j'], ['read 13', 'read 13'])
+        self.assertEqual(self.box.inspect('second')['result'], 'two')
+        self.assertEqual(self.box.inspect('third')['result'], 'three')
+        self.assertEqual(self.box.inspect('first')['attempts'], 1)
+        self.assertEqual(self.box.inspect('second')['attempts'], 2)
+        self.assertNotEqual(calls[0]['receipt'], calls[1]['receipt'])
+
+    def test_multi_atom_job_with_one_missing_atom_retries_as_a_whole(self):
         self.post('multi', 'r7a7t14')
-        result = self.worker(lambda request: {'reply': {'results': ['one job result']}}).run_once()
-        self.assertEqual(result['error_code'], 'adapter_invalid_reply')
+        self.post('single', 'r13')
+        calls = []
+        def adapter(request):
+            calls.append(request)
+            if len(calls) == 1:
+                return {'reply': text([0, 'read text'], [2, 'test requested'], [3, 'single value'])}
+            return {'reply': text([0, 'a'], [1, 'b'], [2, 'c'])}
+        worker = self.worker(adapter, batch_size=2)
+        result = worker.run_once()
+        self.assertEqual(result['outcomes'], {'multi': 'retry', 'single': 'ok'})
         self.assertEqual(self.box.inspect('multi')['state'], 'pending')
+        self.assertIsNone(self.box.inspect('multi')['result'])
+        self.assertEqual(self.box.inspect('single')['result'], 'single value')
+        self.now[0] += 5
+        worker.run_once()
+        self.assertEqual(calls[1]['ids'], ['multi'])
+        self.assertEqual(json.loads(calls[1]['prompt'])['j'], ['read 7', 'audit 7', 'test 14'])
+        self.assertEqual(self.box.inspect('multi')['result'], '{"results":["a","b","c"]}')
+
+    def test_partial_acceptance_keeps_dependants_of_retried_jobs_locked(self):
+        self.post('first')
+        self.post('sibling')
+        self.post('dependent', after=('first',))
+        result = self.worker(lambda r: {'reply': text([1, 'sibling done'])}, batch_size=2).run_once()
+        self.assertEqual(result['outcomes'], {'first': 'retry', 'sibling': 'ok'})
+        self.assertEqual(self.box.inspect('dependent')['attempts'], 0)
+        self.assertEqual(self.box.inspect('dependent')['state'], 'pending')
+
+    def test_partial_acceptance_ledger_counts_and_violations(self):
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'calls.jsonl'
+            self.post('one')
+            self.post('two')
+            reply = text([0, 'a'], 'not json', [5, 'out'])
+            self.worker(lambda r: {'reply': reply}, batch_size=2, ledger_path=path).run_once()
+            end = [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines()][-1]
+        self.assertEqual(end['outcome'], 'invalid_response')
+        self.assertEqual(end['validation'], dict(
+            expected_results=2, received_results=2, accepted_results=1, failed_results=0,
+            violations=[{'line': 2, 'reason': 'not a single JSON value'},
+                        {'line': 3, 'reason': 'index out of range'}]))
+
+    def test_object_reply_retries_every_job(self):
+        self.post('multi', 'r7a7t14')
+        result = self.worker(lambda request: {'reply': '{"results":["a","b","c"]}'}).run_once()
+        self.assertEqual(result['error_code'], 'adapter_invalid_reply')
+        self.assertEqual(result['outcomes'], {'multi': 'retry'})
+        self.assertEqual(self.box.inspect('multi')['state'], 'pending')
+
+    def test_non_text_reply_retries_every_job(self):
+        self.post('one')
+        result = self.worker(lambda request: {'reply': {'results': ['x']}}).run_once()
+        self.assertEqual(result['error_code'], 'adapter_invalid_reply')
+        self.assertEqual(self.box.inspect('one')['state'], 'pending')
 
     def test_positional_reply_maps_results_to_delivered_ids(self):
         for mid in ('first', 'second', 'third'):
@@ -269,7 +401,7 @@ class ReplyWorkerTests(unittest.TestCase):
             self.assertEqual(request['ids'], ['first', 'second', 'third'])
             for mid in request['ids']:
                 self.assertNotIn(mid, request['prompt'])
-            return {'reply': {'results': ['one', 'two', 'three']}}
+            return {'reply': text([2, 'three'], [0, 'one'], [1, 'two'])}
         self.worker(adapter, batch_size=3).run_once()
         self.assertEqual([self.box.inspect(m)['result'] for m in ('first', 'second', 'third')],
                          ['one', 'two', 'three'])
@@ -285,7 +417,7 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('one')['attempts'], 0)
 
     def test_invalid_reply_retries_all_and_keeps_dependants_locked(self):
-        for bad_reply in ('legacy_list', 'partial', 'extra_key', 'empty_errors'):
+        for bad_reply in ('legacy_object', 'prose', 'list_value', 'duplicate_everything'):
             with self.subTest(bad_reply=bad_reply):
                 self.box.close()
                 self.box = Inbox(clock=lambda: self.now[0])
@@ -294,14 +426,14 @@ class ReplyWorkerTests(unittest.TestCase):
                 self.post('sibling')
                 self.post('dependent', after=('first',))
                 def adapter(request):
-                    if bad_reply == 'legacy_list':
-                        reply = [request['receipt'], 'result', 'result']
-                    elif bad_reply == 'extra_key':
-                        reply = {'results': ['result', 'result'], 'q': request['receipt']}
-                    elif bad_reply == 'empty_errors':
-                        reply = {'results': ['result', 'result'], 'errors': {}}
+                    if bad_reply == 'legacy_object':
+                        reply = json.dumps({'results': ['result', 'result']})
+                    elif bad_reply == 'prose':
+                        reply = 'Both jobs are done.'
+                    elif bad_reply == 'list_value':
+                        reply = ['result', 'result']
                     else:
-                        reply = {'results': ['result']}
+                        reply = text([0, 'a'], [0, 'b'], [1, 'c'], [1, 'd'])
                     return {'reply': reply, 'usage': {'output_tokens': 7}}
                 result = self.worker(adapter, batch_size=2).run_once()
                 self.assertEqual(result['status'], 'adapter_error')
@@ -312,14 +444,13 @@ class ReplyWorkerTests(unittest.TestCase):
                 self.assertEqual(self.box.inspect('sibling')['state'], 'pending')
                 self.assertEqual(self.box.inspect('dependent')['attempts'], 0)
 
-    def test_errors_map_fails_only_listed_jobs_without_retry(self):
+    def test_failure_lines_fail_only_listed_jobs_without_retry(self):
         for mid in ('first', 'bad', 'third'):
             self.post(mid)
         calls = []
         def adapter(request):
             calls.append(request)
-            return {'reply': {'results': ['done one', None, 'done three'],
-                              'errors': {'1': 'unsupported request'}}}
+            return {'reply': text([0, 'done one'], [1, None, 'unsupported request'], [2, 'done three'])}
         worker = self.worker(adapter, batch_size=3)
         first = worker.run_once()
         self.assertEqual(first['outcomes'], {'first': 'ok', 'bad': 'failed', 'third': 'ok'})
@@ -329,6 +460,12 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(self.box.inspect('first')['result'], 'done one')
         self.assertEqual(self.box.inspect('bad')['state'], 'failed')
 
+    def test_blank_string_result_is_stored_without_breaking_settle(self):
+        self.post('one')
+        self.worker(lambda request: {'reply': text([0, ''])}).run_once()
+        self.assertEqual(self.box.inspect('one')['state'], 'done')
+        self.assertEqual(self.box.inspect('one')['result'], '""')
+
     def test_failed_call_retries_all_jobs_with_fresh_receipt(self):
         for mid in ('first', 'second'):
             self.post(mid)
@@ -337,7 +474,7 @@ class ReplyWorkerTests(unittest.TestCase):
             calls.append(request)
             if len(calls) == 1:
                 raise RuntimeError('temporary outage')
-            return {'reply': {'results': ['eventual one', 'eventual two']}}
+            return {'reply': text([0, 'eventual one'], [1, 'eventual two'])}
         worker = self.worker(adapter, batch_size=2)
         first = worker.run_once()
         self.assertEqual(first['outcomes'], {'first': 'retry', 'second': 'retry'})
@@ -356,8 +493,8 @@ class ReplyWorkerTests(unittest.TestCase):
         def adapter(request):
             receipts.append(request['receipt'])
             if len(receipts) < 3:
-                return {'reply': {'results': []}}
-            return {'reply': {'results': ['done']}}
+                return {'reply': ''}
+            return {'reply': text([0, 'done'])}
         worker = self.worker(adapter, retry_delay=0)
         for _ in range(3):
             worker.run_once()
@@ -371,8 +508,8 @@ class ReplyWorkerTests(unittest.TestCase):
         requests = []
         def adapter(request):
             requests.append(request)
-            return {'reply': {'results': ['PREDECESSOR-RESULT' if 'first' in request['ids']
-                                          else 'ok'] * len(request['ids'])}}
+            value = 'PREDECESSOR-RESULT' if 'first' in request['ids'] else 'ok'
+            return {'reply': text(*([i, value] for i in range(len(request['ids']))))}
         worker = self.worker(adapter, batch_size=3)
         worker.run_once()
         worker.run_once()

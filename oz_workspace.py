@@ -186,7 +186,8 @@ class Workspace:
 
 DEMO_SCRIPT = (
     'import json,sys; r=json.load(sys.stdin); n=len(json.loads(r["prompt"])["j"]); '
-    'json.dump({"reply":{"results":["DEMO receipt only; no model or task execution." for i in range(n)]}},sys.stdout)'
+    'm="DEMO receipt only; no model or task execution."; '
+    'json.dump({"reply":"\\n".join("[%d,%s]"%(i,json.dumps(m)) for i in range(n))},sys.stdout)'
 )
 DEMO_CAPABILITIES = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
 

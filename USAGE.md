@@ -100,12 +100,12 @@ Modeline yalnız `system` (sistem talimatı) ve `prompt` (kullanıcı mesajı) a
 
 ```json
 {
-  "reply":{"results":["Sonuç metni", ["12.48 mm","12.52 mm"], null], "errors":{"2":"kaynak eksik"}},
+  "reply":"[0,\"Sonuç metni\"]\n[1,[\"12.48 mm\",\"12.52 mm\"]]\n[2,null,\"kaynak eksik\"]",
   "usage":{"input_tokens":312,"output_tokens":44,"cached_input_tokens":0}
 }
 ```
 
-`reply`, modelin cevabıdır: `results`, prompt'taki `j` listesinin her öğesi için sırayla bir değer içerir. Çok atomlu bir iş (`r7a7t14` gibi) birkaç `j` öğesine açılır; host sonuçları işe geri toplar ve `{"results":[...]}` olarak saklar. Bir öğe başarısızsa iş, yerel indeksli gerekçelerle başarısız olur. Metin ve kod string olur, yapılandırılmış sonuçlar doğal JSON kalır. `errors` içinde indeksi verilen öğe kalıcı hatadır ve sonucu `null` olmalıdır. Uzunluk eşleşmezse, `errors` boşsa ya da kurala uymayan bir sıra varsa bütün cevap reddedilir ve hiçbir iş kısmen tamamlanmaz. Adaptör hatası, zaman aşımı veya geçersiz cevapta işler yeni bir receipt ile yeniden denenir.
+`reply`, modelin ham metin cevabıdır (JSON ayrıştırma adaptörün işi değil). Her satır tek bir JSON dizisidir: başarıda `[i,değer]`, hatada `[i,null,"gerekçe"]`; `i`, prompt'taki `j` listesinin sıfır tabanlı indeksidir. Çok atomlu bir iş (`r7a7t14` gibi) birkaç `j` öğesine açılır; host sonuçları işe geri toplar ve `{"results":[...]}` olarak saklar. Bir öğe başarısızsa iş, yerel indeksli gerekçelerle başarısız olur. Geçersiz satır (düzyazı, boş satır, aralık dışı veya bool indeks, 65536 byte üstü değer) yalnız kendisini düşürür, onarılmaz. Aynı indeksi taşıyan birden çok satır çakışmadır, hiçbiri kabul edilmez. Kabul edilmeyen indeksi olan iş yeni receipt ile yeniden denenir, kalan işler normal tamamlanır. Hiçbir geçerli satır yoksa, adaptör hatası veya zaman aşımı olursa bütün işler yeniden denenir. Satır hataları `calls.jsonl` içinde `validation.violations` altında görünür.
 
 String sonuçlar olduğu gibi, diğer değerler kompakt JSON metni olarak saklanır. `usage` isteğe bağlı sağlayıcı raporudur; yoksa bilinmiyor kabul edilir. Cached input normal input'a tekrar eklenmez. Sistem metni, cevap sözleşmesi ve öncül çıktılar yerel girdi bütçesine dahildir. Çalışma alanında her model çağrısı `calls.jsonl` dosyasına (`akor.call/1`) `call_start` ve `call_end` satırları olarak eklenir; bilinmeyen değerler `null` kalır.
 
@@ -114,11 +114,11 @@ Hazır örnek: [examples/claude_cli_adapter.py](examples/claude_cli_adapter.py) 
 Python içinden subprocess olmadan mevcut framework'e bağlamak için:
 
 ```python
-from oz_worker import Worker, loads
+from oz_worker import Worker
 
 def adapter(request):
     text = existing_agent(request["system"], request["prompt"])  # Kendi mevcut ajan çağrın.
-    return {"reply": loads(text)}
+    return {"reply": text}  # Ham model metni, satır başına bir JSON dizisi.
 
 worker = Worker(inbox, channel, adapter, counters=[count_for_model], max_tokens=2048,
                 capabilities={"protocols": ["oz.adapter/3"], "languages": ["OZ/9"]})

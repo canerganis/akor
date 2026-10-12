@@ -16,7 +16,7 @@ import uuid
 from typing import Callable
 
 from oz import Channel, Error
-from oz_reply import LANGUAGE, PROTOCOL, check_capabilities, regroup, validate_usage
+from oz_reply import LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
 from oz_runtime import Inbox, Outcome
 
 LEDGER_SCHEMA = 'akor.call/1'
@@ -31,19 +31,6 @@ class AdapterError(Error):
         self.code = (code if isinstance(code, str) and (code in allowed or re.fullmatch(r'adapter_exit_-?[0-9]{1,10}', code))
                      else 'adapter_failure')
         super().__init__(self.code)
-
-
-def loads(text: str):
-    def unique(pairs):
-        obj = {}
-        for key, value in pairs:
-            if key in obj:
-                raise Error('duplicate JSON key')
-            obj[key] = value
-        return obj
-    def constant(_):
-        raise Error('non-finite JSON value')
-    return json.loads(text, object_pairs_hook=unique, parse_constant=constant)
 
 
 @dataclass(frozen=True)
@@ -221,7 +208,7 @@ class Worker:
                                               token_estimates=estimates))
         report = {'language': LANGUAGE, 'mode': packet.mode, 'prompt_tokens': list(packet.tokens),
                   'adapter_calls': 1, 'usage': {}, 'verification': 'unverified', 'call_id': call_id}
-        phase, response, usage, failure = 'adapter', None, None, None
+        phase, response, usage, failure, grouped = 'adapter', None, None, None, None
         try:
             response = self.adapter(request)
             phase = 'validation'
@@ -229,8 +216,11 @@ class Worker:
                 raise Error('adapter response must be {"reply":...,"usage":...}')
             # Usage is provider accounting; keep it even when the reply is invalid.
             usage = report['usage'] = validate_usage(response.get('usage', {}))
-            outcomes = {mid: Outcome(status, text) for mid, (status, text)
-                        in regroup(response['reply'], packet.job_map).items()}
+            grouped = regroup(response['reply'], packet.job_map)
+            if not grouped.parsed.accepted:
+                raise Error('reply has no accepted result line')
+            # Per-job acceptance: a job with an unaccepted item retries alone, the others settle.
+            outcomes = {mid: Outcome(*grouped.outcomes[mid]) for mid in ids}
             report['status'] = 'received'
         except Exception as exc:
             # Do not store arbitrary provider exception text: it may contain credentials.
@@ -246,7 +236,7 @@ class Worker:
         elapsed = time.monotonic() - start
         report['wall_seconds'] = round(elapsed, 6)
         end = self._call_end(call, packet, started_at, elapsed, estimates, response, usage, failure,
-                             report.get('error_code'), outcomes)
+                             report.get('error_code'), outcomes, grouped)
         if not self._append(end) or not ledger_ok:
             report['ledger_error'] = 'write_failed'
         for mid, outcome in outcomes.items():
@@ -257,17 +247,18 @@ class Worker:
         self.inbox.settle(delivery, outcomes, retry_delay=self.retry_delay, report=report)
         return dict(report, ids=list(ids), outcomes={mid: o.status for mid, o in outcomes.items()})
 
-    def _call_end(self, call, packet, started_at, elapsed, estimates, response, usage, failure, code, outcomes):
+    def _call_end(self, call, packet, started_at, elapsed, estimates, response, usage, failure, code, outcomes,
+                  grouped):
         try:
             text = json.dumps(response, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
         except (TypeError, ValueError):
             text = None
         sha, size = _digest(text)
-        reply = response.get('reply') if isinstance(response, dict) else None
-        results = reply.get('results') if isinstance(reply, dict) else None
-        received = len(results) if isinstance(results, list) else None
+        parsed = grouped.parsed if grouped is not None else None
         if failure is None:
-            outcome = 'job_error' if any(o.status == 'failed' for o in outcomes.values()) else 'ok'
+            unaccepted = any(o.status == 'retry' for o in outcomes.values())
+            outcome = ('invalid_response' if unaccepted
+                       else 'job_error' if any(o.status == 'failed' for o in outcomes.values()) else 'ok')
         elif isinstance(failure, subprocess.TimeoutExpired):
             outcome = 'timeout'
         elif code == 'adapter_start_failed':
@@ -276,11 +267,12 @@ class Worker:
             outcome = 'invalid_response'
         else:
             outcome = 'process_error'
-        validation = dict(expected_results=len(packet.job_map), received_results=received,
-                          accepted_results=None, failed_results=None)
-        if failure is None:
-            failed = len(reply.get('errors', {}))
-            validation.update(accepted_results=received - failed, failed_results=failed)
+        validation = dict(expected_results=len(packet.job_map), received_results=None,
+                          accepted_results=None, failed_results=None, violations=[])
+        if parsed is not None:
+            failed = sum(1 for status, _ in parsed.accepted.values() if status == 'failed')
+            validation.update(received_results=parsed.received, accepted_results=len(parsed.accepted),
+                              failed_results=failed, violations=list(parsed.violations))
         exit_code = None
         if isinstance(failure, AdapterError) and re.fullmatch(r'adapter_exit_-?[0-9]{1,10}', code):
             exit_code = int(code.rsplit('_', 1)[1])
@@ -291,7 +283,8 @@ class Worker:
                       token_estimates=dict(estimates, response=self._estimate(text)),
                       exit_code=exit_code, timed_out=isinstance(failure, subprocess.TimeoutExpired),
                       outcome=outcome, validation=validation,
-                      error=None if failure is None else code + ' (' + type(failure).__name__ + ')')
+                      error=(code + ' (' + type(failure).__name__ + ')' if failure is not None
+                             else RETRY_REASON if outcome == 'invalid_response' else None))
         if usage:
             fields['usage'] = dict({'source': 'adapter', 'scope': 'call', 'raw': usage, 'total_tokens': None},
                                    **{key: usage.get(raw) for key, raw in USAGE_MAP if raw})
