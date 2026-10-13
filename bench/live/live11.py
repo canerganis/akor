@@ -349,7 +349,7 @@ def stage1g_flat(reply, ids, header=False):
     if header:
         lines = reply.split('\n')
         first = next((k for k, line in enumerate(lines) if line.removesuffix('\r').strip(' \t')), None)
-        if first is None or lines[first].removesuffix('\r') != 'OZ/1g':
+        if first is None or lines[first].removesuffix('\r').rstrip(' \t') != 'OZ/1g':
             raise ValueError('first nonblank line is not OZ/1g')
         reply = '\n'.join(lines[first + 1:])
     p = parse_reply(reply, ids)
