@@ -260,13 +260,17 @@ REV2 = {(1, 4): 'From the JSON array [["jan",31],["feb",28],["mar",31]] of [mont
                 '[2,3,5,7] and whose key "evens" is how many of them are even, both as integers.',
         (4, 1): 'Return a JSON array of [character, position] pairs for the characters of the string "abc", in order, '
                 'positions starting at 1.'}
-REV = 2
+# Revision 3 (docs/design/stage-1g-R-decision.md): P4 op 5 states its nesting with a literal example.
+REV3 = {**REV2, (4, 5): 'Return a JSON array of arrays containing exactly one inner array, [first ref\'s `id`, second ref\'s '
+                        '`id`]; for ids "u1" and "u2" the result is [["u1","u2"]].'}
+REV = 3
 
 
 def packet(k, rev=REV):
     goal, spec = PACKETS[k]
-    if rev == 2:
-        spec = [(REV2.get((k, o), text), count, gen) for o, (text, count, gen) in enumerate(spec)]
+    if rev >= 2:
+        texts = REV3 if rev == 3 else REV2
+        spec = [(texts.get((k, o), text), count, gen) for o, (text, count, gen) in enumerate(spec)]
     rng = random.Random(3000 + k)
     ops, refs, ref_idx, blocks, ids, expected, used = [], [], {}, [], [], {}, set()
     rows = []
