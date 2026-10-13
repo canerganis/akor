@@ -1,0 +1,20 @@
+Stage 1g repair run (stage-1g-D-repair.md), arm H, packets rev 2, order Sonnet P1-P4, Haiku P1-P4, Fable P1-P4, stop at first failure.
+
+sonnet P1 PASS 64/64 accepted in 3359 out 1432 thinking 825 api_ms 8772
+sonnet P2 PASS 64/64 accepted in 3213 out 1420 thinking 745 api_ms 8264
+sonnet P3 PASS 64/64 accepted in 3658 out 2888 thinking 1290 api_ms 14420
+sonnet P4 PASS 64/64 accepted in 3781 out 3769 thinking 2089 api_ms 19228
+haiku P1 PASS 64/64 accepted in 3328 out 3701 thinking 3094 api_ms 12704
+haiku P2 PASS 64/64 accepted in 3172 out 4098 thinking 3423 api_ms 13104
+haiku P3 PASS 64/64 accepted in 3625 out 7079 thinking 5481 api_ms 22728
+haiku P4 FAIL 54/64 accepted in 3744 out 10082 thinking 8422 api_ms 30033
+Fable P1-P4: not run (stopped at the first failure).
+
+Haiku P4: reply accepted; 10 wrong jobs, all op 5: Return a JSON array holding exactly one pair, [first ref's `id`, second ref's `id`].
+  r_438: expected [["u6", "u4"]], got ["u6", "u4"]
+  x-648: expected [["u6", "u4"]], got ["u6", "u4"]
+  k254: expected [["u3", "u6"]], got ["u3", "u6"]
+All 10 jobs of op 5 lost the outer array; the other 54 jobs of P4, including op 0 [[1,2,3],[2,4,6]], op 1 pairs, grid, transpose, kv pairs and text lines, are correct.
+Op 5 is unchanged from rev 1. In stage D Haiku passed rev-1 P4 64/64 (op 5 correct); Sonnet and Fable also passed P4 with op 5 correct in B and D, and Sonnet again here.
+Haiku thinking on this call: 8422 tokens (out 10082), the highest of any call so far.
+Frozen rule: stop at the first invalid reply or wrong job; no extra attempts this round, no switch to G; any failure means no adoption, 0.8-exec stays.
