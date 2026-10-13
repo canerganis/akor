@@ -44,9 +44,18 @@ The same wire was then checked on other models for breakage (no paired baseline 
 | Sonnet 5.5, 32 | 5 | 5/5 | 160/160 | 3,891 | 7.0 s |
 
 Plus five stress packets per model whose results are all empty arrays, scalars, objects, nested arrays or
-genuine job failures. Across all 71 calls on the final wire, the parser accepted every reply. Haiku 5.5 thinks
-much longer on this wire than Sonnet (up to 10k output tokens per 64-job packet), so it is not the cheaper model
-here. Raw data, manifests and the harness are in [`bench/`](bench/); every decision is in [`docs/design/`](docs/design/).
+genuine job failures. Across all 71 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
+thinks much longer on this wire than Sonnet (up to 10k output tokens per 64-job packet), so it is not the cheaper
+model here. Raw data, manifests and the harness are in [`bench/`](bench/); every decision is in [`docs/design/`](docs/design/).
+
+### Supported models
+
+This release is qualified for the tested Claude configurations only: `claude-sonnet-5-5` (32 and 64 jobs per
+call), `claude-haiku-5-5` and `claude-fable-5-1` (64 jobs per call), all through `claude -p` at default effort.
+The broader qualification, which also covered a Codex model, failed: GPT-6 Luna at medium effort through the
+Codex CLI got 1 of 10 packets right, binding jobs to the wrong operation or input and slipping out of the reply
+format. For other models, use the 0.8 release (tag `oz-0.8.0-full`). The scope was chosen after that failure and
+is recorded as such in [`docs/design/stage-1g-release-scope.md`](docs/design/stage-1g-release-scope.md).
 
 ## Quick start
 
@@ -133,8 +142,9 @@ The full specification is in [`OZ9.md`](OZ9.md).
 - Acceptance is all or nothing per reply: one malformed line costs a retry of the whole batch. On the final wire
   that did not happen in 71 calls, which bounds the per-call failure rate (about 4% at 95% confidence), it does
   not prove it is zero.
-- Codex-based models are measured separately ([`bench/codex_kit_1g`](bench/codex_kit_1g/)); the Codex CLI adds about
-  24,500 fixed tokens per call.
+- Codex-based models are not supported by this wire (see Supported models; kit and raw replies in
+  [`bench/codex_kit_1g`](bench/codex_kit_1g/)). The Codex CLI also adds about 24,500 fixed input tokens per call, so
+  no reply format reaches large savings on that path.
 
 ## Related work
 
