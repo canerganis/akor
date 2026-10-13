@@ -7,4 +7,9 @@ Owner request. Same design as stage-1g-opus.md and stage-1g-fable-paired.md, app
 
 ## Result
 
-(pending)
+Run 2026-10-13 as preregistered (bench/live/data/live29_1g_haiku_paired.jsonl and its manifest).
+
+- AKOR 5/5 accepted and fully correct (320/320); plain JSON 5/5 (320/320).
+- Benchmark token savings (pooled): AKOR 45,473 tokens / 320 verified jobs = 142.1 per job; plain JSON 65,700 / 320 = 205.3; saving 30.8%, below the 35% gate: FAIL. Haiku thinks heavily on both formats (mean output 5,747 against 6,543 tokens per call), so most of the saving comes from input.
+- Speed (reported): 293.1 ms per verified job against 320.7; median call 18.5 s against 21.0 s. Money units: 505.7 against 640.0 per job.
+- Owner decision: Haiku is not shown in the savings table; it stays listed as a supported model.

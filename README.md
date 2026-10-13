@@ -12,7 +12,7 @@
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1. Faster replies. 86 of 86 replies accepted on the first try.**
+**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1. Faster replies. 91 of 91 replies accepted on the first try.**
 
 [Quick start](#quick-start) · [Results](#results) · [How it works](#how-it-works) · [The design debates](docs/design/)
 
@@ -66,7 +66,7 @@ counts are what the provider billed: prompt, CLI overhead, visible answer and hi
 included. Thresholds, call budgets and data were frozen and hashed before the first call of every test.
 
 **Nothing is repaired.** No quote fixing, no stripping of chatter, no rescue of half-broken lines. A reply is either
-exactly right or rejected. On the final wire, 86 of 86 Claude replies were accepted on the first try.
+exactly right or rejected. On the final wire, 91 of 91 Claude replies were accepted on the first try.
 
 **A protocol designed by AI, for AI, argued in public.** One model (GPT-6 Astra) owns the language. Another (Claude
 Fable 5.1) reviews it and proposes its own fixes. A third (Claude Opus 5.5) implements and measures. When a test
@@ -114,7 +114,7 @@ The same wire was then checked on other models for breakage (no paired baseline 
 | Sonnet 5.5, 32 | 5 | 5/5 | 160/160 | 3,891 | 7.0 s |
 
 Plus five stress packets per model whose results are all empty arrays, scalars, objects, nested arrays or
-genuine job failures. Across all 86 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
+genuine job failures. Across all 91 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
 thinks much longer on this wire than Sonnet (up to 10k output tokens per 64-job packet), so it is not the cheaper
 model here. Raw data, manifests and the harness are in [`bench/`](bench/); every decision is in [`docs/design/`](docs/design/).
 
@@ -189,7 +189,7 @@ The full specification is in [`OZ9.md`](OZ9.md).
 - The paired savings figures are for Sonnet 5.5, Opus 5.5 and Fable 5.1 at 64 jobs on one task family with oracles. Other models were
   checked for correctness, not for savings; your workload may differ, and [`bench/`](bench/) lets you measure it.
 - Acceptance is all or nothing per reply: one malformed line costs a retry of the whole batch. On the final wire
-  that did not happen in 86 calls, which bounds the per-call failure rate (about 3.5% at 95% confidence), it does
+  that did not happen in 91 calls, which bounds the per-call failure rate (about 3.3% at 95% confidence), it does
   not prove it is zero.
 - Only the Claude configurations listed under Supported models are qualified for this wire.
 

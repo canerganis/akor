@@ -1,0 +1,54 @@
+{
+ "arm": "H",
+ "n": 64,
+ "model": "claude-haiku-5-5",
+ "effort": null,
+ "schedule": [
+  [
+   6005,
+   "H"
+  ],
+  [
+   6005,
+   "0.8-exec"
+  ],
+  [
+   6006,
+   "H"
+  ],
+  [
+   6006,
+   "0.8-exec"
+  ],
+  [
+   6007,
+   "H"
+  ],
+  [
+   6007,
+   "0.8-exec"
+  ],
+  [
+   6008,
+   "0.8-exec"
+  ],
+  [
+   6008,
+   "H"
+  ],
+  [
+   6009,
+   "H"
+  ],
+  [
+   6009,
+   "0.8-exec"
+  ]
+ ],
+ "sha256": "a4f36719b4cd6bdcf87cc76c58376c24133f0840c324635460761e15ff6f9e18",
+ "reply_retry": 0,
+ "concurrency": 1,
+ "timeout_s": 300,
+ "output_limit": "claude -p default (no --max-tokens); a truncated reply is a failure",
+ "note": "seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport retries on HTTP errors are not configurable here and never resample a completed reply"
+}
