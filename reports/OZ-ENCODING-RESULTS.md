@@ -1,8 +1,10 @@
-# ÖZ/encoding ölçümü
+# OZ/encoding measurement
 
-Bu çevrimdışı benchmark, mevcut ÖZ/2 sentetik senaryolarında tam alıcı girdisini gerçek tokenizer’larla sayar. Model ve araç çağrısı yapılmaz.
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-| Senaryo | İlk auto sözlük paketi |
+This offline benchmark counts the full receiver input with real tokenizers on the existing OZ/2 synthetic scenarios. No model or tool call is made.
+
+| Scenario | First auto dictionary packet |
 |---|---:|
 | code | 32 |
 | materials | 32 |
@@ -11,11 +13,11 @@ Bu çevrimdışı benchmark, mevcut ÖZ/2 sentetik senaryolarında tam alıcı g
 | support | 32 |
 | planning | 32 |
 
-`Auto` tek bir eşik kullanmaz. Her tam JSON/sözlük girdisini tüm seçili tokenizer’larda karşılaştırır; hiçbir tokenizer’da gerileme olmamasını, en az bir kesin tasarrufu ve `min_savings` değerini ister. Tablodaki crossover yalnız bu sentetik fikstürler için gözlenen ilk pakettir.
+`Auto` does not use a single threshold. It compares every full JSON/dictionary input on all selected tokenizers; it requires no regression on any tokenizer, at least one strict saving and the `min_savings` value. The crossover in the table is only the first packet observed for these synthetic fixtures.
 
-## Materials scaling senaryosu
+## Materials scaling scenario
 
-| İş sayısı | o200k JSON | o200k dictionary | o200k auto | cl100k JSON | cl100k dictionary | cl100k auto | Seçilen auto modu |
+| Job count | o200k JSON | o200k dictionary | o200k auto | cl100k JSON | cl100k dictionary | cl100k auto | Selected auto mode |
 |---:|---:|---:|---:|---:|---:|---:|---|
 | 1 | 563 | 677 | 563 | 563 | 675 | 563 | json/tuples |
 | 4 | 602 | 703 | 602 | 602 | 698 | 602 | json/tuples |
@@ -24,11 +26,11 @@ Bu çevrimdışı benchmark, mevcut ÖZ/2 sentetik senaryolarında tam alıcı g
 | 32 | 1095 | 953 | 953 | 1095 | 951 | 951 | oz_base/tuples+table |
 | 64 | 1643 | 1177 | 1177 | 1643 | 1175 | 1175 | oz_base/tuples+table |
 
-## Yöntem ve sınırlar
+## Method and limits
 
-- Altı eski OZ/2 senaryosu ve 1, 4, 8, 16, 32, 64 görevli paketler kullanıldı. Her satırın ID, wire metni, bağlamı ve gerekiyorsa sözlüğü tam alıcı girdisinde sayıldı.
-- `off` yalnız kompakt JSON adaylarını; `on` yalnız OZ/1/2 sözlük adaylarını ölçer. `auto`, tam girdileri karşılaştırıp gate koşullarına uyan sonucu seçer.
-- En büyük ölçülen paket 64 iştir; runtime girdi bütçeleri ayrıca geçerlidir. Token sayıları yalnız `tiktoken` tokenizer’larına aittir.
-- Bu ölçüm canlı model tasarrufu, görev doğruluğu, gecikme veya genel performans iddiası değildir.
+- Six old OZ/2 scenarios and packets of 1, 4, 8, 16, 32, 64 tasks were used. For each row, the ID, wire text, context and, if needed, the dictionary were counted in the full receiver input.
+- `off` measures only compact JSON candidates; `on` measures only OZ/1/2 dictionary candidates. `auto` compares the full inputs and selects the result that meets the gate conditions.
+- The largest measured packet is 64 jobs; runtime input budgets apply separately. The token counts belong only to the `tiktoken` tokenizers.
+- This measurement is not a claim about live model savings, task accuracy, latency or general performance.
 
-Ham tüm senaryo sayımları ve varsayımlar `OZ-ENCODING-RESULTS.json` içindedir.
+The raw counts for all scenarios and the assumptions are in `OZ-ENCODING-RESULTS.json`.

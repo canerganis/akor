@@ -1,47 +1,49 @@
-# ÖZ/1 doğrulama ve maliyet sonuçları
+# OZ/1 verification and cost results
 
-11 Ekim 2026. Windows, Python 3.12, tiktoken 0.14.0. Paket sürümü 0.2.0.
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-## Çalışan sonuç
+11 October 2026. Windows, Python 3.12, tiktoken 0.14.0. Package version 0.2.0.
 
-ÖZ/1 ayrıştırıcısı, tipli referans kontrolü, kanal parmak izi, kısa gösterim seçimi, alıcı girdi seçimi ve host olaylarına ayırma yolu hazırdır. Önceki AKOR/1 çekirdeğiyle birlikte **54 otomatik test geçti**.
+## Working result
 
-Canlı pilotta Codex CLI 12 sentetik talimatı ÖZ mesajlarına çevirdi. Bu mesajlar değiştirilmeden Claude CLI'a gönderildi. Kodlama **12/12**, bağımsız çözümleme **12/12** doğru çıktı. Kesin sayılar, referanslar, çıkarım/gözlem ayrımı, test başarısı/başarısızlığı, bitiş ve açık metin örneği sınandı. Sonuç bir dilbilgisi/anlam sınıflandırma denemesidir; gerçek yazılım görevinde verim artışı veya genel model güvenilirliği kanıtı değildir.
+The OZ/1 parser, typed reference check, channel fingerprint, short representation selection, receiver input selection and the path that splits out host events are ready. Together with the earlier AKOR/1 core, **54 automatic tests passed**.
 
-## Mesaj boyutu
+In the live pilot, the Codex CLI converted 12 synthetic instructions into OZ messages. These messages were sent unchanged to the Claude CLI. Encoding was **12/12** and independent decoding was **12/12** correct. Exact numbers, references, the inference/observation distinction, test success/failure, completion and a plain text example were tested. The result is a grammar/meaning classification trial; it is not proof of a productivity gain on real software tasks or of general model reliability.
 
-| Mesaj | Anlamı | o200k_base | cl100k_base |
+## Message size
+
+| Message | Meaning | o200k_base | cl100k_base |
 |---|---|---:|---:|
-| `a` | Aktif yamada tanımlı inceleme işlemi | 1 | 1 |
-| `?3` | Kaynak 3'ü iste | 2 | 2 |
-| `+8.` | Test raporu 8 başarılı; adım tamam | 3 | 3 |
-| `~10` | Hipotez 10 bir çıkarım | 2 | 2 |
-| `!11` | Neden 11 ile engellendi | 2 | 2 |
+| `a` | Review operation defined on the active patch | 1 | 1 |
+| `?3` | Request source 3 | 2 | 2 |
+| `+8.` | Test report 8 passed; step done | 3 | 3 |
+| `~10` | Hypothesis 10 is an inference | 2 | 2 |
+| `!11` | Blocked because of reason 11 | 2 | 2 |
 
-11 örneklik ayrı token fikstüründe ÖZ mesaj gövdeleri toplam **34 token**, bütün anlam kurallarını açıkça yazan İngilizce karşılıkları **154 token** tuttu: yalnız bu mesaj gövdelerinde **%77,9 azalma**. Bu karşılaştırma en iyi insan kısaltmasına karşı yapılmadı. Sözlük, kaynak tanımları, sistem istemi ve araçlar bu yüzdeye dahil değildir. Gerçek CLI denemesinin 12 örneği ile bu 11 örneklik token fikstürü farklı ölçümlerdir.
+In the separate 11-example token fixture, the OZ message bodies totaled **34 tokens**, and their English equivalents that spell out all the meaning rules took **154 tokens**: a **77.9% reduction** in these message bodies alone. This comparison was not made against the best human abbreviation. The vocabulary, source definitions, system prompt and tools are not included in this percentage. The 12 examples of the real CLI trial and this 11-example token fixture are different measurements.
 
-Sözlük/gramer tek başına **261–262 token** tuttu. Sözlüğün gerektiği kısa alıcı girdilerinin tamamında açık metin daha ucuz çıktı ve otomatik seçici onu seçti. Yeni bir sayısal bilgi için kullanılan `:` çıkışı açık metne bir token ekleyebildi; seçici bu maliyeti de gizlemez.
+The vocabulary/grammar alone took **261-262 tokens**. In all the short receiver inputs where the vocabulary is needed, plain text came out cheaper and the automatic selector chose it. The `:` escape used for a new numeric piece of information could add one token to plain text; the selector does not hide this cost either.
 
-Bir tek girdi içinde 16 inceleme isteği birleştirildiğinde, gereken dar sözlük ve gramer dahil sembolik metin **154–155 token**, açık karşılıklar **272 token** tuttu. Bu, aynı çağrıdaki toplu gösterim ölçümüdür; farklı API çağrılarında ortak bağlamın ücretsiz olduğu anlamına gelmez. Kaynak ve görev bağlamı bu özel amortisman tablosunda sabit, hariçtir.
+When 16 review requests were combined into a single input, the symbolic text, including the needed narrow vocabulary and grammar, took **154-155 tokens** and the plain equivalents took **272 tokens**. This is a measurement of batch representation in the same call; it does not mean the shared context is free across different API calls. The source and task context are held fixed and excluded in this particular amortization table.
 
-## Token üretmeyen host yolu
+## Host path that produces no tokens
 
-`?`, `+`, `-`, `!`, `.`, `/` mesajları doğrulandıktan sonra doğrudan host olayına dönüşebilir. Yalnız durum kaydı, kaynak isteğini kuyruğa alma veya bitiş bildirimi için ikinci bir model çağrısı zorunlu değildir. Bu durumda alıcıya ait ek çıkarım çağrısı yapılmaz. Yeni karar veya iş gerektiğinde host modeli çağırmaya devam eder. Göndericinin harcadığı tokenlar ve kanıtın üretilme maliyeti sıfır sayılmaz.
+After `?`, `+`, `-`, `!`, `.`, `/` messages are verified, they can turn directly into a host event. A second model call is not required just to record status, to queue a source request or to report completion. In this case no extra inference call belonging to the receiver is made. When a new decision or work is needed, the host still calls the model. The tokens spent by the sender and the cost of producing the evidence are not counted as zero.
 
-Bu mekanizma bir öneri döndürür; bitişi, test doğruluğunu veya araç yetkisini otomatik onaylamaz. Gerçek bir orkestratördeki toplam çağrı azalması henüz ölçülmedi.
+This mechanism returns a suggestion; it does not automatically approve completion, test correctness or tool permission. The reduction in total calls in a real orchestrator has not been measured yet.
 
-## Gerçek CLI kullanımının gösterdiği sınır
+## The limit shown by real CLI use
 
-Codex çağrısının raporlanan girdisi **26.257 token** (bunun 7.296'sı cached input alanında), çıktısı **110 token** oldu. Reasoning output alanı ayrıca 56 gösterdi. Bunları belirsiz sağlayıcı alanlarını iki kez sayacak şekilde toplamadık. Araç çalıştırma olayı görülmedi.
+The reported input of the Codex call was **26,257 tokens** (7,296 of them in the cached input field) and its output was **110 tokens**. The reasoning output field showed 56 separately. We did not add these up in a way that counts ambiguous provider fields twice. No tool execution event was seen.
 
-Claude çağrısı girişte 2 normal token ve **9.489 cache-creation token**, çıktıda **392 token** raporladı; düşünme ayrıntı alanı 166 idi. Model kullanım kaydı `claude-opus-5-5` gösterdi. Codex model adı sonuç akışından doğrulanmadığı için raporda yalnız yapılandırılmış CLI varsayılanı olarak bırakıldı.
+The Claude call reported 2 normal tokens and **9,489 cache-creation tokens** on input and **392 tokens** on output; the thinking detail field was 166. The model usage record showed `claude-opus-5-5`. Because the Codex model name could not be verified from the result stream, only the configured CLI default was left in the report.
 
-Duvar süreleri yaklaşık 12,5 ve 10,8 saniye idi; modeller, istemler ve sistem yükleri farklı olduğundan bunlar hızlanma karşılaştırması değildir. CLI sistem/araç/eklenti başlangıç bağlamı kısa mesajlardan çok daha büyük olabilir. Bu yüzden %77,9 mesaj küçülmesini toplam CLI maliyeti tasarrufu olarak sunmuyoruz.
+The wall times were about 12.5 and 10.8 seconds; since the models, prompts and system loads were different, these are not a speedup comparison. The CLI system/tool/plugin startup context can be much larger than the short messages. For this reason we do not present the 77.9% message shrinkage as a saving in total CLI cost.
 
-## Yeniden üretim ve sonraki değerlendirme
+## Reproduction and next evaluation
 
-Token sayımı: `python oz_benchmark.py`. Canlı pilot: `python oz_live_eval.py --live`. Testler: `python -m unittest discover -s tests -v`.
+Token counting: `python oz_benchmark.py`. Live pilot: `python oz_live_eval.py --live`. Tests: `python -m unittest discover -s tests -v`.
 
-Ham çıktılar: [oz-token-counts.json](oz-token-counts.json), [oz-live.json](oz-live.json). Pilot cevapları otomatik olarak beklenen işlem/referans dizileriyle karşılaştırıldı; başarısız örneklere gizli onarım yapılmadı.
+Raw outputs: [oz-token-counts.json](oz-token-counts.json), [oz-live.json](oz-live.json). The pilot replies were compared automatically with the expected operation/reference sequences; no hidden repair was made to failed examples.
 
-Bir sonraki ölçüm, gerçek orkestrasyon görevlerinde aynı modellerle ÖZ, kısa doğal dil ve JSON yollarını karşılaştırmalıdır. Eşit görev başarısı, kaynak doğruluğu ve kısıt korunumu altında toplam girdi/çıktı/düşünme tokenleri, düzeltme turları ve duvar süresi belirleyicidir. Bu ilk sürüm bir evrensel en küçük dil veya garantili hızlanma iddiası taşımaz.
+The next measurement should compare the OZ, short natural language and JSON paths with the same models on real orchestration tasks. Under equal task success, source accuracy and constraint preservation, the total input/output/thinking tokens, correction rounds and wall time are decisive. This first release makes no claim of a universal smallest language or a guaranteed speedup.

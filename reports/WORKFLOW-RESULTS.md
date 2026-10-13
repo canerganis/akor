@@ -1,48 +1,50 @@
-# ÖZ 0.4.0 — kullanım ve aktarım doğrulaması
+# OZ 0.4.0: usage and transport verification
 
-11 Ekim 2026. Windows, Python 3.12, tiktoken 0.14.0. [Tekrar üretilebilir senaryo](../oz_workflow_eval.py), [ham sonuç](oz-workflow.json).
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-## Otomatik denetimler
+11 October 2026. Windows, Python 3.12, tiktoken 0.14.0. [Reproducible scenario](../oz_workflow_eval.py), [raw result](oz-workflow.json).
 
-**143 test geçti.** Önceki 99 test korunuyor. Yeni kapsam:
+## Automatic checks
 
-- Bütçeye göre otomatik bölme; büyük işin küçük işleri engellememesi; planlamanın deneme hakkı tüketmemesi.
-- Cevap sözleşmesi ve öncül sonuçlarının bütçeye dahil edilmesi; paylaşılan öncülün bir kez aktarılması.
-- Başarılı/geçici/kalıcı sonuçların ayrı işlenmesi; kısmi veya hatalı cevabın yanlış ACK üretmemesi.
-- Gecikmeli tekrar, açıkça yeniden açma, eski cevabı reddetme ve farklı çalışanların aynı işi almaması.
-- SQLite v1'den v2'ye mevcut sonuç korunarak geçiş; yeniden açılış; geçmiş ve durum sayfalaması.
-- Gerçek stdin/stdout süreçleri, zaman aşımı, hatalı JSON, shell karakterlerinin veri olarak kalması ve Windows'ta UTF-8.
-- CLI çalışma alanı, kaynak dosyasından kanal, CRLF/Unicode korunumu, mevcut dosyanın üzerine yazmama ve güvenli hata kodları.
+**143 tests passed.** The earlier 99 tests are kept. New coverage:
 
-## Uçtan uca çevrimdışı deneme
+- Automatic splitting by budget; a large job not blocking small jobs; planning not consuming an attempt.
+- Including the reply contract and the predecessor results in the budget; transferring a shared predecessor once.
+- Handling successful/transient/permanent results separately; a partial or faulty reply not producing a wrong ACK.
+- Delayed retry, explicit reopening, rejecting an old reply and different workers not taking the same job.
+- SQLite migration from v1 to v2 with existing results preserved; reopening; history and status pagination.
+- Real stdin/stdout processes, timeout, bad JSON, shell characters staying as data and UTF-8 on Windows.
+- CLI workspace, channel from a source file, CRLF/Unicode preservation, not overwriting an existing file and safe error codes.
 
-20 bağımsız iş, bunlara bağlı bir inceleme işi, bir host olayı ve bilerek büyük tutulmuş bağımsız bir mesaj eklendi. Gerçek `o200k_base` tokenizer kullanıldı. Standart JSON stdin/stdout adaptörü gerçek yerel Python süreçleriyle çalıştı; sonuçları sentetik alındı kayıtlarıdır.
+## End-to-end offline trial
 
-| Kontrol | Sonuç |
+20 independent jobs were added, along with a review job that depends on them, a host event and a deliberately large independent message. The real `o200k_base` tokenizer was used. The standard JSON stdin/stdout adapter ran with real local Python processes; its results are synthetic acknowledgement records.
+
+| Check | Result |
 |---|---|
-| Çalışan ajanın girdi bütçesi | Paket başına 350 token |
-| 20 iş için gönderilen paket | 3 |
-| Geçici hata verilen `m3` | 2 teslim denemesi |
-| Diğer 19 iş | Her biri 1 teslim denemesi |
-| Büyük bağımsız mesaj | Tam metni korundu; 0 deneme; bekliyor |
-| İnceleme ajanı | 20 işin tamamını bekledi, sonuçlarını aldı |
-| İnceleme girdi bütçesi | Önceki 20 sonuç dahil 2.048 token |
-| Host olayı | Yalnız kaydedildi; model çağrısı yok |
-| Kuyruk yeniden açıldığında | Sonuçlar ve deneme sayıları korundu |
-| Gerçek model çağrısı | **0** |
-| Yerel adaptör süreci çağrısı | 4 |
+| Input budget of the working agent | 350 tokens per packet |
+| Packets sent for 20 jobs | 3 |
+| `m3`, which was given a transient error | 2 delivery attempts |
+| The other 19 jobs | 1 delivery attempt each |
+| Large independent message | Full text preserved; 0 attempts; waiting |
+| Review agent | Waited for all 20 jobs, received their results |
+| Review input budget | 2,048 tokens including the earlier 20 results |
+| Host event | Only recorded; no model call |
+| When the queue was reopened | Results and attempt counts preserved |
+| Real model calls | **0** |
+| Local adapter process calls | 4 |
 
-Son durumda 22 kayıt tamamlandı, bilerek bütçeden büyük olan 1 kayıt bekliyor. Bunlar demo alındı kayıtlarıdır; alan görevlerinin gerçekten yapıldığı veya doğrulandığı iddia edilmez.
+In the final state 22 records were completed, and 1 record, deliberately larger than the budget, is waiting. These are demo acknowledgement records; it is not claimed that the domain tasks were actually done or verified.
 
-0.4.0 yerel sanal ortama paket olarak kuruldu. Repo dışından `site-packages` modülleriyle `oz demo`, `oz status` ve `oz inspect` çalıştırıldı. Bırakılan örnek çalışma alanı `.oz-runtime/demo-0.4` içinde; dört demo kaydı tamamlandı. Bu küçük demoda çalışan girdi 231, inceleyen girdi 267 token ölçüldü; model çağrısı yapılmadı.
+0.4.0 was installed as a package into the local virtual environment. From outside the repo, `oz demo`, `oz status` and `oz inspect` were run with the `site-packages` modules. The sample workspace left behind is in `.oz-runtime/demo-0.4`; four demo records completed. In this small demo the working input was measured at 231 tokens and the reviewing input at 267 tokens; no model call was made.
 
-## Kapsam sınırı
+## Scope limit
 
-Bu sürümün doğrulaması kullanım akışı, bütçe ve aktarım tutarlılığı üzerinedir. Yeni bir model kalitesi, uçtan uca API maliyeti veya model hızlanması denemesi değildir. 0.3.0'ın 20/20 Codex–Claude dil denemesi ve token tabloları [ayrı raporda](OZ2-RESULTS.md) tarihli kanıt olarak durur.
+The verification of this release is about the usage flow, the budget and transport consistency. It is not a new model quality, end-to-end API cost or model speedup trial. The 20/20 Codex-Claude language trial of 0.3.0 and the token tables stand as dated evidence in [a separate report](OZ2-RESULTS.md).
 
-Worker'ın çıktı biçimi talimatı ve önceki ajan sonuçları alıcı girdi sayımına eklenir. Adaptörün kendi sistem istemi, araç şemaları, düşünme/çıktı tokenleri ve sağlayıcı ücret hesabı bunun dışındadır. Stdio sonucu sentetik olduğundan rapora uydurma sağlayıcı kullanım sayısı yazılmadı.
+The Worker's output format instruction and the earlier agents' results are added to the receiver input count. The adapter's own system prompt, tool schemas, thinking/output tokens and the provider's billing are outside it. Since the stdio result is synthetic, no made-up provider usage count was written into the report.
 
-Yeniden üretim:
+Reproduction:
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -50,4 +52,4 @@ python -X utf8 oz_workflow_eval.py
 oz demo .oz-runtime/yeni-demo
 ```
 
-İlk iki komut test/ölçüm yapar. Son komut yeni, boş bir demo klasörü oluşturur. Tokenizer kurulu olmalı; model anahtarı gerekmez.
+The first two commands test/measure. The last command creates a new, empty demo folder. The tokenizer must be installed; no model key is needed.

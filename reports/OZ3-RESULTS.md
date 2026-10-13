@@ -1,37 +1,39 @@
-# ÖZ/3 ölçümü — 11 Ekim 2026
+# OZ/3 measurement: 11 October 2026
 
-Paket 0.5.0; tiktoken 0.14.0. Çalıştırma: `python -X utf8 oz3_benchmark.py`. [Ham sonuçlar](oz3-token-counts.json). Sentetik yerel ölçüm; **gerçek model çağrısı ve araç yürütmesi 0**.
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-## Komut maliyeti
+Package 0.5.0; tiktoken 0.14.0. Run: `python -X utf8 oz3_benchmark.py`. [Raw results](oz3-token-counts.json). Synthetic local measurement; **real model calls and tool executions: 0**.
 
-`VN=rNaNt30` sözlüğü altında `V[1:16]`, 48 ilkel işlem isteğine açılır. İki tokenizer'da da **6 komut tokeni**. Aynı açık işlem dizisi 96 token: yalnız komut gövdesinde **%93,75** azalma. Bu karşılaştırma sözlük, bağlam, mesaj kimlikleri ve cevap biçimini dışarıda bırakır; toplam API tasarrufu değildir.
+## Command cost
 
-## Tam alıcı girdisi
+Under the dictionary `VN=rNaNt30`, `V[1:16]` expands into 48 primitive operation requests. **6 command tokens** on both tokenizers. The same explicit operation sequence is 96 tokens: a **93.75%** reduction in the command body alone. This comparison leaves out the vocabulary, context, message ids and reply format; it is not a total API saving.
 
-Bütün gerekli kaynak metinleri, dilbilgisi, kullanılan makro tanımları, mesaj kimlikleri ve Worker JSON cevap sözleşmesi dahildir. Başlangıç, aynı bağlamdaki eski ÖZ/2 seçicisinin kısa metin, JSON ve ÖZ adayları arasındaki sonucudur; yalnız uzun bir doğal dil açıklamasıyla karşılaştırılmamıştır. Derleyici iki tokenizer'ı aynı anda kullanmıştır.
+## Full receiver input
 
-| Sentetik iş yükü | o200k önce → sonra | cl100k önce → sonra |
+All the required source texts, the grammar, the macro definitions used, the message ids and the Worker JSON reply contract are included. The starting point is the result of the old OZ/2 selector in the same context among its short text, JSON and OZ candidates; it is not compared only against a long natural language description. The compiler used both tokenizers at the same time.
+
+| Synthetic workload | o200k before → after | cl100k before → after |
 |---|---:|---:|
-| Tek okuma | 182 → 182 | 181 → 181 |
-| 16 hedefe okuma | 707 → 707 | 704 → 704 |
-| Önceden tanımlı makro, 4 × 48 işlem | 921 → 899 | 916 → 894 |
-| Sözlüksüz başlayan tekrar, 4 × 48 işlem | 1.133 → 899 | 1.127 → 894 |
-| Düzensiz sırada 30 işlem | 610 → 608 | 607 → 606 |
-| Yeni serbest metin | 192 → 192 | 192 → 192 |
+| Single read | 182 → 182 | 181 → 181 |
+| Read of 16 targets | 707 → 707 | 704 → 704 |
+| Predefined macro, 4 × 48 operations | 921 → 899 | 916 → 894 |
+| Repetition starting without a dictionary, 4 × 48 operations | 1,133 → 899 | 1,127 → 894 |
+| 30 operations in irregular order | 610 → 608 | 607 → 606 |
+| New free text | 192 → 192 | 192 → 192 |
 
-Sözlüksüz başlayan tekrarlı işte tasarruf **%20,65 / %20,67**. Zaten iyi bir elle tanımlanmış makro varsa ek tasarruf **%2,39 / %2,40**. Bu ayrım, mevcut iyi bir sözlüğe karşı kazancı olduğundan büyük göstermemek için önemlidir.
+The saving on the repeated job that starts without a dictionary is **20.65% / 20.67%**. If a good hand-defined macro already exists, the additional saving is **2.39% / 2.40%**. This distinction matters so that the gain is not made to look larger than it is against an existing good dictionary.
 
-Aynı 4 × 48 işlem örneğinde kısa metin 3.180 / 3.178, kompakt JSON 1.655 / 1.652 token. ÖZ/3 sonucu 899 / 894. Bu iki zayıf olmayan alternatif de aynı işlem kurallarını ve kaynakları taşır; modellerin görev başarı eşitliği ölçülmemiştir.
+In the same 4 × 48 operation example, short text is 3,180 / 3,178 and compact JSON 1,655 / 1,652 tokens. The OZ/3 result is 899 / 894. These two non-weak alternatives carry the same operation rules and sources; equal task success of the models was not measured.
 
-Derleme dışında tutulan iki mesajda, yeni sözlüğün kullanılmayan makroları girdiye eklenmedi: maliyet **304 → 304 / 302 → 302**. Bu küçük kontrol, tüm gelecek iş yükleri için genelleme kanıtı değildir.
+On two messages kept out of the compilation, the unused macros of the new dictionary were not added to the input: cost **304 → 304 / 302 → 302**. This small check is not evidence that generalizes to all future workloads.
 
-## Doğrulama ve sınırlar
+## Verification and limits
 
-- 161 birim/entegrasyon testi geçti. ÖZ/3 için 18 test; 180 rastgele sıralı iş dizisinin her birinde en fazla 16 kodlama adayının ilkel açılımı doğrulandı.
-- Sıra, tekrarlar, referans türleri, belirsizlik/sayı/birim içeren kaynaklar ve CRLF dahil yeni metinler korunuyor. Kanıt veya tamamlanma bildirimleri makrolara alınmıyor.
-- Hatalı aralıklar, eksik hedefler, uyumsuz türler, eski bağlam kimliği ve 64 işlemi aşan açılımlar reddediliyor.
-- ÖZ/2 örneğinin 0.4.0'dan alınan bağlam hash'i aynı kaldı; SQLite yeniden açılışı ve CLI'nin taşınabilir çıktı paketi test edildi.
-- Derleyici sınırlı ve açgözlü arama yapar. Makro sıralaması tahminidir; kabul kararı tam girdi token sayımına dayanır. Küresel minimum garantisi yoktur.
-- Yerel derleme süreleri ham raporda tek çalıştırma olarak bulunur; model gecikmesi veya karşılaştırmalı hızlanma sayılmaz.
-- Göndericinin sözlük öğrenme maliyeti, üretim/akıl yürütme tokenleri, araç çıktıları, yeniden denemeler, taşıyıcı sağlayıcı alanları ve canlı görev başarısı ölçülmedi.
-- ÖZ/3 için yeni canlı model anlama testi yapılmadı. Eski ÖZ/2 canlı pilotu vektörleri kapsamıyordu.
+- 161 unit/integration tests passed. 18 tests for OZ/3; the primitive expansion of at most 16 encoding candidates was verified on each of 180 randomly ordered job sequences.
+- Order, repeats, reference types, sources containing uncertainty/number/unit and new texts including CRLF are preserved. Evidence or completion reports are not taken into macros.
+- Bad ranges, missing targets, incompatible types, an old context id and expansions beyond 64 operations are rejected.
+- The context hash of the OZ/2 example taken from 0.4.0 stayed the same; SQLite reopening and the CLI's portable output package were tested.
+- The compiler does a bounded, greedy search. Macro ordering is an estimate; the acceptance decision is based on the full-input token count. There is no global minimum guarantee.
+- The local compile times are in the raw report as a single run; they do not count as model latency or a comparative speedup.
+- The sender's dictionary learning cost, generation/reasoning tokens, tool outputs, retries, carrier provider fields and live task success were not measured.
+- No new live model comprehension test was done for OZ/3. The old OZ/2 live pilot did not cover the vectors.

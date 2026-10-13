@@ -1,8 +1,10 @@
-**Kararım: stage 1e = ortak girdi tablosu + 1d’nin kimlikli yanıtları + açık iş hataları.** 1d’de girdi yerelleştirmesini fazla ileri götürdüm. Çıktı kimliğini korumak için girdileri çoğaltmak gerekmiyor.
+Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
 
-Claude aşağıdaki tek sözleşmeyi uygulasın. Başarılı yanıt biçimi değişmiyor.
+**My decision: stage 1e = shared input table + 1d's id-keyed replies + explicit job errors.** In 1d I took input localization too far. Duplicating inputs is not needed to keep the output ID.
 
-**İstek gövdesi** tek bir JSON nesnesidir:
+Claude should implement the single contract below. The successful reply form does not change.
+
+**The request body** is a single JSON object:
 
 ```json
 {
@@ -24,23 +26,23 @@ Claude aşağıdaki tek sözleşmeyi uygulasın. Başarılı yanıt biçimi değ
 }
 ```
 
-Üretimde gövde minify edilir. Buradaki operasyonlar örnektir; mevcut operasyonların anlamları korunarak tanımları `ops` içine konur.
+In production the body is minified. The operations here are examples; the definitions of the existing operations are put into `ops` with their meanings kept.
 
-| Alan | Kesin anlamı |
+| Field | Exact meaning |
 |---|---|
-| `v` | Tam olarak `"oz/1e"`. |
-| `ops` | Operasyon adı → talimat ve beklenen sonuç biçimini açıklayan metin. Her tanım bir kez bulunur. |
-| `refs` | Referans anahtarı → değişmez JSON değeri. Ham kayıtlar ve kabul edilmiş öncül sonuçları aynı tabloda bulunur. |
-| `jobs` | Her eleman tam olarak `[id, op, keys]`. |
-| `id` | Boş olmayan, paket içinde benzersiz string. 1d’deki iş kimliği korunur. |
-| `op` | Boş olmayan operasyon adı. |
-| `keys` | Sıralı referans anahtarları dizisi. İşin girdisi tam olarak `[refs[k] for k in keys]` olur. |
+| `v` | Exactly `"oz/1e"`. |
+| `ops` | Operation name → text that explains the instruction and the expected result form. Each definition appears once. |
+| `refs` | Reference key → immutable JSON value. Raw records and accepted predecessor results live in the same table. |
+| `jobs` | Every element is exactly `[id, op, keys]`. |
+| `id` | Non-empty string, unique within the packet. The job ID from 1d is kept. |
+| `op` | Non-empty operation name. |
+| `keys` | Ordered array of reference keys. The input of the job is exactly `[refs[k] for k in keys]`. |
 
-`keys` sırası ve tekrarları anlamlıdır. `["d0","d0"]` iki girdi sağlar. Boş dizi sıfır girdi sağlar. Referans çözümü yalnız bu alanda, **tek seviyede** yapılır. Bir değerin içindeki `"d0"` veya `{"$ref":"d0"}` normal veridir.
+The order and repeats of `keys` are meaningful. `["d0","d0"]` supplies two inputs. An empty array supplies zero inputs. Reference resolution is done only in this field, at **a single level**. A `"d0"` or `{"$ref":"d0"}` inside a value is ordinary data.
 
-Bir kaynak kayıt veya öncül sonucu, aynı paket içinde kaç iş kullanırsa kullansın, `refs` içinde bir kez serileştirilir. Referanslar paket kapsamındadır; önceki çağrının tablosuna erişim varsayılmaz.
+A source record or predecessor result is serialized once in `refs`, no matter how many jobs in the same packet use it. References are scoped to the packet; access to the table of an earlier call is not assumed.
 
-**Kullanılacak sistem metni aynen şöyledir:**
+**The system text to use is exactly this:**
 
 ```text
 You are an OZ/1e batch worker.
@@ -85,7 +87,7 @@ answer as success. A failure still requires its own output line.
 null is an ordinary result value, not a failure marker.
 ```
 
-Örnek gövdenin geçerli yanıtı:
+A valid reply for the example body:
 
 ```jsonl
 ["a",5]
@@ -94,36 +96,36 @@ null is an ordinary result value, not a failure marker.
 ["d","error","unknown_operation","Operation unknown is not defined."]
 ```
 
-Başarı satırı **iki**, hata satırı **dört** elemanlıdır. Ayrım dış dizinin uzunluğuyla yapılır. Dolayısıyla aşağıdaki satır, operasyonun sonuç sözleşmesi izin veriyorsa, başarılı bir sonuçtur:
+A success line has **two** elements, a failure line has **four**. The distinction is made by the length of the outer array. So the line below is a successful result, if the result contract of the operation allows it:
 
 ```jsonl
 ["a",["error","missing_data","This is ordinary result data."]]
 ```
 
-`result` içindeki anahtar veya değerlerden hata durumu çıkarılmaz. Başarılı işlere ek durum etiketi veya `null` yuvası eklenmez.
+An error state is not derived from keys or values inside `result`. No extra status tag or `null` slot is added to successful jobs.
 
-**Gönderim öncesi doğrulama** şu kuralları uygular:
+**Validation before sending** applies these rules:
 
-1. Gövde yalnız `v`, `ops`, `refs`, `jobs` alanlarını içerir ve yukarıdaki tipleri sağlar. Yinelenen JSON nesne anahtarları kabul edilmez.
-2. İş kimlikleri benzersizdir. Her iş üç elemanlıdır; `keys` yalnız boş olmayan string anahtarlar içerir.
-3. Her referans anahtarı `refs` içinde bulunur. Eksik referans, paket oluşturma hatasıdır; modele gönderilmez. Buna karşılık mevcut bir kayıtta gerekli `y` alanının olmaması, iş düzeyinde `missing_data` olabilir.
-4. `op` değerinin `ops` içinde bulunmaması, geçerli bir `unknown_operation` senaryosudur; gövdeyi yapısal olarak geçersiz kılmaz.
-5. `ops` tanımlarını dispatcher kendi operasyon kayıtlarından üretir. Aynı kayıt, yerel sonuç doğrulayıcısını da belirler. Sonuç şeması her işe ayrıca kopyalanmaz.
-6. Paket girdileri sabit bir snapshot’tan alınır. Referans paylaşımı kaynak kimliği ve snapshot üzerinden yapılır; yalnız değerleri eşit görünüyor diye farklı kaynaklar birleştirilmez.
-7. Mevcut boyut, JSON sayıları ve kaynak sınırları korunur. Nesne anahtarları prototip veya özellik erişimi olarak yorumlanmaz; gerçek map kullanılır.
+1. The body contains only the fields `v`, `ops`, `refs`, `jobs` and satisfies the types above. Duplicate JSON object keys are not accepted.
+2. Job IDs are unique. Every job has three elements; `keys` contains only non-empty string keys.
+3. Every reference key is present in `refs`. A missing reference is a packet construction error; it is not sent to the model. On the other hand, the absence of a required field `y` in an existing record can be a job-level `missing_data`.
+4. An `op` value that is not in `ops` is a valid `unknown_operation` scenario; it does not make the body structurally invalid.
+5. The dispatcher produces the `ops` definitions from its own operation records. The same record also determines the local result validator. The result schema is not copied separately into each job.
+6. Packet inputs are taken from a fixed snapshot. Reference sharing is done through the source identity and the snapshot; different sources are not merged just because their values look equal.
+7. The existing size, JSON number and source limits are kept. Object keys are not interpreted as prototype or property access; a real map is used.
 
-**Yanıt doğrulama ve atomik kabul** şu şekilde uygulanır:
+**Reply validation and atomic acceptance** are applied as follows:
 
-- LF ve CRLF kabul edilir; sondaki tek satır sonu isteğe bağlıdır. Boş ara satırlar, kod çitleri ve ek açıklamalar reddedilir.
-- Her satır bağımsız, tam bir JSON dizisi olmalıdır. Ek metin, yinelenen nesne anahtarları ve JSON dışı sayısal değerler reddedilir.
-- Her satır tam olarak iki veya dört elemanlıdır. Kimlik, gönderilen kimliklerden biri olmalı ve yalnız bir kez görülmelidir. Tip dönüştürme, kırpma veya kimlik düzeltmesi yapılmaz.
-- İki elemanlı satırda `op` tanımlı olmalı ve `result`, ilgili operasyonun sonuç doğrulayıcısından geçmelidir.
-- Dört elemanlı satırda ikinci eleman tam olarak `"error"`; kod yukarıdaki dört değerden biri; açıklama 1–256 Unicode kod noktası uzunluğunda string olmalıdır.
-- Tanımsız operasyon yalnız `unknown_operation` ile sonuçlanabilir. Tanımlı operasyon için `unknown_operation` reddedilir.
-- Görülen kimlik kümesi beklenen kimlik kümesine tam eşit olmalıdır. Modelden iş sırası istenir; doğrulayıcı tam ve benzersiz kimlikli satırların farklı sırasını kabul eder.
-- **Bütün satırlar doğrulanmadan hiçbir iş sonucu yayımlanmaz veya uygulanmaz.** Tek bir ihlal, yanıtın tamamını reddeder. Eksik satır tamamlama, indeks kaydırma, farklı denemelerden satır birleştirme yoktur.
+- LF and CRLF are accepted; a single trailing line ending is optional. Blank lines in between, code fences and extra commentary are rejected.
+- Every line must be an independent, complete JSON array. Extra text, duplicate object keys and numeric values outside JSON are rejected.
+- Every line has exactly two or four elements. The ID must be one of the IDs that were sent and must be seen only once. No type conversion, trimming or ID correction is done.
+- On a two-element line, `op` must be defined and `result` must pass the result validator of that operation.
+- On a four-element line, the second element must be exactly `"error"`; the code must be one of the four values above; the detail must be a string of 1 to 256 Unicode code points.
+- An undefined operation can only end in `unknown_operation`. For a defined operation, `unknown_operation` is rejected.
+- The set of seen IDs must be exactly equal to the set of expected IDs. The model is asked for job order; the validator accepts a different order of lines with complete and unique IDs.
+- **No job result is published or applied before all lines are validated.** A single violation rejects the whole reply. There is no filling in of missing lines, no index shifting, no merging of lines from different attempts.
 
-Kabul işleminin özeti:
+A summary of the acceptance step:
 
 ```text
 rows = strictly_parse_entire_reply(reply)
@@ -135,32 +137,32 @@ atomically:
     commit every outcome
 ```
 
-Buradaki atomiklik, **tüm işlerin başarılı olması** anlamına gelmez. Geçerli başarılar ve geçerli iş hataları aynı işlemde kaydedilir. Örnekte `a` ve `b` başarılı, `c` ve `d` hatalı olarak birlikte kabul edilir. Bu yanıt protokol açısından geçerlidir.
+The atomicity here does not mean that **all jobs succeed**. Valid successes and valid job errors are recorded in the same operation. In the example, `a` and `b` succeed and `c` and `d` fail, and they are accepted together. This reply is valid as far as the protocol is concerned.
 
-Geçerli bir iş hatası, bütün başarılı işleri yeniden çalıştırma gerekçesi değildir. Yeniden denenecek hatalı işler varsa mevcut retry politikasıyla yeni bir batch oluşturulur. Biçimi bozuk yanıtın yeniden denemesinde ise aynı değişmez istek kullanılır; denemeler karıştırılmaz.
+A valid job error is not a reason to rerun all the successful jobs. If there are failed jobs to retry, a new batch is created with the existing retry policy. When a malformed reply is retried, the same immutable request is used; attempts are not mixed.
 
-**Öncül sonuçlarının taşınması** için scheduler yalnız hazır işleri gönderir:
+For **carrying predecessor results**, the scheduler sends only ready jobs:
 
-- Kabul edilmiş başarılı öncül sonucu `refs` içine bir kez konur; bütün tüketiciler aynı anahtarı kullanır.
-- Aynı batch içindeki henüz üretilmemiş sonuçlara referans verilmez.
-- Zorunlu öncülü başarısız olan iş modele gönderilmez; runtime tarafından bloke edilmiş olarak işaretlenir ve sebep olan öncül kimlikleri tutulur.
-- Hata veya eksik öncül, sahte `null` sonuç olarak aktarılmaz. Başarıyla üretilmiş gerçek `null`, operasyon sözleşmesine göre normal veri olabilir.
+- An accepted successful predecessor result is put into `refs` once; all consumers use the same key.
+- No reference is made to results in the same batch that have not been produced yet.
+- A job whose required predecessor failed is not sent to the model; the runtime marks it as blocked and keeps the IDs of the predecessors that caused it.
+- A failed or missing predecessor is not passed on as a fake `null` result. A real `null` that was produced successfully can be normal data according to the operation contract.
 
-Bu değişiklik F1’deki kayıt ve öncül çoğaltmasını kaldırır. **1c’nin ölçülen token sayısına aynen dönüleceğini henüz iddia etmiyorum:** açık iş kimlikleri, referanslar ve hata talimatları da maliyet taşır.
+This change removes the duplication of records and predecessors from F1. **I do not yet claim that the measured token count of 1c will be matched exactly:** explicit job IDs, references and the error instructions also cost tokens.
 
-Claude’un doğrulaması şu kapsamda olsun:
+Claude's verification should cover this:
 
-| Kontrol | Beklenen sonuç |
+| Check | Expected result |
 |---|---|
-| 1e girdilerinin runtime’da açılması | Her iş için 1d ile aynı operasyon, değerler, sıra ve tekrar sayısı |
-| Bir kaydı veya öncülü dört işin kullanması | Değerin tabloda tek serileştirilmesi |
-| Eksik, yinelenen, yabancı kimlik; kesilmiş yanıt | Hiçbir sonuç uygulanmadan tüm yanıtın reddi |
-| Karışık başarı/hata; bütün işlerin hata vermesi | Tam kimlik kapsamıyla atomik kabul |
-| `null`, hata benzeri sonuç verisi, referans benzeri literal | Sonuç sözleşmesine uygun, çakışmasız yorum |
-| İş sırası ve referans etiketlerinin değiştirilmesi | Sonuçların hâlâ doğru işe ve girdiye bağlanması |
+| Expanding the 1e inputs at runtime | For every job the same operation, values, order and repeat count as 1d |
+| Four jobs using one record or predecessor | The value is serialized once in the table |
+| Missing, duplicate, foreign ID; truncated reply | The whole reply is rejected with no result applied |
+| Mixed success/error; every job failing | Atomic acceptance with complete ID coverage |
+| `null`, error-like result data, reference-like literal | Interpretation that follows the result contract, without collision |
+| Changing the job order and the reference labels | Results are still bound to the correct job and input |
 
-Son kontrol özellikle önemli: doğru kimlik altında yanlış girdiden hesaplanan sonuç, kimlik doğrulamasıyla yakalanamaz. Canlı ölçümde altın sonuçlarla iş bazında doğruluk ayrıca kontrol edilmeli. Başarılı olması gereken işe verilen hata, biçimsel olarak geçerli olsa bile doğruluk başarısı sayılmamalı.
+The last check is especially important: a result computed from the wrong input under the correct ID cannot be caught by ID validation. In the live measurement, per-job accuracy against the gold results must also be checked separately. An error given to a job that should have succeeded must not count as an accuracy success, even if it is formally valid.
 
-32/64 iş ölçümlerinde 0.8, 1c, 1d ve 1e için tam sistem metni, gövde, çıktı ve yeniden denemeler sayılmalı. Paket tokenları ile CLI’nin yaklaşık 24.500 sabit tokenı dahil toplam çağrı maliyeti ayrı raporlanmalı. F3, bu tasarımı denemeyi destekliyor; 1e’nin canlı doğrulaması yerine geçmiyor.
+In the 32/64-job measurements, the full system text, body, output and retries must be counted for 0.8, 1c, 1d and 1e. The packet tokens and the total call cost including the CLI's fixed ~24,500 tokens must be reported separately. F3 supports trying this design; it does not replace the live validation of 1e.
 
-Yerel erişim `helper_sandbox_lock_failed` ve araç erişim hataları nedeniyle kurulamadı; `8ac429c` ile 282 testi bağımsız doğrulamadım. Satır biçimi ve kimlik kurallarını 10 bellek içi örnekle kontrol ettim; depo veya canlı model testi yapmadım. Dosya değiştirilmedi.
+Local access could not be set up because of `helper_sandbox_lock_failed` and tool access errors; I did not independently verify `8ac429c` and its 282 tests. I checked the line form and ID rules with 10 in-memory examples; I ran no repo or live model test. No file was changed.

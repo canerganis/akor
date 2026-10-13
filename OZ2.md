@@ -1,10 +1,12 @@
-# ÖZ/2: birleşik anlamlar ve kalıcı aktarım
+# OZ/2: combined meanings and persistent transport
 
-Güncel 0.4.0 çalışma alanı, otomatik paketleme, öncül sonuçlarının aktarımı ve Worker adaptörü için [kullanım kılavuzuna](USAGE.md) bak. Aşağıdaki dil sözleşmesi korunur; kuyruk API'si geriye uyumlu genişletildi.
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-Paket 0.3.0. [ÖZ/1](OZ.md) atomları korunur; `r` artık prosedürü de kaynak olarak okuyabilir. Büyük ASCII harfleri yalnız kanal sözlüğünde tanımlanırsa makrodur. Makrosuz kanal `V` mesajını reddeder.
+For the current 0.4.0 workspace, automatic packing, transfer of predecessor results and the Worker adapter, see the [usage guide](USAGE.md). The language contract below is kept; the queue API was extended in a backward-compatible way.
 
-## Anlam makroları
+Package 0.3.0. The [OZ/1](OZ.md) atoms are kept; `r` can now also read a procedure as a source. Capital ASCII letters are macros only if they are defined in the channel vocabulary. A channel without macros rejects a `V` message.
+
+## Meaning macros
 
 ```python
 from oz import Atom, Codebook, Macro
@@ -15,48 +17,48 @@ book = Codebook([
 ])
 ```
 
-Tanımdaki `0` tek parametrenin yer tutucusudur; tel üzerinde geçerli referans değildir. Sözlük `Channel(..., codebook=book)` ile bağlanır.
+The `0` in the definition is the placeholder of the single parameter; it is not a valid reference on the wire. The vocabulary is bound with `Channel(..., codebook=book)`.
 
-| Mesaj | Tam açılım |
+| Message | Full expansion |
 |---|---|
 | `V7` | `r7a7t14` |
-| `V` | Aktif referans 7 ise `r7a7t14` |
+| `V` | `r7a7t14` if the active reference is 7 |
 | `P` | `r13>12` |
-| `VP` | Aktif 7 ise `r7a7t14r13>12` |
-| `V+8.` | Makroyu aç; mevcut test raporu 8'in başarısını bildir; adım bitişini bildir |
+| `VP` | `r7a7t14r13>12` if the active reference is 7 |
+| `V+8.` | Expand the macro; report the success of the existing test report 8; report the step completion |
 
-Makro 2–16 temel iş atomundan oluşur: `a`, `r`, `t`, `>`. İç içe makro, literal, kanıt ve durum atomu tanıma alınmaz. Tek `V` başarı, onay veya bitiş iddiası saklamaz. Sabit referanslar mevcut ve doğru tipte olmalıdır. Aynı parametreyi hem yama hem prosedür isteyen bir tanım reddedilir.
+A macro consists of 2 to 16 base work atoms: `a`, `r`, `t`, `>`. Nested macros, literals, evidence and status atoms are not accepted into a definition. A bare `V` hides no claim of success, approval or completion. Fixed references must exist and be of the correct type. A definition that asks for both a patch and a procedure from the same parameter is rejected.
 
-Tam açılım dahil kare sınırı 64 atom; tel sınırı 8192 UTF-8 byte'tır. Bilinmeyen makro tahmin edilmez. `P7` gibi parametresiz makroya argüman vermek hatadır. İşlem sırası değişmez; tekrarlanan işler kendiliğinden silinmez. Sözlükte olmayan yeni bilgi `:tam metin` ile aynen aktarılır.
+The frame limit including the full expansion is 64 atoms; the wire limit is 8192 UTF-8 bytes. An unknown macro is not guessed. Giving an argument to a macro without parameters, such as `P7`, is an error. The operation order does not change; repeated jobs are not deleted on their own. New information that is not in the vocabulary is carried verbatim with `:full text`.
 
-Sözlük, atom tip kuralları, amaç, tam referans içerikleri, aktif referans, oturum/görev/revizyon ve yönlendirme kanal parmak izine bağlanır. Tanımı değiştirince yeni kanal gerekir. Parmak izi kimlik doğrulama veya şifreleme sağlamaz; güvenilir host tarafından taşınır. Referansların yalnız hash'lerini vererek modelin içeriği bildiği varsayılmaz.
+The vocabulary, the atom type rules, the goal, the full reference contents, the active reference, session/task/revision and routing are bound to the channel fingerprint. Changing a definition requires a new channel. The fingerprint provides no authentication or encryption; it is carried by the trusted host. Giving only the hashes of the references does not mean the model is assumed to know the content.
 
-## Kodlayıcı ve alıcı girdisi
+## Encoder and receiver input
 
-`Channel.encode` kesin anlam ağacını alır. Temel yazımlar, aktif referansın düşmesi ve tam eşleşen makrolar için sınırlı adaylar oluşturur. Varsayılan 256, üst sınır 4096 adaydır. Tam açık yazım ve byte bakımından en kısa aday daima değerlendirilir. Tokenizer her tam mesajı sayar; parça maliyetleri toplanarak yaklaşık karar verilmez.
+`Channel.encode` takes the exact meaning tree. It creates bounded candidates for the base spellings, dropping the active reference and exactly matching macros. The default is 256 candidates, the upper limit 4096. The fully explicit spelling and the byte-shortest candidate are always evaluated. The tokenizer counts each full message; the decision is not approximated by summing part costs.
 
-Bütün olası yazımlar için en az token garantisi yoktur. Sayaç yoksa yalnız byte uzunluğu kullanılır. Birden çok sayaçta en yüksek sayı, sonra toplam en aza indirilir; bu dolar maliyeti optimizasyonu değildir.
+There is no guarantee of the fewest tokens over all possible spellings. Without a counter, only the byte length is used. With several counters, the highest count and then the total are minimized; this is not a dollar cost optimization.
 
-`oz_batch.render`, 1–64 bağımsız ve aynı kanala ait mesajı birleştirir. Açık metin, anlamı koruyan kısa metin, işlem sözleşmeli kompakt JSON, sözlüklü ÖZ ve sözlüklü temel ÖZ ölçülür. Her biri referans nesneleri ve alanları tanımlanmış referans dizileriyle denenir.
+`oz_batch.render` combines 1 to 64 independent messages that belong to the same channel. Plain text, short text that preserves meaning, compact JSON with an operation contract, OZ with a vocabulary and base OZ with a vocabulary are measured. Each is tried with reference objects and with reference arrays that have defined fields.
 
-Referansın metni, kaynağı, durumu, sayıları, birimleri ve belirsizliği aynen kalır. Literal mesajlar JSON ile kaçırılır ve veri olarak ayrılır; içlerindeki `V` veya satır sonları yeni komut değildir. Görev amacı, aktif referans, gereken kaynaklar ve sözlük her adayın ölçümüne dahildir. Önceki API bağlamının ücretsiz tutulduğu varsayılmaz; tek girdide ortak kaynak bir kez bulunur.
+The text, source, status, numbers, units and uncertainty of a reference stay exactly the same. Literal messages are escaped with JSON and separated as data; a `V` or line breaks inside them are not new commands. The task goal, the active reference, the required sources and the vocabulary are included in the measurement of every candidate. The earlier API context is not assumed to be kept free; in a single input the shared source is present once.
 
 ```python
 from oz_batch import render
 
 packet = render(channel, [("j1", "V"), ("j2", "P")],
                 counters=[count_for_model], max_tokens=1200)
-packet.text          # Alıcı model girdisi
-packet.tokens        # Her sayaç için toplam
-packet.alternatives  # Diğer tam girdi seçeneklerinin maliyeti
-packet.wires         # Optimize edilmiş mesaj gövdeleri
+packet.text          # Receiver model input
+packet.tokens        # Total for each counter
+packet.alternatives  # Cost of the other full input options
+packet.wires         # Optimized message bodies
 ```
 
-`count_for_model` hedef tokenizer sayacıdır. `max_tokens` her sayaç için, `max_bytes` tüm girdi için uygulanır. Sığmayan paket hata verir; içerik kesilmez. Host daha küçük paket hazırlamalıdır. Gönderici talimatı, geçmiş, cevaplar, düşünme, araçlar ve sağlayıcı sarmalayıcıları ayrıca ölçülür.
+`count_for_model` is the target tokenizer counter. `max_tokens` applies to each counter and `max_bytes` to the whole input. A packet that does not fit raises an error; the content is not truncated. The host must prepare a smaller packet. The sender instructions, history, replies, thinking, tools and provider wrappers are measured separately.
 
-## Kalıcı aktarım ve ajan bağımlılıkları
+## Persistent transport and agent dependencies
 
-`oz_runtime.Inbox(path)` SQLite/WAL kullanır. Ayrı iş parçacığı/süreç kendi `Inbox` bağlantısını açmalıdır. Tek bağlantıyı iş parçacıkları arasında paylaşma.
+`oz_runtime.Inbox(path)` uses SQLite/WAL. A separate thread/process must open its own `Inbox` connection. Do not share a single connection between threads.
 
 ```python
 from oz_runtime import Inbox
@@ -68,37 +70,37 @@ with Inbox("agent-inbox.sqlite") as inbox:
     if delivery:
         packet = delivery.prepare(channel, counters=[count_for_model], max_tokens=1200)
         # replies = your_provider(packet.text)
-        # Yanıtı doğrulayıp işledikten sonra, ID -> sonuç metni ile:
+        # After validating and processing the reply, with ID -> result text:
         # inbox.complete(delivery, {"job1": replies["job1"]})
 ```
 
-Bu bir adaptör örneğidir; `channel`, tokenizer ve sağlayıcı çağrısı uygulamandan gelir. Tam yerel demo [oz2_demo.py](examples/oz2_demo.py). Kaynakların ve sözlüğün gönderici modelin gerçek bağlamında bulunması da adaptörün görevidir.
+This is an adapter example; the `channel`, the tokenizer and the provider call come from your application. Full local demo: [oz2_demo.py](examples/oz2_demo.py). Making sure the sources and the vocabulary are present in the sender model's real context is also the adapter's job.
 
-| API | Davranış |
+| API | Behavior |
 |---|---|
-| `post(..., after=[...])` | Çözümler, tip/durum kontrolü yapar, kalıcı kaydeder |
-| `claim(..., kind="work")` | Bağımlılıkları bitmiş işleri atomik teslim eder |
-| `claim(..., kind="host")` | Yalnız durum/kaynak isteği olaylarını teslim eder |
-| `complete(delivery, {id: result})` | Tüm sonuçları ve ACK'leri aynı işlemde kaydeder |
-| `retry(delivery, reason)` | Geçici hatada yeniden sıraya alır; limit dolduysa başarısız yapar |
-| `retry(..., permanent=True)` | Kalıcı başarısızlık kaydeder |
-| `renew(delivery, lease_seconds=...)` | Hâlâ geçerli teslimin süresini uzatır |
-| `inspect(id)` | Durum, deneme, sonuç, hata ve beklenen öncülleri döndürür |
-| `channel(binding)` | Kayıtlı kanalı geri yükler ve parmak izini doğrular |
+| `post(..., after=[...])` | Resolves, checks type/status, saves persistently |
+| `claim(..., kind="work")` | Atomically delivers jobs whose dependencies are finished |
+| `claim(..., kind="host")` | Delivers only status/source request events |
+| `complete(delivery, {id: result})` | Records all results and ACKs in the same transaction |
+| `retry(delivery, reason)` | Re-queues on a transient error; marks as failed if the limit is reached |
+| `retry(..., permanent=True)` | Records a permanent failure |
+| `renew(delivery, lease_seconds=...)` | Extends the time of a delivery that is still valid |
+| `inspect(id)` | Returns status, attempts, result, error and the expected predecessors |
+| `channel(binding)` | Restores the registered channel and verifies the fingerprint |
 
-Mesaj ID'si bütün `Inbox` içinde benzersizdir. Aynı ID ve anlam yeniden gönderilirse `False` döner, yeni kayıt açılmaz. `V` ve `r7a7t14` eşdeğerse aynı yeniden gönderimdir. ID aynı fakat anlam, kanal, öncüller veya deneme limiti farklıysa reddedilir. Farklı ID'lerde aynı metin ayrı işler olarak korunur.
+A message ID is unique across the whole `Inbox`. If the same ID and meaning are sent again, `False` is returned and no new record is opened. If `V` and `r7a7t14` are equivalent, it is the same resend. If the ID is the same but the meaning, channel, predecessors or attempt limit differ, it is rejected. The same text under different IDs is kept as separate jobs.
 
-Bağımlılıklar daha önce eklenmiş, aynı oturum/görev/revizyondaki mesajlara işaret eder. Gönderici/alıcı farklı olabilir: inceleyen ajan çalışan ajanı bekleyebilir. İleri referans ve kendine bağımlılık reddedilir; bu ekleme sırası döngü oluşturamaz. Bir öncülün `done` olması adaptörün sonuç kaydı ve ACK'sidir; doğruluk onayı değildir. Başarısız öncül bağımlı işi bekletir; `inspect(...)["waiting_for"]` nedeni gösterir. Onarım kararını host verir.
+Dependencies point to messages added earlier in the same session/task/revision. The sender/receiver can differ: a reviewing agent can wait for a working agent. Forward references and self-dependency are rejected; this insertion order cannot create a cycle. A predecessor being `done` is the adapter's result record and ACK; it is not a confirmation of correctness. A failed predecessor holds the dependent job; `inspect(...)["waiting_for"]` shows the reason. The repair decision is the host's.
 
-Teslim rastgele lease kimliği, sahibi ve son geçerlilik süresi taşır. İki bağlantı aynı bekleyen işi birlikte sahiplenemez. Süre dolunca sonraki `claim` işi yeniden açar; eski cevabın ACK'si reddedilir. Varsayılan üç deneme vardır; süre aşımı da deneme tüketir. Uzun model çağrısında zamanında `renew` gerekir. Bütçe hatası model çağrısından önce düzeltilmelidir.
+A delivery carries a random lease id, an owner and an expiry time. Two connections cannot take the same pending job together. When the time expires, the next `claim` reopens the job; the ACK of the old reply is rejected. There are three attempts by default; a timeout also consumes an attempt. On a long model call, `renew` is needed in time. A budget error must be fixed before the model call.
 
-İş ve durum aynı karedeyse (`V+8.`) durum önden uygulanmaz; tüm kare sırayla iş tesliminde kalır. Yalnız durum kareleri host kuyruğundadır; kayıt için model çağrısı istemez. `/` host kararı olmadan görevi durdurmaz; `+` kaynak doğruluğunu ispatlamaz.
+If a job and a status are in the same frame (`V+8.`), the status is not applied first; the whole frame stays in work delivery, in order. Status-only frames are in the host queue; recording them does not ask for a model call. `/` does not stop the task without a host decision; `+` does not prove the source is correct.
 
-**Teslim en az bir kezdir.** Süreç dış aracı çalıştırdıktan sonra ACK yazmadan kapanabilir. Yeniden teslim dış etkiyi tekrarlayabilir; araç adaptörü mesaj ID'sini idempotency anahtarı olarak kullanmalıdır. Kuyruk yetkilendirme, kaynak doğruluğu, ağ güvenliği veya görev kalitesi denetimi değildir. SQLite dosyası görev içeriğini düz biçimde tutar; dış paylaşımı host yönetir.
+**Delivery is at least once.** A process can close after running an external tool without writing the ACK. A redelivery can repeat the external effect; the tool adapter must use the message ID as an idempotency key. The queue is not authorization, source correctness, network security or a task quality check. The SQLite file keeps the task content in plain form; external sharing is managed by the host.
 
-## Taşınabilir manifest ve CLI
+## Portable manifest and CLI
 
-`channel.snapshot()` JSON verisi döndürür; `Channel.from_snapshot(...)` bunu yeniden doğrular. [Örnek kanal](examples/oz2-channel.json).
+`channel.snapshot()` returns JSON data; `Channel.from_snapshot(...)` verifies it again. [Example channel](examples/oz2-channel.json).
 
 ```powershell
 oz prompt --channel examples/oz2-channel.json
@@ -106,9 +108,9 @@ oz decode --channel examples/oz2-channel.json V
 oz pack --channel examples/oz2-channel.json --messages examples/oz2-messages.json --encoding o200k_base --max-tokens 1200
 ```
 
-`decode` ve `prompt` bağımlılıksızdır. `pack` için isteğe bağlı tokenizer: `python -m pip install ".[benchmark]"`. Hiçbiri modeli/araçları çalıştırmaz. Hatalı kare, manifest veya bütçe çıkış kodu 2 üretir.
+`decode` and `prompt` have no dependencies. Optional tokenizer for `pack`: `python -m pip install ".[benchmark]"`. None of them runs the model/tools. A bad frame, manifest or budget produces exit code 2.
 
-## Doğrulama
+## Verification
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -117,6 +119,6 @@ python -X utf8 oz2_benchmark.py
 python -X utf8 oz_live_eval.py --suite oz2 --live
 ```
 
-Son komut mevcut Codex ve Claude CLI hesaplarında gerçek model kullanımı tüketir; yalnız sentetik örnekler gönderir. `--live` olmadan istemi basar. Anahtar oluşturmaz, genel ayarları değiştirmez. [Sonuçlar](reports/OZ2-RESULTS.md).
+The last command consumes real model usage on the existing Codex and Claude CLI accounts; it sends only synthetic examples. Without `--live` it prints the prompt. It creates no key and changes no global settings. [Results](reports/OZ2-RESULTS.md).
 
-0.3.0 tip kurallarını da parmak izine eklediği için 0.2.0 kanal kimlikleriyle yeniden senkronizasyon gerekir. ÖZ/1 ve AKOR/1 sözdizimi desteklenir; önceki raporlar tarihli 0.2.0 kanıtlarıdır.
+Because 0.3.0 also added the type rules to the fingerprint, resynchronization with 0.2.0 channel ids is needed. OZ/1 and AKOR/1 syntax is supported; the earlier reports are dated 0.2.0 evidence.

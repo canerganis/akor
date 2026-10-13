@@ -150,9 +150,9 @@ baselines, so their numbers are not directly comparable.
 
 - [`OZ9.md`](OZ9.md): the protocol and host design, normative.
 - [`docs/design/`](docs/design/): every wire stage, review, debate and live evidence, in order.
-- [`USAGE.md`](USAGE.md): command-line guide (Turkish).
+- [`USAGE.md`](USAGE.md): command-line guide.
 - [`bench/`](bench/): live measurement harness, raw results and the Codex kits.
-- [`docs/HISTORY.tr.md`](docs/HISTORY.tr.md): earlier releases 0.4 to 0.9 (Turkish).
+- [`docs/HISTORY.md`](docs/HISTORY.md): earlier releases 0.4 to 0.9.
 
 ## License
 

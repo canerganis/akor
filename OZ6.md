@@ -1,37 +1,39 @@
-# ÖZ/6 — iki yönlü kısa iletişim
+# OZ/6: two-way short communication
 
-ÖZ/5 ortak iş akışını ve parametreleri sıkıştırır. ÖZ/6 buna **kısa cevap biçimini** ekler: ajan, her sonuçta görev kimliğini ve aynı durum kodunu tekrar yazmadan cevap verebilir. Tam sonuç metni, hata ayrıntıları ve belirsizlik korunur. Paket sürümü 0.8.0.
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-## Cevabın yapısı
+OZ/5 compresses the shared workflow and its parameters. OZ/6 adds a **short reply format** to it: the agent can answer without rewriting the task id and the same status code in every result. The full result text, error details and uncertainty are preserved. Package version 0.8.0.
 
-Güvenilir adaptörün o teslim için bildiği görev sırası `["incele", "test", "oner"]` olsun:
+## Structure of the reply
+
+Let the task order that the trusted adapter knows for that delivery be `["incele", "test", "oner"]`:
 
 ```json
 {"q":"0123456789abcdef","s":0,"v":["İnceleme sonucu","Test sonucu","Öneri metni"]}
 ```
 
-`q`, o çağrıya ait 16 küçük hexadecimal karakterlik cevap kimliğidir; model, istemde verilen değeri aynen döndürür. `v` dizisindeki konumlar teslim sırasına bağlanır. `s:0`, **bütün sonuçlar için açıkça 0 durumunun bildirildiği** anlamına gelir. Alanın eksik olması başarı değildir.
+`q` is the reply id for that call, 16 lowercase hexadecimal characters; the model returns the value given in the prompt exactly. The positions in the `v` array are bound to the delivery order. `s:0` means that **status 0 is explicitly reported for all results**. A missing field is not success.
 
-Durumlar farklıysa:
+If the statuses differ:
 
 ```json
 {"q":"0123456789abcdef","s":[0,1,2],"v":["İnceleme sonucu","Geçici hata nedeni","Kalıcı hata nedeni"]}
 ```
 
-Durum kodları değişmez: `0` tamamlandı bildirimi, `1` yeniden denenebilir hata, `2` kalıcı hata. Her görev için bir boş olmayan sonuç gerekir. `s` listesi kullanılırsa uzunluğu da görev sayısıyla tam eşleşir. Boolean, bilinmeyen durum, eksik/fazla sonuç veya yanlış `q` bütün cevabı geçersiz yapar. Geçersiz cevap bağımlı görevleri açmaz.
+The status codes do not change: `0` is a completion report, `1` is a retryable error, `2` is a permanent error. Each task needs one non-empty result. If an `s` list is used, its length must also match the task count exactly. A boolean, an unknown status, a missing or extra result or a wrong `q` makes the whole reply invalid. An invalid reply does not unlock dependent tasks.
 
-Bu bir sonucun doğruluğunu ispatlamaz. Ajanın “tamamlandı” bildirimi ile gerçek test/kanıt doğrulaması ayrı kalır. Bir model iki sonuç metninin yerini değiştirip doğru sayıda değer döndürürse yalnız biçim denetimi bunu anlayamaz; anlam denetimi ayrıca gerekir. `q` çağrılar arası yanlış cevap eşleşmesini yakalar; kimlik doğrulama imzası değildir.
+This does not prove that a result is correct. The agent's "completed" report and the actual verification of the test/evidence stay separate. If a model swaps the places of two result texts and returns the right number of values, a format check alone cannot detect it; a separate meaning check is needed. `q` catches wrong reply matching across calls; it is not an authentication signature.
 
-## Aktarım
+## Transport
 
 ```powershell
 oz plan --workspace .oz-runtime/ekip --reply-mode lanes --show-prompt
 oz run --workspace .oz-runtime/ekip --adapter adapter.json --reply-mode lanes
 ```
 
-`lanes` açıkça seçilir. Mevcut `rows` davranışı varsayılandır; eski adaptörler sessizce yeni sözleşmeye geçirilmez. `lanes` isteği `oz.adapter/2`, `receipt`, sıralı `ids`, `prompt` ve ölçülen girdi tokenlerini taşır. Adaptör modele `prompt` metnini iletmeli, modelin kısa JSON cevabını ayrıştırıp döndürmelidir. İsteğe bağlı sağlayıcı `usage` bilgisi önceki sözleşmeyle aynı biçimde eklenebilir.
+`lanes` is chosen explicitly. The existing `rows` behavior is the default; old adapters are not silently moved to the new contract. A `lanes` request carries `oz.adapter/2`, `receipt`, the ordered `ids`, `prompt` and the measured input tokens. The adapter must pass the `prompt` text to the model, then parse and return the model's short JSON reply. Optional provider `usage` information can be added in the same format as the earlier contract.
 
-Her çağrı/yeniden deneme yeni `q` üretir. Gerçek `q` ve cevap dilbilgisi **işleri kuyruktan almadan önce girdi bütçesine dahil edilir**. Sonradan ücretsiz metin eklenmez. `plan` önizlemesi ve `run` farklı cevap kimlikleri kullanır; gerçek çalıştırma yeniden ölçülür. Yalnız geçici hata alan görevler tekrar denenir, tamamlanan kardeş görevler tekrar gönderilmez.
+Every call/retry produces a new `q`. The real `q` and the reply grammar are **counted in the input budget before jobs are taken from the queue**. No free text is added afterwards. The `plan` preview and `run` use different reply ids; the real run is measured again. Only tasks that got a transient error are retried; completed sibling tasks are not sent again.
 
 Python:
 
@@ -40,12 +42,12 @@ worker = Worker(inbox, channel, adapter, counters=counters, reply_mode="lanes")
 result = worker.run_once()
 ```
 
-`oz_reply.validate_lanes(reply, delivered_ids, receipt)` doğrulanmış cevabı eski `results` satırlarına dönüştürür. `encode_lanes` ters dönüşümü yapar. Adaptör eski uzun cevabı modelden aldıktan sonra kısaltırsa **modelin çıktı tokenlerinden tasarruf edilmez**; bunun için model kısa biçimi doğrudan üretmelidir.
+`oz_reply.validate_lanes(reply, delivered_ids, receipt)` converts a validated reply into the old `results` rows. `encode_lanes` does the reverse. If the adapter shortens the old long reply after getting it from the model, **the model's output tokens are not saved**; for that, the model must produce the short format directly.
 
-`oz compile --worker` hâlâ varsayılan satırlı cevap sözleşmesini ölçer. `lanes` kullanımının gerçek girdi bütçesi `plan/run --reply-mode lanes` veya `reply_contract(receipt)` ile ayrıca ölçülmelidir. Tek işte yeni sözleşme ve cevap kimliği toplam maliyeti artırabilir; yalnız gövde kısalığına bakılmamalıdır.
+`oz compile --worker` still measures the default rows reply contract. The real input budget for using `lanes` must be measured separately with `plan/run --reply-mode lanes` or `reply_contract(receipt)`. For a single job, the new contract and reply id can increase the total cost; do not look only at the shortness of the body.
 
-## Ölçüm kapsamı
+## Measurement scope
 
-Toplam verim **başarılı iş başına bütün çağrıların maliyetiyle** değerlendirilir: girdi, çıktı, araçlar ve yeniden denemeler birlikte izlenir. Sağlayıcı düşünme tokenlerini çıktı içinde, önbellek tokenlerini girdi içinde bildiriyorsa bunlar ikinci kez toplanmaz. Yerel sözlük ölçümleri tek başına canlı maliyet/hızlanma değildir. CLI sistem ve araç bağlamı, protokol metninden çok daha büyük olabilir.
+Total efficiency is evaluated **by the cost of all calls per successful job**: input, output, tools and retries are tracked together. If the provider reports thinking tokens inside output and cache tokens inside input, they are not added a second time. Local vocabulary measurements alone are not live cost/speedup. The CLI system and tool context can be much larger than the protocol text.
 
-Bu sürümün yerel ve canlı doğrulamalarını Luna alt ajanları yürütür. Sonuçlar ayrı raporlanır: [cevap biçimi](reports/OZ-REPLY-RESULTS.md), [ÖZ/5 anlama](reports/OZ5-LIVE-LANGUAGE.md), [kod düzeltme pilotu](reports/OZ5-LIVE-CODING.md). Başarısız/eksik denemeler ve sıkı çıktı sözleşmesine uyum, anlam eşdeğerliğinden ayrı tutulur.
+The local and live verification of this version is run by Luna subagents. The results are reported separately: [reply format](reports/OZ-REPLY-RESULTS.md), [OZ/5 comprehension](reports/OZ5-LIVE-LANGUAGE.md), [code repair pilot](reports/OZ5-LIVE-CODING.md). Failed/missing attempts and compliance with the strict output contract are kept separate from meaning equivalence.

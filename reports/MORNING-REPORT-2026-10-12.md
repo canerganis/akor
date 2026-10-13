@@ -1,53 +1,55 @@
-# Sabah raporu, 12 Ekim 2026
+# Morning report, 12 October 2026
 
-Branch `oz-0.9`, son commit `3f07723`. Push yok, main'e merge yok. 198 test yeşil.
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-## Kısa sonuç
+Branch `oz-0.9`, last commit `3f07723`. No push, no merge to main. 198 tests green.
 
-32 ve 64 işlik çağrılarda hedef tuttu. Sonnet ile canlı ölçümde ÖZ/9, aynı işi yapan 0.8'e göre toplam tokeni **%43 (32 iş)** ve **%55 (64 iş)** azalttı. Bütün işler doğrulayıcıdan geçti (96/96 ve 192/192), cevaplar daha hızlı geldi (64 işte medyan 9,2 sn, 0.8'de 14,0 sn).
+## Short result
 
-1 ile 4 işlik çağrılarda kazanç yok. Claude CLI her çağrıya kendi 905 tokenlık sabit yükünü ekliyor; bu yük küçük çağrıda baskın. 16 işte toplam %29, CLI yükü hariç %41 azalma var.
+The target was met on calls of 32 and 64 jobs. In the live measurement with Sonnet, OZ/9 reduced total tokens by **43% (32 jobs)** and **55% (64 jobs)** compared with 0.8 doing the same work. All jobs passed the verifier (96/96 and 192/192), and the replies came faster (at 64 jobs the median was 9.2 s, 0.8 had 14.0 s).
 
-## Gece ne oldu
+There is no gain on calls of 1 to 4 jobs. The Claude CLI adds its own fixed load of 905 tokens to every call; this load dominates in a small call. At 16 jobs there is a 29% reduction in total and 41% without the CLI load.
 
-1. **Çevrimdışı hedef tuttu ama canlıda tutmadı.** İstek paketi o200k ile 1 işte %38, 64 işte %55 küçülmüştü. İlk canlı Sonnet testinde ise toplam token 0.8'den %9 fazla çıktı, çağrılar da yavaştı. İki sebep vardı. Birincisi, sıkıştırılmış cevap sözleşmesini Sonnet yanlış anladı: 8 cevabın 5'i geçersizdi. İkincisi, model "read" işlerinde referans metnini kelimesi kelimesine tekrar yazıyordu.
-2. **Karşılaştırma adil değildi.** 0.8 paketi 16 işte hiç iş yapmadı, sadece kodları geri kopyaladı. Bu yüzden 16 işteki eski karşılaştırma geçersizdi.
-3. **Astra gerçek bir test seti tasarladı.** İçinde malzeme aralık hesabı ve kod onarımı var, beklenen sonuçlar deterministik olarak kontrol ediliyor. İşi gerçekten yapan bir 0.8 kolu da ekledi. Bunu harness olarak kurdum.
-4. **Cevap formatı değişti.** Sonuçlar artık doğal JSON değerleri ve hatalar ayrı bir haritada. Bu formatla geçerli cevap oranı 13/18'den 36/36'ya çıktı. Receipt artık pakette yok, host tarafında kalıyor.
-5. **Batch'leme eklendi.** Astra'nın birinci önceliği batch'lemeydi: `oz run --min-batch N --max-wait S`. Varsayılan kapalı.
-6. **Spec ve belgeler güncellendi.** Astra OZ9.md'yi kodla birebir uyumlu olacak şekilde yeniden yazdı. README ve USAGE 0.9'a göre güncellendi.
+## What happened overnight
 
-## Canlı ölçümler (Sonnet, `claude -p`, araçsız)
+1. **The offline target was met but the live one was not.** The request packet had shrunk by 38% at 1 job and 55% at 64 jobs with o200k. In the first live Sonnet test, though, total tokens came out 9% higher than 0.8, and the calls were slow too. There were two reasons. First, Sonnet misunderstood the compressed reply contract: 5 of 8 replies were invalid. Second, the model was rewriting the reference text word for word on "read" jobs.
+2. **The comparison was not fair.** The 0.8 package did no work at 16 jobs; it only copied the codes back. So the old comparison at 16 jobs was invalid.
+3. **Astra designed a real test set.** It contains a material range calculation and code repair, and the expected results are checked deterministically. It also added a 0.8 arm that really does the work. I set this up as the harness.
+4. **The reply format changed.** Results are now natural JSON values and errors are in a separate map. With this format the valid reply rate went from 13/18 to 36/36. The receipt is no longer in the packet; it stays on the host side.
+5. **Batching was added.** Astra's first priority was batching: `oz run --min-batch N --max-wait S`. Off by default.
+6. **The spec and documents were updated.** Astra rewrote OZ9.md to match the code one to one. README and USAGE were updated for 0.9.
 
-Aynı işi yapan 0.8 kolu ile karşılaştırma. "Toplam", CLI'ın 905 tokenlık sabit yükünü de içerir.
+## Live measurements (Sonnet, `claude -p`, no tools)
 
-| Ölçüm | Doğru iş | Toplam token | CLI yükü hariç | Medyan süre |
+Comparison with the 0.8 arm doing the same work. "Total" also includes the CLI's fixed load of 905 tokens.
+
+| Measurement | Correct jobs | Total tokens | Without CLI load | Median time |
 |---|---:|---:|---:|---:|
-| Karışık 1/4/16 iş, 18 çağrı | 124/126 (0.8: 123) | %17 az | %30 az | 3,1 sn (0.8: 3,1) |
-| 16 farklı iş | 0.8 ile benzer | %29 az | %41 az | benzer |
-| 32 farklı iş | 96/96 | **%43 az** | %52 az | 7,0 sn (0.8: 7,9) |
-| 64 farklı iş | 192/192 | **%55 az** | %61 az | 9,2 sn (0.8: 14,0) |
+| Mixed 1/4/16 jobs, 18 calls | 124/126 (0.8: 123) | 17% fewer | 30% fewer | 3.1 s (0.8: 3.1) |
+| 16 different jobs | similar to 0.8 | 29% fewer | 41% fewer | similar |
+| 32 different jobs | 96/96 | **43% fewer** | 52% fewer | 7.0 s (0.8: 7.9) |
+| 64 different jobs | 192/192 | **55% fewer** | 61% fewer | 9.2 s (0.8: 14.0) |
 
-Ölçülüp reddedilen öneriler:
-- **Astra'nın çıktı kuralı:** isteğe 18 token ekliyordu, canlıda çıktıyı azaltmadı.
-- **Kısaltılmış cevap sözleşmeleri:** ya daha uzun çıktılar (36'ya karşı 35 token) ya da canlıda daha çok geçersiz cevap üretti.
-- **Astra'nın "e" işi netleştirmesi:** yeni metin bütün kollarda, 0.8 dahil, boş cevaba yol açtı.
+Proposals that were measured and rejected:
+- **Astra's output rule:** it added 18 tokens to the request and did not reduce the output live.
+- **Shortened reply contracts:** they either produced longer outputs (35 tokens against 36) or more invalid replies live.
+- **Astra's "e" job clarification:** the new text led to an empty reply in all arms, 0.8 included.
 
-Ayrıntılar: [OZ9.md](../OZ9.md) bölüm 10 ve `reports/OZ9-LIVE-*.txt`.
+Details: [OZ9.md](../OZ9.md) section 10 and `reports/OZ9-LIVE-*.txt`.
 
-## Kendi kararlarım
+## My own decisions
 
-- **Güvenlik ifadesi:** Astra'nın birleştirdiği başlıkta "no tool permissions" yoktu. Kendi kuralına dayanarak geri ekledim, Astra da onayladı.
-- **Receipt:** 16 karakterlik rastgele receipt yerine kısa bir sayaç kullandım. Rastgele receipt hem istekte hem cevapta yaklaşık 7'şer token tutuyordu. Sonra receipt tamamen pakette yer almaz hale geldi.
-- **Test yazımı:** Luna'nın yazdığı OZ/9 testlerinden 22'si hatalıydı, düzelttim. Senin talimatınla sonraki testleri Sonnet alt ajanlarına yazdırdım, hepsini inceleyip kendim çalıştırdım.
-- **Ölçüm hatam:** Ölçümlerde sabit ve ucuz bir receipt kullanmıştım, bu yüzden ilk tablolar maliyeti olduğundan biraz düşük gösterdi. Hatayı buldum ve düzelttim.
+- **Safety wording:** The header Astra merged did not have "no tool permissions". I added it back based on its own rule, and Astra confirmed.
+- **Receipt:** Instead of a 16-character random receipt I used a short counter. The random receipt took about 7 tokens each in the request and in the reply. Later the receipt was removed from the packet entirely.
+- **Writing tests:** 22 of the OZ/9 tests Luna wrote were faulty; I fixed them. On your instruction I had Sonnet subagents write the later tests, and I reviewed all of them and ran them myself.
+- **My measurement error:** In the measurements I had used a fixed and cheap receipt, so the first tables showed the cost slightly lower than it was. I found the error and fixed it.
 
-## Senin kararın gereken konular
+## Matters that need your decision
 
-1. **Varsayılan batch.** Ölçümler büyük çağrıları açıkça destekliyor. `--min-batch` şu an varsayılan olarak kapalı (1) ve batch üst sınırı 16. Varsayılanı 32 yapmak ve quorum'u açık getirmek istiyor musun? Bunun bedeli bekleme süresi.
-2. **cl100k ve diğer modeller.** Spec'teki release gate, cl100k ile canlı ölçüm ve başka modellerde doğrulama istiyor. cl100k OpenAI tokenizer'ı; bunu ölçmek için bir GPT modeli gerekiyor. Luna'ya iş vermememi söylemiştin. Hangi model kullanılsın, yoksa bu adım atlansın mı?
-3. **Merge.** `oz-0.9` main'e alınmaya hazır mı? Ben merge etmedim, push da yapmadım.
+1. **Default batch.** The measurements clearly support large calls. `--min-batch` is currently off by default (1) and the batch upper limit is 16. Do you want to make the default 32 and bring the quorum in explicitly? The cost of this is waiting time.
+2. **cl100k and other models.** The release gate in the spec asks for a live measurement with cl100k and verification on other models. cl100k is OpenAI's tokenizer; to measure it a GPT model is needed. You told me not to give work to Luna. Which model should be used, or should this step be skipped?
+3. **Merge.** Is `oz-0.9` ready to go into main? I did not merge and did not push.
 
-## Kota
+## Quota
 
-Claude haftalık %90, Codex haftalık %33. Handoff gerekmedi.
+Claude weekly 90%, Codex weekly 33%. No handoff was needed.

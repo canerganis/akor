@@ -1,17 +1,19 @@
-# ÖZ/6 yanıt biçimi ölçümü
+# OZ/6 reply format measurement
 
-Bu birleşik rapor 6 canlı model çağrısı ve 0 çevrimdışı benchmark model çağrısı içerir.
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-## Çevrimdışı fixture karşılaştırması
+This combined report contains 6 live model calls and 0 offline benchmark model calls.
 
-`o200k_base` ve `cl100k_base` kullanıldı. Girdi tarafında yalnız ek yanıt sözleşmesi sayıldı; ortak görev girdisi, kimlikler, provider sarmalı ve yeniden denemeler dışarıda. Çıktı tokenları, açıkça sentetik olarak etiketlenmiş ve JSON’a doldurulmuş fixture metinlerinin tahminidir; model çıktısı veya provider kullanımı değildir.
+## Offline fixture comparison
 
-| İş sayısı | Kimlikler | Durumlar | o200k girdi Δ | o200k çıktı tasarrufu | o200k net tasarruf | cl100k girdi Δ | cl100k çıktı tasarrufu | cl100k net tasarruf |
+`o200k_base` and `cl100k_base` were used. On the input side only the additional reply contract was counted; the shared task input, ids, provider wrapper and retries are left out. The output tokens are an estimate from fixture texts that are explicitly labeled synthetic and filled into the JSON; they are not model output or provider usage.
+
+| Job count | Ids | Statuses | o200k input Δ | o200k output saving | o200k net saving | cl100k input Δ | cl100k output saving | cl100k net saving |
 |---:|---|---|---:|---:|---:|---:|---:|---:|
 | 1 | short | same | +51 | -6 | -57 | +51 | -5 | -56 |
-| 1 | short | mixed isteği; tek iş=0 | +51 | -6 | -57 | +51 | -5 | -56 |
+| 1 | short | mixed requested; single job=0 | +51 | -6 | -57 | +51 | -5 | -56 |
 | 1 | long | same | +51 | -2 | -53 | +51 | -1 | -52 |
-| 1 | long | mixed isteği; tek iş=0 | +51 | -2 | -53 | +51 | -1 | -52 |
+| 1 | long | mixed requested; single job=0 | +51 | -2 | -53 | +51 | -1 | -52 |
 | 4 | short | same | +51 | +15 | -36 | +51 | +16 | -35 |
 | 4 | short | mixed | +51 | +9 | -42 | +51 | +10 | -41 |
 | 4 | long | same | +51 | +31 | -20 | +51 | +32 | -19 |
@@ -25,27 +27,27 @@ Bu birleşik rapor 6 canlı model çağrısı ve 0 çevrimdışı benchmark mode
 | 64 | long | same | +51 | +691 | +640 | +51 | +692 | +641 |
 | 64 | long | mixed | +51 | +565 | +514 | +51 | +566 | +515 |
 
-`Girdi Δ` lanes sözleşmesi eksi rows sözleşmesidir. `Net tasarruf`, sözleşme farkı ile fixture çıktı tasarrufunu toplar; pozitif değer lanes lehinedir.
+`Input Δ` is the lanes contract minus the rows contract. `Net saving` adds the contract difference and the fixture output saving; a positive value favors lanes.
 
-## Canlı gpt-6-luna biçim denemeleri
+## Live gpt-6-luna format trials
 
-Her eşleşmiş örnek aynı işleri rows ve lanes biçimlerinde ayrı çağrılarla karşılaştırır. Exact scorer iş sayısı, sıra, durum ve metni kontrol eder; lanes çıktısında receipt’i de doğrular. Sağlayıcının `turn.completed` kullanım değerleri gösterilir; Codex sistem bağlamı ve sarmalı tam-girdi sayılarına dahildir. Bu değerler yalnız sözleşme token hesabıyla karşılaştırılmamalıdır.
+Each matched example compares the same jobs in the rows and lanes formats in separate calls. The exact scorer checks the job count, order, status and text; for the lanes output it also verifies the receipt. The provider's `turn.completed` usage values are shown; the Codex system context and wrapper are included in the full-input counts. These values should not be compared with the contract token count alone.
 
-| İş sayısı | Kimlikler | Exact scorer | Provider input tokens rows → lanes | Provider output tokens rows → lanes | Input + output toplamı rows → lanes |
+| Job count | Ids | Exact scorer | Provider input tokens rows → lanes | Provider output tokens rows → lanes | Input + output total rows → lanes |
 |---:|---|---|---:|---:|---:|
-| 1 | short | geçti (iki biçim) | 24595 → 24656 | 33 → 39 | 24628 → 24695 |
-| 16 | long | geçti (iki biçim) | 25124 → 25511 | 468 → 378 | 25592 → 25889 |
-| 64 | short | geçti (iki biçim) | 26484 → 26545 | 1574 → 1262 | 28058 → 27807 |
+| 1 | short | passed (both formats) | 24595 → 24656 | 33 → 39 | 24628 → 24695 |
+| 16 | long | passed (both formats) | 25124 → 25511 | 468 → 378 | 25592 → 25889 |
+| 64 | short | passed (both formats) | 26484 → 26545 | 1574 → 1262 | 28058 → 27807 |
 
-Reasoning output sayısı `output_tokens` içinde alt alan olarak verildiğinden toplamda ikinci kez eklenmedi; `cached_input_tokens` da `input_tokens` değerine eklenmedi. Provider’ın verdiği `usage` nesnesi ham saklanır; bilinmeyen alanlar yeniden yorumlanmaz.
-3 eşleşmiş örnekten genel iyileşme veya model kalitesi sonucu çıkarılamaz.
+The reasoning output count is given as a sub-field inside `output_tokens`, so it was not added a second time in the total; `cached_input_tokens` was not added to `input_tokens` either. The `usage` object given by the provider is stored raw; unknown fields are not reinterpreted.
+No overall improvement or model quality result can be drawn from 3 matched examples.
 
-## Sınırlar
+## Limits
 
-- Çevrimdışı fixture metinleri sentetiktir; hiçbir görev veya araç çalıştırılmadı.
-- Token karşılaştırması yalnız `tiktoken 0.14.0` ile `o200k_base` ve `cl100k_base` için yapıldı.
-- Tek receipt fixture’ı kullanıldı; başka receipt dizileri az miktarda tokenizer farkı yaratabilir.
-- Provider input tokenları Codex CLI’ın gizli sistem bağlamını da kapsar ve sözleşme farkını tek başına ölçmez; provider’ın `usage` alanları ham haliyle JSON’da tutulur.
-- Canlı örnek sayısı azdır ve anlamayı, doğruluğu veya üretim kalitesini genellemek için yeterli değildir.
+- The offline fixture texts are synthetic; no task or tool was run.
+- The token comparison was made only with `tiktoken 0.14.0` for `o200k_base` and `cl100k_base`.
+- A single receipt fixture was used; other receipt sequences may cause a small tokenizer difference.
+- The provider input tokens also cover the Codex CLI's hidden system context and do not measure the contract difference alone; the provider's `usage` fields are kept raw in the JSON.
+- The number of live examples is small and is not enough to generalize comprehension, accuracy or production quality.
 
-Ham canlı model yanıtları ve tam ölçümler `oz-reply-results.json` içinde saklanır.
+The raw live model replies and the full measurements are stored in `oz-reply-results.json`.

@@ -1,43 +1,45 @@
-# ÖZ/4 doğrulaması — 11 Ekim 2026
+# OZ/4 verification: 11 October 2026
 
-Paket 0.6.0; tiktoken 0.14.0; `o200k_base` ve `cl100k_base` birlikte seçiciye verilmiştir. Çalıştırma: `python -X utf8 oz4_benchmark.py`. [Ham sayımlar ve süreler](oz4-token-counts.json).
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-**Gerçek model çağrısı: 0. Gerçek kod değişikliği/test yürütmesi: 0.** Bu rapor, sentetik kod inceleme isteklerinin kayıpsız taşınmasını ve girdi maliyetini ölçer. Kod ajanlarının görev başarısını ölçmez.
+Package 0.6.0; tiktoken 0.14.0; `o200k_base` and `cl100k_base` were given to the selector together. Run: `python -X utf8 oz4_benchmark.py`. [Raw counts and times](oz4-token-counts.json).
 
-## Yeni dil birimi
+**Real model calls: 0. Real code changes/test executions: 0.** This report measures the lossless transport and the input cost of synthetic code review requests. It does not measure the task success of code agents.
 
-`^`, kanala bağlanmış programın aynısını istemek anlamına gelir. Örnekteki 48 ilkel işlem isteğini her iki tokenizer'da **1 komut tokeni** taşır. Base'in, sözlüğün ve kaynakların tanımı bu tek tokene dahil değildir. Tam paket ölçümlerinde hepsi ayrıca sayılır.
+## New language unit
 
-## Güçlü karşılaştırma
+`^` means requesting the same program that is bound to the channel. In the example it carries 48 primitive operation requests as **1 command token** on both tokenizers. The definition of the base, the vocabulary and the sources is not included in this single token. In the full packet measurements they are all counted separately.
 
-Başlangıçta ÖZ/3 makroları vardır. Derleyici önce mutlak gösterimi mevcut makrolar, yeni makrolar, hedef listeleri, kısa metin, JSON ve uygun olduğunda ortak frame tablosuyla iyileştirir. Sonra ÖZ/4 ortak program + fark gösterimini dener. İki tokenizer'da da maliyet artışı kabul edilmez.
+## Strong comparison
 
-Ek kontrol, tam aynı frame'leri bir kez tanımlayan açık bir şablon tablosudur. Bu basit yöntem tekrarlı mesajlarda güçlüdür; ÖZ/4'ün yalnız tekrarların üzerinden büyük başarı iddia etmesini önler. Üretim seçicisine de eklenmiştir. Her mesajın kimliği ve ayrı sonuç yükümlülüğü korunur.
+At the start the OZ/3 macros exist. The compiler first improves the absolute representation with existing macros, new macros, target lists, short text, JSON and, where suitable, a shared frame table. Then it tries the OZ/4 shared program + difference representation. An increase in cost on either tokenizer is not accepted.
 
-| İş yükü | En iyi mutlak/tablo, o200k → ÖZ/4 seçimi | En iyi mutlak/tablo, cl100k → ÖZ/4 seçimi |
+An additional check is an explicit template table that defines exactly the same frames once. This simple method is strong on repeated messages; it prevents OZ/4 from claiming a big success only over repetition. It was also added to the production selector. The id of each message and its separate result obligation are preserved.
+
+| Workload | Best absolute/table, o200k → OZ/4 choice | Best absolute/table, cl100k → OZ/4 choice |
 |---|---:|---:|
-| Tek küçük okuma | 189 → 189 | 188 → 188 |
-| Tek 48 adımlı plan | 846 → 846 | 844 → 844 |
-| 8 farklı 48 adımlı plan | 1.150 → 1.140 | 1.141 → 1.129 |
-| 32 farklı 48 adımlı plan | 2.200 → 1.739 | 2.168 → 1.705 |
-| 64 farklı 48 adımlı plan | **3.351 → 2.300** | **3.289 → 2.236** |
-| Aynı planın 64 kopyası, kontrol | 1.239 → 1.239 | 1.238 → 1.238 |
-| Yeni serbest metin | 194 → 194 | 193 → 193 |
+| Single small read | 189 → 189 | 188 → 188 |
+| Single 48-step plan | 846 → 846 | 844 → 844 |
+| 8 different 48-step plans | 1,150 → 1,140 | 1,141 → 1,129 |
+| 32 different 48-step plans | 2,200 → 1,739 | 2,168 → 1,705 |
+| 64 different 48-step plans | **3,351 → 2,300** | **3,289 → 2,236** |
+| 64 copies of the same plan, control | 1,239 → 1,239 | 1,238 → 1,238 |
+| New free text | 194 → 194 | 193 → 193 |
 
-64 farklı plan için ek tasarruf **%31,36 / %32,02**. Planlar aynı sırayı büyük ölçüde paylaşır; test prosedürü ve başka bir okuma adımı farklılaşır. Toplam 3.072 işlem isteği vardır; bunlar gerçekleştirilmiş 3.072 iş değildir. Bütün 64 planın ayrı olduğu veri üretiminde doğrulanır. Bu yapı, fark dilinin uygun olduğu bir iş yüküdür; rastgele ve tamamen bağımsız görevlerde aynı kazanç beklenmemelidir.
+The additional saving for 64 different plans is **31.36% / 32.02%**. The plans largely share the same sequence; the test procedure and another read step differ. There are 3,072 operation requests in total; these are not 3,072 jobs that were carried out. That all 64 plans are distinct is verified in the data generation. This structure is a workload for which the difference language is suitable; the same gain should not be expected on random and fully independent tasks.
 
-Aynı planın 64 kopyası kontrolünde ÖZ/4 seçilmedi; **daha ucuz ortak tablo** seçildi. Gösterilen son maliyet, biçimi zorlamayan seçicinin sonucudur. Küçük mesajlarda da Base tanımı maliyetini çıkarmadığı için eski biçim korunur.
+In the control with 64 copies of the same plan, OZ/4 was not selected; the **cheaper shared table** was selected. The final cost shown is the result of a selector that does not force the format. On small messages too, the old format is kept because the Base definition does not pay for itself.
 
-## Maliyet kapsamı
+## Cost scope
 
-Her pakette gereken tam Base, dilbilgisi, makro tanımları, kaynakların tam metni, görev kimlikleri ve Worker cevap sözleşmesi sayılır. Kaynak/şema önbelleğinin model tarafında ücretsiz olduğu varsayılmaz. Sağlayıcı taşıyıcı alanları, gönderici eğitimi/ilk sözlüğü, model üretim/akıl yürütme tokenleri, araç çıktıları ve yeniden denemeler dahil değildir. Dolayısıyla bu rakamlar toplam API faturası veya uçtan uca hız kazancı olarak kullanılamaz.
+In each packet, the needed full Base, grammar, macro definitions, the full text of the sources, the task ids and the Worker reply contract are counted. It is not assumed that the source/schema cache is free on the model side. Provider carrier fields, the sender's training/initial vocabulary, model generation/reasoning tokens, tool outputs and retries are not included. So these figures cannot be used as a total API bill or an end-to-end speed gain.
 
-## Yerel süreler ve testler
+## Local times and tests
 
-64 plan için sözlük/makro araştırması bu çalıştırmada onlarca saniye sürdü; kesin süre ham JSON'dadır. Bu hazırlığı her mesajda yeniden yapmak hızlı bir iletişim yolu oluşturmaz. Aynı kaynak ve sözlük revizyonunda derlenmiş kanalın yeniden kullanılması amaçlanır.
+The vocabulary/macro search for 64 plans took tens of seconds in this run; the exact time is in the raw JSON. Redoing this preparation on every message does not make a fast communication path. The intent is to reuse a compiled channel at the same source and vocabulary revision.
 
-Derlenmiş kanalla 64 frame'in tam yeniden paketlenmesi üç çalıştırmanın medyanında yaklaşık **774 ms**, yalnız kesin çözümleme yaklaşık **2,94 ms** sürdü. Paketleme, her adayın tokenini saymayı ve tam bağlamı oluşturmayı da içerir. Bunlar bu makineye ait küçük yerel zamanlamalardır; ağ/model gecikmesi veya önceki sürüme karşı kontrollü hızlanma ölçümü değildir.
+With a compiled channel, the full repacking of 64 frames took about **774 ms** in the median of three runs, and the exact decoding alone about **2.94 ms**. The packing includes counting the tokens of each candidate and building the full context. These are small local timings of this machine; they are not network/model latency or a controlled speedup measurement against the previous release.
 
-**179 birim/entegrasyon testi geçti.** Yeni kapsam: 250 rastgele düzenleme dizisinin kayıpsız açılımı; özgün koordinatlar; eşzamanlı referans takası; literal/kanıt/başarı bildirimlerinin düzenlemelere sokulamaması; 64 işlem/16 düzenleme sınırı; bozuk/eski bağlam reddi; SQLite yeniden açılışı; eşdeğer mesajların aynı kimlikle ayıklanması; Worker üzerinden bağımlı işlere gerçek sonuç metninin aktarılması. Test adaptörü açıkça sentetik alındı bildirimi üretir.
+**179 unit/integration tests passed.** New coverage: lossless expansion of 250 random edit sequences; original coordinates; simultaneous reference swap; literal/evidence/success reports not being allowed into edits; the 64 operation/16 edit limit; rejection of a broken/old context; SQLite reopening; deduplicating equivalent messages by the same id; transferring the real result text to dependent jobs through the Worker. The test adapter explicitly produces a synthetic acknowledgement notice.
 
-ÖZ/4 için canlı modellerde anlama, gerçek kodlama başarısı, sonuç kalitesi veya uçtan uca toplam maliyet ölçülmedi. Dünya çapında benzersizlik, mükemmel orkestra veya küresel en az token garantisi yoktur.
+For OZ/4, comprehension in live models, real coding success, result quality or end-to-end total cost was not measured. There is no worldwide uniqueness, perfect orchestration or global minimum token guarantee.

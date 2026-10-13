@@ -1,8 +1,10 @@
-**Kararım: Stage 1f = zorunlu `goal` + işlem bazında gruplanmış işler + açık iş ID’li sonuçlar.** Eksik hedefi encoder seviyesinde engelle. Sıkıştırmayı işlem seçicisinin tekrarlarını kaldırarak yap; iş ID’lerini koru.
+Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
 
-Aşağıdaki yeni ve bağımsız wire sözleşmesidir. `c4a4ce8` dosyalarına erişemediğim için mevcut iç şemayla uyumluluğunu veya token kazancını doğruladığımı söylemiyorum.
+**My decision: Stage 1f = mandatory `goal` + jobs grouped by operation + results with explicit job IDs.** Block a missing goal at the encoder level. Do the compression by removing the repeats of the operation selector; keep the job IDs.
 
-**Gövde tam olarak şu biçimde olsun:**
+The following is a new and independent wire contract. Because I could not access the files of `c4a4ce8`, I do not claim to have verified its compatibility with the existing internal schema or its token gain.
+
+**The body should have exactly this form:**
 
 ```text
 Packet = {
@@ -17,9 +19,9 @@ Packet = {
 }
 ```
 
-`ops` ve `refs` indeksleri sıfırdan başlar. Her blok tek bir işlemi seçer; ardından o işlemin iş satırları gelir. İş satırının ilk elemanı daima gerçek iş ID’sidir. Sonraki elemanlar, sırası korunacak girdi referanslarıdır. Yalnızca hedef üzerinden çalışan bir iş `[job_id]` olabilir.
+`ops` and `refs` indices start from zero. Each block selects a single operation; the job rows of that operation follow. The first element of a job row is always the real job ID. The following elements are input references whose order is kept. A job that works only from the goal can be `[job_id]`.
 
-Örnek:
+Example:
 
 ```json
 {
@@ -39,7 +41,7 @@ Packet = {
 }
 ```
 
-Beklenen cevap:
+Expected reply:
 
 ```jsonl
 ["v0","inside"]
@@ -47,9 +49,9 @@ Beklenen cevap:
 ["v2","unknown"]
 ```
 
-İndeksler yalnızca **girdide tablo seçmek** içindir. Sonuç bağlama anahtarı yalnızca iş ID’sidir; ID’den indeks türetilmez.
+The indices are only for **choosing a table in the input**. The only result binding key is the job ID; no index is derived from the ID.
 
-**Sistem mesajının tamamı aşağıdaki metin olsun:**
+**The whole system message should be the following text:**
 
 ```text
 You execute OZ/1f.
@@ -90,23 +92,23 @@ Return no prose, Markdown, outer array, or blank lines.
 Escape newlines inside JSON strings.
 ```
 
-**Encoder ve istek doğrulaması şu kuralları uygulasın:**
+**The encoder and request validation should apply these rules:**
 
-1. **`goal` zorunlu ve boş olmayan bir string.** Kaynak isteğin ortak hedefini ve kısıtlarını eksiksiz taşı. Otomatik özetleme, boş varsayılan veya önceki konuşmadan hedef devralma yok. Eksik hedef, **model çağrısından önce istek hatasıdır**. Parçalanmış her pakete aynı hedef kopyalanır.
+1. **`goal` is mandatory and a non-blank string.** Carry the shared goal and constraints of the source request completely. No automatic summarizing, no empty default, no taking a goal over from an earlier conversation. A missing goal is **a request error before the model call**. The same goal is copied into every split packet.
 
-2. Üst seviyede yalnızca `v`, `goal`, `ops`, `refs`, `jobs` bulunur; `v` tam olarak `"1f"` olur. Strict JSON kullanılır: yinelenen nesne anahtarları, yorumlar ve geçersiz sayılar reddedilir. Mevcut kaynak/boyut sınırları gevşetilmez.
+2. The top level contains only `v`, `goal`, `ops`, `refs`, `jobs`; `v` is exactly `"1f"`. Strict JSON is used: duplicate object keys, comments and invalid numbers are rejected. The existing source/size limits are not loosened.
 
-3. `ops` boş olmayan talimat stringlerinden oluşan, boş olmayan bir dizidir. Her talimat sonuç değerinin biçimini açıkça belirtir. Host, her işlem için **önceden tanımlanmış bir sonuç doğrulayıcısı** tutar ve bunu gönderilen `op_index` ile eşler; doğal dil talimatından çalışma anında şema tahmin etmez.
+3. `ops` is a non-empty array of non-empty instruction strings. Each instruction states the form of the result value explicitly. For each operation the host keeps a **predefined result validator** and maps it to the `op_index` that was sent; it does not guess a schema from the natural-language instruction at run time.
 
-4. `jobs` boş olamaz. Her blok `[op_index, job, ...]` biçimindedir ve en az bir iş içerir. Her kullanılan işlem için tam bir blok bulunur; kullanılmayan işlem gönderilmez.
+4. `jobs` cannot be empty. Each block has the form `[op_index, job, ...]` and contains at least one job. There is exactly one block for each used operation; unused operations are not sent.
 
-5. Her iş `[job_id, ref_index, ...]` biçimindedir. `job_id` boş olmayan stringdir ve paket genelinde eşsizdir. Bütün indeksler sınırlar içinde tamsayıdır; boolean, string ve kesirli değerler indekse dönüştürülmez.
+5. Each job has the form `[job_id, ref_index, ...]`. `job_id` is a non-empty string and is unique across the packet. All indices are integers within bounds; boolean, string and fractional values are not converted to indices.
 
-6. `refs` boş olabilir. Gönderilen her referans en az bir işte kullanılmalıdır. Bir referans birden fazla işte kullanılabilir; bir işteki referans sırası ve tekrarları korunur. Referans içindeki sayılar **yeniden referans olarak yorumlanmaz**.
+6. `refs` can be empty. Every reference that is sent must be used in at least one job. A reference can be used in more than one job; the order and repeats of references within a job are kept. Numbers inside a reference are **not interpreted as references again**.
 
-7. Gruplama yalnızca bağımsız işler için uygulanır. Başka bir işin sonucuna ihtiyaç varsa scheduler sonraki paketi oluşturur. Ortak bir seçim/karar gerektiren işler, gerekli bütün girdileri alan tek bir iş olarak temsil edilir.
+7. Grouping is applied only to independent jobs. If the result of another job is needed, the scheduler builds the next packet. Jobs that need a shared choice/decision are represented as a single job that takes all the required inputs.
 
-8. Encoder şu kayıpsızlık özelliğini sağlamalıdır:
+8. The encoder must provide this losslessness property:
 
    ```text
    expand(encode(request))[job_id]
@@ -115,44 +117,44 @@ Escape newlines inside JSON strings.
    decoded_goal == original_goal
    ```
 
-   Birimler, `null`, kaynak bilgisi ve anlam taşıyan kimlikler korunur. Referans anahtarı kaynak kimliğinin parçasıysa tablo indeksine çevirirken bu bilgi atılmaz.
+   Units, `null`, source information and IDs that carry meaning are kept. If a reference key is part of the source identity, this information is not dropped when converting it to a table index.
 
-Gövde compact JSON olarak yazılır. İşlemler ilk görülme sırasıyla gruplanır; her grubun içindeki iş sırası korunur. Tablo indeksleri yalnızca o pakete aittir. Cache anahtarı sürüm ve **`goal` dahil bütün anlamsal girdileri** kapsar.
+The body is written as compact JSON. Operations are grouped in order of first appearance; the job order inside each group is kept. Table indices belong only to that packet. The cache key covers the version and **all semantic inputs including `goal`**.
 
-**Cevap doğrulaması ve atomiklik:**
+**Reply validation and atomicity:**
 
-- Önce cevabın tamamını al. Truncation, taşıma hatası veya tamamlanmamış stream varsa cevabı reddet.
-- Her fiziksel satır tek bir strict JSON dizisi olmalı. LF ve CRLF kabul edilir; bir son satır sonlandırıcısı serbesttir. Boş satırlar, Markdown ve ek metin reddedilir. Satır içindeki zararsız JSON boşlukları reddetme nedeni değildir.
-- Yalnızca iki satır biçimi geçerlidir: iki elemanlı `[id,value]` veya dört elemanlı `[id,"error",code,message]`.
-- ID’leri gönderilen isteğin dondurulmuş beklenen-ID haritasıyla **birebir** eşleştir. Eksik, fazla, yinelenen veya türü değiştirilmiş ID tüm cevabı geçersiz kılar.
-- Cevap sırası önemsizdir. Değer doğrulayıcısını satır konumundan değil, **ID → işlem** eşlemesinden seç.
-- Başarı değerini ilgili işlem doğrulayıcısından geçir. Hata satırında kod yukarıdaki dört değerden biri, mesaj boş olmayan string olmalı. İşlemin tanımladığı `"unknown"` normal bir sonuç değeridir.
-- **Bütün satırlar geçmeden hiçbir sonucu yayımlama veya uygulama.** Tek bir bozuk satır bütün cevabı reddettirir. Geçerli satırları kurtarma, eksikleri otomatik hata satırlarıyla doldurma veya konuma göre onarma yok.
-- Geçerli hata satırları, atomik olarak döndürülen batch’in parçasıdır. `protocol_valid=true`, bütün işlerin başarıyla tamamlandığı anlamına gelmez. Hataları başarıya dönüştürme.
+- First take the whole reply. If there is truncation, a transport error or an unfinished stream, reject the reply.
+- Every physical line must be a single strict JSON array. LF and CRLF are accepted; one final line terminator is allowed. Blank lines, Markdown and extra text are rejected. Harmless JSON whitespace inside a line is not a reason for rejection.
+- Only two line forms are valid: the two-element `[id,value]` or the four-element `[id,"error",code,message]`.
+- Match the IDs **exactly** against the frozen expected-ID map of the request that was sent. A missing, extra, duplicate or type-changed ID invalidates the whole reply.
+- The order of the reply does not matter. Choose the value validator from the **ID → operation** mapping, not from the line position.
+- Pass the success value through the validator of the relevant operation. On an error line, the code must be one of the four values above and the message a non-empty string. An `"unknown"` defined by the operation is a normal result value.
+- **Publish or apply no result before all lines pass.** A single broken line makes the whole reply rejected. No rescuing valid lines, no filling the missing ones with automatic error lines, no repair by position.
+- Valid error lines are part of the batch that is returned atomically. `protocol_valid=true` does not mean that all jobs completed successfully. Do not turn errors into successes.
 
-ID doğrulaması yanlış işe bağlanmayı yapısal olarak denetler; **doğru ID altında yanlış bir değer bulunmasını tek başına yakalayamaz.** İçerik doğruluğu ayrıca ölçülmelidir.
+ID validation structurally checks against binding to the wrong job; **it alone cannot catch a wrong value under the correct ID.** Content correctness must be measured separately.
 
-**G2 için kazanç mekanizması ve ölçüm kararı:**
+**Gain mechanism and measurement decision for G2:**
 
-İşlem seçicisini her işte taşımak yerine her işlem bloğunda bir kez taşıyoruz. `N` iş ve `K` işlem için seçici sayısı `N` yerine `K` oluyor. İş ID’leri açık kalıyor; işlem talimatları ve ortak hedef birer kez taşınıyor. Referans tablolarında sayısal seçim kullanılıyor.
+Instead of carrying the operation selector in every job, we carry it once in every operation block. For `N` jobs and `K` operations the number of selectors becomes `K` instead of `N`. The job IDs stay explicit; the operation instructions and the shared goal are carried once each. Numeric selection is used in the reference tables.
 
-Bu, yapısal tekrarları azaltır; **1.802 token’ın altına ineceğine dair ölçülmüş bir iddia değildir.** Yeni hedefin maliyeti ve sistem mesajı da hesaba katılmalı.
+This reduces structural repeats; **it is not a measured claim that it will fall below 1,802 tokens.** The cost of the new goal and of the system message must also be counted.
 
-Claude şu üç kolu aynı anlamsal girdilerle karşılaştırsın:
+Claude should compare these three arms with the same semantic inputs:
 
-| Kol | Amaç |
+| Arm | Purpose |
 |---|---|
-| 0.8 | Doğruluk ve toplam maliyet referansı |
-| 1e + zorunlu `goal` | G1 düzeltmesini tek başına ölçmek |
-| Yukarıdaki 1f | Gruplamanın ek etkisini ölçmek |
+| 0.8 | Reference for accuracy and total cost |
+| 1e + mandatory `goal` | Measure the G1 fix alone |
+| 1f above | Measure the additional effect of grouping |
 
-Kabul kapısı:
+Acceptance gate:
 
-- G1’deki aynı 192 değerlendirmede **192/192**; buna ek olarak sınır eşitliği, bilinmeyen belirsizlik ve eksik gerçek veri testleri.
-- Karışık/nonsequential ID’ler, referans tablosu permütasyonları ve farklı cevap sıralarında doğru içerik eşlemesi.
-- Eksik/tekrarlı/fazla ID, yanlış işlem sonucu, bozuk son satır ve truncation karşısında sıfır kısmi kabul.
-- Paket, sistem mesajı, çıktı ve retry maliyetlerini ayrı raporlayıp başarılı iş başına toplam maliyeti karşılaştırmak.
+- **192/192** on the same 192 evaluations as in G1; in addition tests for boundary equality, unknown uncertainty and missing real data.
+- Correct content mapping with mixed/non-sequential IDs, reference table permutations and different reply orders.
+- Zero partial acceptance against missing/repeated/extra IDs, a wrong operation result, a broken last line and truncation.
+- Report the packet, system message, output and retry costs separately and compare the total cost per successful job.
 
-**G1 düzeltmesi zorunlu. Gruplama, doğruluğu koruyup ölçülen maliyeti iyileştirirse devreye alınmalı.** G1’deki doğruluk kaybıyla gelen −%33 seçim gerekçesi olamaz; G3’teki CLI overhead’i de paket kazancının toplam maliyete sınırlı yansımasına neden olabilir.
+**The G1 fix is mandatory. Grouping should be put into service if it keeps accuracy and improves the measured cost.** The -33% from the accuracy loss in G1 cannot be a reason for choosing it; the CLI overhead in G3 may also cause the packet gain to show only in a limited way in the total cost.
 
-Bu tasarımın ayrıştırılmış girdiler üzerindeki 23 geçici yapısal kontrolü geçti. Repo entegrasyonu, strict JSON parser, tokenizer ve canlı model doğrulaması Claude’un uygulama aşamasında kalıyor; dosya değiştirmedim.
+This design passed 23 temporary structural checks on parsed inputs. The repo integration, the strict JSON parser, the tokenizer and the live model validation remain in Claude's implementation stage; I did not change any file.

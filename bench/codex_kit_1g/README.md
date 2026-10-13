@@ -1,17 +1,19 @@
-# Codex ölçüm kiti, aşama 1g, Luna hücresi
+# Codex measurement kit, stage 1g, Luna cell
 
-`docs/design/stage-1g-final-decision.md` aşama D'deki "Luna medium-64 5+5" hücresi. Tek kol var: H (ÖZ/1g metni, cevabın
-ilk boş olmayan satırı tam olarak `OZ/1g` olmalı). 10 prompt, her biri 64 iş:
+Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
 
-- 5 standart paket: veri seed'leri 2005 ile 2009 (`std_*.txt`), `bench/live/run1g.py` ile aynı kurulum.
-- 5 heterojen paket: `bench/live/hetero1g.py` paket 1 ile 5 (`het_p*.txt`): boş dizi, skaler, nesne, iç içe dizi, iş hatası.
+`docs/design/stage-1g-final-decision.md`, stage D, the "Luna medium-64 5+5" cell. There is one arm: H (the ÖZ/1g text; the first
+non-blank line of the reply must be exactly `OZ/1g`). 10 prompts, 64 jobs each:
 
-Codex'te ayrı sistem alanı olmadığı için kurallar promptun başında `SYSTEM RULES:`, paket `INPUT:` altında gider.
-Doğru cevaplar `oracles/` içinde durur, puanlama kayıtları yeniden kurmaz.
+- 5 standard packets: data seeds 2005 to 2009 (`std_*.txt`), same setup as `bench/live/run1g.py`.
+- 5 heterogeneous packets: packets 1 to 5 of `bench/live/hetero1g.py` (`het_p*.txt`): empty array, scalar, object, nested array, job error.
 
-## Çalıştır
+Codex has no separate system field, so the rules go at the start of the prompt under `SYSTEM RULES:` and the packet goes under `INPUT:`.
+The correct answers are stored in `oracles/`, so scoring does not rebuild the records.
 
-Repo kökünden:
+## Run
+
+From the repo root:
 
 ```bash
 python bench/codex_kit_1g/run_codex.py --model gpt-6-luna --effort medium
@@ -21,17 +23,17 @@ python bench/codex_kit_1g/run_codex.py --model gpt-6-luna --effort medium
 python bench/codex_kit_1g/score.py bench/codex_kit_1g/results_gpt-6-luna_medium.jsonl
 ```
 
-Kesilirse aynı komut kaldığı yerden devam eder. Tablo her prompt için: kabul (cevabın tamamı), doğru iş / 64, geçti
-(kabul ve 64/64), girdi ve çıktı tokenı, süre (saniye, duvar saati). Son satır kaç prompt geçtiğini söyler.
-Bu hücrenin kapısı 10/10 geçmek.
+If it is interrupted, the same command resumes where it stopped. The table has one row per prompt: accepted (the whole reply),
+correct jobs / 64, passed (accepted and 64/64), input and output tokens, time (seconds, wall clock). The last line says how many
+prompts passed. The gate for this cell is 10/10 passed.
 
-## Elle
+## Manual
 
-Bir prompt dosyasını olduğu gibi gönder, cevabı hiç düzenlemeden `bench/codex_kit_1g/replies/<aynı dosya adı>` olarak
-kaydet, sonra `python bench/codex_kit_1g/score.py --replies bench/codex_kit_1g/replies`. Token sayısı bilinmez.
+Send a prompt file as it is, save the reply unedited as `bench/codex_kit_1g/replies/<same file name>`, then run
+`python bench/codex_kit_1g/score.py --replies bench/codex_kit_1g/replies`. The token counts are unknown.
 
-## Okurken
+## Reading the results
 
-Cevap yalnız `OZ/1g` satırı ve JSONL kayıtları olmalı. Kod bloğu, açıklama ya da başlık eksikliği üründe olduğu gibi
-tüm cevabı geçersiz yapar. Codex CLI her çağrıya yaklaşık 24.500 girdi tokenı ekler. Promptları yeniden üretmek için
-`.venv/Scripts/python bench/codex_kit_1g/make_prompts.py` (çıktı aynı olmalı).
+The reply must be only the `OZ/1g` line and JSONL records. A code block, an explanation or a missing header makes the
+whole reply invalid, as it would in the product. The Codex CLI adds about 24,500 input tokens to every call. To regenerate the prompts, run
+`.venv/Scripts/python bench/codex_kit_1g/make_prompts.py` (the output should be identical).

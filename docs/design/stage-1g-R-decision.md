@@ -1,5 +1,7 @@
 # Stage 1g repair-run failure: joint decision (Astra and Fable, 2026-10-13)
 
+Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
+
 Evidence: stage-1g-R-evidence.txt. Zero-call check (Claude, Fable): the raw Haiku rev-2 lines are {"r_438":["u6","u4"]}, rev 1 {"r_438":[["u6","u4"]]}; the model dropped the outer array, the parser removed nothing.
 
 ## Frozen decision
@@ -38,46 +40,46 @@ Pre-registered for that round, so the next slip is not re-argued: a parser rejec
 
 ## Round 1, Astra (verbatim)
 
-**Kararım: H bu turda benimsenmez; 0.8-exec kalır. Bu tur için ek çağrı bütçesi: 0.** Kalan 14 çağrı çalıştırılmaz.
+**My decision: H is not adopted in this round; 0.8-exec stays. Extra call budget for this round: 0.** The remaining 14 calls are not run.
 
-Bu, **çıktı değerinde iç içe dizi biçiminin kaybedilmesi** hatasıdır. Kök neden henüz ayrıştırılmış değil:
+This is the error of **losing the nested array form in the output value**. The root cause has not been isolated yet:
 
-- **Op 5 ve oracle tutarlı:** “exactly one pair” içeren dış dizi, `[[id1,id2]]` gerektiriyor. Beklenen değeri düz diziye çevirmek yanlış olur.
-- **Genel bir wire arızası gösterilmedi:** yanıt kabul edilmiş, diğer 54 iş ve başka iç içe diziler doğru. Ancak parser kabulü, H’nin modelin yorumu üzerindeki etkisini dışlamaz.
-- **Salt model gürültüsü de kanıtlanmadı:** önceki başarılar, hatanın kaçınılmaz olmadığını gösterir. Revizyonla çevreleyen bağlam değiştiğinden önceki geçiş tam tekrar değildir. On yanlış iş, on bağımsız başarısızlık değil; **tek çağrıda aynı yanlış yorumun on işe yayılmasıdır.**
-- 8.422 thinking token, pahalı bir başarısızlığa işaret eder; hatanın nedenini açıklamaz.
+- **Op 5 and the oracle are consistent:** the outer array that says "exactly one pair" requires `[[id1,id2]]`. Turning the expected value into a flat array would be wrong.
+- **No general wire failure was shown:** the reply was accepted, the other 54 jobs and the other nested arrays are correct. But parser acceptance does not rule out an effect of H on the model's interpretation.
+- **Pure model noise is not proven either:** the earlier successes show that the error was not unavoidable. Because the surrounding context changed with the revision, the earlier pass is not an exact repeat. The ten wrong jobs are not ten independent failures; **they are the same wrong interpretation spreading to ten jobs in a single call.**
+- 8,422 thinking tokens point to an expensive failure; they do not explain the cause of the error.
 
-**Sonraki adım: dili yeniden tasarlamadan, ayrı ve önceden dondurulmuş bir tanı deneyi.**
+**Next step: a separate, pre-frozen diagnostic experiment, without redesigning the language.**
 
-Önce **0 model çağrısıyla** ham yanıt → parser çıktısı → oracle zinciri kontrol edilmeli. Dış diziyi model mi atmış, parser mı kaldırmış? H metninde op ile çelişen bir kural var mı? Parser kaldırıyorsa önce uygulama hatası çözülür; aşağıdaki model deneyi gerekmez.
+First the chain raw reply → parser output → oracle must be checked with **0 model calls**. Did the model drop the outer array, or did the parser remove it? Is there a rule in the H text that conflicts with the op? If the parser removes it, the implementation bug is solved first and the model experiment below is not needed.
 
-Ham yanıt hatayı doğrularsa **tavan 12 Haiku çağrısı** öneriyorum:
+If the raw reply confirms the error, I propose a **ceiling of 12 Haiku calls**:
 
-| Wire | Mevcut op 5 | Açık yapısal op 5 |
+| Wire | Current op 5 | Explicit structural op 5 |
 |---|---:|---:|
 | 0.8-exec | 3 | 3 |
 | H | 3 | 3 |
 
-Tek deneysel op değişikliği:
+The only experimental op change:
 
 > Return [[a,b]] as JSON, where a is the first ref's id and b is the second ref's id.
 
-Tam 64 işlik P4 korunur. İşler, refs sırası, ID’ler, oracle, goal ve model ayarları eşdeğer tutulur; yalnız wire ve op ifadesi değişir. Her hücre üç bağımsız çağrı alır; sıra dengelenir. Önceki başarısız çağrı bu sayılara katılmaz.
+The full 64-job P4 is kept. The jobs, the order of refs, the IDs, the oracle, the goal and the model settings are kept equivalent; only the wire and the op wording change. Each cell gets three independent calls; the order is balanced. The earlier failed call is not part of these numbers.
 
-Bu **yeni tanı deneyi**, başarısız benimseme turunun devamı değildir. Karşılaştırmayı tamamlamak için yanlış sonuçta durmaz; sabit 12 çağrıdan sonra biter, ek deneme açılmaz.
+This is a **new diagnostic experiment**, not a continuation of the failed adoption round. It does not stop on a wrong result to complete the comparison; it ends after the fixed 12 calls and no extra attempt is opened.
 
-Sonuçların yorumu:
+How to read the results:
 
-- Açık op iki wire’da da iyileştirirse: **op ifadesinin kırılganlığı** lehine kanıt.
-- Eşleşen koşullarda sorun H’de yoğunlaşırsa: **wire/bağlam etkisi** lehine kanıt.
-- Op değişikliğinin etkisi wire’a göre değişirse: **etkileşim** vardır.
-- Sonuçlar karışıksa veya hata tekrarlanmazsa: neden **belirsiz** kalır. Üç tekrar güvenilirliği kanıtlamaz.
+- If the explicit op improves both wires: evidence for **fragility of the op wording**.
+- If, under matched conditions, the problem is concentrated in H: evidence for a **wire/context effect**.
+- If the effect of the op change varies with the wire: there is an **interaction**.
+- If the results are mixed or the error does not repeat: the cause stays **uncertain**. Three repeats do not prove reliability.
 
-Şimdilik yeni dil sözdizimi, otomatik dış-dizi ekleme veya parser toleransı önermiyorum. Sonradan düzeltme, ilk denemede doğru sonucu üretme hedefini karşılamaz.
+For now I do not propose new language syntax, automatic outer-array insertion or parser tolerance. Correcting afterwards does not meet the goal of producing the correct result on the first attempt.
 
-Stage A’daki **%40,7 tasarruf kendi kapsamındaki bulgu olarak kalır**. Benimseme için aynı doğrulanmış iş üzerinde ilk-deneme doğruluğu, toplam `input + output` ve gecikme birlikte ölçülmeli; hatalı çağrıların maliyeti dahil edilmeli. Thinking, verilen output sayısına dahil olduğundan yeniden eklenmemeli.
+The **40.7% saving in Stage A stays a finding within its own scope**. For adoption, first-attempt accuracy, total `input + output` and latency must be measured together on the same verified job; the cost of failed calls must be included. Thinking is included in the output count that is given, so it must not be added again.
 
-Bu, **Fable’a aynen iletilecek bağımsız değerlendirmemdir**; ortak uzlaşma henüz oluşmadı. Yerel kayıtları sandbox hatası nedeniyle okuyamadım; karar paylaştığın kanıta dayanıyor.
+This is **my independent assessment, to be passed to Fable as it is**; a joint agreement has not formed yet. I could not read the local records because of the sandbox error; the decision rests on the evidence you shared.
 
 
 ## Round 2, Fable (summary of its signed position)
@@ -86,28 +88,28 @@ Agrees: no adoption, 0 calls this round; no implementation bug; skip the 2x2 (3 
 
 ## Round 2, Astra (verbatim)
 
-**Fable’ın onarım planını kabul ediyorum: bu değerlendirmede 0 çağrı; yeni, dondurulmuş turda en fazla 16 çağrı.** H henüz benimsenmez; 0.8-exec kalır.
+**I accept Fable's repair plan: 0 calls in this evaluation; at most 16 calls in the new, frozen round.** H is not adopted yet; 0.8-exec stays.
 
-- **Tanı:** Dış diziyi model düşürmüş; parser kaldırmamış. Op 5’in ifadesi makul açıklama, fakat aynı wire’da iki farklı sonuç alınması wire/bağlam etkisini dışlamaz. “Wire kusuru gösterilmedi” üzerinde anlaşabiliriz.
-- **Deney:** Önerdiğim 12 çağrılık tanı deneyini geri çekiyorum. Yeni 0.8 builder’ı ve eşdeğerlik denetimi gerektirmesi, küçük örneklemin sınırlılığı ve op 5’in zaten düzeltilmesi nedeniyle şu aşamada değmiyor.
-- **Op 5:** Fable’ın literal örnekli metnini aynen onaylıyorum:
+- **Diagnosis:** The model dropped the outer array; the parser did not remove it. The wording of op 5 is a reasonable explanation, but getting two different results on the same wire does not rule out a wire/context effect. We can agree on "no wire defect was shown".
+- **Experiment:** I withdraw the 12-call diagnostic experiment I proposed. It is not worth it at this stage because it needs a new 0.8 builder and an equivalence audit, because of the limits of a small sample, and because op 5 is being fixed anyway.
+- **Op 5:** I approve Fable's text with the literal example as it is:
 
 > Return a JSON array of arrays containing exactly one inner array, [first ref's `id`, second ref's `id`]; for ids "u1" and "u2" the result is [["u1","u2"]].
 
-Oracle değişmez. Dilin op yazım kuralı: **Sonuç biçimini açıkça belirt; iç içelik veya sarmalama önemliyse literal örnek ver.**
+The oracle does not change. The op writing rule of the language: **State the result shape explicitly; if nesting or wrapping matters, give a literal example.**
 
-- **Ön kayıt:** Parser reddi veya yanlış kayıt biçimi sözleşme başarısızlığıdır; şekli ve verisi açıkça belirtilmiş op’ta yanlış değer doğruluk başarısızlığıdır. İkisi de turu kapatır; sonuçtan sonra “belirsizlikti” denilerek başarısızlık silinmez. Bunlar tek başına nedensel teşhis değildir.
-- **Haiku:** Mevcut/default effort ile adoption gate’te kalır. Çıkarılması veya effort değişikliği, **hash öncesinde sahibin açık kararını** gerektirir. 3k–9k thinking maliyeti raporlanır; önceki ekonomi bulgusu Haiku’ya genellenmez.
+- **Pre-registration:** A parser rejection or a wrong record shape is a contract failure; a wrong value in an op whose shape and data are stated explicitly is an accuracy failure. Both close the round; a failure is not erased after the result by saying "it was ambiguous". These alone are not a causal diagnosis.
+- **Haiku:** It stays in the adoption gate with the current/default effort. Removing it or changing the effort requires **the owner's explicit decision before the hash**. The 3k-9k thinking cost is reported; the earlier economy finding is not generalized to Haiku.
 
-**Tam sonraki adım:** Claude, Fable’ın ikinci şekil denetimini kayda alsın; op 5’i güncellesin, Luna kitini yenilesin, metin/oracle/ayarlar ve devralınan hücreleri etiketleyerek hashlesin. Ardından sırasıyla:
+**The exact next step:** Claude should record Fable's second shape audit; update op 5, renew the Luna kit, and hash the texts/oracle/settings and the inherited cells with labels. Then, in order:
 
-1. P4 rev 3: Sonnet, Haiku, Fable — **3 çağrı**
-2. Fable P1–P3 rev 2 — **3 çağrı**
-3. Luna yenilenmiş kit — **10 çağrı**
+1. P4 rev 3: Sonnet, Haiku, Fable, **3 calls**
+2. Fable P1-P3 rev 2, **3 calls**
+3. Luna renewed kit, **10 calls**
 
-Gate’ler değişmez; ilk başarısızlıkta durulur, G yok. Tamamı geçerse H benimsenir.
+The gates do not change; stop at the first failure, no G. If all pass, H is adopted.
 
-Karar paylaşılan kanıta dayanıyor; yerel dosya okuması sandbox hatasıyla engellendi.
+The decision rests on the shared evidence; local file reading was blocked by the sandbox error.
 
 
 ## Final call, Astra

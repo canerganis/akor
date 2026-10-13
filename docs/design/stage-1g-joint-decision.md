@@ -1,23 +1,25 @@
 # Stage 1g joint decision (Astra, after Fable review, 2026-10-13)
 
+Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
+
 Astra gpt-6-astra xhigh, verbatim final answer. Fable review: stage-1g-fable-review.md.
 
-**Nihai kararım: OZ/1g başlıksız olacak; başarı tek üyeli nesne, hata dört elemanlı dizi olacak. Boş satırlar kabul edilecek.** Fable’ın başlık önerisi yalnız deney kolunda ölçülecek; sonuçlara göre parser kendiliğinden biçim değiştirmeyecek.
+**My final decision: OZ/1g will have no header; a success is a one-member object and an error is a four-element array. Blank lines will be accepted.** Fable's header proposal will be measured only in an experiment arm; the parser will not change its format by itself based on the results.
 
-Fable’ın incelemesine ilişkin kararlarım:
+My decisions on Fable's review:
 
-| Nokta | Karar |
+| Point | Decision |
 |---|---|
-| A: Satır kabı ile sonuç dizisinin karışması | **Kabul.** Bulgularla uyumlu açıklama. Tek üyeli nesne ayrımı korunuyor; hatalı üretimi imkânsız kıldığı iddia edilmiyor. |
-| B: İlk görünür tokenda tırnak kayması | **Gözlemi kabul, neden açıklamasını hipotez olarak tut.** Thinking token sayısı mekanizmayı kanıtlamıyor; `p≈0.002` doğrulanmış hata olasılığı sayılmayacak. |
-| C: Sonradan açıklama, düzeltme, tekrar; 1d’deki fazla `]` | **Kabul.** Bunların tamamı atomik ret sebebi; kurtarma yolu eklenmeyecek. |
-| Zorunlu `OZ/1g` başlığı | **1g için reddet, kontrollü deney için kabul.** Etkisi henüz ölçülmedi. |
-| Boş satırları atlamak | **Değiştirerek kabul.** Yalnız boş veya ASCII boşluk/tab içeren satırlar. |
-| Kısaltılmış sistem metni | **Değiştirerek kabul.** Kesin alan listesi ve string içi satır sonu kaçış kuralı korunuyor; “her satır öncesi kontrol et” kaldırılıyor. Bunun performans etkisi varsayılmayacak. |
-| Tipografik tırnak normalizasyonu | **Reddet.** Bütün kollar başarısız olsa da otomatik normalizasyon yok. |
-| Önerilen canlı test | **Değiştirerek kabul.** İş sırası korunacak, yalnız deney kollarının çağrı sırası karıştırılacak. Bağımsız doğrulama hücre başına 30 tekrar olacak. |
+| A: Confusion between the line container and the result array | **Accepted.** An explanation consistent with the findings. The one-member object distinction is kept; it is not claimed to make a wrong output impossible. |
+| B: Quote slip at the first visible token | **Accept the observation, keep the cause explanation as a hypothesis.** The thinking token count does not prove the mechanism; `p≈0.002` will not be counted as a verified error probability. |
+| C: Later explanation, correction, repeat; the extra `]` in 1d | **Accepted.** All of these are grounds for atomic rejection; no recovery path will be added. |
+| Mandatory `OZ/1g` header | **Rejected for 1g, accepted for a controlled experiment.** Its effect has not been measured yet. |
+| Skipping blank lines | **Accepted with a change.** Only lines that are empty or contain only ASCII space/tab. |
+| Shortened system text | **Accepted with a change.** The exact field list and the rule on escaping line ends inside strings are kept; "check before each line" is removed. Its performance effect will not be assumed. |
+| Typographic quote normalization | **Rejected.** Even if all arms fail there is no automatic normalization. |
+| Proposed live test | **Accepted with a change.** The job order is kept; only the call order of the experiment arms is shuffled. Independent validation will have 30 repeats per cell. |
 
-Claude’un uygulayacağı **tam sistem metni** aşağıdadır. Başına veya sonuna başka biçim talimatı eklenmeyecek:
+The **full system text** Claude will implement is below. No other format instruction will be added at the start or the end:
 
 ```text
 You execute OZ/1g.
@@ -55,80 +57,80 @@ Any malformed nonblank line or missing, duplicate or extra ID rejects
 the whole reply. Stop after the last job.
 ```
 
-Gövde yalnız `v:"1g"` olacak şekilde değişir. `goal`, `ops`, `refs`, işler ve sıraları korunur. Yeni çıktı şeması, iş başına biçim talimatı veya şablon eklenmez. Verdiğin sekiz satırlık beklenen yanıt değişmez.
+The body changes only so that it has `v:"1g"`. `goal`, `ops`, `refs`, the jobs and their order are kept. No new output schema, per-job format instruction or template is added. The eight-line expected reply you gave does not change.
 
-**Yanıt ve parser sözleşmesi** şöyle uygulanacak:
+**The reply and parser contract** will be implemented as follows:
 
-1. **Ön doğrulama:** Beklenen ID kümesi doğrulanmış istekten çıkarılır. Tekrarlanan istek ID’leri ve geçersiz indeksler model çağrısından önce reddedilir.
+1. **Pre-validation:** The expected ID set is taken from the validated request. Repeated request IDs and invalid indices are rejected before the model call.
 
-2. **Satırlar:** LF ve CRLF kabul edilir; son kaydın satır sonlandırıcısı olmayabilir. Yalnız boş veya ASCII SP/TAB içeren satırlar atlanır. Tek başına CR satır ayırıcı değildir. Unicode boşlukları, BOM veya Markdown temizlenmez.
+2. **Lines:** LF and CRLF are accepted; the last record may have no line terminator. Only lines that are empty or contain only ASCII SP/TAB are skipped. A lone CR is not a line separator. Unicode whitespace, BOM or Markdown are not cleaned.
 
-3. **JSON:** Her kalan satır, tamamı tüketilen tek JSON değeri olmalıdır. JSON’un izin verdiği satır içi boşluklar kabul edilir; `compact` üretim talimatıdır. Fazla JSON parçaları, yorumlar, sondaki virgüller, `NaN` ve `Infinity` reddedilir. Standart JSON sözdizimi esas alınır. [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259)
+3. **JSON:** Every remaining line must be a single JSON value that is consumed entirely. Inline whitespace that JSON allows is accepted; `compact` is a production instruction. Extra JSON pieces, comments, trailing commas, `NaN` and `Infinity` are rejected. Standard JSON syntax is the basis. [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259)
 
-4. **Tekrarlanan anahtarlar:** İç içe sonuç nesneleri dahil bütün nesnelerde, anahtarlar ezilmeden önce tekrar kontrol edilir. Karşılaştırma JSON kaçışları çözüldükten sonra yapılır: `"e1"` ve `"\u00651"` aynı anahtardır.
+4. **Repeated keys:** In all objects, including nested result objects, repeats are checked before keys are overwritten. The comparison is made after JSON escapes are decoded: `"e1"` and `"e1"` are the same key.
 
-5. **Başarı:** Üst düzey değer tam **bir üyeli nesne** olmalıdır. Anahtar beklenen ID, değer işlemin bütün sonucudur. Değer herhangi bir geçerli JSON türü olabilir; açılmaz, düzleştirilmez veya stringe çevrilmez.
+5. **Success:** The top-level value must be an **object with exactly one member**. The key is the expected ID, the value is the whole result of the operation. The value can be any valid JSON type; it is not unpacked, flattened or turned into a string.
 
-6. **Hata:** Üst düzey değer tam **dört öğeli dizi** olmalıdır: `[id,"error",code,message]`. ID string ve beklenen kimliktir; kod dört belirtilen koddan biridir. Mesaj string olmalı ve Unicode boşluk karakterleri dışında en az bir karakter içermelidir. “Short” üretim talimatıdır; keyfî uzunluk sınırı eklenmez. Geçerli hata kaydı bütün paketi reddettirmez.
+6. **Error:** The top-level value must be an **array of exactly four elements**: `[id,"error",code,message]`. The ID is a string and an expected ID; the code is one of the four codes given. The message must be a string and must contain at least one character other than Unicode whitespace characters. "Short" is a production instruction; no arbitrary length limit is added. A valid error record does not make the whole packet rejected.
 
-7. **Kimlikler:** Her beklenen ID tam bir kez bulunmalıdır. Eksik, fazla veya tekrarlanan ID bütün yanıtı reddettirir. Satır sırası bağlama için kullanılmaz. ID’lere kırpma, Unicode normalizasyonu veya tür dönüşümü uygulanmaz.
+7. **IDs:** Each expected ID must be present exactly once. A missing, extra or repeated ID makes the whole reply rejected. Line order is not used for binding. No trimming, Unicode normalization or type conversion is applied to IDs.
 
-8. **Yorumlama:** `{"x":["error","missing_data","text"]}` başarı değeridir. Unicode tırnaklar string **içeriğinde** bulunabilir; JSON sınırlayıcısı olamaz. Sayılar sessizce yuvarlanmamalı veya sonsuza dönüştürülmemelidir.
+8. **Interpretation:** `{"x":["error","missing_data","text"]}` is a success value. Unicode quotes can be present in string **content**; they cannot be a JSON delimiter. Numbers must not be silently rounded or turned into infinity.
 
-9. **Atomiklik:** Bütün yanıt doğrulanmadan tüketiciye kayıt verilmez. Görev doğrulayıcısı varsa teslimden önce çalışır. Genel parser, serbest metinle tanımlanmış işlemin anlamsal doğruluğunu tek başına kanıtlayamaz.
+9. **Atomicity:** No record is given to the consumer before the whole reply is validated. If there is a task validator, it runs before delivery. The general parser cannot by itself prove the semantic correctness of an operation defined in free text.
 
-10. **Onarım yok:** Tırnak düzeltme, açıklama temizleme, son tekrarı seçme, bozuk satırı kurtarma ve 1f biçimini otomatik algılama yok. Başlık satırı da nihai 1g parser’ında reddedilir.
+10. **No repair:** No quote correction, explanation cleanup, picking the last repeat, rescuing a broken line, or automatic detection of the 1f form. A header line is also rejected in the final 1g parser.
 
-Claude parser testlerine özellikle kaçışla gizlenmiş tekrarlanan anahtarları, iç içe tekrarları, çok üyeli nesneyi, fazla `]` karakterini, sonradan düzeltmeyi, string içindeki tipografik tırnakları ve hata görünümündeki başarı değerlerini koyacak.
+Claude will put into the parser tests in particular: repeated keys hidden by escapes, nested repeats, an object with several members, an extra `]` character, a later correction, typographic quotes inside a string, and success values that look like errors.
 
-**Karar verecek canlı deney** aşağıdaki şekilde sabitlenecek.
+**The live experiment that will decide** is fixed as follows.
 
-Önce aynı yöntemle **sistem + gövde o200k** bütçesi ölçülecek: 32 işte **≤1.019**, 64 işte **≤1.478**. Bu yeni metnin token sayısını henüz ölçmedim. Kapı aşılırsa Claude metni kendiliğinden değiştirmeyecek; başarısız ölçümü raporlayacak.
+First the **system + body o200k** budget will be measured with the same method: **≤1,019** for 32 jobs and **≤1,478** for 64 jobs. I have not yet measured the token count of this new text. If the gate is exceeded, Claude will not change the text by itself; it will report the failed measurement.
 
-Tarama: Sonnet 5.5, ilk 16 işi `extract` olan aynı 64 işlik paket, kol başına beş bağımsız ilk deneme:
+Screening: Sonnet 5.5, the same 64-job packet whose first 16 jobs are `extract`, five independent first attempts per arm:
 
-| Kol | Kesin tanım |
+| Arm | Exact definition |
 |---|---|
-| B | Mevcut `0.8-exec`, kendi sözleşmesi ve parser’ıyla |
-| G | Önceki mesajdaki 1g sistem metni aynen; parser’da yukarıdaki boş satır toleransı |
-| C | Bu yanıttaki nihai 1g metni ve parser |
-| H | C’nin yalnız aşağıda belirtilen cümlesi değiştirilmiş hali |
+| B | The existing `0.8-exec`, with its own contract and parser |
+| G | The 1g system text from the previous message, as it is; with the blank-line tolerance above in the parser |
+| C | The final 1g text and parser in this reply |
+| H | C with only the sentence given below changed |
 
-H’de şu cümle:
+In H, this sentence:
 
 ```text
 Reply with one compact JSON record per job on its own line.
 ```
 
-şununla değiştirilir:
+is replaced with:
 
 ```text
 Reply with the line OZ/1g, then one compact JSON record per job on its own line.
 ```
 
-H parser’ı, boş satırlar atlandıktan sonra ilk satırın **tam olarak** `OZ/1g` olmasını ister; kalan satırlarda C kurallarını uygular. Başlık eksikliği, tekrarı veya farklı yazımı rettir. Parser profili deney koluyla açıkça seçilir; yanıttan algılanmaz.
+The H parser requires that, after blank lines are skipped, the first line is **exactly** `OZ/1g`; for the remaining lines it applies the rules of C. A missing, repeated or differently written header is rejected. The parser profile is chosen explicitly with the experiment arm; it is not detected from the reply.
 
-Her tekrarda yalnız **B/G/C/H çağrı sırası** karıştırılır. İş sırası değiştirilmez. Aynı model sürümü, reasoning ayarı ve yeterli çıktı limiti kullanılır; gerçek model ID’leri kaydedilir.
+In every repeat only the **call order of B/G/C/H** is shuffled. The job order is not changed. The same model version, reasoning setting and a sufficient output limit are used; the real model IDs are recorded.
 
-**Yalnız C, benimsenme adayıdır.** C’nin doğrulamaya ilerlemesi için **5/5 tam paket kabulü ve 320/320 doğru sonuç** gerekir. Gereksiz hata veya `unknown` başarısızlıktır. C kalırsa G/H’nin geçmesi otomatik geçiş sağlamaz. Yalnız H’nin geçmesi, ayrı başlıklı revizyon ve yeni doğrulama için kanıt olur.
+**Only C is a candidate for adoption.** For C to move on to validation, **5/5 whole-packet acceptance and 320/320 correct results** are required. Needless errors or `unknown` are a failure. If C stays in, G or H passing does not give an automatic switch. H passing alone is evidence for a separate, headed revision and new validation.
 
-Bağımsız doğrulamada:
+In the independent validation:
 
-- Sonnet 5.5, Haiku 5.5, Fable 5.1 ve Luna medium.
-- Her modelde 32 ve 64 iş için **30’ar yeni ilk deneme**, eşleştirilmiş `0.8-exec` karşılaştırması.
-- Her modelde ayrıca **beş heterojen paket**: boş dizi, skalerler, nesne, iç içe dizi, sıfır/çok referans, izin verilen `unknown` ve dört gerçek hata kodu. Beklenen değerler/kodlar çağrıdan önce sabitlenir; hata mesajının birebir metni aranmaz.
-- C’nin her hücresinde **%100 bütün yanıt kabulü ve doğruluk** gerekir. Baseline başarısızlığı C’yi bloke etmez. Erişilemeyen model “doğrulanmadı” sayılır; genel benimseme kapısı tamamlanmış olmaz.
+- Sonnet 5.5, Haiku 5.5, Fable 5.1 and Luna medium.
+- For each model, **30 new first attempts each** at 32 and 64 jobs, with a paired `0.8-exec` comparison.
+- For each model also **five heterogeneous packets**: empty array, scalars, object, nested array, zero/many references, the allowed `unknown` and the four real error codes. The expected values/codes are fixed before the call; the exact text of the error message is not searched for.
+- In every cell of C, **100% whole-reply acceptance and accuracy** are required. A baseline failure does not block C. A model that cannot be reached counts as "not validated"; the general adoption gate is not complete.
 
-Bu deneyde **retry=0**. İlk deneme kabulü, tam doğru paket oranı, hata türleri, gerçek sağlayıcı token kullanımı ve gecikme ayrı raporlanacak. Maliyet ölçütü:
+In this experiment **retry=0**. First-attempt acceptance, the rate of fully correct packets, error types, real provider token usage and latency will be reported separately. The cost measure:
 
 ```text
-Tüm çağrıların toplam tokenı, başarısızlar dahil
+Total tokens of all calls, failures included
 ─────────────────────────────────────────────
-Tam doğru kabul edilen paketlerdeki toplam iş sayısı
+Total number of jobs in the packets accepted as fully correct
 ```
 
-Thinking tokenları sağlayıcının toplamına zaten dahilse ikinci kez sayılmaz. O200k bütçesi ile sağlayıcı kullanım tokenları ayrı tutulur. Sonraki retry deneylerinde bütün denemelerin maliyeti dahil edilir; ilk deneme başarısı değiştirilmez. Maliyet avantajı iddiası, aynı model ve iş yükündeki baseline karşılaştırmasına dayanır.
+If thinking tokens are already included in the provider's total, they are not counted a second time. The o200k budget and the provider usage tokens are kept apart. In later retry experiments the cost of all attempts is included; first-attempt success is not changed. A claim of cost advantage rests on the comparison with the baseline on the same model and workload.
 
-Bu kapılar regresyon koşuludur: gerçek hata olasılığı `0.002` olsa bile beş çağrının hatasız geçme olasılığı yaklaşık **%99** olur. Dolayısıyla `5/5`, nadir tırnak hatasının çözüldüğünü kanıtlamaz. İstem metni de kısıtlı çözümlemenin sağladığı mekanizma değildir. [Anthropic structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+These gates are a regression condition: even if the real error probability is `0.002`, the probability that five calls pass without an error is about **99%**. So `5/5` does not prove that the rare quote error is solved. A prompt text is also not the mechanism that constrained decoding provides. [Anthropic structured outputs](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
 
-Verilen sekiz örnek kaydın yapısını, kimliklerini ve aralık hesaplarını bellekte doğruladım. Yerel erişim `helper_sandbox_lock_failed / SetNamedSecurityInfoW: 5` hatasıyla açılamadı; repo testi, token ölçümü, canlı model çağrısı veya commit yapılmadı. Claude’un sonraki adımı bu sözleşmeyi uygulamak, parser testlerini ve bütçe kapısını çalıştırmaktır.
+I verified the structure, the IDs and the range computations of the eight given example records in memory. Local access could not be opened because of the error `helper_sandbox_lock_failed / SetNamedSecurityInfoW: 5`; no repo test, token measurement, live model call or commit was made. Claude's next step is to implement this contract and run the parser tests and the budget gate.

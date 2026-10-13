@@ -1,10 +1,12 @@
 # OZ/8: Astra lean language (2026-10-12)
 
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
+
 Written by Astra (gpt-6-astra, xhigh) as language owner; implemented as written in oz_batch.py and oz_reply.py. Supersedes the prompt layout in OZ7.md; OZ7.md keeps the host rules (receipts, usage, compatibility) that OZ/8 did not change. Session mode below is designed but not implemented yet.
 
 ## Round 1: lean contracts
 
-**OZ/7 lean: tek `oz_base/tuples` girdisi, tek `lanes` yanıtı, yalnız kullanılan işlem açıklamaları.** Aşağıdaki değişiklikler builder ve validator birlikte güncellenerek uygulanmalı; boş sözleşmeler kaldırılan yolları etkin bırakmamalı.
+**OZ/7 lean: a single `oz_base/tuples` input, a single `lanes` reply, only the operation descriptions that are used.** The changes below must be applied by updating the builder and the validator together; empty contracts must not leave the removed paths enabled.
 
 ```python
 LANGUAGE = 'OZ/7'
@@ -71,7 +73,7 @@ SESSION_LINE = (
 DICTIONARY_FORMATS = ('oz_base/tuples',)
 ```
 
-`DICTIONARY` satır kataloğudur; pakete yalnız hostun doğruladığı, makroları açılmış işlem dizisinde kullanılan satırlar girer:
+`DICTIONARY` is a catalog of lines; only the lines that the host has verified and that are used in the macro-expanded operation sequence go into the packet:
 
 ```python
 def dictionary_for(used_codes: Iterable[str]) -> str:
@@ -82,7 +84,7 @@ def dictionary_for(used_codes: Iterable[str]) -> str:
     )
 ```
 
-Örneğin verilen materials paketinin sözlüğü tam olarak:
+For example, the dictionary of the given materials packet is exactly:
 
 ```text
 r=read; preserve exact constraints, numbers, units and uncertainty.
@@ -90,38 +92,38 @@ t=request test procedure execution; no outcome claimed.
 >=propose plan; not applied.
 ```
 
-Uygulama kararları ve gerekçeleri:
+Implementation decisions and rationale:
 
-- **DROP:** model tarafında JSON işlemleri, table, makrolar ve biçim seçimi; host bunları açık referanslı temel frame’lere kayıpsız açar — **HYPOTHESIS:** daha kısa ön ek.
-- **DROP:** ayrı `OPERATION_CONTRACT`; anlamlar doğrudan kodlara bağlanır, yalnız kullanılanlar gönderilir — **HYPOTHESIS:** en büyük ön ek tasarrufu.
-- **DROP:** rows yanıtı; host kimlikleri `j` sırasından eşler — **HYPOTHESIS:** yanıtta tekrarlanan ID maliyeti kalkar.
-- **KORU:** lanes için tek durum veya durum listesi; topluca başarılı işlerde uzun sıfır listesini önler — **HYPOTHESIS:** özellikle büyük paketlerde daha az çıktı.
-- **DROP:** örtük aktif referans kullanımı; host her argümanlı atoma açık `N` koyar — **HYPOTHESIS:** birkaç DATA tokenı karşılığında daha kısa gramer.
-- **DROP:** model tarafındaki session template/predecessor tabloları ve önceki yanıta işaretçiler; host kabul edilmiş sonuçları açık `p/h` verisine çözer — **HYPOTHESIS:** daha kısa öğretim, bazı tekrarlı işlerde daha uzun DATA.
-- **DROP:** modelden adapter sürümü, digest veya `verify` üretmesini isteyen metinler; mevcut bütünlük kontrolleri hostta, `q` yankısı yanıtta kalır.
-- **KISALT:** `jobs→j`, `predecessors→p`, `handoffs→h`; boş `p/h` ve bunlara ait `HANDOFF_NOTE` gönderilmez — **HYPOTHESIS:** küçük ek tasarruf.
-- **EKLEME:** sayısal opcode; mevcut tek karakterli kodlar yeterli, ikinci eşleme gereksiz.
+- **DROP:** JSON operations, table, macros and format selection on the model side; the host expands them losslessly into base frames with explicit references. **HYPOTHESIS:** a shorter prefix.
+- **DROP:** the separate `OPERATION_CONTRACT`; meanings are bound directly to codes and only the ones used are sent. **HYPOTHESIS:** the largest prefix saving.
+- **DROP:** the rows reply; the host maps ids from the `j` order. **HYPOTHESIS:** the cost of repeated IDs in the reply goes away.
+- **KEEP:** a single status or a status list for lanes; it avoids a long list of zeros when all jobs succeed. **HYPOTHESIS:** less output, especially in large packets.
+- **DROP:** implicit use of the active reference; the host puts an explicit `N` on every atom with an argument. **HYPOTHESIS:** a shorter grammar at the price of a few DATA tokens.
+- **DROP:** the model-side session template/predecessor tables and pointers to the previous reply; the host resolves accepted results into explicit `p/h` data. **HYPOTHESIS:** shorter teaching, longer DATA for some repeated jobs.
+- **DROP:** texts that ask the model to produce an adapter version, a digest or `verify`; the existing integrity checks stay in the host, and the `q` echo stays in the reply.
+- **SHORTEN:** `jobs→j`, `predecessors→p`, `handoffs→h`; empty `p/h` and their `HANDOFF_NOTE` are not sent. **HYPOTHESIS:** a small extra saving.
+- **DO NOT ADD:** a numeric opcode; the existing single-character codes are enough and a second mapping is unnecessary.
 
-Yeni örnek DATA:
+New example DATA:
 
 ```json
 {"j":[["ma_01","r1t2"],["ma_02","r1>3"],["ma_03","r1"],["ma_04","t2"]],"q":"0000000000000000"}
 ```
 
-Host sınırı: işlem sırası/tekrarları, referans bağları, literal metin, context alanları ve handoff eşleşmeleri aynen korunmalı; mevcut boyut, şema, izin, receipt ve sonuç kontrolleri kaldırılmamalı. Session bağlamı değişirse veya öğretim geçmişten düşerse yeniden öğretilmeli.
+Host boundary: operation order and repeats, reference bindings, literal text, context fields and handoff matches must be preserved exactly; the existing size, schema, permission, receipt and result checks must not be removed. If the session context changes or the teaching drops out of history, it must be taught again.
 
-Yerel okuma sandbox hatasıyla engellendi; öneri paylaşılan koda dayanıyor. **Tasarruf ölçülmedi:** Claude, `o200k` ve `cl100k` ile seçilmiş sözlüğü içeren gerçek paketleri ve yanıtları karşılaştırmalı.
+Local reading was blocked by a sandbox error; the proposal is based on the shared code. **Saving not measured:** Claude should compare the real packets and replies containing the selected dictionary, using `o200k` and `cl100k`.
 
-Astra verdict: Tek biçim kullan, yalnız gereken anlamı gönder, mekanik kuralları hostta tut ve doğruluk sınırlarını koru.
+Astra verdict: Use a single format, send only the meaning that is needed, keep the mechanical rules in the host and preserve the correctness boundaries.
 
 
 ## Round 2: positional jobs, appendable table, session default
 
-**Kararım: orchestration varsayılanı session; `j` konumsal; tekrar eden frame’ler isteğe bağlı, eklemeli tabloda.** Kimlikli tuple şeması değiştiği için sürüm `OZ/8` olmalı. Yeni tasarruf oranı henüz ölçülmedi.
+**My decision: the orchestration default is session; `j` is positional; repeated frames go in an optional, appendable table.** Because the tuple schema with ids changes, the version must be `OZ/8`. The new saving rate has not been measured yet.
 
-1. **Kesin sözleşme metinleri**
+1. **Exact contract texts**
 
-Önceki `COMMON`, `DICTIONARY`, `dictionary_for`, `CONTEXT_HEADER` ve `DICTIONARY_FORMATS` aynen korunur. Değişen tanımlar:
+The earlier `COMMON`, `DICTIONARY`, `dictionary_for`, `CONTEXT_HEADER` and `DICTIONARY_FORMATS` are kept as they are. Changed definitions:
 
 ```python
 LANGUAGE = 'OZ/8'
@@ -165,7 +167,7 @@ SESSION_LINE = (
 )
 ```
 
-Paket sırası:
+Packet order:
 
 ```text
 OZ/8
@@ -181,84 +183,84 @@ needed context
 DATA {...}
 ```
 
-Stateless pakette `TABLE_LINE` yalnız tablo kullanılıyorsa bulunur; `T` her pakette boş başlar. Session öğretiminde `TABLE_LINE` ve `SESSION_LINE` bir kez bulunur; sonraki mesajlar yalnız `DATA {...}` taşır. `HANDOFF_NOTE` gerektiğinde öğretilir.
+In a stateless packet, `TABLE_LINE` is present only if a table is used; `T` starts empty in every packet. In session teaching, `TABLE_LINE` and `SESSION_LINE` appear once; later messages carry only `DATA {...}`. `HANDOFF_NOTE` is taught when needed.
 
-2. **İş başına kimlik ve tuple maliyetini kaldır**
+2. **Remove the per-job id and tuple cost**
 
-Önceki dört işin yeni gösterimi:
+New representation of the earlier four jobs:
 
 ```text
 DATA {"j":["r1t2","r1>3","r1","t2"],"q":"0000000000000000"}
 ```
 
-Host, gönderim anında şu eşlemeyi saklar:
+At send time the host stores this mapping:
 
 ```text
 (session_epoch, q, position) -> original_job_id
 ```
 
-Böylece `["ma_01","r1t2"]` yerine `"r1t2"`; tabloda varsa yalnız `0` gider. Yanıttaki `v[position]` gerçek kimliğe bağlanır. Görevin anlamı için gerekli kimlik metni varsa referans/literal içinde korunur.
+So `"r1t2"` goes instead of `["ma_01","r1t2"]`; if it is in the table, only `0` goes. `v[position]` in the reply is bound to the real id. If the task needs identifying text for its meaning, it is kept inside the reference/literal.
 
-Tekrar içeren bir tablo adayı:
+A table candidate with repeats:
 
 ```text
 DATA {"t":["r1t2","r1>3"],"j":[0,1,0,1,0,1,0,1],"q":"0000000000000000"}
 ```
 
-Aynı session’ın sonraki turu:
+The next turn of the same session:
 
 ```text
 DATA {"j":[0,1,0,1,0,1,0,1],"q":"0000000000000000"}
 ```
 
-Yeni frame eklenince eski indeksler değişmez:
+When a new frame is added, the old indices do not change:
 
 ```text
 DATA {"t":["r1t2>3"],"j":[2,0,2,0,2,0,2,0],"q":"0000000000000000"}
 ```
 
-String ve indeks aynı `j` içinde karışabilir. `t` yalnız tam frame string’leri içerir; başka template’e referans veremez. Aynı indeksin tekrarı ayrı işler oluşturur, sonuçlar birleştirilmez.
+Strings and indices may be mixed in the same `j`. `t` contains only complete frame strings; it cannot refer to another template. Repeating the same index creates separate jobs; the results are not merged.
 
-Buradaki sıfırlı `q` ölçüm sabitidir. **Üretimde mevcut receipt üretimi ve doğrulaması korunur.** Receipt’in mevcut bütünlük kontrollerindeki rolünü doğrulamadan kısaltmayı önermiyorum.
+The zeroed `q` here is a measurement constant. **In production the existing receipt generation and verification are kept.** I do not recommend shortening the receipt without verifying its role in the existing integrity checks.
 
-3. **Tablo seçimini host yapsın**
+3. **Let the host choose the table**
 
-Host üç adayı karşılaştırır:
+The host compares three candidates:
 
-- Frame string’leri.
-- Mevcut `T` indeksleri ve gerekli inline string’ler.
-- Yeni `t` ekleyen indeksli gösterim.
+- Frame strings.
+- Existing `T` indices and the inline strings that are needed.
+- An indexed representation that appends a new `t`.
 
-Karşılaştırma karakter sayısıyla değil, **hedef tokenizer ile tam gönderilecek paket üzerinden** yapılır. Stateless durumda eklenen `TABLE_LINE` da hesaba girer. Yeni tablo eklemek kesin olarak daha ucuz değilse eklenmez; eşitlikte tablo büyütülmez. Önceden belli çok turlu kuyruk için toplam maliyet karşılaştırılabilir; varsayımsal gelecek tekrarları kazanç sayılmaz.
+The comparison is made not by character count but **on the exact packet to be sent, with the target tokenizer**. In the stateless case the added `TABLE_LINE` is counted too. A new table is not added unless it is certainly cheaper; on a tie the table is not grown. For a multi-turn queue that is known in advance, total cost can be compared; hypothetical future repeats do not count as a gain.
 
-Her aday gönderimden önce özgün, sıralı frame listesine açılır ve birebir karşılaştırılır. Böylece tablo seçimi anlamı değil yalnız gösterimi değiştirir.
+Before sending, every candidate is expanded back into the original, ordered frame list and compared one to one. So the table choice changes only the representation, not the meaning.
 
-4. **Kullanıcıya görünen varsayılan: `Oturum — otomatik`**
+4. **Default visible to the user: `Session (automatic)`**
 
-Host her alıcı agent için öğretimi ve `T` durumunu yönetir. `Bağımsız paket` açıkça seçilebilen stateless seçenek olarak kalır.
+The host manages the teaching and the `T` state for each receiving agent. `Standalone packet` remains as a stateless option that can be chosen explicitly.
 
-Gerekli host kuralları:
+Required host rules:
 
-- Aynı session’da tek bekleyen istek; farklı alıcıların tabloları ayrıdır.
-- `t` önce geçici olarak uygulanır. Geçerli receipt ve yanıt şeması alınınca host tabloyu kesinleştirir; işin `s` değeri başarısızlık olsa da tablo eklemesi geçerlidir.
-- Teslimat belirsizse veya yanıt doğrulanamazsa aynı session’a körlemesine `t` tekrar gönderilmez; yeni session öğretilir.
-- Context, referans anlamı veya öğretilmiş kurallar değişince; geçmiş kaybolunca ya da sınırlar aşılınca yeni session açılır ve `T` sıfırlanır.
-- Yeni, öğretilmemiş işlem kodu kullanılmadan önce yeniden öğretim yapılır. İndeks sınırları, sonuç sayısı, handoff bağları ve mevcut izin/boyut kontrolleri korunur.
+- One pending request per session; different receivers have separate tables.
+- `t` is applied tentatively first. When a valid receipt and reply schema are received, the host finalizes the table; the table addition is valid even if the job's `s` value is a failure.
+- If delivery is uncertain or the reply cannot be verified, `t` is not blindly resent to the same session; a new session is taught.
+- When the context, a reference meaning or the taught rules change, when history is lost or when limits are exceeded, a new session is opened and `T` is reset.
+- Before a new, untaught operation code is used, teaching is repeated. Index bounds, result count, handoff bindings and the existing permission/size checks are kept.
 
-**Session’ın kısa DATA’sı tek başına toplam token tasarrufu değildir.** %35–40 hedefi, eşdeğer iş yükünde öğretim, yeniden öğretim, yanıtlar ve her çağrıda inputa sayılan geçmiş dahil ölçülmeli. Örneğin 64 işin 855 tokenlık girdi baseline’ına karşı eşdeğer tam girdi sınırları %35 için **555**, %40 için **513** tokendır.
+**A session's short DATA alone is not a total token saving.** The 35-40% target must be measured on an equivalent workload, including teaching, re-teaching, replies and the history that counts as input on every call. For example, against the 855-token input baseline of 64 jobs, the equivalent full-input limits are **555** tokens for 35% and **513** tokens for 40%.
 
-5. **Attıklarım**
+5. **What I dropped**
 
-- İş başına ID ve `[id,frame]` sarmalı.
-- Ayrı table encoding modu; tablo artık tek `j` gramerinin küçük uzantısı.
-- Kullanılmayan `rows/json/table` sözleşme anahtarları.
-- Boş `t/h/p` alanları.
-- Model tarafında makrolar, template zincirleri, sayısal opcode ve yeni tekrar-sayısı grameri.
-- Otomatik sonuç tekilleştirme veya önceki sonucu yeniden kullanma.
+- The per-job ID and the `[id,frame]` wrapper.
+- A separate table encoding mode; the table is now a small extension of the single `j` grammar.
+- Unused `rows/json/table` contract keys.
+- Empty `t/h/p` fields.
+- Model-side macros, template chains, numeric opcodes and a new repeat-count grammar.
+- Automatic result deduplication or reuse of an earlier result.
 
-Bellek içi decoder kontrolünde sıra, tekrarlar, literal metin, karışık string/indeks kullanımı ve eklemeli indeksler doğrulandı. Yerel erişim sandbox hatasıyla engellendi; repo değişikliği ve tokenizer ölçümü yapılmadı. Sonraki adım bu kesin metinleri aynı benchmark üzerinde ölçmek.
+An in-memory decoder check verified order, repeats, literal text, mixed string/index use and appendable indices. Local access was blocked by a sandbox error; no repo change and no tokenizer measurement was made. The next step is to measure these exact texts on the same benchmark.
 
-Astra verdict: Orchestration’da session’ı varsayılan yap, kimlikleri hostta tut, frame tablolarını yalnız ölçülen kazançla kullan ve hedefi toplam token hesabıyla doğrula.
+Astra verdict: Make session the default in orchestration, keep ids in the host, use frame tables only with a measured gain and verify the target with a total token count.
 
 
 ## Measured (Claude, o200k, full packet, vs 0.8)

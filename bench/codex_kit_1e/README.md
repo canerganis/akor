@@ -1,15 +1,17 @@
-# Codex ölçüm kiti
+# Codex measurement kit
 
-Claude modellerinde kullanılan iş setinin aynısı: 16 malzeme kaydı × 4 işlem, her tekrarda farklı kayıtlar,
-kesin doğru cevaplar (`oracles/`). İki kol: `0.8-exec` (aynı işi yapan eski sürüm) ve `S1c` (şu anki ÖZ formu).
-32 ve 64 iş, 3 tekrar, toplam 12 prompt (`prompts/`).
+Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
 
-Codex'te ayrı bir sistem alanı olmadığı için ÖZ kuralları promptun başında `SYSTEM RULES:` başlığı altında,
-iş gövdesi `INPUT:` altında gider.
+The same job set used on the Claude models: 16 material records × 4 operations, different records in every repeat,
+exact correct answers (`oracles/`). Two arms: `0.8-exec` (the old version that does the same job) and `S1e` (the current ÖZ form).
+32 and 64 jobs, 3 repeats, 12 prompts in total (`prompts/`).
 
-## Otomatik (önerilen)
+Codex has no separate system field, so the ÖZ rules go at the start of the prompt under the `SYSTEM RULES:` heading
+and the job body goes under `INPUT:`.
 
-Repo kökünden, her model için:
+## Automatic (recommended)
+
+From the repo root, for each model:
 
 ```bash
 python bench/codex_kit_1e/run_codex.py --model gpt-6-luna --effort medium
@@ -19,22 +21,22 @@ python bench/codex_kit_1e/run_codex.py --model gpt-6-luna --effort medium
 python bench/codex_kit_1e/score.py bench/codex_kit_1e/results_gpt-6-luna_medium.jsonl
 ```
 
-Aynısını `gpt-6-astra` ve Sol için de çalıştır (model adını Codex'teki adıyla ver). Kesilirse aynı komut kaldığı
-yerden devam eder. Tablo: geçerli cevap, doğru iş, girdi, çıktı, toplam token, 0.8'e göre fark, medyan süre.
+Run the same for `gpt-6-astra` and Sol (give the model name as Codex knows it). If it is interrupted, the same command
+resumes where it stopped. The table shows: valid answers, correct jobs, input, output, total tokens, difference vs 0.8, median time.
 
-## Elle
+## Manual
 
-Bir prompt dosyasının içeriğini olduğu gibi gönder, cevabı hiç düzenlemeden `bench/codex_kit_1e/replies/<aynı dosya adı>`
-olarak kaydet. Sonra:
+Send the contents of a prompt file as it is and save the reply, unedited, as `bench/codex_kit_1e/replies/<same file name>`.
+Then run:
 
 ```bash
 python bench/codex_kit_1e/score.py --replies bench/codex_kit_1e/replies
 ```
 
-Elle yapınca token sayısı bilinmez, sadece doğruluk ölçülür.
+Done by hand, the token counts are unknown and only correctness is measured.
 
-## Okurken
+## Reading the results
 
-Codex CLI her çağrıya kendi talimatından yaklaşık 24.500 girdi tokenı ekler. Bu yüzden toplamdaki yüzde fark
-küçük görünür; önce doğruluğa ve çıktı tokenına bak. Cevap sadece JSONL satırları olmalı; kod bloğu ya da açıklama
-içeren cevap üründe olduğu gibi geçersiz sayılır.
+The Codex CLI adds about 24,500 input tokens of its own instructions to every call. So the percentage difference in the
+total looks small. Look at correctness and output tokens first. The reply must be JSONL lines only. A reply with a code
+block or an explanation counts as invalid, as it would in the product.

@@ -1,66 +1,68 @@
-# ÖZ/2 — 0.3.0 doğrulama raporu
+# OZ/2: 0.3.0 verification report
 
-11 Ekim 2026. Windows, Python 3.12, tiktoken 0.14.0. [Ham token ölçümleri](oz2-token-counts.json), [canlı cevaplar ve kullanım](oz2-live.json).
+Translated from Turkish by Claude Sonnet 5.5; the original is in git history (commit 5abbc82).
 
-## İşlevsel doğrulama
+11 October 2026. Windows, Python 3.12, tiktoken 0.14.0. [Raw token measurements](oz2-token-counts.json), [live replies and usage](oz2-live.json).
 
-**99 otomatik test geçti.** Önceki 54 test korunuyor. Yeni denetimler: makro açılımı, 250 rastgele yasal dizinin kayıpsız gidiş-dönüşü, kanıt/başarı gizleyen makroları reddetme, parmak izi, bütçe sınırı, Unicode/literal kaçırma, tokenizer önbelleği, kalıcı yeniden açma, farklı ajan bağımlılığı, lease yenileme/sona erme, eski cevabı reddetme, eksik ACK'yi atomik reddetme ve iki eşzamanlı bağlantının aynı işi almaması.
+## Functional verification
 
-Yerel demo iki işi birlikte teslim etti, inceleme ajanını bunların ACK'sine kadar bekletti ve durum mesajını host yolunda kaydetti. Demo araç çalıştırmadı; sonuçları sentetik alındı kayıtlarıdır.
+**99 automatic tests passed.** The earlier 54 tests are kept. New checks: macro expansion, lossless round trip of 250 random legal sequences, rejecting macros that hide evidence/success, fingerprint, budget limit, Unicode/literal escaping, tokenizer cache, persistent reopening, dependency between different agents, lease renewal/expiry, rejecting an old reply, atomically rejecting a missing ACK, and two concurrent connections not taking the same job.
 
-0.3.0 paketi proje sanal ortamına kuruldu. Repo dışından yüklü modüllerin import edilmesi, `oz decode`, iki tokenizer ile `oz pack` ve yetersiz bütçede çıkış kodu 2 doğrulandı. Doküman bağlantıları ve Git boşluk kontrolü geçti.
+The local demo delivered two jobs together, held the review agent until their ACK and recorded the status message on the host path. The demo ran no tools; its results are synthetic acknowledgement records.
 
-## Canlı dil anlama denemesi
+The 0.3.0 package was installed into the project virtual environment. Importing the installed modules from outside the repo, `oz decode`, `oz pack` with two tokenizers and exit code 2 on an insufficient budget were verified. The document links and the Git whitespace check passed.
 
-Codex CLI 20 sentetik talimatı ÖZ/2'ye çevirdi: **20/20** anlam ağacı doğru. Tam bu mesajlar Claude CLI'a iletildi; temel işlemlere açarak çözümleme **20/20** doğru. Başarı işlem sırası, referans kimliği ve literal metnin tam eşitliğiyle sayıldı. Gizli onarım yapılmadı.
+## Live language comprehension trial
 
-Eski atomlar, parametreli/sabit makro, makro birleşimi, test sonucuyla bitiş, başarısızlık ile engel, `not_run` kaydını okuma ve işaret/satır sonu içeren literal sınandı. Bu bir sözdizimi/anlam smoke testidir; gerçek görev kalitesi, görülmemiş büyük sözlük veya uzun konuşma başarı oranı değildir.
+The Codex CLI converted 20 synthetic instructions into OZ/2: **20/20** meaning trees correct. These exact messages were passed to the Claude CLI; decoding by expanding into base operations was **20/20** correct. Success was counted by exact equality of operation order, reference id and literal text. No hidden repair was made.
 
-Codex kaydı 26.533 input, bunun ayrıntısında 7.296 cached input, 218 output ve ayrıca 123 reasoning output bildirdi. Model adı akışta doğrulanmadığından yapılandırılmış varsayılan olarak kaydedildi. Araç olayı görülmedi.
+Old atoms, parametric/fixed macros, macro combination, ending with a test result, failure with a blocker, reading a `not_run` record and a literal containing signs/line endings were tested. This is a syntax/meaning smoke test; it is not real task quality, an unseen large vocabulary or the success rate of a long conversation.
 
-Claude kaydı 2 normal input, 3.948 cache creation, 5.721 cache read ve 1.164 output bildirdi; düşünme ayrıntısı 605 idi. Model kimliği `claude-opus-5-5`. Birbirini kapsayabilecek output/düşünme alanları toplanmadı. Duvar süreleri yaklaşık 15,1 ve 15,3 saniye; farklı süreç/istemler olduğu için hız kıyaslaması değildir. CLI başlangıç bağlamı mesaj dilinden büyük kalıyor; aşağıdaki yüzdeler toplam CLI/API maliyetine uygulanamaz.
+The Codex record reported 26,533 input, of which 7,296 cached input in the detail, 218 output and separately 123 reasoning output. Since the model name was not verified in the stream, it was recorded as the configured default. No tool event was seen.
 
-## Bağlam dahil toplu aktarım
+The Claude record reported 2 normal input, 3,948 cache creation, 5,721 cache read and 1,164 output; the thinking detail was 605. The model id was `claude-opus-5-5`. Output/thinking fields that may include each other were not added up. The wall times were about 15.1 and 15.3 seconds; since the processes/prompts were different, this is not a speed comparison. The CLI startup context remains larger than the message language; the percentages below cannot be applied to total CLI/API cost.
 
-Altı sentetik alan: kod, malzeme ölçümü, veri kalitesi, çeviri, destek ve planlama. Her alanda 8 bağımsız iş ve 4 host olayı var. Toplam 72 mesaj, 48 iş. Gerçek kuyruk üzerinden yeniden oynatılarak 6 iş paketi ve 24 host olayı hazırlandı; **bu çevrimdışı ölçümde model çağrısı sıfır**.
+## Batch transport with context included
 
-Her gösterim aynı görevi, kaynakları, işlem sırasını ve mesaj ID'lerini taşıdı. Sözlük, alan tanımları ve gerekli bağlam her alıcı girdisinde sayıldı. Adaylar: açık metin, kısa metin, işlem sözleşmeli kompakt JSON, makrolu ÖZ, temel ÖZ; kaynak nesne/dizi biçimleriyle ölçüldü.
+Six synthetic domains: code, materials measurement, data quality, translation, support and planning. Each domain has 8 independent jobs and 4 host events. Total 72 messages, 48 jobs. Replayed over a real queue, 6 job packets and 24 host events were prepared; **this offline measurement made zero model calls**.
 
-| 48 iş mesajı | o200k_base | cl100k_base |
+Every representation carried the same task, sources, operation order and message IDs. The vocabulary, field definitions and the needed context were counted in every receiver input. Candidates: plain text, short text, compact JSON with an operation contract, OZ with macros, base OZ; measured with source object/array formats.
+
+| 48 job messages | o200k_base | cl100k_base |
 |---|---:|---:|
-| Ayrı ayrı, her girdide en ucuz aday | 7.334 | 7.330 |
-| 6 toplu girdi, her girdide en ucuz aday | **2.049** | **2.041** |
-| Azalma | **%72,1** | **%72,2** |
+| Separately, cheapest candidate in each input | 7,334 | 7,330 |
+| 6 batched inputs, cheapest candidate in each input | **2,049** | **2,041** |
+| Reduction | **72.1%** | **72.2%** |
 
-Kazançta ortak bağlam tekrarını kaldırmak belirleyici. Sekiz mesajlık bu paketlerde kompakt JSON seçildi; alfabenin her koşulda daha ucuz olduğu sonucu çıkarılmadı.
+Removing the repetition of shared context is decisive in the gain. Compact JSON was selected in these eight-message packets; it was not concluded that the alphabet is cheaper under all conditions.
 
-## Aynı paket, farklı gösterimler
+## The same packet, different representations
 
-Malzeme senaryosundaki sekiz mesajlık karma desen farklı ID'lerle 64 mesaja genişletildi. Sentetik tekrar, sözlük maliyetinin paylaşıldığı durumu sınar; gerçek iş yükünü temsil ettiği varsayılmaz.
+The eight-message mixed pattern in the materials scenario was expanded to 64 messages with different IDs. The synthetic repetition tests the case where the vocabulary cost is shared; it is not assumed to represent a real workload.
 
-| 64 mesajın tüm alıcı girdisi | o200k_base | cl100k_base |
+| Full receiver input of 64 messages | o200k_base | cl100k_base |
 |---|---:|---:|
-| Kısa metin | 1.791 | 1.790 |
-| Kompakt JSON | 1.250 | 1.248 |
-| ÖZ/2 | **814** | **760** |
-| Kısa metne göre azalma | **%54,6** | **%57,5** |
-| JSON'a göre azalma | **%34,9** | **%39,1** |
+| Short text | 1,791 | 1,790 |
+| Compact JSON | 1,250 | 1,248 |
+| OZ/2 | **814** | **760** |
+| Reduction against short text | **54.6%** | **57.5%** |
+| Reduction against JSON | **34.9%** | **39.1%** |
 
-Tüm sayılarda sözlük ve görev bağlamı var. Küçük paketlerde bunların maliyeti baskın; 16 mesajda temel ÖZ, 32/64 mesajda makrolu ÖZ seçilebiliyor. Eşik fikstüre/tokenizer'a özgüdür.
+All numbers include the vocabulary and task context. In small packets their cost dominates; base OZ can be chosen at 16 messages and OZ with macros at 32/64 messages. The threshold is specific to the fixture/tokenizer.
 
-48 işin yalnız tel gövdesi tam açık referanslı temel ÖZ'de 228 token, optimize edilmiş makrolarla 126 token: **%44,7** azalma. Bu son oran sözlük/bağlamı içermez; doğal dil veya toplam maliyet karşılaştırması değildir.
+The wire body alone of the 48 jobs is 228 tokens in base OZ with fully explicit references and 126 tokens with optimized macros: a **44.7%** reduction. This last ratio does not include the vocabulary/context; it is not a natural language or total cost comparison.
 
-## Yerel kodlayıcı maliyeti
+## Local encoder cost
 
-Yirmi tekrarlı okuma atomunda önceki 0.2.0 araması 4.096 yazımı sayıyordu; yeni varsayılan en fazla 256 adayı sayar ve byte bakımından en kısa yolu da kapsar. Isındırma sonrası üç koşunun medyanında eski arama yaklaşık 18–25 ms, yeni arama 1,3–1,4 ms ölçüldü. Ayrıntı ham raporda.
+On twenty repeated read atoms, the earlier 0.2.0 search counted 4,096 spellings; the new default counts at most 256 candidates and also covers the byte-shortest path. In the median of three runs after warm-up, the old search measured about 18-25 ms and the new search 1.3-1.4 ms. Details are in the raw report.
 
-Bu küçük mikrobenchmark ağ, model düşünmesi, iş süresi veya tokenizer başlangıcını içermez. Sınırlı arama farklı mesajda daha iyi yazımı kaçırabilir; evrensel minimum veya genel ajan hızlanması sonucu değildir.
+This small microbenchmark does not include network, model thinking, job time or tokenizer startup. The bounded search may miss a better spelling in a different message; it is not a universal minimum or a general agent speedup.
 
-## Sınırlar ve yeniden üretim
+## Limits and reproduction
 
-Çekirdek sayıları, birimleri, belirsizliği ve kaynak alanlarını korur; iddianın doğruluğunu kanıtlamaz. Host olayını modelsiz kaydetmek yeni kararın da modelsiz yapılabileceği anlamına gelmez. Tekrarlanan dış etkiler için adaptör idempotency'si gerekir.
+The core preserves numbers, units, uncertainty and source fields; it does not prove that a claim is true. Recording a host event without a model does not mean a new decision can also be made without a model. For repeated external effects, adapter idempotency is needed.
 
-Girdi sayımları gönderici başlangıç talimatını, model çıktı/düşünmesini, araç sarmalayıcılarını ve sağlayıcı ücret politikasını içermez. İki tokenizer bütün modellerin güncel tokenizer'ı değildir. Gerçek görevlerde aynı modellerle eşit başarı, düzeltme turu, toplam kullanım ve gecikme karşılaştırması henüz yapılmadı.
+The input counts do not include the sender's startup instructions, the model's output/thinking, tool wrappers or the provider's pricing policy. The two tokenizers are not the current tokenizers of all models. A comparison of equal success, correction rounds, total usage and latency with the same models on real tasks has not been made yet.
 
 ```powershell
 python -m unittest discover -s tests -v
@@ -69,4 +71,4 @@ python -X utf8 oz2_benchmark.py
 python -X utf8 oz_live_eval.py --suite oz2 --live
 ```
 
-Token ölçümü için `tiktoken==0.14.0` gerekir. Son komut gerçek mevcut CLI hesaplarını kullanır. Önceki [ÖZ/1 raporu](OZ-RESULTS.md) 0.2.0 sürümünün tarihli ölçümüdür.
+`tiktoken==0.14.0` is needed for token measurement. The last command uses real existing CLI accounts. The earlier [OZ/1 report](OZ-RESULTS.md) is the dated measurement of the 0.2.0 release.

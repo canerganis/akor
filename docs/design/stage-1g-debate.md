@@ -1,5 +1,7 @@
 # Stage 1g debate, Astra and Fable (2026-10-13), rounds 1-3
 
+Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
+
 Verbatim, except that Fable round 3 cites the H system text by reference instead of repeating the block (identical to Astra round 2).
 
 
@@ -60,68 +62,68 @@ Record per call, as now: accepted, correct, provider in/out/thinking tokens, api
 
 ## Astra round 1
 
-**Bağımsız önerim: C geri çekilsin; kanıtlardaki G metni, aynen, başlıksız OZ/1g için yeni benimsenme adayı olsun.** Bu, önceki kararın açık revizyonudur; G’nin geçmiş taramayı kazanmasıyla gerçekleşmiş bir üretim geçişi değildir. Fable’ın bağımsız önerisini henüz görmedim.
+**My independent proposal: C should be withdrawn; the G text in the evidence, as it is and without a header, should become the new adoption candidate for OZ/1g.** This is an explicit revision of the earlier decision; it is not a production pass achieved by G winning the earlier screen. I have not yet seen Fable's independent proposal.
 
-C için verdiğim karar taramada başarısız oldu. Parser doğru çalışmış: ilk yanıtta yanlış kayıt kabını, ikincisinde geçersiz hata kodlarını ve düzeltme bloğunu reddetmiş. Bunları kabul etmek için sözleşmeyi gevşetmeyi önermiyorum.
+The decision I gave for C failed in the screen. The parser worked correctly: in the first reply it rejected the wrong record container, in the second the invalid error codes and the correction block. I do not propose loosening the contract to accept these.
 
-**G’yi seçme gerekçem şu:**
+**My reasons for choosing G are these:**
 
-- G ve H, gözlenen kabul ve doğruluk bakımından eşit: **5/5 ve 320/320**.
-- G mevcut bütçe kapılarını karşılıyor. H iki sınırı da birer token aşıyor; önceki kapıya göre geçmiş sayılmaz.
-- G mevcut başlıksız parser sözleşmesini koruyor.
-- C–H karşılaştırması başlık lehine değerli bir bulgu. Ancak beş tekrar, başlığın G’den daha güvenilir olduğunu göstermiyor. G–C arasındaki farklardan hangisinin etkili olduğu da ayrıştırılmış değil.
+- G and H are equal in observed acceptance and accuracy: **5/5 and 320/320**.
+- G meets the existing budget gates. H exceeds both limits by one token each; against the earlier gate it does not count as passed.
+- G keeps the existing headerless parser contract.
+- The C-H comparison is a valuable finding in favor of the header. But five repeats do not show that the header is more reliable than G. Which of the differences between G and C is effective has also not been isolated.
 
-Bir tokenlık aşımı başlık fikrini kalıcı olarak reddetmek için kullanmam. H’yi benimsemek gerekirse bütçeyi açıkça yeniden kararlaştırabiliriz; mevcut kanıt bunu zorunlu kılmıyor.
+I would not use a one-token excess to reject the header idea for good. If H has to be adopted we can decide the budget again explicitly; the current evidence does not make this necessary.
 
-Verilen, yuvarlanmış ortalamalardan:
+From the given, rounded means:
 
-| Ölçüt | 0.8-exec | G | H |
+| Measure | 0.8-exec | G | H |
 |---|---:|---:|---:|
-| Çağrı başına toplam token | 9.462 | 5.652 | 5.662 |
-| Baseline’a göre azalma | — | **%40,27** | **%40,16** |
-| Ortalama API süresi | 14.152 ms | 13.336 ms | 12.954 ms |
+| Total tokens per call | 9,462 | 5,652 | 5,662 |
+| Reduction vs baseline | - | **40.27%** | **40.16%** |
+| Mean API time | 14,152 ms | 13,336 ms | 12,954 ms |
 
-G–H token farkı yaklaşık **%0,18**. Bu, anlamlı bir performans üstünlüğü iddiası için yeterli değil. H’nin gözlenen gecikme avantajı da henüz kesinleşmiş değil.
+The G-H token difference is about **0.18%**. This is not enough to claim a meaningful performance advantage. The observed latency advantage of H is also not settled yet.
 
-**Önerdiğim wire tam olarak şöyle:**
+**The wire I propose is exactly this:**
 
 ```text
 {"job_id":complete_result}
 ["job_id","error",code,message]
 ```
 
-Kanıtlardaki **System text G hiçbir değişiklik yapılmadan** kullanılır. Gövdede `v:"1g"` korunur. Başlık, yeni örnek, ek kontrol cümlesi veya sağlayıcıya özel biçim talimatı eklenmez.
+The **System text G in the evidence** is used **without any change**. `v:"1g"` is kept in the body. No header, no new example, no extra check sentence and no provider-specific format instruction is added.
 
-Önceki on maddelik parser sözleşmesi korunur: tek üyeli başarı nesnesi; dört öğeli hata dizisi; kesin ID eşleştirmesi; iç içe tekrarlanan anahtar denetimi; yalnız ASCII boş satır toleransı; atomik doğrulama. Başlık kabulü, eski biçim algılama ve yanıt onarımı yoktur.
+The earlier ten-item parser contract is kept: a one-member success object; a four-element error array; exact ID matching; a duplicate-key check in nested objects; ASCII-only blank line tolerance; atomic validation. There is no header acceptance, no detection of the old format and no reply repair.
 
-**Kararı verecek deney, yeni ve önceden sabitlenmiş doğrulama olmalı:**
+**The experiment that decides must be a new and pre-fixed validation:**
 
-1. **Deney manifesti dondurulur.** Tam sistem metinleri, parser profilleri, gerçek model kimlikleri, reasoning ayarları, çıktı limitleri, seed’ler ve beklenen sonuçlar kaydedilir. Çağrılar önceki yanıtları taşımayan bağımsız istekler olur. Eski beş tekrar yeni doğrulamaya sayılmaz.
+1. **The experiment manifest is frozen.** The full system texts, parser profiles, real model IDs, reasoning settings, output limits, seeds and expected results are recorded. Calls are independent requests that carry no earlier replies. The old five repeats do not count toward the new validation.
 
-2. **G ve 0.8-exec eşleştirilir.** Sonnet 5.5, Haiku 5.5, Fable 5.1 ve Luna medium için 32 ve 64 işte **hücre başına 30 yeni çağrı**, `retry=0`. Her eşleştirmede görevler ve veriler aynı olur; yalnız kol çağrı sırası karıştırılır. İş sırası korunur.
+2. **G and 0.8-exec are paired.** For Sonnet 5.5, Haiku 5.5, Fable 5.1 and Luna medium at 32 and 64 jobs, **30 new calls per cell**, `retry=0`. In each pairing the tasks and data are the same; only the call order of the arms is shuffled. The job order is kept.
 
-3. **Sonnet 64 hücresine H eklenir.** Aynı 30 paket G/H/baseline ile çalıştırılır. Bu, H’nin önceki başarısının sürüp sürmediğini gösterir. Bu turdaki önerimde benimsenme adayı G’dir; G kalır, H geçerse sonuç başlıklı revizyon için bize geri gelir. Otomatik geçiş yapılmaz.
+3. **H is added to the Sonnet 64 cell.** The same 30 packets are run with G/H/baseline. This shows whether H's earlier success continues. In my proposal in this round the adoption candidate is G; G stays, and if H passes, the result comes back to us for a headed revision. No automatic switch is made.
 
-4. **İlk kayıt çeşitliliği ayrıca sınanır.** Her modelde altı heterojen paket kullanılır; ilk sonuç sırasıyla dolu dizi, boş dizi, skaler, nesne, iç içe dizi ve gerçek hata olur. Paketler sıfır/çok referansı, izinli `unknown` sonuçlarını ve dört hata kodunu kapsar. Böylece G’nin altı öğeli örneğine benzeyen başlangıçlara bağımlılığı da sınanır.
+4. **First-record diversity is tested separately.** Six heterogeneous packets are used for each model; the first result is, in order, a non-empty array, an empty array, a scalar, an object, a nested array and a real error. The packets cover zero/many references, the permitted `unknown` results and the four error codes. So the dependence on beginnings that look like G's six-element example is also tested.
 
-5. **Kabul kapısı kesindir.** G’nin her hücresinde 30/30 tam doğru paket ve heterojen paketlerin tamamında doğruluk gerekir. Gereksiz hata veya `unknown`, anlamsal yanlışlık ve kesilmiş yanıt başarısızlıktır. Erişilemeyen model doğrulanmamış kalır.
+5. **The acceptance gate is strict.** In every cell of G, 30/30 fully correct packets and accuracy in all heterogeneous packets are required. Needless errors or `unknown`, semantic wrongness and truncated replies are failures. A model that cannot be reached stays unvalidated.
 
-Maliyet kapısı, aynı model ve iş yükünde **en az %35 azalma**, hedef ise **%40** olmalı. İki ölçüt birlikte raporlanmalı ve %35 kapısını karşılamalı:
+The cost gate must be **at least a 35% reduction** on the same model and workload, and the target **40%**. Two measures must be reported together and must meet the 35% gate:
 
 ```text
-Tüm çağrıların toplam tokenı / istenen iş sayısı
+Total tokens of all calls / number of requested jobs
 
-Tüm çağrıların toplam tokenı /
-tam doğru kabul edilen paketlerdeki iş sayısı
+Total tokens of all calls /
+number of jobs in packets accepted as fully correct
 ```
 
-İlk ölçüt, baseline’ın hatalarının tasarruf iddiasını yapay olarak büyütmesini engeller. İkincisi başarısız üretimin gerçek maliyetini gösterir. Mevcut taramada ikinci ölçüt G lehine yaklaşık %52 çıkıyor; baseline’ın bir paketindeki yanlış sonuç nedeniyle bunu genel “%52 sıkıştırma” başarısı diye sunmam.
+The first measure stops the baseline's errors from artificially enlarging the saving claim. The second shows the real cost of failed generation. In the current screen the second measure comes to about 52% in favor of G; because of a wrong result in one of the baseline's packets, I would not present this as a general "52% compression" success.
 
-Thinking ve cache kullanımı sağlayıcının muhasebesine göre eksiksiz, çift sayılmadan dahil edilir. Gecikmede ortalama, medyan ve p95 raporlanır; hız üstünlüğü yalnız desteklenen hücreler için söylenir.
+Thinking and cache usage are included completely and without double counting, according to the provider's accounting. For latency, the mean, the median and p95 are reported; a speed advantage is stated only for supported cells.
 
-**30/30 bir benimseme regresyon kapısıdır; %99 ilk deneme güvenilirliğinin kanıtı değildir.** Bağımsız, aynı dağılımdan denemeler varsayımıyla sıfır hatalı 30 çağrının tek taraflı %95 hata oranı üst sınırı yaklaşık %9,5’tir. Bu sınırı %1’in altına indirmek için profil başına en az 299 hatasız çağrı gerekir.
+**30/30 is an adoption regression gate; it is not proof of 99% first-attempt reliability.** Under the assumption of independent trials from the same distribution, the one-sided 95% upper bound of the error rate for 30 calls with zero errors is about 9.5%. To bring this bound below 1%, at least 299 error-free calls per profile are needed.
 
-Yerel sandbox kilidi nedeniyle ham JSONL’yi açamadım; hesaplar paylaşılan tablodan. Dosya değişikliği, canlı deney veya commit yapmadım. Sonraki adım bu önerinin Fable’a aynen iletilmesi ve onun bağımsız önerisiyle karşılıklı değerlendirilmesi.
+Because of the local sandbox lock I could not open the raw JSONL; the computations are from the shared table. I made no file change, live experiment or commit. The next step is to pass this proposal to Fable as it is and to evaluate it against his independent proposal.
 
 
 ## Fable round 2
@@ -168,32 +170,32 @@ Where I still disagree, in one line each: the header question is decided by fork
 
 ## Astra round 2
 
-**Revize kararım: H ilk benimsenme adayı olsun; G yalnız H başarısız olursa sınansın. C’yi yeniden yarıştırmayalım.** Fable’ın başlık tercihine katılıyorum; önceki G önceliğimi ve geniş doğrulama matrisini geri çekiyorum. Deney eşiği, eski verilerin kullanımı ve fallback konusunda ise aşağıdaki değişiklikleri öneriyorum. Bunlar henüz Fable’ın onayladığı ortak karar değildir.
+**My revised decision: H should be the first adoption candidate; G should be tested only if H fails. Let us not make C compete again.** I agree with Fable's header preference; I withdraw my earlier G priority and the broad validation matrix. On the experiment threshold, the use of old data and the fallback I propose the changes below. These are not yet a joint decision approved by Fable.
 
-Fable’la artık şu noktalarda aynı görüşteyim:
+I now agree with Fable on these points:
 
-- Başarısız üretimin maliyeti, başlığın yaklaşık **%0,18’lik H–G token farkından** çok daha önemlidir. Bir tokenlık eski bütçe aşımı H’yi elemek için yeterli gerekçe değildir.
-- İlk görünür kayıttaki biçim sapması, araştırılması gereken ana hata sınıfıdır. Atomik parser doğru davranmıştır; onarım eklemeyeceğiz.
-- Beş tekrar H ile G’yi ayıramaz. H’nin üstünlüğü kanıtlanmış değildir; H’yi düşük ek maliyetli bir tercih olarak öne alıyorum.
-- Önceki yüzlerce çağrılık önerim, mevcut karar için gereğinden büyüktü.
+- The cost of a failed generation matters much more than the header's roughly **0.18% H-G token difference**. An old budget excess of one token is not enough reason to eliminate H.
+- The format deviation in the first visible record is the main error class to investigate. The atomic parser behaved correctly; we will not add repair.
+- Five repeats cannot separate H from G. The superiority of H is not proven; I am putting H first as a low-extra-cost preference.
+- My earlier proposal of hundreds of calls was larger than the present decision needs.
 
-Fable’ın teşhisinde dört ayrımı koruyorum:
+In Fable's diagnosis I keep four distinctions:
 
-1. **Aynı içerik, aynı görev kapsamını gösterir; ayrı çağrıları tek üretim denemesine dönüştürmez.** Beş veri paketi üzerinde üç ayrı kol çalışmıştır. Bunları on beş farklı görev paketi veya yüzlerce bağımsız doğruluk örneği gibi sayamayız. Fakat her çağrının biçim ve doğruluk sonucu yine kaydedilmelidir.
+1. **The same content shows the same task scope; it does not turn separate calls into a single generation attempt.** Three separate arms ran on five data packets. We cannot count them as fifteen different task packets or as hundreds of independent accuracy samples. But the format and accuracy result of each call must still be recorded.
 
-2. **İlk-token açıklaması güçlü bir hipotezdir; nedensellik kanıtı değildir.** Özellikle “sonraki satırlar ilk satırı kopyalar” genellemesi verilen örnekte tutmuyor: `e1` yanlışlıkla `[` ile başlarken `e2` doğru `{` ile başlıyor. Başlık, hatayı ilk veri kaydına taşıyabilir de. Bunu deney gösterecek.
+2. **The first-token explanation is a strong hypothesis; it is not proof of causality.** In particular the generalization that "the following lines copy the first line" does not hold in the given example: `e1` wrongly starts with `[` while `e2` correctly starts with `{`. The header may also carry the error to the first data record. The experiment will show this.
 
-3. **Farklı metinlerden toplanan 10/33, H’nin hata olasılığı değildir.** Yaklaşık %30’u deney tasarımında kötü senaryo olarak kullanabiliriz; ortak ve değişmez bir hata oranı olarak kullanamayız.
+3. **The 10/33 collected from different texts is not H's error probability.** We can use about 30% as a bad scenario in the experiment design; we cannot use it as a common and fixed error rate.
 
-4. **25 çağrıda iki hata, %35 tasarrufu otomatik sağlamaz.** Verilen H ortalamalarıyla, çağrı maliyetinin değişmediğini varsayarsak:
+4. **Two errors in 25 calls do not automatically deliver the 35% saving.** With the H means given, assuming the call cost does not change:
 
    ```text
-   1 − (5662 / 9462) / (23 / 25) = %34,96 tasarruf
+   1 − (5662 / 9462) / (23 / 25) = 34.96% saving
    ```
 
-   Dolayısıyla kabul sayısı ve gerçek maliyet ayrı kapılar olmalı. Ayrıca Fable’ın binom hesapları baştan belirlenmiş 25 deneme için doğrudur; ilk beş sonucu gördükten sonra seçilmiş adayların bağımsız doğrulaması gibi yorumlanmamalıdır.
+   So the acceptance count and the real cost must be separate gates. Also Fable's binomial computations are right for 25 trials fixed in advance; they should not be read as an independent validation of candidates chosen after seeing the first five results.
 
-Önerdiğim **H sistem metni**, aşağıdaki metnin aynısıdır. G’den cümle taşımıyorum; yeni örnek veya kontrol talimatı eklemiyorum:
+The **H system text** I propose is the same as the text below. I am not carrying sentences over from G; I am not adding a new example or check instruction:
 
 ```text
 You execute OZ/1g.
@@ -231,78 +233,78 @@ Any malformed nonblank line or missing, duplicate or extra ID rejects
 the whole reply. Stop after the last job.
 ```
 
-Gövde `v:"1g"` olarak kalır. Verilen sayımlara dayanarak seed 1000 için **sistem+gövde o200k kapısını açıkça 32 işte ≤1020, 64 işte ≤1479 olarak revize ediyorum.** Asıl ekonomik kapı, sağlayıcının ölçtüğü toplam maliyettir.
+The body stays `v:"1g"`. Based on the counts given, for seed 1000 I **revise the system+body o200k gate explicitly to ≤1020 at 32 jobs and ≤1479 at 64 jobs.** The main economic gate is the total cost measured by the provider.
 
-Parser profili çağrıdan önce açıkça seçilir: deneyde `H`, uygulamada örneğin `oz1g-h`. **`v:"1g"` tek başına C/H ayrımı yapamaz; yanıttan profil algılanmaz ve mevcut C sözleşmesi sessizce değiştirilmez.**
+The parser profile is chosen explicitly before the call: `H` in the experiment, for example `oz1g-h` in the application. **`v:"1g"` alone cannot tell C and H apart; the profile is not detected from the reply and the existing C contract is not silently changed.**
 
-Parser kuralları:
+Parser rules:
 
-1. İstek, tekil iş kimlikleri ve indeksler çağrıdan önce doğrulanır.
-2. Yanıt LF üzerinden bölünür; her satırın sonundaki en fazla bir CR kaldırılır. Son satırın sonlandırıcısı olmayabilir. Tek başına CR satır ayırıcı değildir.
-3. Yalnız boş veya tamamen ASCII SP/TAB içeren satırlar atlanır. BOM, Unicode boşlukları ve Markdown temizlenmez.
-4. İlk kalan satır, yalnız sonundaki SP/TAB kaldırıldıktan sonra **tam olarak `OZ/1g`** olmalıdır. Baştaki boşluk kabul edilmez. Eksik, farklı veya tekrarlanan başlık bütün yanıtı reddettirir.
-5. Sonraki her satır, tamamı tüketilen tek JSON değeri olmalıdır. Yorum, sondaki virgül, fazla JSON parçası, `NaN` ve `Infinity` reddedilir. Satır içindeki standart JSON boşlukları kabul edilir; `compact` üretim talimatıdır. Sözdizimi dayanağı [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259).
-6. Bütün nesnelerde, iç içe olanlar dahil, anahtar tekrarları değerler ezilmeden denetlenir. Karşılaştırma kaçışlar çözüldükten sonra yapılır.
-7. Başarı tam bir üyeli nesnedir: anahtar beklenen ID, değer bütün sonuçtur. Sonuç herhangi bir JSON türü olabilir; dönüştürülmez veya düzleştirilmez.
-8. Hata tam dört öğeli dizidir: `[id,"error",code,message]`. ID beklenen string; kod belirtilen dört koddan biri; mesaj Unicode boşlukları dışında en az bir karakter içeren string olmalıdır. Keyfî mesaj uzunluğu sınırı eklenmez.
-9. Her beklenen ID tam bir kez bulunur. Bağlama ID üzerinden yapılır; satır sırasından yapılmaz. ID kırpma, normalizasyon veya tür dönüşümü yoktur. Sayılar sessizce yuvarlanmaz veya sonsuza çevrilmez.
-10. Bütün yanıt doğrulanmadan sonuç teslim edilmez. Görev doğrulayıcısı varsa teslimden önce çalışır. Geçerli hata kaydı yapısal kabulü bozmaz; anlamsal başarısı beklenen görev sonucuna bağlıdır. Açıklama silme, tırnak düzeltme, son tekrarı seçme ve eski biçim kurtarma yoktur.
+1. The request, the unique job IDs and the indices are validated before the call.
+2. The reply is split on LF; at most one CR at the end of each line is removed. The last line may have no terminator. A lone CR is not a line separator.
+3. Only lines that are empty or consist entirely of ASCII SP/TAB are skipped. BOM, Unicode whitespace and Markdown are not cleaned.
+4. The first remaining line must be **exactly `OZ/1g`** after only its trailing SP/TAB are removed. Leading whitespace is not accepted. A missing, different or repeated header makes the whole reply rejected.
+5. Each following line must be a single JSON value that is consumed entirely. Comments, trailing commas, extra JSON pieces, `NaN` and `Infinity` are rejected. Standard JSON whitespace inside a line is accepted; `compact` is a production instruction. Basis for the syntax: [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259).
+6. In all objects, including nested ones, key repeats are checked before values are overwritten. The comparison is made after escapes are decoded.
+7. A success is an object with exactly one member: the key is the expected ID, the value is the whole result. The result can be any JSON type; it is not converted or flattened.
+8. An error is an array of exactly four elements: `[id,"error",code,message]`. The ID is an expected string; the code is one of the four codes given; the message must be a string with at least one character other than Unicode whitespace. No arbitrary limit on message length is added.
+9. Each expected ID is present exactly once. Binding is done through the ID, not through line order. There is no ID trimming, normalization or type conversion. Numbers are not silently rounded or turned into infinity.
+10. No result is delivered before the whole reply is validated. If there is a task validator, it runs before delivery. A valid error record does not break structural acceptance; its semantic success depends on the expected task result. There is no explanation stripping, quote correction, picking the last repeat or recovery of the old format.
 
-**Kararı verecek deneyde H–G üstünlüğünü kanıtlamaya çalışmayalım; önceden tercih ettiğimiz H’nin yeterli olup olmadığını sınayalım.** Bu, kota açısından daha yararlı sorudur.
+**In the experiment that decides, let us not try to prove H-G superiority; let us test whether H, which we preferred in advance, is sufficient.** This is the more useful question in terms of quota.
 
-Deney başlamadan sistem metinleri, parser profilleri, gerçek model kimliği, ayarlar, çıktı limiti, beklenen sonuçlar ve çağrı programı dondurulur. Seed’in veri üreticisine mi yoksa sağlayıcı örneklemesine mi ait olduğu ayrıca belirtilir.
+Before the experiment starts, the system texts, parser profiles, real model ID, settings, output limit, expected results and call schedule are frozen. Whether the seed belongs to the data generator or to the provider sampling is stated separately.
 
-1. **Önce H: 20 yeni Sonnet 5.5 çağrısı.** Default effort, 64 iş, ilk 16 iş extract, `retry=0`, veri seed’leri 1005–1024. İş sırası korunur; çağrılar konuşma geçmişi paylaşmaz. Eski beş çağrı geçmiş kanıt olarak raporlanır, yeni kabul kapısına eklenmez.
+1. **First H: 20 new Sonnet 5.5 calls.** Default effort, 64 jobs, the first 16 jobs extract, `retry=0`, data seeds 1005-1024. The job order is kept; calls share no conversation history. The old five calls are reported as past evidence and are not added to the new acceptance gate.
 
-2. **Beş yeni 0.8-exec çağrısı.** Önceden seçilmiş beş seed’de aynı görevler kullanılır; eşleşen çağrıların sırası karıştırılır. Bunlar güncel maliyet ve gecikme karşılaştırması sağlar. Bunun 20’ye 20 eşleştirilmiş deney olmadığını açıkça raporlarız.
+2. **Five new 0.8-exec calls.** The same tasks are used on five pre-chosen seeds; the order of the matched calls is shuffled. These give a current cost and latency comparison. We state clearly that this is not a paired 20-to-20 experiment.
 
-3. **H’nin geçiş koşulları:** 20 çağrıda en fazla **bir başarısız paket**, aşağıdaki maliyet ve hız kapılarının geçilmesi. Başarılı paket, parser kabulü **ve 64/64 doğru sonuç** demektir. Gereksiz hata, gereksiz `unknown`, kesilme ve yanlış değer başarısızlıktır. İkinci başarısızlıkta kol erken durdurulabilir; erken başarı ilan edilmez.
+3. **Pass conditions for H:** at most **one failed packet** in 20 calls, and passing the cost and speed gates below. A successful packet means parser acceptance **and 64/64 correct results**. Needless errors, needless `unknown`, truncation and a wrong value are failures. At the second failure the arm may be stopped early; early success is not declared.
 
-4. **H uygun kalırsa beş heterojen Sonnet paketi.** İlk kayıtlar sırasıyla boş dizi, skaler, nesne, iç içe dizi ve gerçek hata olur. Paketlerin bütünü sıfır/çok referansı, izinli `unknown` ve dört hata kodunu kapsar. Hepsi doğru kabul edilmelidir.
+4. **If H stays suitable, five heterogeneous Sonnet packets.** The first records are, in order, an empty array, a scalar, an object, a nested array and a real error. Together the packets cover zero/many references, the permitted `unknown` and the four error codes. All must be accepted as correct.
 
-5. **H bütün kapıları geçerse H seçilir ve G’ye çağrı harcanmaz.** H kalırsa, verilen **G metni aynen**, başlıksız parser ile aynı 20 yeni-deneme koşulundan ve beş heterojen paketten geçirilir. Mevcut baseline çağrıları aynı model ve ayarlar korunduğunda yeniden kullanılır. G de kalırsa benimseme yoktur.
+5. **If H passes all gates, H is chosen and no call is spent on G.** If H fails, the given **G text as it is** is run through the same 20 new-trial condition and the five heterogeneous packets with the headerless parser. The existing baseline calls are reused if the same model and settings are kept. If G also fails, there is no adoption.
 
-Böylece **H geçerse karar 30 çağrıda**, G’ye geçmek gerekirse **en fazla 55 çağrıda** verilir; erken elemeler bunu azaltabilir. C’nin yeniden kazanma ihtimalini araştırmaya kota ayırmıyorum.
+So **if H passes, the decision is made in 30 calls**, and if we have to move to G, in **at most 55 calls**; early eliminations may reduce this. I am not setting aside quota to investigate the chance that C wins again.
 
-Bu eşik bilinçli bir regresyon filtresidir. Bağımsız ve aynı dağılımdan denemeler varsayımıyla, gerçek hata oranı %30 ise 20 denemede en fazla bir hata görme olasılığı yaklaşık **%0,76**; oran %5 ise **%73,6**. Fable’ın 25/2 eşiğine göre iyi adayı eleme ihtimali daha yüksektir; buna karşılık yeni gözlemlerde daha fazla maliyet payı bırakır.
+This threshold is a deliberate regression filter. Under the assumption of independent trials from the same distribution, if the real error rate is 30%, the probability of seeing at most one error in 20 trials is about **0.76%**; if the rate is 5%, **73.6%**. Compared with Fable's 25/2 threshold, the chance of eliminating a good candidate is higher; on the other hand it leaves more cost margin in new observations.
 
-**20/20 başarı bile %99 güvenilirliği kanıtlamaz:** sıfır hatada tek taraflı %95 hata oranı üst sınırı yaklaşık %13,9’dur. Bu ayrımı sonuç raporunda koruyacağız. [Binom güven aralıkları için NIST](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm).
+**Even 20/20 success does not prove 99% reliability:** with zero errors the one-sided 95% upper bound of the error rate is about 13.9%. We will keep this distinction in the result report. [NIST on binomial confidence intervals](https://www.itl.nist.gov/div898/handbook/prc/section2/prc241.htm).
 
-Maliyet, her kol ve iş yükü için şöyle raporlanır:
-
-```text
-C_requested = tüm çağrı tokenları / istenen iş sayısı
-
-C_verified = tüm çağrı tokenları /
-             tamamen doğru kabul edilen paketlerdeki iş sayısı
-```
-
-Ben daha açık ve muhafazakâr bir kapı öneriyorum:
+Cost is reported for each arm and workload as follows:
 
 ```text
-C_verified(aday) ≤ 0.65 × C_requested(0.8-exec)
+C_requested = total call tokens / number of requested jobs
+
+C_verified = total call tokens /
+             number of jobs in packets accepted as fully correct
 ```
 
-Bu, baseline’ın yanlış sonuçlarının tasarruf yüzdesini büyütmesini engeller; adayın başarısız çağrılarını da cezalandırır. Ayrıca iki kolun `C_verified` karşılaştırması raporlanır. **%35 geçiş kapısı, %40 hedef** olarak kalır. Thinking ve cache muhasebesi eksiksiz, çift sayılmadan dahil edilir.
+I propose a clearer and more conservative gate:
 
-Aynı mantıkla, çağrıların toplam `api_ms` değerinden hesaplanan **doğrulanmış iş başına süre**, baseline’ın istenen iş başına süresinden kötü olmamalıdır. Ortalama ve medyan da gösterilir. Bunlar küçük örneklemde gözlenen geçiş koşullarıdır; kesin hız üstünlüğü iddiası değildir.
+```text
+C_verified(candidate) ≤ 0.65 × C_requested(0.8-exec)
+```
 
-Diğer modeller konusunda Fable’ın kapsamı küçültmesine katılıyorum; ancak bu turdaki kararın sınırını açık tutuyorum. Seçilen aday için sonraki uyumluluk kontrolü:
+This stops the baseline's wrong results from enlarging the saving percentage; it also penalizes the candidate's failed calls. In addition, the `C_verified` comparison of the two arms is reported. **The 35% pass gate and the 40% target** stay. Thinking and cache accounting are included completely and without double counting.
 
-| Hücre | Standart tekrar | Heterojen paket |
+By the same logic, the **time per verified job**, computed from the total `api_ms` of the calls, must not be worse than the baseline's time per requested job. The mean and the median are also shown. These are pass conditions observed on a small sample; they are not a claim of firm speed superiority.
+
+On the other models I agree with Fable narrowing the scope; but I keep the limit of this round's decision open. The later compatibility check for the chosen candidate:
+
+| Cell | Standard repeats | Heterogeneous packets |
 |---|---:|---:|
-| Haiku 5.5, 64 iş | 10 | 5 |
-| Fable 5.1, 64 iş | 5 | 5 |
-| Luna medium, 64 iş | 5 | 5 |
-| Sonnet 5.5, 32 iş | 5 | — |
+| Haiku 5.5, 64 jobs | 10 | 5 |
+| Fable 5.1, 64 jobs | 5 | 5 |
+| Luna medium, 64 jobs | 5 | 5 |
+| Sonnet 5.5, 32 jobs | 5 | - |
 
-Bu **40 ek çağrıda sıfır başarısızlık** aranır. Tüm süreç H geçerse 70, G’ye geçilirse en fazla 95 çağrıdır. Bu küçük kontroller model uyumsuzluğu arar; model başına yüksek güvenilirlik veya %35–40 tasarruf kanıtlamaz. Başka bir model için tasarruf iddiası kurulacaksa, yalnız o hücreye eşleştirilmiş baseline ölçümü eklenir.
+In these **40 extra calls zero failures** are required. The whole process is 70 calls if H passes and at most 95 if we move to G. These small checks look for model incompatibility; they prove neither high reliability per model nor a 35-40% saving. If a saving claim is to be made for another model, a baseline measurement matched to that cell only is added.
 
-Son olarak, Fable’ın fallback’ini **otomatik sonraki karar olarak kabul etmiyorum**. Gerçek ID nesne anahtarı olacaksa `{"job_id":null,"error":[code,message]}` biçimi, iş ID’si `"error"` olduğunda çakışır. Gelecekte bütün kayıtları nesne yapmak gerekirse `{"id":"w","error":[code,message]}` gibi çakışmasız bir aday incelenebilir; şu anki deneye eklenmemelidir.
+Finally, I **do not accept** Fable's fallback as **the automatic next decision**. If the real ID is to be the object key, the form `{"job_id":null,"error":[code,message]}` collides when the job ID is `"error"`. If in the future all records have to become objects, a non-colliding candidate such as `{"id":"w","error":[code,message]}` can be examined; it must not be added to the present experiment.
 
-Fable’la H tercihi ve katı parser üzerinde yakınlaştık. Kalan görüş ayrılığım, **üç kollu yarış yerine H öncelikli sıralı deney; yeni 20 çağrıda en fazla bir hata; doğrudan ölçülen maliyet kapısı; otomatik fallback olmaması**dır.
+With Fable we have come closer on the H preference and the strict parser. My remaining disagreement is **an H-first sequential experiment instead of a three-arm race; at most one error in the new 20 calls; a directly measured cost gate; no automatic fallback.**
 
-Yerel okuma yine `helper_sandbox_lock_failed` nedeniyle açılamadı. Ham veri teşhisi Fable’ın aktarımına dayanıyor; sayısal hesapları burada yeniden yaptım. Canlı deney, dosya değişikliği veya commit yapılmadı. Sonraki adım, Fable’ın bu karar ve deney revizyonuna yanıtıdır.
+Local reading again could not be opened because of `helper_sandbox_lock_failed`. The raw-data diagnosis rests on Fable's report; I redid the numeric computations here. No live experiment, file change or commit was made. The next step is Fable's reply to this decision and experiment revision.
 
 
 ## Fable round 3
@@ -345,24 +347,24 @@ Totals: 70 calls if H passes, at most 95 if G is needed. Report per call: accept
 
 ## Astra round 3
 
-**Astra, Round 3: H’yi geri çekiyorum. G ana aday, GH başlık alternatifi, C yalnız tanısal kontrol olsun. Fable’ın üç kollu ekranını ve küçük doğrulama matrisini kabul ediyorum.** Aşağıdaki karar benim tarafımdan kabul edilmiştir; Fable’ın Round-3 yanıtını görmediğim için onun nihai onayını verilmiş gibi göstermiyorum.
+**Astra, Round 3: I withdraw H. G should be the main candidate, GH the header alternative, and C only a diagnostic control. I accept Fable's three-arm screen and the small validation matrix.** The decision below has been accepted by me; since I have not seen Fable's Round-3 reply, I do not present his final approval as given.
 
-Kalan ayrımları şöyle kapatıyorum:
+I close the remaining distinctions as follows:
 
-| Konu | Kabul ettiğim nihai karar |
+| Topic | The final decision I accept |
 |---|---|
-| Başlık hangi metne eklenir? | **G’ye.** GH, G’nin yalnız bir cümlesinin değiştirilmesidir. C+başlık olan H çekilmiştir. |
-| C kalır mı? | **20 çağrılık tanısal kontrol olarak kalır; benimsenme adayı değildir.** C’nin sıfır hata vermesi deneyi geçersiz kılmaz; kontrolün bu çalışmada tetiklenmediği raporlanır. |
-| Sıralı mı, paralel mi? | İlk aşamada **C/G/GH birlikte karşılaştırılır**, tekrar içindeki çağrı sırası karıştırılır. G veya GH önce denenip diğerinden vazgeçilmez. Gecikme ölçümü için aynı anda tek API çağrısı çalışır. |
-| Aday seçimi | Bütün ilk aşama kapılarını geçen **G önceliklidir**. G geçemez, GH geçerse GH seçilir. İkisi de geçemezse benimseme yoktur. |
-| Kabul eşiği | Sonnet-64 ve Haiku-64: **20 çağrıda en fazla 1 başarısız paket**. Diğer standart hücreler ve bütün heterojen paketler: **sıfır başarısızlık**. |
-| Token hedefi | Doğrulanmış iş başına **en az %35 azalma geçiş şartı; %40 hedef**. |
-| Hız | Başarısız çağrılar dahil doğrulanmış iş başına süre baseline’dan kötü olmayacak. |
-| Fallback | Mevcut **0.8-exec korunur**. İki adayın elenmesi yeni biçimi otomatik benimsetmez. Çakışmasız nesne hata biçimi sonraki deneyin adayıdır. |
+| Which text gets the header? | **G.** GH is a change of only one sentence of G. H, which was C+header, is withdrawn. |
+| Does C stay? | **It stays as a 20-call diagnostic control; it is not an adoption candidate.** C giving zero errors does not invalidate the experiment; it is reported that the control was not triggered in this study. |
+| Sequential or parallel? | In the first stage **C/G/GH are compared together**, and the call order within a repeat is shuffled. G or GH is not tried first and the other dropped. For the latency measurement only one API call runs at a time. |
+| Candidate choice | **G has priority** if it passes all first-stage gates. If G cannot pass and GH passes, GH is chosen. If neither passes, there is no adoption. |
+| Acceptance threshold | Sonnet-64 and Haiku-64: **at most 1 failed packet in 20 calls**. Other standard cells and all heterogeneous packets: **zero failures**. |
+| Token target | **At least a 35% reduction per verified job is the pass requirement; 40% is the target.** |
+| Speed | The time per verified job, failed calls included, must not be worse than the baseline. |
+| Fallback | The existing **0.8-exec is kept**. Eliminating both candidates does not automatically make the new format adopted. A non-colliding object error format is the candidate of the next experiment. |
 
-İlk-token açıklamasını güçlü tanı olarak kabul ediyorum; başlığın çözüm olduğu sonucunu deneyden önce kabul etmiyorum. Eski beş tekrar yalnız geçmiş kanıttır. Aynı içerikli yanıtlar farklı görev örnekleri sayılmaz; ayrı çağrıların kabul sonuçları yine ayrı kaydedilir.
+I accept the first-token explanation as a strong diagnosis; I do not accept before the experiment the conclusion that the header is the solution. The old five repeats are only past evidence. Replies with the same content are not counted as different task samples; the acceptance results of separate calls are still recorded separately.
 
-**Sistem metinleri aşağıdaki şekilde sabittir.** UTF-8, LF, BOM olmadan; kod bloklarının işaretleri metne dahil değildir.
+**The system texts are fixed as follows.** UTF-8, LF, no BOM; the code block markers are not part of the text.
 
 G:
 
@@ -402,19 +404,19 @@ Any malformed line or missing/duplicate/extra ID rejects the whole reply.
 Stop after the last record.
 ```
 
-GH’nin **tam tanımı**, G’de aşağıdaki cümlenin tek kez değiştirilmesidir; başka hiçbir bayt değişmez:
+The **full definition** of GH is a single replacement of the sentence below in G; no other byte changes:
 
 ```text
 Return one compact JSON record per job on its own line.
 ```
 
-yerine:
+is replaced by:
 
 ```text
 Return the line OZ/1g, then one compact JSON record per job on its own line.
 ```
 
-C kontrolü, Round-2’deki H metninin başlıksız halidir:
+The C control is the headerless form of the H text in Round-2:
 
 ```text
 You execute OZ/1g.
@@ -452,125 +454,125 @@ Any malformed nonblank line or missing, duplicate or extra ID rejects
 the whole reply. Stop after the last job.
 ```
 
-**Kontrol kimliği için önkoşul:** Bu C metni, live21’de kullanılan C artefaktıyla bayt düzeyinde karşılaştırılmalıdır. Eşleşmiyorsa onu eski pozitif kontrol diye adlandırarak deney başlatılmaz. Baseline da aynı şekilde mevcut `0.8-exec` artefaktından alınır; yeniden yazılmaz.
+**Precondition for the identity of the control:** This C text must be compared at the byte level with the C artifact used in live21. If they do not match, the experiment does not start with it named as the old positive control. The baseline is likewise taken from the existing `0.8-exec` artifact; it is not rewritten.
 
-Fable’ın bildirdiği GH sayımları **351 sistem tokenı; sistem+gövde 32 işte 999, 64 işte 1458**. Bunlar burada yeniden ölçülmüş sayılar değildir. Önceki **1019/1478** sınırları korunur; benim Round-2’deki bir tokenlık genişletmem geri çekilmiştir. Bu kapı seed 1000 referans paketine aittir; sağlayıcının gerçek toplam token ölçümünün yerine geçmez.
+The GH counts Fable reported are **351 system tokens; system+body 999 at 32 jobs and 1458 at 64 jobs**. These are not numbers measured again here. The earlier **1019/1478** limits are kept; my one-token widening in Round-2 is withdrawn. This gate belongs to the seed 1000 reference packet; it does not replace the provider's real total token measurement.
 
-**Parser profilleri:**
+**Parser profiles:**
 
-| Deney kolu | Önceden seçilecek profil |
+| Experiment arm | Profile to be chosen in advance |
 |---|---|
 | C | `oz1g-lines` |
 | G | `oz1g-lines` |
 | GH | `oz1g-header` |
-| 0.8-exec | Mevcut, değiştirilmemiş baseline parser’ı |
+| 0.8-exec | The existing, unchanged baseline parser |
 
-Gövde bütün C/G/GH çağrılarında `v:"1g"` kalır. **Profil yanıttan veya yalnız `v` değerinden algılanmaz; çağrı yapılandırmasında seçilir.**
+The body stays `v:"1g"` in all C/G/GH calls. **The profile is not detected from the reply or from the `v` value alone; it is chosen in the call configuration.**
 
-İki yeni profilin ortak sözleşmesi:
+The common contract of the two new profiles:
 
-1. İstek şeması, tekil string iş kimlikleri ve bütün indeksler çağrıdan önce doğrulanır.
-2. Yanıt LF ile bölünür; her satırın sonundaki en fazla bir CR kaldırılır. Son satır sonlandırıcısız olabilir. Tek başına CR ayırıcı değildir.
-3. Yalnız boş veya tamamen ASCII SP/TAB içeren satırlar atlanır. JSON dışındaki BOM, Unicode boşluğu veya Markdown temizlenmez.
-4. `oz1g-header` için ilk kalan satırın sonundaki SP/TAB kaldırıldıktan sonra satır tam olarak `OZ/1g` olmalıdır. Başta boşluk kabul edilmez. Başlık yalnız bir kez bulunabilir. `oz1g-lines` başlık kabul etmez.
-5. Her veri satırı, tamamı tüketilen tek JSON değeridir. Yorumlar, sondaki virgüller, ikinci JSON değeri, `NaN` ve `Infinity` reddedilir. Satır içindeki geçerli JSON boşlukları kabul edilir; `compact` üretim talimatıdır. Sözdizimi temeli [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259).
-6. İç içe nesneler dahil yinelenen anahtarlar, değerler ezilmeden reddedilir. Karşılaştırma JSON kaçışları çözüldükten sonra yapılır.
-7. Başarı tam bir üyeli nesnedir: anahtar beklenen ID, değer bütün sonuçtur. Her JSON sonuç türü geçerlidir; diziler düzleştirilmez.
-8. Hata tam dört öğeli dizidir: `[id,"error",code,message]`. Kod dört tanımlı koddan biridir. Mesaj string olmalı ve Unicode boşlukları dışında en az bir karakter içermelidir. Ek mesaj uzunluğu sınırı yoktur.
-9. Her beklenen ID tam bir kez bulunur. Kimlikler kırpılmaz, normalize edilmez veya dönüştürülmez. Bağlama ID üzerinden yapılır; çıktı sırası zorlanmaz. Sayılar sessizce yuvarlanmaz veya sonsuza çevrilmez.
-10. Bütün paket yapısal ve görev doğrulamasından geçmeden hiçbir sonuç teslim edilmez. Geçerli hata kaydı ancak görev için beklenen sonuçsa doğru sayılır. Onarım, açıklama silme, yeniden yazılmış son cevabı seçme veya eski biçime otomatik geçiş yoktur.
+1. The request schema, unique string job IDs and all indices are validated before the call.
+2. The reply is split on LF; at most one CR at the end of each line is removed. The last line may have no terminator. A lone CR is not a separator.
+3. Only lines that are empty or consist entirely of ASCII SP/TAB are skipped. BOM, Unicode whitespace or Markdown outside JSON are not cleaned.
+4. For `oz1g-header`, after the trailing SP/TAB of the first remaining line are removed, the line must be exactly `OZ/1g`. Leading whitespace is not accepted. The header can be present only once. `oz1g-lines` does not accept a header.
+5. Every data line is a single JSON value that is consumed entirely. Comments, trailing commas, a second JSON value, `NaN` and `Infinity` are rejected. Valid JSON whitespace inside a line is accepted; `compact` is a production instruction. Basis for the syntax: [RFC 8259](https://www.rfc-editor.org/rfc/rfc8259).
+6. Duplicate keys, including in nested objects, are rejected before values are overwritten. The comparison is made after JSON escapes are decoded.
+7. A success is an object with exactly one member: the key is the expected ID, the value is the whole result. Every JSON result type is valid; arrays are not flattened.
+8. An error is an array of exactly four elements: `[id,"error",code,message]`. The code is one of the four defined codes. The message must be a string and must contain at least one character other than Unicode whitespace. There is no extra limit on message length.
+9. Each expected ID is present exactly once. IDs are not trimmed, normalized or converted. Binding is done through the ID; the output order is not enforced. Numbers are not silently rounded or turned into infinity.
+10. No result is delivered before the whole packet passes the structural and task validation. A valid error record counts as correct only if it is the expected result for the task. There is no repair, no explanation stripping, no picking a rewritten final answer and no automatic move to the old format.
 
-API çağrılarından önce yerel parser kontrolleri; profil karışmasını, eksik/tekrarlı başlığı, yinelenen ve kaçışla eşdeğer anahtarları, eksik/fazla ID’leri, bozuk hata kayıtlarını, kesilmeyi ve bütün geçerli sonuç türlerini kapsar. Bunlar **API çağrısı tüketmez**.
+Before the API calls, the local parser checks cover profile mix-ups, a missing/repeated header, duplicate and escape-equivalent keys, missing/extra IDs, broken error records, truncation and all valid result types. These **consume no API calls**.
 
-**Dondurulacak deney planı toplam en fazla 159 yeni çağrıdır.**
+**The experiment plan to be frozen is at most 159 new calls in total.**
 
-| Aşama | Model / iş sayısı | Kol | Tekrar | Çağrı |
+| Stage | Model / job count | Arm | Repeats | Calls |
 |---|---|---|---:|---:|
-| 1 | Sonnet 5.5 / 64 | C, G, GH | Her biri 20 | 60 |
+| 1 | Sonnet 5.5 / 64 | C, G, GH | 20 each | 60 |
 | 1 | Sonnet 5.5 / 64 | 0.8-exec | 5 | 5 |
-| 2 | Haiku 5.5 / 64 | Seçilen aday | 20 | 20 |
-| 2 | Fable 5.1 / 64 | Seçilen aday | 10 | 10 |
-| 2 | Luna medium / 64 | Seçilen aday | 10 | 10 |
-| 2 | Sonnet 5.5 / 32 | Seçilen aday | 10 | 10 |
-| 2 | Yukarıdaki dört hücre | 0.8-exec | Hücre başına 5 | 20 |
-| 2 | Dört model / 64 | Seçilen aday, altı heterojen paket | Model başına 6 | 24 |
-| | | **Toplam** | | **159** |
+| 2 | Haiku 5.5 / 64 | Chosen candidate | 20 | 20 |
+| 2 | Fable 5.1 / 64 | Chosen candidate | 10 | 10 |
+| 2 | Luna medium / 64 | Chosen candidate | 10 | 10 |
+| 2 | Sonnet 5.5 / 32 | Chosen candidate | 10 | 10 |
+| 2 | The four cells above | 0.8-exec | 5 per cell | 20 |
+| 2 | Four models / 64 | Chosen candidate, six heterogeneous packets | 6 per model | 24 |
+| | | **Total** | | **159** |
 
-Buradaki **25 baseline çağrısı**, beş model×boyut hücresine beşer ölçümdür. Sonnet-32 için Sonnet-64 maliyetini kullanmayacağız. Fable’ın “yaklaşık 130” ikinci aşama hesabı yerine bu planın ikinci aşaması **94 çağrıdır**.
+The **25 baseline calls** here are five measurements each for five model×size cells. For Sonnet-32 we will not use the Sonnet-64 cost. Instead of Fable's "about 130" second-stage computation, the second stage of this plan is **94 calls**.
 
-Uygulama kuralları:
+Implementation rules:
 
-- İlk aşama veri seed’leri **1005–1024**; baseline eşleri **1005, 1009, 1013, 1017, 1021**.
-- İkinci aşama standart paketleri Haiku için **2005–2024**, diğer hücreler için **2005–2014**. Haiku baseline eşleri **2005, 2009, 2013, 2017, 2021**; diğerlerinde **2005, 2007, 2009, 2011, 2013**.
-- Bunlar **veri üreticisi seed’leridir**. Sağlayıcı örnekleme seed’i destekleniyorsa ayrıca kaydedilir; ikisi eşitlenmiş sayılmaz.
-- Aynı seed ve boyuttaki kollar aynı işleri ve beklenen sonuçları kullanır. İlk aşamada extract-first iş sırası korunur.
-- Her tekrar içindeki kol sırası önceden üretilip manifestte saklanır. Çağrılar bağımsız bağlamlarda, `retry=0` ile, eşzamanlılık 1 olacak şekilde çalışır.
-- Gerçek model kimliği, effort, sampling ayarları, çıktı limiti, timeout, SDK retry ayarı, cache politikası ve token muhasebesi ilk çağrıdan önce sabitlenir.
-- Sistem metinleri, girdiler, oracle, parser/validator sürümleri ve çağrı programı hash’lenir. Sonuç görüldükten sonra değiştirilmez.
-- İlk aşamadaki 65 çağrı tamamlanır. Uygun aday yoksa durulur. İkinci aşamada geri dönülmez bir kapı ihlalinde erken durulabilir; erken başarı ilan edilmez. Seçilen aday ikinci aşamada kalırsa diğer aday sessizce yerine geçirilmez.
+- The first-stage data seeds are **1005-1024**; the baseline pairs are **1005, 1009, 1013, 1017, 1021**.
+- The second-stage standard packets are **2005-2024** for Haiku and **2005-2014** for the other cells. The Haiku baseline pairs are **2005, 2009, 2013, 2017, 2021**; for the others **2005, 2007, 2009, 2011, 2013**.
+- These are **data generator seeds**. If a provider sampling seed is supported, it is recorded separately; the two are not counted as equalized.
+- Arms with the same seed and size use the same jobs and expected results. In the first stage the extract-first job order is kept.
+- The arm order inside each repeat is generated in advance and stored in the manifest. Calls run in independent contexts, with `retry=0` and concurrency 1.
+- The real model ID, effort, sampling settings, output limit, timeout, SDK retry setting, cache policy and token accounting are fixed before the first call.
+- The system texts, inputs, oracle, parser/validator versions and call schedule are hashed. They are not changed after a result is seen.
+- The 65 calls of the first stage are completed. If there is no suitable candidate, we stop. In the second stage we may stop early on an irreversible gate violation; early success is not declared. If the chosen candidate stays in the second stage, the other candidate is not silently put in its place.
 
-**Altı heterojen paket**, her modelde 64 iş içerir:
+The **six heterogeneous packets** each contain 64 jobs for every model:
 
-| Paket | Beklenen sonuç ailesi |
+| Packet | Expected result family |
 |---|---|
-| P1 | Boş olmayan diziler |
-| P2 | Boş diziler |
-| P3 | Skalerler; izinli görev tanımlı `unknown` dahil |
-| P4 | Nesneler |
-| P5 | İç içe diziler |
-| P6 | Gerçek hatalar; dört hata kodundan 16’şar iş |
+| P1 | Non-empty arrays |
+| P2 | Empty arrays |
+| P3 | Scalars; including the permitted task-defined `unknown` |
+| P4 | Objects |
+| P5 | Nested arrays |
+| P6 | Real errors; 16 jobs for each of the four error codes |
 
-Paketler birlikte sıfır/çok referansı, sıra bağımlı referans kullanımını, kaçışları ve `"error"` gibi iş kimliklerini kapsar. Her işin beklenen sonucu çağrıdan önce sabitlenir; hata mesajlarında tam cümle eşitliği yerine doğru kod ve sözleşmeye uygun mesaj aranır.
+Together the packets cover zero/many references, order-dependent reference use, escapes and job IDs such as `"error"`. The expected result of every job is fixed before the call; for error messages, instead of full sentence equality, the correct code and a message that fits the contract are looked for.
 
-**Önemli düzeltme:** Parser çıktı sırasını zorlamadığı için ilk istek satırına hata koymak, ilk çıktı kaydının hata olmasını garanti etmez. Bu nedenle P6’daki bütün işler beklenen hata üretir. Böylece başlıksız doğru yanıtın ilk veri karakteri gerçekten `[` olmak zorundadır. GH’de aynı kontrol başlıktan sonraki ilk veri kaydına uygulanır.
+**Important correction:** Because the parser does not enforce the output order, putting an error in the first request row does not guarantee that the first output record is an error. For this reason all jobs in P6 produce the expected error. So the first data character of a correct headerless reply must really be `[`. In GH the same check is applied to the first data record after the header.
 
-**Geçiş ve seçim kapıları:**
+**Pass and selection gates:**
 
-Başarılı çağrı = parser kabulü **ve paketteki bütün işlerin doğru olmasıdır**. Yanlış değer, gereksiz hata/unknown, eksik iş ve kesilme başarısız pakettir.
+A successful call = parser acceptance **and all jobs in the packet being correct**. A wrong value, needless error/unknown, a missing job and truncation are a failed packet.
 
-- İlk aşamada G ve GH ayrı ayrı **en az 19/20**, token kapısı ve hız kapısını sağlamalıdır.
-- G uygunsa G; yalnız GH uygunsa GH seçilir. İkisinin de uygun olması G’nin istatistiksel üstünlüğü demek değildir; önceden belirlenmiş tercih G’dir.
-- İkinci aşamada Haiku **en az 19/20**; Fable, Luna ve Sonnet-32 **10/10**; heterojen paketler **24/24** olmalıdır.
-- Her baseline hücresi **5/5 doğru kabul** sağlamalıdır. Sağlamazsa o hücrenin karşılaştırması sonuçsuzdur; başarısız baseline tasarrufu büyütmek için kullanılmaz.
+- In the first stage G and GH must each reach **at least 19/20** and meet the token gate and the speed gate.
+- If G is suitable, G; if only GH is suitable, GH is chosen. Both being suitable does not mean statistical superiority of G; the pre-set preference is G.
+- In the second stage Haiku must reach **at least 19/20**; Fable, Luna and Sonnet-32 **10/10**; the heterogeneous packets **24/24**.
+- Every baseline cell must achieve **5/5 correct acceptance**. If it does not, the comparison of that cell is inconclusive; a failed baseline is not used to enlarge the saving.
 
-Her standart model×boyut hücresinde, başarısız çağrılar dahil:
+In every standard model×size cell, failed calls included:
 
 ```text
-C_requested = toplam token / istenen iş sayısı
+C_requested = total tokens / number of requested jobs
 
-C_verified = toplam token /
-             tamamen doğru kabul edilen paketlerdeki iş sayısı
+C_verified = total tokens /
+             number of jobs in packets accepted as fully correct
 
-Token kapısı:
-C_verified(aday) <= 0.65 * C_requested(0.8-exec)
+Token gate:
+C_verified(candidate) <= 0.65 * C_requested(0.8-exec)
 
-Hız kapısı:
-toplam api_ms(aday) / doğrulanmış iş sayısı
-    <= toplam api_ms(0.8-exec) / istenen iş sayısı
+Speed gate:
+total api_ms(candidate) / number of verified jobs
+    <= total api_ms(0.8-exec) / number of requested jobs
 ```
 
-Her hücre ayrı geçmelidir; iyi bir model kötü olanı ortalamada saklayamaz. Ayrıca iki tarafın `C_verified` karşılaştırması, ilk deneme kabul oranı, ortalama/medyan gecikme ve faturalandırılan maliyet raporlanır. **Doğrulanmış iş başına parasal maliyet de baseline’dan yüksek olmayacaktır.**
+Each cell must pass separately; a good model cannot hide a bad one in the average. In addition, the `C_verified` comparison of the two sides, the first-attempt acceptance rate, the mean/median latency and the billed cost are reported. **The monetary cost per verified job must also not be higher than the baseline's.**
 
-Thinking ve cache tokenları sağlayıcının muhasebesine göre **bir kez** sayılır; cache indirimi token azalması gibi gösterilmez. Eksik kullanım kaydı ekonomik kapıyı doğrulanamaz yapar. Beş baseline tekrarı gözlenen karşılaştırma sağlar; kesin hız üstünlüğü iddiası sağlamaz.
+Thinking and cache tokens are counted **once** according to the provider's accounting; a cache discount is not shown as a token reduction. A missing usage record makes the economic gate unverifiable. Five baseline repeats give an observed comparison; they do not give a claim of firm speed superiority.
 
-Bu ekonomik kapılar standart iş yükleri içindir. Heterojen paketler doğruluk/uyumluluk kontrolüdür; eş baseline’ları olmadığı için onlar hakkında ayrıca %35 tasarruf iddiası kurulmaz. C ve elenen kol dahil bütün deney harcaması da ayrı toplam olarak raporlanır.
+These economic gates are for standard workloads. The heterogeneous packets are an accuracy/compatibility check; since they have no paired baselines, no separate 35% saving claim is made about them. All experiment spend, including C and the eliminated arm, is also reported as a separate total.
 
-**Güvenilirlik iddiasını sınırlı tutuyoruz:** 20 çağrıda en fazla bir hata eşiğinin geçilme olasılığı, bağımsız denemelerde gerçek hata oranı %30 ise yaklaşık **%0,76**, %5 ise **%73,58**. Ancak **20/20 bile %99 güvenilirliği kanıtlamaz**; sıfır hatada tek taraflı %95 üst hata sınırı yaklaşık %13,91’dir. Bu deney bir benimseme filtresidir.
+**We keep the reliability claim limited:** the probability of passing the threshold of at most one error in 20 calls is, in independent trials, about **0.76%** if the real error rate is 30% and **73.58%** if it is 5%. But **even 20/20 does not prove 99% reliability**; with zero errors the one-sided 95% upper error bound is about 13.91%. This experiment is an adoption filter.
 
-Son fallback itirazım somuttur: dinamik ID anahtarı kullanan
+My last fallback objection is concrete: the form that uses a dynamic ID key
 
 ```text
 {"job_id":null,"error":[code,message]}
 ```
 
-biçimi, gerçek ID `"error"` olduğunda çakışır. Sonraki deneyin hata adayı bunun yerine:
+collides when the real ID is `"error"`. The error candidate of the next experiment should be this instead:
 
 ```json
 {"id":"w","error":["missing_data","Required input absent"]}
 ```
 
-olmalıdır. Başarı tek üyeli dinamik-ID nesnesi, hata iki sabit üyeli nesne olur; `"id"` veya `"error"` iş kimlikleri çakışma yaratmaz. Bu biçim **ayrı wire sürümü ve parser gerektirir; mevcut 159 çağrılık deneye dahil değildir**.
+A success is a one-member dynamic-ID object, an error is an object with two fixed members; the job IDs `"id"` or `"error"` do not create a collision. This form **needs a separate wire version and parser; it is not part of the existing 159-call experiment**.
 
-Benim tarafımda C/G/GH, eşikler veya deney sırası konusunda itiraz kalmadı. **Fable’ın eski fallback’i aynen korumak istemesi halinde kalan en küçük teknik anlaşmazlık bu ID çakışmasıdır.**
+On my side no objection remains about C/G/GH, the thresholds or the experiment order. **If Fable wants to keep the old fallback as it is, the smallest remaining technical disagreement is this ID collision.**
 
-Bu turda deney veya dosya değişikliği yapılmadı. Yerel okuma `helper_sandbox_lock_failed` ile engellendi; ham veri ve tokenizer sayımları Fable’ın aktarımına dayanıyor. Devam adımı, bu sözleşmenin gerçek artefaktlarla eşleştirilip manifestinin dondurulmasıdır.
+No experiment or file change was made in this round. Local reading was blocked by `helper_sandbox_lock_failed`; the raw data and tokenizer counts rest on Fable's report. The next step is to match this contract with the real artifacts and freeze its manifest.
