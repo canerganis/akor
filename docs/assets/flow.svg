@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="t d">
   <title id="t">How AKOR moves work between agents</title>
-  <desc id="d">Ready jobs from several agents are packed into one worker call. The model answers one line per job. Each valid line is accepted on its own; one bad line sends only its own job back to the queue.</desc>
+  <desc id="d">Ready jobs from several agents are packed into one call; the model answers one record per job, keyed by job ID; the host checks the whole reply before it delivers anything. A malformed reply is rejected and the batch is retried; a valid error record fails only its own job; host-only work such as read and test never reaches the model.</desc>
   <style>
     .bg { fill: #fcfcfb; }
     .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
@@ -11,13 +11,15 @@
     .job { fill: #2a78d6; }
     .job-host { fill: #8a8984; }
     .wire { stroke: #b9b8b2; stroke-width: 2; fill: none; stroke-dasharray: 6 6; animation: dash 1.2s linear infinite; }
+    .retry { stroke: #b45f00; stroke-width: 2; fill: none; stroke-dasharray: 6 6; animation: dash 1.2s linear infinite; }
     .packet { fill: #2a78d6; }
     .ok { fill: #1a7f4b; }
     .warn { fill: #b45f00; }
     .line { fill: #f3f2ee; stroke: #e2e1dc; }
+    .errline { stroke: #b45f00; stroke-width: 1.5; }
     @keyframes dash { to { stroke-dashoffset: -24; } }
 
-    /* 9 s loop: jobs gather (0-25%), one call (25-45%), lines return (45-80%), accept + one retry (80-100%) */
+    /* 9 s loop: jobs gather (0-25%), one call (25-45%), reply returns (45-80%), whole-reply check and delivery (80-100%) */
     .j { animation: gather 9s ease-in-out infinite; }
     @keyframes gather {
       0%, 6% { transform: translate(0, 0); opacity: 1; }
@@ -28,8 +30,8 @@
     @keyframes pk {
       0%, 22% { opacity: 0; transform: translateX(0) scale(.9); }
       27% { opacity: 1; transform: translateX(0) scale(1); }
-      42% { opacity: 1; transform: translateX(250px) scale(1); }
-      46%, 100% { opacity: 0; transform: translateX(250px) scale(.9); }
+      42% { opacity: 1; transform: translateX(238px) scale(1); }
+      46%, 100% { opacity: 0; transform: translateX(238px) scale(.9); }
     }
     .model-glow { animation: glow 9s ease-in-out infinite; }
     @keyframes glow {
@@ -43,13 +45,6 @@
     }
     .mark { opacity: 0; animation: mark 9s ease-out infinite; }
     @keyframes mark { 0%, 80% { opacity: 0; } 84%, 96% { opacity: 1; } 100% { opacity: 0; } }
-    .back { opacity: 0; animation: back 9s ease-in-out infinite; }
-    @keyframes back {
-      0%, 84% { opacity: 0; transform: translate(0, 0); }
-      86% { opacity: 1; transform: translate(0, 0); }
-      97% { opacity: 1; transform: translate(-632px, -150px); }
-      100% { opacity: 0; transform: translate(-632px, -150px); }
-    }
 
     @media (prefers-color-scheme: dark) {
       .bg { fill: #1a1a19; }
@@ -59,12 +54,14 @@
       .job, .packet { fill: #3987e5; }
       .job-host { fill: #75746f; }
       .wire { stroke: #55554f; }
+      .retry { stroke: #e08a1e; }
       .ok { fill: #3cb371; }
       .warn { fill: #e08a1e; }
       .line { fill: #2b2b29; stroke: #3a3a38; }
+      .errline { stroke: #e08a1e; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .j, .pk, .model-glow, .ln, .mark, .back, .wire { animation: none; }
+      .j, .pk, .model-glow, .ln, .mark, .wire, .retry { animation: none; }
       .ln, .mark { opacity: 1; }
     }
   </style>
@@ -72,65 +69,84 @@
   <rect class="bg" width="960" height="360" rx="16"/>
 
   <!-- Column 1: ready jobs -->
-  <rect class="panel" x="24" y="56" width="236" height="272" rx="12"/>
+  <rect class="panel" x="24" y="56" width="180" height="214" rx="12"/>
   <text class="ink sans" x="40" y="44" font-size="15" font-weight="600">1  Ready jobs</text>
-  <text class="ink2 sans" x="40" y="318" font-size="12">from planner, reviewer, coder</text>
-
-  <g class="sans" font-size="12">
-    <g class="j" style="--dx:118px; --dy:62px"><rect class="job" x="44" y="76" width="88" height="26" rx="6"/><text x="56" y="93" fill="#fff">extract 0</text></g>
-    <g class="j" style="--dx:18px; --dy:62px"><rect class="job" x="144" y="76" width="96" height="26" rx="6"/><text x="156" y="93" fill="#fff">bounds 0</text></g>
-    <g class="j" style="--dx:118px; --dy:24px"><rect class="job" x="44" y="114" width="88" height="26" rx="6"/><text x="56" y="131" fill="#fff">review 1</text></g>
-    <g class="j" style="--dx:18px; --dy:24px"><rect class="job" x="144" y="114" width="96" height="26" rx="6"/><text x="156" y="131" fill="#fff">propose 2</text></g>
-    <g class="j" style="--dx:118px; --dy:-14px"><rect class="job" x="44" y="152" width="88" height="26" rx="6"/><text x="56" y="169" fill="#fff">classify 3</text></g>
-    <g class="j" style="--dx:18px; --dy:-14px"><rect class="job" x="144" y="152" width="96" height="26" rx="6"/><text x="156" y="169" fill="#fff">extract 4</text></g>
-    <g><rect class="job-host" x="44" y="206" width="196" height="26" rx="6"/><text x="56" y="223" fill="#fff">read · test · status → host, no call</text></g>
+  <g class="sans" font-size="11">
+    <g class="j" style="--dx:226px; --dy:26px"><rect class="job" x="36" y="74" width="76" height="24" rx="6"/><text x="44" y="90" fill="#fff">j1 extract</text></g>
+    <g class="j" style="--dx:226px; --dy:26px"><rect class="job" x="120" y="74" width="76" height="24" rx="6"/><text x="128" y="90" fill="#fff">j2 bounds</text></g>
+    <g class="j" style="--dx:226px; --dy:24px"><rect class="job" x="36" y="106" width="76" height="24" rx="6"/><text x="44" y="122" fill="#fff">j3 review</text></g>
+    <g class="j" style="--dx:226px; --dy:24px"><rect class="job" x="120" y="106" width="76" height="24" rx="6"/><text x="128" y="122" fill="#fff">j4 propose</text></g>
+    <g class="j" style="--dx:226px; --dy:22px"><rect class="job" x="36" y="138" width="76" height="24" rx="6"/><text x="44" y="154" fill="#fff">j5 classify</text></g>
+    <g class="j" style="--dx:226px; --dy:22px"><rect class="job" x="120" y="138" width="76" height="24" rx="6"/><text x="128" y="154" fill="#fff">j6 plan</text></g>
+    <g><rect class="job-host" x="36" y="186" width="156" height="24" rx="6"/><text x="46" y="202" fill="#fff">read · test: no call</text></g>
   </g>
-  <text class="ink2 sans" x="44" y="262" font-size="12">deterministic work never reaches</text>
-  <text class="ink2 sans" x="44" y="278" font-size="12">a model</text>
+  <text class="ink2 sans" x="36" y="232" font-size="11">host-only work never</text>
+  <text class="ink2 sans" x="36" y="246" font-size="11">reaches a model</text>
+  <text class="ink2 sans" x="36" y="262" font-size="11">planner · reviewer · coder</text>
 
   <!-- wire 1 -> 2 -->
-  <path class="wire" d="M262 190 H 318"/>
+  <path class="wire" d="M206 163 H 230"/>
 
-  <!-- Column 2: one call -->
-  <rect class="panel" x="320" y="56" width="236" height="272" rx="12"/>
-  <text class="ink sans" x="336" y="44" font-size="15" font-weight="600">2  One call, many jobs</text>
+  <!-- Column 2: one packet -->
+  <rect class="panel" x="232" y="56" width="210" height="214" rx="12"/>
+  <text class="ink sans" x="248" y="44" font-size="15" font-weight="600">2  One call</text>
   <g class="pk">
-    <rect class="packet" x="340" y="140" width="196" height="96" rx="10"/>
-    <text class="mono" x="356" y="168" font-size="12" fill="#fff">{"goal":…,"d":{…},</text>
-    <text class="mono" x="356" y="186" font-size="12" fill="#fff"> "c":{"0":…},</text>
-    <text class="mono" x="356" y="204" font-size="12" fill="#fff"> "j":["extract 0",…]}</text>
-    <text class="sans" x="356" y="226" font-size="11" fill="#dbe8f8">rules once · refs once</text>
+    <rect class="packet" x="248" y="92" width="186" height="108" rx="10"/>
+    <text class="mono" x="260" y="120" font-size="11" fill="#fff">{"v":"1g","goal":…,</text>
+    <text class="mono" x="260" y="138" font-size="11" fill="#fff"> "ops":[…],"refs":[…],</text>
+    <text class="mono" x="260" y="156" font-size="11" fill="#fff"> "jobs":[[0,["j1",0],…]]}</text>
+    <text class="sans" x="260" y="184" font-size="11" fill="#dbe8f8">goal, ops, refs once</text>
   </g>
-  <text class="ink2 sans" x="336" y="290" font-size="12">shared rules and inputs sent once,</text>
-  <text class="ink2 sans" x="336" y="306" font-size="12">not repeated per job</text>
+  <text class="ink2 sans" x="248" y="236" font-size="11">shared parts written once,</text>
+  <text class="ink2 sans" x="248" y="250" font-size="11">jobs refer to them by index</text>
 
   <!-- wire 2 -> 3 -->
-  <path class="wire" d="M558 190 H 614"/>
+  <path class="wire" d="M444 163 H 468"/>
 
-  <!-- Column 3: model reply, accepted per line -->
-  <rect class="panel" x="616" y="56" width="320" height="272" rx="12"/>
-  <rect class="model-glow" x="616" y="56" width="320" height="272" rx="12" fill="none" stroke="#2a78d6" stroke-width="3"/>
-  <text class="ink sans" x="632" y="44" font-size="15" font-weight="600">3  One line per job, accepted per line</text>
-
-  <g class="mono" font-size="12">
-    <g class="ln" style="--t:0s"><rect class="line" x="636" y="80" width="230" height="28" rx="6"/><text class="ink" x="648" y="99">[0,["12.50 mm","0.02 mm"]]</text></g>
-    <g class="ln" style="--t:.15s"><rect class="line" x="636" y="116" width="230" height="28" rx="6"/><text class="ink" x="648" y="135">[1,["12.48 mm","12.52 mm"]]</text></g>
-    <g class="ln" style="--t:.3s"><rect class="line" x="636" y="152" width="230" height="28" rx="6"/><text class="ink" x="648" y="171">[2,"Looks safe: API kept"]</text></g>
-    <g class="ln" style="--t:.45s"><rect class="line" x="636" y="188" width="230" height="28" rx="6"/><text class="ink" x="648" y="207">[3,"Plan: 3 steps"]</text></g>
-    <g class="ln" style="--t:.6s"><rect class="line" x="636" y="224" width="230" height="28" rx="6"/><text class="ink" x="648" y="243">[4,"inside"]</text></g>
-    <g class="ln" style="--t:.75s"><rect class="line" x="636" y="260" width="230" height="28" rx="6"/><text class="ink" x="648" y="279">[5,"12.4</text></g>
+  <!-- Column 3: model reply keyed by job ID -->
+  <rect class="panel" x="470" y="56" width="230" height="214" rx="12"/>
+  <rect class="model-glow" x="470" y="56" width="230" height="214" rx="12" fill="none" stroke="#2a78d6" stroke-width="3"/>
+  <text class="ink sans" x="486" y="44" font-size="15" font-weight="600">3  Model replies</text>
+  <g class="mono" font-size="11">
+    <g class="ln" style="--t:0.00s"><rect class="line" x="486" y="70" width="198" height="21" rx="5"/><text class="ink" x="496" y="85">OZ/1g</text></g>
+    <g class="ln" style="--t:0.12s"><rect class="line" x="486" y="96" width="198" height="21" rx="5"/><text class="ink" x="496" y="111">{"j1":"12.50 mm"}</text></g>
+    <g class="ln" style="--t:0.24s"><rect class="line" x="486" y="121" width="198" height="21" rx="5"/><text class="ink" x="496" y="136">{"j2":"inside"}</text></g>
+    <g class="ln" style="--t:0.36s"><rect class="line" x="486" y="146" width="198" height="21" rx="5"/><text class="ink" x="496" y="161">{"j3":"Looks safe"}</text></g>
+    <g class="ln" style="--t:0.48s"><rect class="line errline" x="486" y="171" width="198" height="21" rx="5"/><text class="ink" x="496" y="186">["j4","error",…]</text></g>
+    <g class="ln" style="--t:0.60s"><rect class="line" x="486" y="196" width="198" height="21" rx="5"/><text class="ink" x="496" y="211">{"j5":["a","b"]}</text></g>
+    <g class="ln" style="--t:0.72s"><rect class="line" x="486" y="221" width="198" height="21" rx="5"/><text class="ink" x="496" y="236">{"j6":"Plan: 3 steps"}</text></g>
   </g>
+  <text class="ink2 sans" x="486" y="262" font-size="11">one record per job, keyed by ID</text>
 
-  <g class="sans" font-size="12" font-weight="600">
-    <g class="mark"><circle class="ok" cx="888" cy="94" r="10"/><path d="M883 94 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
-    <g class="mark"><circle class="ok" cx="888" cy="130" r="10"/><path d="M883 130 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
-    <g class="mark"><circle class="ok" cx="888" cy="166" r="10"/><path d="M883 166 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
-    <g class="mark"><circle class="ok" cx="888" cy="202" r="10"/><path d="M883 202 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
-    <g class="mark"><circle class="ok" cx="888" cy="238" r="10"/><path d="M883 238 l4 4 l7 -8" stroke="#fff" stroke-width="2.2" fill="none"/></g>
-    <g class="mark"><circle class="warn" cx="888" cy="274" r="10"/><text x="884" y="279" fill="#fff">!</text></g>
-    <g class="mark"><text class="ink2" x="790" y="318" font-weight="400">broken line: only job 5 retries</text></g>
+  <!-- wire 3 -> 4 -->
+  <path class="wire" d="M702 163 H 726"/>
+
+  <!-- Column 4: host checks the whole reply -->
+  <rect class="panel" x="728" y="56" width="208" height="214" rx="12"/>
+  <text class="ink sans" x="744" y="44" font-size="15" font-weight="600">4  Host checks it all</text>
+  <g>
+    <g class="mark"><circle class="ok" cx="752" cy="90" r="8"/><path d="M748 90 l3 3 l6 -7" stroke="#fff" stroke-width="2" fill="none"/></g>
+    <text class="ink sans" x="766" y="94" font-size="11">each ID once, none extra</text>
+    <g class="mark"><circle class="ok" cx="752" cy="120" r="8"/><path d="M748 120 l3 3 l6 -7" stroke="#fff" stroke-width="2" fill="none"/></g>
+    <text class="ink sans" x="766" y="124" font-size="11">every line valid JSON</text>
+    <g class="mark"><circle class="ok" cx="752" cy="150" r="8"/><path d="M748 150 l3 3 l6 -7" stroke="#fff" stroke-width="2" fill="none"/></g>
+    <text class="ink sans" x="766" y="154" font-size="11">no prose around records</text>
+    <g class="mark"><rect class="ok" x="744" y="170" width="176" height="34" rx="8"/><text class="sans" x="756" y="192" font-size="12" font-weight="600" fill="#fff">5 delivered, j4 failed</text></g>
   </g>
+  <text class="ink2 sans" x="744" y="230" font-size="11">nothing is delivered before</text>
+  <text class="ink2 sans" x="744" y="244" font-size="11">the whole reply passes</text>
 
-  <!-- the retried job travels back to the queue -->
-  <g class="back sans" font-size="12"><rect class="warn" x="676" y="262" width="88" height="26" rx="6"/><text x="688" y="279" fill="#fff">extract 5</text></g>
+  <!-- side path: rejected reply, batch retried -->
+  <path class="retry" d="M790 272 V 282 H 337 V 276"/>
+  <path class="warn" d="M331 276 H 343 L 337 268 Z"/>
+
+  <rect class="panel" x="24" y="292" width="440" height="56" rx="12"/>
+  <circle class="warn" cx="48" cy="320" r="10"/><text class="sans" x="44" y="325" font-size="13" font-weight="700" fill="#fff">!</text>
+  <text class="ink sans" x="68" y="315" font-size="12" font-weight="600">Malformed line, or a missing, duplicate or extra ID</text>
+  <text class="ink2 sans" x="68" y="332" font-size="12">One bad line rejects the reply; the batch is retried (default 2 attempts).</text>
+
+  <rect class="panel" x="484" y="292" width="452" height="56" rx="12"/>
+  <circle class="warn" cx="508" cy="320" r="10"/><text class="sans" x="504" y="325" font-size="13" font-weight="700" fill="#fff">!</text>
+  <text class="ink sans" x="528" y="315" font-size="12" font-weight="600">Valid error record, e.g. ["j4","error",…]</text>
+  <text class="ink2 sans" x="528" y="332" font-size="12">Only that job fails; the other records are still delivered.</text>
 </svg>

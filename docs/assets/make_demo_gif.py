@@ -1,6 +1,6 @@
 """Render docs/assets/demo.gif: a terminal session replaying real CLI output (trimmed with "…").
 
-Run with any Python that has Pillow:  python docs/assets/make_demo_gif.py
+Run with any Python that has Pillow (not in .venv):  python docs/assets/make_demo_gif.py
 """
 from pathlib import Path
 
@@ -16,7 +16,7 @@ BOLD = FONT
 
 # Each scene: a command typed at the prompt, then output lines with a colour tag.
 SCENES = [
-    ('oz init team --kind patch --source fix.diff --procedure checks.txt', [
+    ('oz init team --goal "Review the patch" --kind patch --source fix.diff --procedure checks.txt', [
         ('dim', '{ "workspace": "team", "channels": ["worker", "reviewer"], "adapter_executed": false }'),
     ]),
     ('oz send V --id review --workspace team', [
@@ -24,19 +24,25 @@ SCENES = [
         ('note', '# V = read + audit + test; read and test run on the host'),
     ]),
     ('oz plan --show-prompt --workspace team', [
-        ('dim', '{ "mode": "named", "input_tokens": [400], …'),
+        ('dim', '{ "ids": ["review"], "mode": "named", "input_tokens": [465], …'),
+        ('dim', '  "system": "You execute OZ/1g. … Reply with the line OZ/1g, then one compact JSON'),
+        ('dim', '             record per job on its own line. … Any malformed nonblank line … rejects'),
+        ('dim', '             the whole reply. Stop after the last job.",'),
         ('dim', '  "prompt": {'),
-        ('json', '    "goal": "Review the timeout patch; keep the public API.",'),
-        ('json', '    "d": { "audit": "Review the supplied patch for defects …" },'),
-        ('json', '    "c": { "0": { "input": "--- a/retry.py … TIMEOUT = 5" } },'),
-        ('key',  '    "j": ["audit 0"]'),
+        ('json', '    "v": "1g", "goal": "Review the patch",'),
+        ('json', '    "ops":  ["Review the supplied patch for defects …"],'),
+        ('json', '    "refs": ["--- a/retry.py … +TIMEOUT = 30"],'),
+        ('key',  '    "jobs": [[0, ["review", 0]]]'),
         ('dim', '  } }'),
-        ('note', '# 3 steps requested, 1 job reaches the model'),
+        ('note', '# goal, ops and refs written once; jobs point at them by index'),
     ]),
     ('oz demo ./demo', [
         ('dim', '{ "actual_model_calls": 0, "reviewer_initially_waited": true,'),
-        ('dim', '  "worker":   { "mode": "named", "reply_mode": "jsonl", "outcomes": { "read": "ok", "propose": "ok" } },'),
-        ('dim', '  "reviewer": { "mode": "host", "adapter_calls": 0, … } }'),
+        ('dim', '  "worker":   { "wire": "stage-1g", "mode": "named", "adapter_calls": 1,'),
+        ('dim', '                "outcomes": { "read": "ok", "propose": "ok" } },'),
+        ('dim', '  "reviewer": { "mode": "host", "adapter_calls": 0, "outcomes": { "review": "ok" } },'),
+        ('dim', '  "states": { "done": 4 } }'),
+        ('note', '# one stdio adapter call for the whole batch; no model was called'),
     ]),
     ('oz status --workspace ./demo', [
         ('ok', 'Durum: done=4'),
@@ -56,7 +62,7 @@ def frame(lines, cursor=None):
     d.rectangle([0, 0, W, 40], fill=BAR)
     for i, c in enumerate(('#ff5f57', '#febc2e', '#28c840')):
         d.ellipse([18 + i * 22, 14, 30 + i * 22, 26], fill=c)
-    d.text((W // 2, 20), 'akor  ·  ÖZ worker protocol', fill=DIM, font=FONT, anchor='mm')
+    d.text((W // 2, 20), 'akor  ·  OZ/1g worker protocol', fill=DIM, font=FONT, anchor='mm')
     visible = lines[-((H - 60) // LINE):]
     y = 56
     for kind, text in visible:
