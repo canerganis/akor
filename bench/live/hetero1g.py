@@ -247,9 +247,26 @@ PACKETS = {
 for _k, (_goal, _ops) in PACKETS.items():
     assert sum(c for _, c, _ in _ops) == N, _k
 
+# Revision 2 (docs/design/stage-1g-D-repair.md): ops that needed a fact outside the op text and the refs, under the
+# goal "Answer from the supplied refs only.", now carry their data in the op text. Expected values, data, seeds and
+# job IDs are unchanged; packet(k, rev=1) still rebuilds the packets the stage B and D records were judged on.
+REV2 = {(1, 4): 'From the JSON array [["jan",31],["feb",28],["mar",31]] of [month, days] pairs, return the months '
+                'whose days exceed 31, as a JSON array of strings.',
+        (2, 0): 'Return the number of elements of the JSON array [1,2,3,4,5,6,7], as a JSON integer.',
+        (2, 1): 'Return false if 7 times 13 equals 91, otherwise true, as a JSON boolean.',
+        (2, 2): 'Return the first two characters of the string "Natrium", as a JSON string.',
+        (3, 0): 'Return a JSON object that maps "jan", "feb" and "mar" to the integers 31, 28 and 31 respectively.',
+        (3, 1): 'Of the integers 1 to 10 inclusive, return a JSON object whose key "primes" is how many of them are in the list '
+                '[2,3,5,7] and whose key "evens" is how many of them are even, both as integers.',
+        (4, 1): 'Return a JSON array of [character, position] pairs for the characters of the string "abc", in order, '
+                'positions starting at 1.'}
+REV = 2
 
-def packet(k):
+
+def packet(k, rev=REV):
     goal, spec = PACKETS[k]
+    if rev == 2:
+        spec = [(REV2.get((k, o), text), count, gen) for o, (text, count, gen) in enumerate(spec)]
     rng = random.Random(3000 + k)
     ops, refs, ref_idx, blocks, ids, expected, used = [], [], {}, [], [], {}, set()
     rows = []

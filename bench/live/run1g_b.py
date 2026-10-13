@@ -18,7 +18,10 @@ assert ARM in ('H', 'G'), ARM
 HEADER = ARM == 'H'
 SYSTEM = M.ARMS['H'](HG.N)[0] if HEADER else M.G_SYSTEM
 OUT = M.X.V.LIVE / 'data' / os.environ['OUT']
-KS = range(1, 6)
+# Stage D repair (docs/design/stage-1g-D-repair.md): PACKETS=1,2,3,4 STOP=1 runs the rebuilt packets and stops at
+# the first failed packet.
+KS = [int(k) for k in os.environ.get('PACKETS', '1,2,3,4,5').split(',')]
+STOP = os.environ.get('STOP') == '1'
 
 
 def manifest():
@@ -30,7 +33,7 @@ def manifest():
         h.update(Path(f).read_bytes())
     return {'arm': ARM, 'header': HEADER, 'n': HG.N, 'model': L.MODEL_IDS.get(os.environ.get('MODEL', 'sonnet'), os.environ.get('MODEL', 'sonnet')),
             'effort': os.environ.get('EFFORT'), 'schedule': [[3000 + k, k] for k in KS], 'sha256': h.hexdigest(),
-            'reply_retry': 0, 'concurrency': 1, 'timeout_s': 300,
+            'reply_retry': 0, 'concurrency': 1, 'timeout_s': 300, 'rev': HG.REV, 'stop_at_first_failure': STOP,
             'note': 'seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport '
                     'retries on HTTP errors are not configurable here and never resample a completed reply'}
 
@@ -46,11 +49,14 @@ def main():
         passed = ok and n == HG.N
         rec = {'seq': seq, 'seed': 3000 + k, 'packet': k, 'arm': ARM, 'effort': os.environ.get('EFFORT'),
                'packet_o200k': L.count(SYSTEM + body), 'valid': ok, 'error': err, 'jobs_passed': n, 'jobs': HG.N,
-               'passed': passed, 'manifest': man['sha256'], **r}
+               'passed': passed, 'rev': HG.REV, 'manifest': man['sha256'], **r}
         with OUT.open('a', encoding='utf-8') as f:
             f.write(json.dumps(rec, ensure_ascii=False) + '\n')
         print(seq, 3000 + k, ARM, r.get('model'), 'PASS' if passed else 'FAIL ' + (err or f'{n}/{HG.N}'),
               'in', r['in'], 'out', r['out'], 'api_ms', r['api_ms'], flush=True)
+        if STOP and not passed:
+            print('stopped at the first failed packet', flush=True)
+            raise SystemExit(1)
 
 
 if __name__ == '__main__':

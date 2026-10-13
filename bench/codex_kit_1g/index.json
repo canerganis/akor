@@ -46,7 +46,7 @@
   "kind": "het",
   "packet": 1,
   "seed": 3001,
-  "o200k": 1479
+  "o200k": 1503
  },
  {
   "file": "het_p2.txt",
@@ -55,7 +55,7 @@
   "kind": "het",
   "packet": 2,
   "seed": 3002,
-  "o200k": 1392
+  "o200k": 1417
  },
  {
   "file": "het_p3.txt",
@@ -64,7 +64,7 @@
   "kind": "het",
   "packet": 3,
   "seed": 3003,
-  "o200k": 1666
+  "o200k": 1679
  },
  {
   "file": "het_p4.txt",
@@ -73,7 +73,7 @@
   "kind": "het",
   "packet": 4,
   "seed": 3004,
-  "o200k": 1813
+  "o200k": 1812
  },
  {
   "file": "het_p5.txt",
