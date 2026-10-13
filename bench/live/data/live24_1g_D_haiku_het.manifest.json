@@ -1,0 +1,34 @@
+{
+ "arm": "H",
+ "header": true,
+ "n": 64,
+ "model": "claude-haiku-5-5",
+ "effort": null,
+ "schedule": [
+  [
+   3001,
+   1
+  ],
+  [
+   3002,
+   2
+  ],
+  [
+   3003,
+   3
+  ],
+  [
+   3004,
+   4
+  ],
+  [
+   3005,
+   5
+  ]
+ ],
+ "sha256": "5873c41b62fbd626792a858baf3b1b62d84f9195db9006f7200cf81b9eb89dc7",
+ "reply_retry": 0,
+ "concurrency": 1,
+ "timeout_s": 300,
+ "note": "seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport retries on HTTP errors are not configurable here and never resample a completed reply"
+}

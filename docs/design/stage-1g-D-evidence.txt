@@ -1,0 +1,41 @@
+Stage D of the frozen 1g test (stage-1g-final-decision.md), arm H, Claude cells. Luna medium cell: kit ready (bench/codex_kit_1g), not yet run by the owner.
+Stage A: H 20/20, 40.7% fewer tokens per verified job than 0.8-exec, all gates pass. Stage B (Sonnet, 5 heterogeneous packets): 5/5.
+
+Haiku 5.5 64 std (2005-2014): passed 10/10, accepted 10/10, correct 640/640, mean in 3303, mean out 5963
+Haiku 5.5 heterogeneous P1-P5: passed 3/5, accepted 5/5, correct 301/320, mean in 3456, mean out 7117
+Fable 5.1 64 std (2005-2009): passed 5/5, accepted 5/5, correct 320/320, mean in 3338, mean out 2140
+Fable 5.1 heterogeneous P1-P5: passed 3/5, accepted 5/5, correct 301/320, mean in 3487, mean out 2363
+Sonnet 5.5 32 std (2005-2009): passed 5/5, accepted 5/5, correct 160/160, mean in 2746, mean out 1144
+
+Every reply in stage D was accepted by the parser (header, record shapes, IDs). All wrong jobs follow:
+
+live24_1g_D_haiku_het P2: 54/64
+  op 0 (4 jobs, refs []): Return the number of days in a week as a JSON integer.
+    expected ('ok', 7); got ('missing_data', 'Answer not in refs')
+  op 1 (3 jobs, refs []): Return true if 91 is a prime number, otherwise false, as a JSON boolean.
+    expected ('ok', False); got ('missing_data', 'Answer not in refs')
+  op 2 (3 jobs, refs []): Return the chemical symbol of sodium as a JSON string.
+    expected ('ok', 'Na'); got ('missing_data', 'Answer not in refs')
+
+live24_1g_D_haiku_het P3: 55/64
+  op 0 (5 jobs, refs []): Return a JSON object that maps "jan", "feb" and "mar" to their numbers of days in a non-leap year, as integers.
+    expected ('ok', {'jan': 31, 'feb': 28, 'mar': 31}); got ('missing_data', 'Value not in refs')
+  op 1 (4 jobs, refs []): Return a JSON object whose key "primes" is the number of primes below 10 and whose key "evens" is the number of even integers from 1 to 10, both as integers.
+    expected ('ok', {'primes': 4, 'evens': 5}); got ('missing_data', 'Value not in refs')
+
+live24_1g_D_fable_het P2: 54/64
+  op 0 (4 jobs, refs []): Return the number of days in a week as a JSON integer.
+    expected ('ok', 7); got ('missing_data', 'No ref supplied; goal restricts answers to refs')
+  op 1 (3 jobs, refs []): Return true if 91 is a prime number, otherwise false, as a JSON boolean.
+    expected ('ok', False); got ('missing_data', 'No ref supplied; goal restricts answers to refs')
+  op 2 (3 jobs, refs []): Return the chemical symbol of sodium as a JSON string.
+    expected ('ok', 'Na'); got ('missing_data', 'No ref supplied; goal restricts answers to refs')
+
+live24_1g_D_fable_het P3: 55/64
+  op 0 (5 jobs, refs []): Return a JSON object that maps "jan", "feb" and "mar" to their numbers of days in a non-leap year, as integers.
+    expected ('ok', {'jan': 31, 'feb': 28, 'mar': 31}); got ('missing_data', 'No refs supplied; goal requires answering from refs only')
+  op 1 (4 jobs, refs []): Return a JSON object whose key "primes" is the number of primes below 10 and whose key "evens" is the number of even integers from 1 to 10, both as integers.
+    expected ('ok', {'primes': 4, 'evens': 5}); got ('missing_data', 'No refs supplied; goal requires answering from refs only')
+
+Goal text of P2 (P1, P3 and P4 begin the same way): Answer from the supplied refs only.
+Diagnosis by Claude: the packets (built by a Sonnet subagent, checked by Claude, defect missed) put zero-ref general-knowledge ops under a goal that says answer from refs only; Haiku and Fable chose missing_data, Sonnet answered. The wire carried both choices correctly. The frozen rule says the test is not changed after results are seen.
