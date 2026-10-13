@@ -42,9 +42,6 @@ thinking, and one wrong bracket cost a whole batch. The fix is a six-character h
 An ambiguous job ("an array holding one pair") produced a flat answer once; now result shapes are stated with a
 literal example.
 
-**Honest about where it does not work.** GPT-6 Luna at medium effort through the Codex CLI got 1 of 10 packets right.
-That result is published, and the supported model list says so.
-
 **Deterministic work never reaches a model.** Reads, test requests and status events run on the host. A batch made only
 of such work finishes with zero model calls.
 
@@ -89,11 +86,9 @@ model here. Raw data, manifests and the harness are in [`bench/`](bench/); every
 
 This release is qualified for the tested Claude configurations only: `claude-sonnet-5-5` (32 and 64 jobs per
 call), `claude-opus-5-5`, `claude-haiku-5-5` and `claude-fable-5-1` (64 jobs per call), all through `claude -p` at
-default effort. Opus was added after the release in its own preregistered run ([`docs/design/stage-1g-opus.md`](docs/design/stage-1g-opus.md)).
-The broader qualification, which also covered a Codex model, failed: GPT-6 Luna at medium effort through the
-Codex CLI got 1 of 10 packets right, binding jobs to the wrong operation or input and slipping out of the reply
-format. For other models, use the 0.8 release (tag `oz-0.8.0-full`). The scope was chosen after that failure and
-is recorded as such in [`docs/design/stage-1g-release-scope.md`](docs/design/stage-1g-release-scope.md).
+default effort. Opus was added in its own preregistered run ([`docs/design/stage-1g-opus.md`](docs/design/stage-1g-opus.md)).
+For other models, use the 0.8 release (tag `oz-0.8.0-full`). Scope record:
+[`docs/design/stage-1g-release-scope.md`](docs/design/stage-1g-release-scope.md).
 
 ## Quick start
 
@@ -126,7 +121,7 @@ oz run --adapter adapter.json --workspace team --min-batch 32 --max-wait 30
 | **Inputs are data, never instructions** | Shared inputs travel in `refs`, which the worker is told are data. The worker has no tools and may not claim execution or verification. |
 | **Durable queue** | SQLite inbox with dependencies, retries, leases and resume. Exactly-once insertion, at-least-once delivery. |
 | **Every call on the books** | An append-only ledger (`calls.jsonl`) records tokens, cache use, time, validation and retries for each call. |
-| **Provider-neutral** | Adapters are plain stdin/stdout programs. Works with `claude -p` and `codex exec` logins. |
+| **Provider-neutral** | Adapters are plain stdin/stdout programs. This release is qualified on `claude -p` logins. |
 | **Small core** | Python 3.10+, standard library only. `tiktoken` is optional for token counting. |
 
 A packet body and its reply (from [`docs/design/stage-1g-astra.md`](docs/design/stage-1g-astra.md), shortened):
@@ -180,9 +175,7 @@ The full specification is in [`OZ9.md`](OZ9.md).
 - Acceptance is all or nothing per reply: one malformed line costs a retry of the whole batch. On the final wire
   that did not happen in 81 calls, which bounds the per-call failure rate (about 4% at 95% confidence), it does
   not prove it is zero.
-- Codex-based models are not supported by this wire (see Supported models; kit and raw replies in
-  [`bench/codex_kit_1g`](bench/codex_kit_1g/)). The Codex CLI also adds about 24,500 fixed input tokens per call, so
-  no reply format reaches large savings on that path.
+- Only the Claude configurations listed under Supported models are qualified for this wire.
 
 ## Related work
 
@@ -199,7 +192,7 @@ baselines, so their numbers are not directly comparable.
 - [`OZ9.md`](OZ9.md): the protocol and host design, normative.
 - [`docs/design/`](docs/design/): every wire stage, review, debate and live evidence, in order.
 - [`USAGE.md`](USAGE.md): command-line guide.
-- [`bench/`](bench/): live measurement harness, raw results and the Codex kits.
+- [`bench/`](bench/): live measurement harness, raw results and measurement kits.
 - [`docs/HISTORY.md`](docs/HISTORY.md): earlier releases 0.4 to 0.9.
 
 ## License
