@@ -1,0 +1,32 @@
+Stage 1g Luna cell (gpt-6-luna, effort medium, Codex CLI), run by the owner from bench/codex_kit_1g at 13:30, i.e. the rev-2 kit (rev 3 changed only P4 op 5, 4 minutes later). Gate 10/10.
+
+prompt | accepted | correct | passed | input | output | seconds
+het_p1.txt | no | 0/64 | FAIL | 25763 | 402 | 39.77
+het_p2.txt | yes | 63/64 | FAIL | 25677 | 614 | 17.33
+het_p3.txt | yes | 51/64 | FAIL | 25939 | 989 | 13.05
+het_p4.txt | yes | 53/64 | FAIL | 26072 | 1322 | 14.86
+het_p5.txt | yes | 62/64 | FAIL | 25868 | 1186 | 45.25
+std_2005.txt | no | 0/64 | FAIL | 25739 | 806 | 10.89
+std_2006.txt | no | 0/64 | FAIL | 25734 | 766 | 19.5
+std_2007.txt | yes | 64/64 | PASS | 26054 | 802 | 12.99
+std_2008.txt | yes | 62/64 | FAIL | 25737 | 794 | 12.11
+std_2009.txt | yes | 63/64 | FAIL | 25737 | 783 | 11.44
+mean input 25832, mean output 846, median seconds 14.0
+passed 1/10 (called 10); gate for this cell: 10/10
+Note: Codex CLI adds ~24,500 fixed input tokens per call; the reply must be the OZ/1g line and JSON records only.
+
+Rejected replies (parser):
+- het_p1: lines 35 onward in the old 1f shape, e.g. ["k247",[]] and ["r_526",[]], after correct {"id":[]} lines.
+- std_2005: a record split over two lines: '{"m6":[]' then '}' (lines 39-41).
+- std_2006: same split: '{"m7":["uncertainty"]' then '}'.
+
+Wrong values in accepted replies (op text shortened):
+- std_2008: op 2 unknown-field list wanted [] got ["method"]; op 3 interval check wanted outside got inside.
+- std_2009: op 3 wanted outside got inside.
+- het_p2: op 6 (first rank minus second rank) wanted 3 got 6.
+- het_p3: op 0 (jan/feb/mar object) got {"primes":4,"evens":5}, the answer of op 1, on 4 jobs; op 4 (from/to cities) wrong second city on 7 jobs; op 3 returned missing_data where tags was an empty array; op 6 grouped words from another ref.
+- het_p4: op 5 nested pair flattened on all 10 jobs (rev-2 text, the one fixed in rev 3); op 6 dropped a line.
+- het_p5: op 5 returned 0.5 instead of invalid_data; op 6 returned {"lo":8,"hi":1} instead of conflict.
+
+Pattern: besides the two wire slips (1f-shaped lines, a record split across lines), most wrong values bind the wrong op or the wrong ref, which is the index drift Luna showed in stage 1c and which the inline inputs of stage 1d fixed (1d Codex kit: Luna medium all correct). Stages 1e to 1g moved back to shared ops/refs addressed by index.
+Claude cells of the same round: all passed (Sonnet, Haiku x3, Fable). Stage A economics are Sonnet only. Earlier owner statement: if the Codex side does not work, publish for Claude only.
