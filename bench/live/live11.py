@@ -8,6 +8,7 @@ from decimal import Decimal
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent)); sys.path.insert(0, '.')
+sys.path.insert(0, str(Path(__file__).resolve().parents[1])); sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import live6 as X
 import live8 as R
 import run_live as L
@@ -173,13 +174,13 @@ def _ns(n):
 
 
 def jsonl_flat(reply, n):
-    """Per-index acceptance as in the product: unaccepted indices count as not done."""
-    import oz_reply
-    parsed = oz_reply.parse_reply(reply, n)
-    if not parsed.accepted:
-        raise ValueError('no valid line; ' + '; '.join(v['reason'] for v in parsed.violations[:3]))
-    return [(i in parsed.accepted and parsed.accepted[i][0] == 'ok', parsed.accepted.get(i, (None, None))[1])
-            for i in range(n)]
+    """Index-keyed JSONL ([i,value] / [i,null,reason]) with per-index acceptance, judged by bench/oldwire.py
+    (the product parser now speaks stage 1f only). Unaccepted indices count as not done."""
+    from oldwire import judge_s1c
+    valid, got = judge_s1c(reply, n)
+    if not valid:
+        raise ValueError('no valid line')
+    return [(i in got, got.get(i)) for i in range(n)]
 
 
 @arm('NJ')
@@ -220,6 +221,15 @@ def _s1(n):
     return oz_batch.SYSTEM, stage1_body(body), lambda reply: jsonl_flat(reply, n), native
 
 
+def _retired_system(name):
+    """The product no longer ships the stage-1c/1d system text (oz_batch.SYSTEMS is gone); the decoders of
+    those arms still work for rescoring, but new calls would need the text from git (3ea6989, 8ac429c)."""
+    systems = getattr(__import__('oz_batch'), 'SYSTEMS', None)
+    if not systems:
+        raise RuntimeError(f'arm {name!r} is retired: oz_batch.SYSTEMS no longer exists (see commits 3ea6989, 8ac429c)')
+    return systems[name]
+
+
 def stage1c_body(body_text):
     """Stage 1c: every c value is {"input": value}."""
     body = json.loads(stage1_body(body_text))
@@ -232,7 +242,7 @@ def stage1c_body(body_text):
 def _s1c(n):
     import oz_batch
     _, body, _, native = ARMS['N'](n)
-    return oz_batch.SYSTEMS['jsonl'], stage1c_body(body), lambda reply: jsonl_flat(reply, n), native
+    return _retired_system('jsonl'), stage1c_body(body), lambda reply: jsonl_flat(reply, n), native
 
 def stage1d_packet(n):
     """Stage 1d: jobs are [id,task,input]; ids are the workload job names (e1, b1, ...)."""
@@ -244,16 +254,16 @@ def stage1d_packet(n):
     for job, item in zip(jobs, b['j']):
         op, _, ref = item.partition(' ')
         j.append([job, op, b['c'][ref]])
-    return oz_batch.SYSTEMS['jsonl'], json.dumps({'goal': b['goal'], 'd': b['d'], 'j': j},
+    return _retired_system('jsonl'), json.dumps({'goal': b['goal'], 'd': b['d'], 'j': j},
                                                  ensure_ascii=False, separators=(',', ':')), jobs
 
 
 def stage1d_flat(reply, ids):
-    from oz_reply import parse_reply
-    parsed = parse_reply(reply, ids, 'jsonl')
-    if parsed.rejection:
-        raise ValueError(parsed.rejection)
-    return [(True, parsed.accepted[i]) for i in ids]
+    from oldwire import judge_s1d
+    valid, got = judge_s1d(reply, ids)
+    if not valid:
+        raise ValueError('stage-1d reply rejected')
+    return [(True, got[i]) for i in ids]
 
 
 @arm('S1d')
@@ -280,6 +290,7 @@ def stage1e_packet(n):
 
 
 def stage1e_flat(reply, ids):
+    """Stage 1e and 1f replies: the product parser; a job-error line is a job that is not ok."""
     from oz_reply import parse_reply
     parsed = parse_reply(reply, ids)
     if parsed.rejection:

@@ -9,7 +9,9 @@ import json, statistics as st, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from oz_reply import parse_reply  # noqa: E402  (the product parser: strict JSONL, per-index acceptance)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from oz_reply import parse_reply  # noqa: E402  (the product parser, stage 1f: S1e and S1f replies)
+from oldwire import judge_s1c, judge_s1d  # noqa: E402  (retired wires, judged as they were when recorded)
 
 KIT = Path(__file__).parent
 
@@ -34,11 +36,18 @@ def score(item, text):
             ok = [v is not None for v in values]
         else:
             ids = json.loads((KIT / 'oracles' / f"rep{item['rep']}_n{item['n']}.json").read_text('utf-8'))['jobs']
-            parsed = parse_reply(text, ids, 'jsonl') if item['arm'] == 'S1d' else parse_reply(text, ids)
-            if parsed.rejection:
+            if item['arm'] == 'S1c':
+                valid, got = judge_s1c(text, n)
+                ids = list(range(n))
+            elif item['arm'] == 'S1d':
+                valid, got = judge_s1d(text, ids)
+            else:  # S1e, S1f: [id,value] / [id,"error",code,message], atomic
+                parsed = parse_reply(text, ids)
+                valid, got = not parsed.rejection, parsed.accepted
+            if not valid:
                 return False, 0
-            ok = [i in parsed.accepted for i in ids]
-            values = [parsed.accepted.get(i) for i in ids]
+            ok = [i in got for i in ids]
+            values = [got.get(i) for i in ids]
     except (ValueError, KeyError, TypeError):
         return False, 0
     return True, sum(g and same(v, want) for g, v, want in zip(ok, values, oracle))
@@ -56,7 +65,7 @@ def main():
     print('n | arm | valid | correct | input | output | total | vs 0.8 | median s')
     for n in (32, 64):
         base = None
-        for arm in ('0.8-exec', 'S1e', 'S1d', 'S1c'):
+        for arm in ('0.8-exec', 'S1f', 'S1e', 'S1d', 'S1c'):
             v = [r for r in rows if r['n'] == n and r['arm'] == arm]
             if not v:
                 continue
