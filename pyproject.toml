@@ -8,6 +8,7 @@ version = "0.9.0"
 description = "Compact, provider-neutral agent communication protocol and reference relay"
 readme = "README.md"
 requires-python = ">=3.10"
+license = "MIT"
 dependencies = []
 
 [project.optional-dependencies]
