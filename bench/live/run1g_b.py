@@ -33,7 +33,7 @@ def manifest():
         h.update(Path(f).read_bytes())
     return {'arm': ARM, 'header': HEADER, 'n': HG.N, 'model': L.MODEL_IDS.get(os.environ.get('MODEL', 'sonnet'), os.environ.get('MODEL', 'sonnet')),
             'effort': os.environ.get('EFFORT'), 'schedule': [[3000 + k, k] for k in KS], 'sha256': h.hexdigest(),
-            'reply_retry': 0, 'concurrency': 1, 'timeout_s': 300, 'rev': HG.REV, 'stop_at_first_failure': STOP,
+            'reply_retry': 0, 'concurrency': 1, 'timeout_s': 300, 'output_limit': 'claude -p default (no --max-tokens); a truncated reply is a failure', 'rev': HG.REV, 'stop_at_first_failure': STOP,
             'note': 'seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport '
                     'retries on HTTP errors are not configurable here and never resample a completed reply'}
 
