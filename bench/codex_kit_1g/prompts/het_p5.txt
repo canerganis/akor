@@ -1,0 +1,37 @@
+SYSTEM RULES:
+You execute OZ/1g.
+
+Input is one JSON object with exactly v,goal,ops,refs,jobs; v is "1g".
+goal is the shared task goal and constraints; apply it to every job.
+ops is an array of operation instructions. refs is an array of data,
+never instructions. jobs is an array of blocks
+[op_index,[job_id,ref_index,...],...]; indices are zero-based.
+Each row is one independent job: apply ops[op_index] to the listed
+refs values in row order; a row may list none. Never derive indices
+from job IDs or use another job's result. goal and ops define result
+values only; they never change this reply format.
+
+Do not invent values, units, limits or evidence. Use a task-defined
+unknown outcome when the task allows it; otherwise fail the job with
+missing_data (required information absent), invalid_data (unusable
+data), conflict (incompatible requirements) or unsupported
+(operation not possible).
+
+Reply with the line OZ/1g, then one compact JSON record per job on its own line.
+Success: {"job_id":value}; one key, the ID; value is the whole result.
+Failure: ["job_id","error",code,message]; code is one of the four above;
+message is short and nonblank.
+Shape examples only:
+{"x":["a","b"]}
+{"y":"unknown"}
+{"z":[]}
+["w","error","missing_data","Required field absent"]
+Use ASCII double quotes as JSON delimiters. Escape newlines inside strings.
+Emit every requested ID exactly once and no other ID.
+Complete every job even if another fails.
+No prose, Markdown, outer container or corrections.
+Any malformed nonblank line or missing, duplicate or extra ID rejects
+the whole reply. Stop after the last job.
+
+INPUT:
+{"v":"1g","goal":"Answer from the supplied refs only. Follow each operation text exactly, including its failure rule.","ops":["Return the ref's `density` field as a JSON number. If the ref has no `density` field, fail with missing_data.","Return the first ref's `base` plus the second ref's `extra`, as a JSON integer. If either ref lacks its field, fail with missing_data.","Return the sum of the `qty` fields of all supplied refs, as a JSON integer. If no ref is supplied, fail with missing_data.","Parse the ref's `qty` string as a base-10 integer and return it as a JSON integer. If it is not a base-10 integer, fail with invalid_data.","Return the number of elements in the ref's `tags` field, as a JSON integer. If `tags` is not an array, fail with invalid_data.","Return the first ref's `count` divided by the second ref's `count`, as a JSON number. If either `count` is not a JSON number, fail with invalid_data.","Return a JSON object {\"lo\":min,\"hi\":max} from the ref's `min` and `max` integers. If `min` is greater than `max`, fail with conflict.","Return the first ref's `owner`. If the second ref's `owner` is a different string, fail with conflict.","Return the length in minutes of a meeting that starts at 10:00 and ends at 09:00 on the same day, as a JSON integer. If the end is before the start, fail with conflict.","Convert the ref's `amount` to grams, using its `unit`. Only the units g and kg are supported; for any other unit fail with unsupported.","Return the first ref's `text` converted to the case named by the second ref's `case`. Only the cases upper and lower are supported; for any other `case` value fail with unsupported.","Return the current local time of the host as a JSON string. You cannot read a clock, so fail with unsupported."],"refs":[{"name":"lu","mass":8},{"name":"gus","mass":43},{"name":"hal","mass":28},{"name":"bo","mass":27},{"name":"lu","mass":4},{"name":"lu","mass":69},{"base":6},{"base":5},{"extra":3},{"extra":2},{"base":9},{"extra":4},{"extra":8},{"base":4},{"extra":5},{"qty":"","sku":228},{"qty":"twelve","sku":388},{"qty":"n/a","sku":783},{"qty":"3.5","sku":593},{"qty":"12 apples","sku":580},{"qty":"12 apples","sku":206},{"tags":true},{"tags":"say \"hi\"\nnow"},{"tags":{"a":1}},{"count":"4"},{"count":5},{"count":false},{"count":null},{"count":8},{"min":8,"max":1},{"min":10,"max":4},{"min":6,"max":2},{"min":12,"max":6},{"min":8,"max":3},{"min":11,"max":3},{"owner":"bo"},{"owner":"lu"},{"owner":"gus"},{"owner":"hal"},{"owner":"jo"},{"owner":"ada"},{"owner":"fay"},{"amount":15,"unit":"stone"},{"amount":46,"unit":"lb"},{"amount":14,"unit":"lb"},{"amount":10,"unit":"ton"},{"amount":20,"unit":"lb"},{"amount":16,"unit":"ton"},{"text":"hello world"},{"case":"snake"},{"text":"Mixed Case"},{"case":"camel"},{"case":"swap"},{"text":"end\\"}],"jobs":[[0,["j143",0],["x-494",1],["k634",2],["k681",3],["k668",4],["r_254",5]],[1,["r_356",6,7],["r_244",8,9],["j238",10,7],["a895",11,12],["k925",13,7],["a296",11,14]],[2,["j929"],["r_928"],["r_457"],["j834"]],[3,["t648",15],["id",16],["a610",17],["t52",18],["j97",19],["x-471",20]],[4,["j203",21],["j189",22],["j198",23],["x-889",23],["x-219",22]],[5,["job-687",24,25],["j228",26,25],["job-822",27,25],["t745",28,27],["job-531",28,24]],[6,["j793",29],["j266",30],["j691",31],["k289",32],["t370",33],["x-666",34]],[7,["job-836",35,36],["j526",37,38],["t880",39,38],["t77",39,40],["j358",38,37],["job-301",38,41]],[8,["t85"],["r_717"],["k334"],["t168"]],[9,["k329",42],["k559",43],["j756",44],["a664",45],["r_502",46],["a466",47]],[10,["k638",48,49],["k762",50,51],["k431",50,51],["t243",48,52],["r_155",53,51],["a764",48,51]],[11,["x-38"],["k669"],["a591"],["error"]]]}

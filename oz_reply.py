@@ -1,10 +1,11 @@
 """OZ/9 replies, receipts, adapter capabilities and provider usage (wire stage-1g).
 
-A reply is raw model text, one compact JSON record per packet job (docs/design/stage-1g-joint-decision.md):
-{"id":value} for a success, a one-member object whose value is the whole result, and [id,"error",code,message]
-for a job failure, id being the packet job ID. Acceptance is atomic: the whole reply is accepted or none of it.
-Lines are split on LF (CRLF accepted, one trailing line end optional); lines that are empty or hold only ASCII
-spaces and tabs are skipped. A malformed line, an object with other than one member, an array other than the
+A reply is raw model text (docs/design/stage-1g-final-decision.md, profile oz1g-header): the line OZ/1g, then one
+compact JSON record per packet job, {"id":value} for a success, a one-member object whose value is the whole
+result, and [id,"error",code,message] for a job failure, id being the packet job ID. Acceptance is atomic: the
+whole reply is accepted or none of it. Lines are split on LF (CRLF accepted, one trailing line end optional);
+lines that are empty or hold only ASCII spaces and tabs are skipped. The first other line must be OZ/1g (trailing
+spaces and tabs allowed, nothing before it); a missing or repeated header, a malformed line, an object with other than one member, an array other than the
 four-element error line, an unknown, duplicate or missing ID, or a bad error code or message rejects everything. Nothing is repaired or merged. Valid successes and valid job failures are committed together.
 The host, not the model, decides routing: an ID written by the model proves nothing about the answer next to it,
 so the ledger records binding "declared" and semantic_verified false. regroup() folds the accepted results, the
@@ -29,6 +30,7 @@ CAPTURE_SLACK = 4096
 MAX_VIOLATIONS = 20
 BINDING = 'declared'
 ERROR_CODES = ('missing_data', 'invalid_data', 'conflict', 'unsupported')
+HEADER = 'OZ/1g'
 RETRY_REASON = 'adapter_invalid_reply (Error)'
 
 
@@ -128,12 +130,15 @@ def parse_reply(text: object, ids) -> Parsed:
     lines = text.split('\n')
     if lines[-1] == '':
         lines.pop()
-    if not any(line.removesuffix('\r').strip(' \t') for line in lines):
+    first = next((k for k, line in enumerate(lines) if line.removesuffix('\r').strip(' \t')), None)
+    if first is None:
         return _rejected(n, 0, {}, 'reply has no result line')
+    if lines[first].removesuffix('\r').rstrip(' \t') != HEADER:
+        return _rejected(n, 0, {first + 1: f'first nonblank line must be {HEADER}'}, f'reply does not start with {HEADER}')
     bad, received, seen = {}, 0, {}
     for number, line in enumerate(lines, 1):
         line = line[:-1] if line.endswith('\r') else line
-        if not line.strip(' \t'):
+        if number <= first + 1 or not line.strip(' \t'):
             continue
         if len(line.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES:
             bad[number] = f'line exceeds {MAX_LINE_BYTES} bytes'
@@ -267,8 +272,9 @@ class Failure:
 def encode_reply(results: dict, ids=None) -> str:
     """Build reply text from {packet job ID: result value}, e.g. for test adapters: one line per ID.
 
-    A success becomes {"id":value}; a Failure value becomes the error line [id,"error",code,message]."""
+    The text starts with the OZ/1g header line. A success becomes {"id":value}; a Failure value becomes the error
+    line [id,"error",code,message]."""
     def line(mid):
         value = results[mid]
         return _json([mid, 'error', value.code, value.message] if isinstance(value, Failure) else {mid: value})
-    return '\n'.join(line(mid) for mid in (results if ids is None else ids))
+    return '\n'.join([HEADER, *(line(mid) for mid in (results if ids is None else ids))])

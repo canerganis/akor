@@ -46,11 +46,19 @@ def valid_body(**overrides):
 
 
 class BatchTests(unittest.TestCase):
-    def test_system_text_is_byte_exact_with_the_design_document(self):
+    def test_system_text_is_byte_exact_with_the_design_document_text_h(self):
+        # Text H (stage-1g-final-decision.md) is the C block of the joint decision with one sentence replaced.
         doc = DESIGN.read_text(encoding='utf-8')
         blocks = re.findall(r'\*\*tam sistem metni\*\* aşağıdadır[^\n]*\n\s*```text\n(.*?)\n```', doc, re.S)
         self.assertEqual(len(blocks), 1)
-        self.assertEqual(SYSTEM.encode('utf-8'), blocks[0].encode('utf-8'))
+        c_sentence = 'Reply with one compact JSON record per job on its own line.'
+        h_sentence = 'Reply with the line OZ/1g, then one compact JSON record per job on its own line.'
+        self.assertEqual(blocks[0].count(c_sentence), 1)
+        derived = blocks[0].replace(c_sentence, h_sentence)
+        self.assertNotEqual(derived, blocks[0])
+        self.assertEqual(SYSTEM.encode('utf-8'), derived.encode('utf-8'))
+        self.assertNotIn(c_sentence, SYSTEM)
+        self.assertEqual(SYSTEM.count(h_sentence), 1)
         self.assertTrue(SYSTEM.startswith('You execute OZ/1g.\n\n'))
         self.assertTrue(SYSTEM.endswith('Stop after the last job.'))
         self.assertEqual((WIRE, VERSION), ('stage-1g', '1g'))

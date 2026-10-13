@@ -296,7 +296,7 @@ class WorkspaceTests(unittest.TestCase):
         script = ('import json,sys; r=json.load(sys.stdin); j=json.loads(r["prompt"])["jobs"]; '
                   'ids=[x[0] for b in j for x in b[1:]]; '
                   'rows=[[ids[0],"error","missing_data","Missing required field y."]]+[{i:"done"} for i in ids[1:]]; '
-                  'json.dump({"reply":"\\n".join(json.dumps(x) for x in rows)},sys.stdout)')
+                  'json.dump({"reply":"\\n".join(["OZ/1g"]+[json.dumps(x) for x in rows])},sys.stdout)')
         adapter = self.root / 'adapter.json'
         adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
         base = ('--workspace', str(self.root))

@@ -5,7 +5,7 @@ import unittest
 from oz import Error
 from oz_batch import INSTRUCTIONS, SYSTEM
 from wire_helpers import body_of, job_ids, job_instructions, rows
-from oz_reply import (Failure, check_capabilities, encode_reply, loads, parse_reply, regroup, slot_ids, validate_response,
+from oz_reply import (HEADER, Failure, check_capabilities, encode_reply, loads, parse_reply, regroup, slot_ids, validate_response,
                       validate_usage)
 from oz_runtime import Inbox
 from oz_worker import Worker
@@ -27,9 +27,14 @@ def line(row):
     return json.dumps(row, ensure_ascii=False)
 
 
-def text(*rows, end=''):
-    """Reply text: one line per row (see line)."""
-    return NL.join(line(row) for row in rows) + end
+HEAD = 'OZ/1g'
+H = HEAD + NL
+
+
+def text(*rows, end='', header=HEAD):
+    """Reply text: the OZ/1g header line (None omits it), then one line per row (see line)."""
+    lines = [line(row) for row in rows]
+    return NL.join(([header] if header is not None else []) + lines) + end
 
 
 def reasons(parsed):
@@ -55,16 +60,17 @@ class ParseTests(unittest.TestCase):
         self.assertEqual(parse_reply(text(['a', None], ['b', '']), IDS).accepted, {'a': None, 'b': ''})
 
     def test_lf_and_crlf_are_accepted_and_one_trailing_line_end_is_optional(self):
-        for reply in ('{"a":1}\n{"b":2}', '{"a":1}\n{"b":2}\n', '{"a":1}\r\n{"b":2}\r\n', '{"a":1}\r\n{"b":2}'):
+        for reply in (H + '{"a":1}\n{"b":2}', H + '{"a":1}\n{"b":2}\n', 'OZ/1g\r\n{"a":1}\r\n{"b":2}\r\n',
+                      'OZ/1g\r\n{"a":1}\r\n{"b":2}'):
             with self.subTest(reply=reply):
                 self.assertEqual(parse_reply(reply, IDS).accepted, {'a': 1, 'b': 2})
         # JSON whitespace around the object is still valid JSON.
-        self.assertEqual(parse_reply(' {"a":1} \t' + NL + '{ "b" : 2 }', IDS).accepted, {'a': 1, 'b': 2})
+        self.assertEqual(parse_reply(H + ' {"a":1} \t' + NL + '{ "b" : 2 }', IDS).accepted, {'a': 1, 'b': 2})
 
     def test_empty_and_ascii_space_tab_lines_are_skipped(self):
-        for reply in ('{"a":1}\n\n{"b":2}', '\n{"a":1}\n{"b":2}', '{"a":1}\n{"b":2}\n\n', '{"a":1}\n  \n{"b":2}',
-                      '{"a":1}\r\n\r\n{"b":2}', '{"a":1}\n{"b":2}\n \n', ' \t\n{"a":1}\r\n\t \r\n{"b":2}\r\n   ',
-                      '\n\n{"a":1}\n\n\n{"b":2}\n\n\n'):
+        for reply in (H + '{"a":1}\n\n{"b":2}', H + '\n{"a":1}\n{"b":2}', H + '{"a":1}\n{"b":2}\n\n',
+                      H + '{"a":1}\n  \n{"b":2}', 'OZ/1g\r\n{"a":1}\r\n\r\n{"b":2}', H + '{"a":1}\n{"b":2}\n \n',
+                      ' \t\nOZ/1g\r\n{"a":1}\r\n\t \r\n{"b":2}\r\n   ', '\n\nOZ/1g\n\n{"a":1}\n\n\n{"b":2}\n\n\n'):
             with self.subTest(reply=reply):
                 parsed = parse_reply(reply, IDS)
                 self.assertEqual((parsed.accepted, parsed.rejection, parsed.violations, parsed.received),
@@ -81,12 +87,12 @@ class ParseTests(unittest.TestCase):
         # Form feed, vertical tab, NBSP, BOM and other Unicode spaces are neither blank nor JSON whitespace.
         for junk in ('\x0c', '\x0b', '\xa0', '﻿', ' ', '　', '\x85', ' '):
             with self.subTest(junk=repr(junk)):
-                self.assertEqual(parse_reply(junk + '{"a":1}' + NL + '{"b":2}', IDS).accepted, {})
-                lone = parse_reply('{"a":1}' + NL + junk + NL + '{"b":2}', IDS)
-                self.assertEqual((lone.accepted, reasons(lone)), ({}, [(2, 'malformed JSON line')]))
-        cr = parse_reply('{"a":1}' + CR + '{"b":2}', IDS)
-        self.assertEqual((cr.accepted, reasons(cr)), ({}, [(1, 'malformed JSON line')]))
-        self.assertEqual(parse_reply('{"a":1}' + CR + NL + CR + NL + '{"b":2}', IDS).accepted, {'a': 1, 'b': 2})
+                self.assertEqual(parse_reply(H + junk + '{"a":1}' + NL + '{"b":2}', IDS).accepted, {})
+                lone = parse_reply(H + '{"a":1}' + NL + junk + NL + '{"b":2}', IDS)
+                self.assertEqual((lone.accepted, reasons(lone)), ({}, [(3, 'malformed JSON line')]))
+        cr = parse_reply(H + '{"a":1}' + CR + '{"b":2}', IDS)
+        self.assertEqual((cr.accepted, reasons(cr)), ({}, [(2, 'malformed JSON line')]))
+        self.assertEqual(parse_reply(H + '{"a":1}' + CR + NL + CR + NL + '{"b":2}', IDS).accepted, {'a': 1, 'b': 2})
 
     def test_every_deviation_rejects_the_whole_reply(self):
         for name, reply in {
@@ -98,14 +104,16 @@ class ParseTests(unittest.TestCase):
             'identical duplicate id with a missing one': text(['a', 1], ['a', 1]),
             'malformed line': text(['a', 1], '["b",'),
             'truncated reply': text(['a', 1]) + NL + '["b",2',
-            'prose': 'Done.' + NL + text(['a', 1], ['b', 2]),
+            'prose before the header': 'Done.' + NL + text(['a', 1], ['b', 2]),
+            'prose after the header': H + 'Done.' + NL + text(['a', 1], ['b', 2], header=None),
             'trailing prose': text(['a', 1], ['b', 2]) + NL + 'Done.',
-            'fence': '```' + NL + text(['a', 1], ['b', 2]) + NL + '```',
-            'outer array': json.dumps([['a', 1], ['b', 2]]),
+            'fence before the header': '```' + NL + text(['a', 1], ['b', 2]) + NL + '```',
+            'fence after the header': H + '```' + NL + text(['a', 1], ['b', 2], header=None) + NL + '```',
+            'outer array': H + json.dumps([['a', 1], ['b', 2]]),
             'three elements': text(['a', 1, 'x'], ['b', 2]),
             'five elements': text(['a', 'error', 'missing_data', 'x', 'y'], ['b', 2]),
             'one element': text(['a'], ['b', 2]),
-            'old 1f success line': '["a",1]' + NL + '["b",2]',
+            'old 1f success line': H + '["a",1]' + NL + '["b",2]',
             'old 1f line next to a 1g line': text({'a': 1}) + NL + '["b",2]',
             'two-member object': text({'a': 1, 'b': 2}),
             'empty object': text({}, ['b', 2]),
@@ -114,6 +122,8 @@ class ParseTests(unittest.TestCase):
             'id padded': text([' a', 1], ['b', 2]),
             'empty': '',
             'blank only': NL + '  ' + NL,
+            'header only': H,
+            'no header': text(['a', 1], ['b', 2], header=None),
         }.items():
             with self.subTest(name=name):
                 parsed = parse_reply(reply, IDS)
@@ -124,16 +134,16 @@ class ParseTests(unittest.TestCase):
     def test_a_duplicate_id_is_rejected_even_when_byte_identical(self):
         parsed = parse_reply(text(['a', 'x'], ['b', 1], ['a', 'x']), ('a', 'b', 'c'))
         self.assertEqual(parsed.accepted, {})
-        self.assertEqual(reasons(parsed), [(3, 'duplicate id a')])
+        self.assertEqual(reasons(parsed), [(4, 'duplicate id a')])
         self.assertIsNotNone(parsed.rejection)
         # With N lines allowed, a repeat displaces a needed id: the exact set is not covered.
         self.assertEqual(parse_reply(text(['a', 'x'], ['a', 'x']), IDS).accepted, {})
 
     def test_more_than_n_lines_reject_everything(self):
-        parsed = parse_reply(NL.join(['{"a":1}', '{"b":2}', '{"a":1}']), IDS)
+        parsed = parse_reply(NL.join([HEAD, '{"a":1}', '{"b":2}', '{"a":1}']), IDS)
         self.assertEqual((parsed.accepted, parsed.rejection), ({}, 'a malformed or unknown line rejects the whole reply'))
-        self.assertEqual(reasons(parsed), [(3, 'duplicate id a')])
-        self.assertEqual(parse_reply(NL.join(['{"a":1}', '{"b":2}', '{"c":3}']), IDS).accepted, {})
+        self.assertEqual(reasons(parsed), [(4, 'duplicate id a')])
+        self.assertEqual(parse_reply(NL.join([HEAD, '{"a":1}', '{"b":2}', '{"c":3}']), IDS).accepted, {})
 
     def test_error_lines_are_job_failures_with_four_elements(self):
         reply = text(['a', 'error', 'missing_data', 'Missing required field y.'],
@@ -178,7 +188,7 @@ class ParseTests(unittest.TestCase):
             'integer id': [1, 'error', 'missing_data', 'x'],
         }.items():
             with self.subTest(name=name):
-                parsed = parse_reply(NL.join([json.dumps(line), '["b",1]']), IDS)
+                parsed = parse_reply(NL.join([HEAD, json.dumps(line), '{"b":1}']), IDS)
                 self.assertEqual((parsed.accepted, parsed.failed), ({}, {}))
                 self.assertIsNotNone(parsed.rejection)
 
@@ -202,7 +212,7 @@ class ParseTests(unittest.TestCase):
     def test_strict_json_duplicate_keys_and_non_finite_numbers_are_rejected(self):
         for value in ('{"k":1,"k":2}', '[{"k":1,"k":2}]', 'NaN', 'Infinity', '-Infinity', '1e999', '[1,1e999]', '"\\ud800"'):
             with self.subTest(value=value):
-                self.assertEqual(parse_reply('{"a":' + value + '}' + NL + '{"b":1}', IDS).accepted, {})
+                self.assertEqual(parse_reply(H + '{"a":' + value + '}' + NL + '{"b":1}', IDS).accepted, {})
         for text_ in ('{"k":1,"k":2}', 'NaN', '1e999', '-1E999'):
             with self.subTest(text=text_), self.assertRaises(Error):
                 loads(text_)
@@ -210,17 +220,17 @@ class ParseTests(unittest.TestCase):
 
     def test_oversize_lines_and_total_capture_limit_reject_everything(self):
         big = '{"a":"' + 'y' * 65536 + '"}'
-        parsed = parse_reply(NL.join([big, '{"b":1}']), IDS)
+        parsed = parse_reply(NL.join([HEAD, big, '{"b":1}']), IDS)
         self.assertEqual(parsed.accepted, {})
         self.assertIn('exceeds 65536 bytes', reasons(parsed)[0][1])
         edge = '{"a":"' + 'y' * (65536 - 8) + '"}'
         self.assertEqual(len(edge.encode('utf-8')), 65536)
-        self.assertEqual(parse_reply(NL.join([edge, '{"b":1}']), IDS).accepted['a'], 'y' * (65536 - 8))
+        self.assertEqual(parse_reply(NL.join([HEAD, edge, '{"b":1}']), IDS).accepted['a'], 'y' * (65536 - 8))
         huge = parse_reply('x' * (2 * 65536 + 4097), IDS)
         self.assertEqual((huge.accepted, huge.rejection), ({}, 'reply exceeds the total capture limit'))
 
     def test_unencodable_results_reject_everything(self):
-        self.assertEqual(parse_reply('{"a":"\\ud800"}' + NL + '{"b":1}', IDS).accepted, {})
+        self.assertEqual(parse_reply(H + '{"a":"\\ud800"}' + NL + '{"b":1}', IDS).accepted, {})
 
     def test_reply_must_be_text(self):
         for bad in [None, b'["a",1]', ['a'], {'a': 1}, 3]:
@@ -228,12 +238,12 @@ class ParseTests(unittest.TestCase):
                 parse_reply(bad, IDS)
 
     def test_violations_are_capped_and_ordered(self):
-        parsed = parse_reply(NL.join(['x'] * 4), ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+        parsed = parse_reply(NL.join([HEAD] + ['x'] * 4), ('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
                                                   'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z'))
-        self.assertEqual(reasons(parsed)[0], (1, 'malformed JSON line'))
-        many = parse_reply(NL.join(['x'] * 60), tuple(str(i) for i in range(60)))
+        self.assertEqual(reasons(parsed)[0], (2, 'malformed JSON line'))
+        many = parse_reply(NL.join([HEAD] + ['x'] * 60), tuple(str(i) for i in range(60)))
         self.assertEqual(len(many.violations), 20)
-        self.assertEqual([v['line'] for v in many.violations], list(range(1, 21)))
+        self.assertEqual([v['line'] for v in many.violations], list(range(2, 22)))
 
 
 class StageOneGParserTests(unittest.TestCase):
@@ -250,74 +260,76 @@ class StageOneGParserTests(unittest.TestCase):
 
     def test_duplicate_keys_hidden_by_escapes_are_rejected(self):
         # "a" and "a" are the same key once the escapes are decoded.
-        self.rejected('{"e1":{"x":{"a":1,"\\u0061":2}}}' + NL + '{"b":2}', ('e1', 'b'), 'malformed JSON line')
-        self.rejected('{"e1":{"a":1,"\\u0061":2}}', ('e1',), 'malformed JSON line')
-        self.rejected('{"e1":[{"k":1},{"\\u006b":1,"k":1}]}', ('e1',), 'malformed JSON line')
-        self.rejected('{"e1":1,"\\u00651":2}', ('e1', 'b'), 'malformed JSON line')
-        self.rejected('{"\\u00651":1,"e1":1}' + NL + '{"b":2}', ('e1', 'b'), 'malformed JSON line')
+        self.rejected(H + '{"e1":{"x":{"a":1,"\\u0061":2}}}' + NL + '{"b":2}', ('e1', 'b'), 'malformed JSON line')
+        self.rejected(H + '{"e1":{"a":1,"\\u0061":2}}', ('e1',), 'malformed JSON line')
+        self.rejected(H + '{"e1":[{"k":1},{"\\u006b":1,"k":1}]}', ('e1',), 'malformed JSON line')
+        self.rejected(H + '{"e1":1,"\\u00651":2}', ('e1', 'b'), 'malformed JSON line')
+        self.rejected(H + '{"\\u00651":1,"e1":1}' + NL + '{"b":2}', ('e1', 'b'), 'malformed JSON line')
 
     def test_the_same_id_on_two_lines_is_a_duplicate_even_when_one_is_escaped(self):
-        for reply in ('{"e1":1}' + NL + '{"\\u00651":1}' + NL + '{"b":2}',
-                      '{"\\u00651":1}' + NL + '{"e1":2}' + NL + '{"b":2}'):
+        for reply in (H + '{"e1":1}' + NL + '{"\\u00651":1}' + NL + '{"b":2}',
+                      H + '{"\\u00651":1}' + NL + '{"e1":2}' + NL + '{"b":2}'):
             self.rejected(reply, ('e1', 'b'), 'duplicate id e1')
         # An escaped spelling of an expected ID is that ID.
-        self.assertEqual(parse_reply('{"\\u00651":1}' + NL + '{"b":2}', ('e1', 'b')).accepted, {'e1': 1, 'b': 2})
-        self.assertEqual(parse_reply('["\\u0061","error","conflict","no"]' + NL + '{"b":2}', IDS).failed,
+        self.assertEqual(parse_reply(H + '{"\\u00651":1}' + NL + '{"b":2}', ('e1', 'b')).accepted, {'e1': 1, 'b': 2})
+        self.assertEqual(parse_reply(H + '["\\u0061","error","conflict","no"]' + NL + '{"b":2}', IDS).failed,
                          {'a': ('conflict', 'no')})
 
     def test_nested_duplicate_keys_in_a_result_are_rejected(self):
         for value in ('{"k":1,"k":2}', '{"k":{"n":1,"n":1}}', '[{"k":1,"k":1}]', '{"x":[{"y":{"z":1,"z":2}}]}'):
             with self.subTest(value=value):
-                self.rejected('{"a":' + value + '}' + NL + '{"b":1}', IDS, 'malformed JSON line')
+                self.rejected(H + '{"a":' + value + '}' + NL + '{"b":1}', IDS, 'malformed JSON line')
         # The same key at different depths is not a duplicate.
-        self.assertEqual(parse_reply('{"a":{"a":{"a":1}}}' + NL + '{"b":1}', IDS).accepted,
+        self.assertEqual(parse_reply(H + '{"a":{"a":{"a":1}}}' + NL + '{"b":1}', IDS).accepted,
                          {'a': {'a': {'a': 1}}, 'b': 1})
 
     def test_an_object_line_needs_exactly_one_member(self):
         reason = 'line must be a one-member {id:value} object or a four-element [id,"error",code,message] array'
         for line_ in ('{"a":1,"b":2}', '{"a":1,"b":2,"c":3}', '{"a":1,"x":2}', '{}', ' { } '):
             with self.subTest(line=line_):
-                parsed = self.rejected(line_ + NL + '{"b":3}', IDS, reason)
-                self.assertEqual(reasons(parsed)[0], (1, reason))
-        self.rejected('{}', ('a',), reason)
+                parsed = self.rejected(H + line_ + NL + '{"b":3}', IDS, reason)
+                self.assertEqual(reasons(parsed)[0], (2, reason))
+        self.rejected(H + '{}', ('a',), reason)
 
     def test_other_arrays_than_the_four_element_error_line_are_rejected(self):
         for line_ in ('[]', '["a"]', '["a",1]', '["a",1,2]', '["a","error","missing_data","x","y"]', '[["a",1]]'):
             with self.subTest(line=line_):
-                self.rejected(line_ + NL + '{"b":1}', IDS)
+                self.rejected(H + line_ + NL + '{"b":1}', IDS)
 
     def test_a_stray_closing_bracket_or_extra_json_rejects_the_line(self):
         for line_ in ('{"a":1}]', '{"a":1}}', '{"a":1} ]', '["a","error","missing_data","x"]]',
                       '{"a":1}{"b":2}', '{"a":1},', '{"a":1} {"b":2}', '{"a":1} // c', '{"a":1,}', '{"a":[1,]}'):
             with self.subTest(line=line_):
-                self.rejected(line_ + NL + '{"b":2}', IDS, 'malformed JSON line')
-        failing = '["a","error","missing_data","x"]]' + NL + '{"b":2}'
-        self.assertEqual(reasons(self.rejected(failing)), [(1, 'malformed JSON line')])
+                self.rejected(H + line_ + NL + '{"b":2}', IDS, 'malformed JSON line')
+        failing = H + '["a","error","missing_data","x"]]' + NL + '{"b":2}'
+        self.assertEqual(reasons(self.rejected(failing)), [(2, 'malformed JSON line')])
 
     def test_an_appended_correction_or_explanation_rejects_everything(self):
-        good = '{"a":1}' + NL + '{"b":2}'
+        good = H + '{"a":1}' + NL + '{"b":2}'
         for tail in (NL + 'Correction: job b should be 3.' + NL + '{"b":3}',
                      NL + '{"b":3}',
                      NL + '{"a":1}',
                      NL + 'Note: the above is final.',
                      NL + 'Corrected:' + NL + good,
-                     NL + good):
+                     NL + good,
+                     NL + HEAD):
             with self.subTest(tail=tail):
                 self.rejected(good + tail)
         self.assertEqual(parse_reply(good, IDS).accepted, {'a': 1, 'b': 2})
         # A leading explanation is no better.
         self.rejected('Here are the results:' + NL + good)
+        self.rejected(H + 'Here are the results:' + NL + good[len(H):])
 
     def test_typographic_quotes_are_content_not_delimiters(self):
         content = '“quoted” ‘single’ «guillemets» „german“'
         parsed = parse_reply(text({'a': content}, {'b': {content: [content]}}), IDS)
         self.assertEqual((parsed.accepted, parsed.rejection), ({'a': content, 'b': {content: [content]}}, None))
-        self.assertEqual(parse_reply('{"a":"say “hi”"}' + NL + '{"b":2}', IDS).accepted['a'], 'say “hi”')
+        self.assertEqual(parse_reply(H + '{"a":"say “hi”"}' + NL + '{"b":2}', IDS).accepted['a'], 'say “hi”')
         for line_ in ('{“a”:1}', '{"a":“x”}', '{‘a’:1}', '“{"a":1}”',
                       '[“a”,"error","conflict","x"]', '["a","error",“conflict”,"x"]',
                       '["a","error","conflict",“x”]', '{"a":1}”'):
             with self.subTest(line=line_):
-                self.rejected(line_ + NL + '{"b":2}', IDS, 'malformed JSON line')
+                self.rejected(H + line_ + NL + '{"b":2}', IDS, 'malformed JSON line')
 
     def test_a_success_value_that_looks_like_an_error_is_a_success(self):
         value = ['error', 'missing_data', 'text']
@@ -335,47 +347,42 @@ class StageOneGParserTests(unittest.TestCase):
                 self.assertEqual((parsed.accepted['a'], parsed.rejection), (value, None))
 
     def test_whitespace_only_lines_with_spaces_tabs_and_crlf_are_skipped(self):
-        reply = ' \t \r\n' + '{"a":1}\r\n' + '\t\r\n' + '   \r\n' + '{"b":2}\r\n' + ' \t'
+        reply = ' \t \r\n' + 'OZ/1g\r\n' + '{"a":1}\r\n' + '\t\r\n' + '   \r\n' + '{"b":2}\r\n' + ' \t'
         parsed = parse_reply(reply, IDS)
         self.assertEqual((parsed.accepted, parsed.rejection, parsed.violations), ({'a': 1, 'b': 2}, None, ()))
         # Violation numbers still count the skipped lines.
-        bad = parse_reply('\n\n{"a":1}\n  \nnot json\n{"b":2}', IDS)
-        self.assertEqual(reasons(bad), [(5, 'malformed JSON line')])
+        bad = parse_reply('\n\nOZ/1g\n\n{"a":1}\n  \nnot json\n{"b":2}', IDS)
+        self.assertEqual(reasons(bad), [(7, 'malformed JSON line')])
 
     def test_a_line_of_only_nbsp_is_rejected(self):
         for junk in (' ', '  ', '   ', '\t '):
             with self.subTest(junk=repr(junk)):
-                parsed = self.rejected('{"a":1}' + NL + junk + NL + '{"b":2}', IDS, 'malformed JSON line')
-                self.assertEqual(reasons(parsed), [(2, 'malformed JSON line')])
-        self.rejected(' ', IDS)
+                parsed = self.rejected(H + '{"a":1}' + NL + junk + NL + '{"b":2}', IDS, 'malformed JSON line')
+                self.assertEqual(reasons(parsed), [(3, 'malformed JSON line')])
+        self.rejected(H + ' ', IDS)
 
-    def test_the_header_line_is_not_part_of_1g(self):
-        self.rejected('"OZ/1g"' + NL + '{"a":1}' + NL + '{"b":2}', IDS)
-        for header in ('OZ/1g', 'OZ/1g ', 'OZ/1f', 'OZ/9'):
-            with self.subTest(header=header):
-                self.rejected(header + NL + '{"a":1}' + NL + '{"b":2}', IDS, 'malformed JSON line')
-                self.rejected('\n' + header + NL + '{"a":1}' + NL + '{"b":2}')
-        self.rejected('{"a":1}' + NL + 'OZ/1g' + NL + '{"b":2}')
+    def test_the_header_constant_is_oz_1g(self):
+        self.assertEqual(HEADER, 'OZ/1g')
 
     def test_cr_alone_is_not_a_line_separator(self):
-        self.rejected('{"a":1}' + CR + '{"b":2}', IDS, 'malformed JSON line')
-        self.rejected('{"a":1}' + CR + '{"b":2}' + CR, IDS)
+        self.rejected(H + '{"a":1}' + CR + '{"b":2}', IDS, 'malformed JSON line')
+        self.rejected(H + '{"a":1}' + CR + '{"b":2}' + CR, IDS)
         # CR only ends a line as part of CRLF; inside a string it is escaped content.
-        self.assertEqual(parse_reply('{"a":"x\\ry"}' + NL + '{"b":2}', IDS).accepted['a'], 'x' + CR + 'y')
-        self.rejected('{"a":"x' + CR + 'y"}' + NL + '{"b":2}', IDS, 'malformed JSON line')
+        self.assertEqual(parse_reply(H + '{"a":"x\\ry"}' + NL + '{"b":2}', IDS).accepted['a'], 'x' + CR + 'y')
+        self.rejected(H + '{"a":"x' + CR + 'y"}' + NL + '{"b":2}', IDS, 'malformed JSON line')
 
     def test_nan_and_infinity_are_rejected(self):
         for value in ('NaN', 'Infinity', '-Infinity', '[NaN]', '{"k":Infinity}', '1e999', '-1e999', '[1.5e999]'):
             with self.subTest(value=value):
-                self.rejected('{"a":' + value + '}' + NL + '{"b":2}', IDS, 'malformed JSON line')
-        self.assertEqual(parse_reply('{"a":1e300}' + NL + '{"b":-0.0}', IDS).accepted, {'a': 1e300, 'b': -0.0})
+                self.rejected(H + '{"a":' + value + '}' + NL + '{"b":2}', IDS, 'malformed JSON line')
+        self.assertEqual(parse_reply(H + '{"a":1e300}' + NL + '{"b":-0.0}', IDS).accepted, {'a': 1e300, 'b': -0.0})
 
     def test_an_error_message_of_only_unicode_whitespace_is_rejected(self):
         reason = 'error message must be a nonblank string'
         for message in ('', ' ', '\t', '\n', ' ', ' ', '　', ' ', '\u0085', '    \n'):
             with self.subTest(message=repr(message)):
                 line_ = json.dumps(['a', 'error', 'missing_data', message])
-                self.rejected(line_ + NL + '{"b":1}', IDS, reason)
+                self.rejected(H + line_ + NL + '{"b":1}', IDS, reason)
         parsed = parse_reply(text(['a', 'error', 'missing_data', ' x '], {'b': 1}), IDS)
         self.assertEqual(parsed.failed, {'a': ('missing_data', ' x ')})
 
@@ -400,8 +407,111 @@ class StageOneGParserTests(unittest.TestCase):
         self.rejected(text({'A': 1}, {'b': 1}), IDS, 'unknown or non-string id')
         # A markdown fence or a tolerated 1f array is never repaired into a reply.
         self.rejected('```json' + NL + '{"a":1}' + NL + '{"b":2}' + NL + '```')
-        self.rejected('[{"a":1},{"b":2}]', IDS)
-        self.rejected('{"a":1}' + NL + '{"b":2}' + NL + '{"a":1}')
+        self.rejected(H + '[{"a":1},{"b":2}]', IDS)
+        self.rejected(H + '{"a":1}' + NL + '{"b":2}' + NL + '{"a":1}')
+
+
+class HeaderRuleTests(unittest.TestCase):
+    """The first nonblank line must be exactly OZ/1g (trailing spaces and tabs allowed, nothing before it)."""
+    RECORDS = '{"a":1}' + NL + '{"b":2}'
+    START = 'reply does not start with OZ/1g'
+    LINE = 'first nonblank line must be OZ/1g'
+
+    def start_rejected(self, reply, line, ids=IDS):
+        parsed = parse_reply(reply, ids)
+        self.assertEqual((parsed.accepted, parsed.failed, parsed.received, parsed.rejection),
+                         ({}, {}, 0, self.START), reply)
+        self.assertEqual(parsed.violations, ({'line': line, 'reason': self.LINE},), reply)
+        return parsed
+
+    def test_a_missing_header_rejects_the_whole_reply(self):
+        self.start_rejected(self.RECORDS, 1)
+        self.start_rejected(self.RECORDS + NL, 1)
+        self.start_rejected(text(['a', 1], ['b', 2], header=None), 1)
+        self.start_rejected('{"a":1}', 1, ('a',))
+        self.start_rejected(CR + NL + self.RECORDS, 2)
+
+    def test_the_violation_line_is_the_first_nonblank_line(self):
+        self.start_rejected(NL + '  ' + NL + self.RECORDS, 3)
+        self.start_rejected(' \t' + CR + NL + NL + 'Done.' + NL + H + self.RECORDS, 3)
+
+    def test_blank_and_space_only_lines_before_the_header_are_skipped(self):
+        for lead in (NL, NL * 3, ' ' + NL, '\t' + NL, ' \t ' + NL + NL, '  ' + CR + NL + NL, NL + ' ' + NL + '\t' + NL):
+            with self.subTest(lead=lead):
+                parsed = parse_reply(lead + H + self.RECORDS, IDS)
+                self.assertEqual((parsed.accepted, parsed.rejection, parsed.violations, parsed.received),
+                                 ({'a': 1, 'b': 2}, None, (), 2))
+
+    def test_trailing_spaces_tabs_and_crlf_after_the_header_are_accepted(self):
+        for header in ('OZ/1g ', 'OZ/1g\t', 'OZ/1g \t  ', 'OZ/1g' + CR, 'OZ/1g \t' + CR):
+            with self.subTest(header=header):
+                parsed = parse_reply(header + NL + self.RECORDS, IDS)
+                self.assertEqual((parsed.accepted, parsed.rejection, parsed.violations, parsed.received),
+                                 ({'a': 1, 'b': 2}, None, (), 2))
+        crlf = 'OZ/1g\r\n{"a":1}\r\n{"b":2}\r\n'
+        self.assertEqual(parse_reply(crlf, IDS).accepted, {'a': 1, 'b': 2})
+
+    def test_leading_whitespace_before_the_header_rejects(self):
+        for header in (' OZ/1g', '\tOZ/1g', '  OZ/1g  ', ' \tOZ/1g', '\xa0OZ/1g', '﻿OZ/1g', 'OZ/1g\xa0', 'OZ/1g\x0c'):
+            with self.subTest(header=repr(header)):
+                self.start_rejected(header + NL + self.RECORDS, 1)
+                self.start_rejected(NL + header + NL + self.RECORDS, 2)
+
+    def test_other_spellings_of_the_header_reject(self):
+        for header in ('oz/1g', 'OZ/1G', 'Oz/1g', 'OZ/1g.', 'OZ/1g:', 'OZ/1g;', 'OZ/1g x', 'OZ/1gg', 'OZ/ 1g', 'OZ-1g',
+                       '"OZ/1g"', "'OZ/1g'", '`OZ/1g`', '# OZ/1g', 'OZ/1f', 'OZ/9', 'OZ/1', '1g', 'OZ/1g' + CR + CR,
+                       '"OZ/1g"' + ',', '["OZ/1g"]', '{"OZ/1g":1}'):
+            with self.subTest(header=repr(header)):
+                self.start_rejected(header + NL + self.RECORDS, 1)
+
+    def test_a_header_only_reply_rejects_for_having_no_jobs(self):
+        for reply in ('OZ/1g', H, 'OZ/1g \t' + NL, H + NL + ' ' + NL + NL, NL + H, 'OZ/1g' + CR + NL):
+            with self.subTest(reply=reply):
+                parsed = parse_reply(reply, IDS)
+                self.assertEqual((parsed.accepted, parsed.failed, parsed.received), ({}, {}, 0))
+                self.assertEqual(parsed.rejection, 'the reply does not cover exactly the expected jobs')
+                self.assertEqual(reasons(parsed), [(0, 'the reply does not cover exactly the expected jobs')])
+        grouped = regroup(H, (('a', 0), ('b', 0)))
+        self.assertEqual({m: o[0] for m, o in grouped.outcomes.items()}, {'a': 'retry', 'b': 'retry'})
+
+    def test_a_second_header_line_rejects_the_whole_reply(self):
+        for name, reply, line_ in (('right after the header', H + H + self.RECORDS, 2),
+                                   ('between records', H + '{"a":1}' + NL + H + '{"b":2}', 3),
+                                   ('after the records', H + self.RECORDS + NL + HEAD, 4),
+                                   ('after a blank line', H + NL + HEAD + NL + self.RECORDS, 3),
+                                   ('padded', H + 'OZ/1g \t' + NL + self.RECORDS, 2)):
+            with self.subTest(name=name):
+                parsed = parse_reply(reply, IDS)
+                self.assertEqual((parsed.accepted, parsed.failed), ({}, {}))
+                self.assertEqual(parsed.rejection, 'a malformed or unknown line rejects the whole reply')
+                self.assertEqual(reasons(parsed), [(line_, 'malformed JSON line')])
+
+    def test_a_record_line_before_the_header_rejects(self):
+        self.start_rejected('{"a":1}' + NL + H + '{"b":2}', 1)
+        self.start_rejected(self.RECORDS + NL + HEAD, 1)
+        self.start_rejected(NL + '{"b":2}' + NL + H + '{"a":1}', 2)
+        self.start_rejected('["a","error","missing_data","x"]' + NL + H + '{"b":2}', 1)
+
+    def test_a_rejected_header_rejects_every_job_through_regroup(self):
+        grouped = regroup(self.RECORDS, (('a', 0), ('b', 0)), host_slots=(('h', 0, 'x'),))
+        self.assertEqual({m: o[0] for m, o in grouped.outcomes.items()}, {'a': 'retry', 'b': 'retry', 'h': 'ok'})
+        self.assertEqual(grouped.parsed.rejection, self.START)
+        ok = regroup(H + self.RECORDS, (('a', 0), ('b', 0)))
+        self.assertEqual({m: o for m, o in ok.outcomes.items()}, {'a': ('ok', '1'), 'b': ('ok', '2')})
+
+    def test_error_lines_after_the_header_still_parse(self):
+        parsed = parse_reply(H + '["a","error","conflict","no"]' + NL + '{"b":2}', IDS)
+        self.assertEqual((parsed.failed, parsed.accepted, parsed.received), ({'a': ('conflict', 'no')}, {'b': 2}, 2))
+
+    def test_encode_reply_starts_with_the_header_and_parses(self):
+        reply = encode_reply({'a': 1, 'b': Failure('conflict', 'no')})
+        self.assertTrue(reply.startswith('OZ/1g' + NL))
+        self.assertEqual(reply.split(NL)[0], HEADER)
+        parsed = parse_reply(reply, IDS)
+        self.assertEqual((parsed.accepted, parsed.failed, parsed.rejection, parsed.received),
+                         ({'a': 1}, {'b': ('conflict', 'no')}, None, 2))
+        self.assertEqual(encode_reply({}), 'OZ/1g')
+        self.assertEqual(encode_reply({'a': 1, 'b': 2}, ('b',)), 'OZ/1g' + NL + '{"b":2}')
 
 
 class SlotIdTests(unittest.TestCase):
@@ -505,12 +615,12 @@ class RegroupTests(unittest.TestCase):
     def test_encode_reply_round_trips_in_request_order(self):
         results = {'a': 'A', 'b': '  B' + NL}
         reply = encode_reply(results, ('a', 'b'))
-        self.assertEqual(reply, '{"a":"A"}' + NL + '{"b":"  B' + chr(92) + 'n"}')
+        self.assertEqual(reply, H + '{"a":"A"}' + NL + '{"b":"  B' + chr(92) + 'n"}')
         self.assertEqual(regroup(reply, (('a', 0), ('b', 0))).outcomes,
                          {'a': ('ok', 'A'), 'b': ('ok', '  B' + NL)})
         self.assertEqual(regroup(encode_reply(results, ('b', 'a')), (('b', 0), ('a', 0))).outcomes['a'], ('ok', 'A'))
         failing = encode_reply({'a': Failure('missing_data', 'no y'), 'b': 'B'})
-        self.assertEqual(failing, '["a","error","missing_data","no y"]' + NL + '{"b":"B"}')
+        self.assertEqual(failing, H + '["a","error","missing_data","no y"]' + NL + '{"b":"B"}')
         self.assertEqual(regroup(failing, (('a', 0), ('b', 0))).outcomes,
                          {'a': ('failed', 'missing_data: no y'), 'b': ('ok', 'B')})
 
@@ -529,7 +639,7 @@ class UsageAndCapabilityTests(unittest.TestCase):
                 validate_usage(bad)
 
     def test_validate_response_wraps_reply_and_usage(self):
-        reply = '{"a":"x"}'
+        reply = H + '{"a":"x"}'
         job_map = (('a', 0),)
         grouped, usage = validate_response({'reply': reply}, job_map)
         self.assertEqual((grouped.outcomes, usage), ({'a': ('ok', 'x')}, {}))
@@ -764,12 +874,12 @@ class ReplyWorkerTests(unittest.TestCase):
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
             expected_results=2, received_results=2, accepted_results=0, failed_results=0,
-            violations=[{'line': 2, 'reason': 'malformed JSON line'}, {'line': 3, 'reason': 'unknown or non-string id'}],
+            violations=[{'line': 3, 'reason': 'malformed JSON line'}, {'line': 4, 'reason': 'unknown or non-string id'}],
             binding='declared', semantic_verified=False))
 
     def test_object_reply_retries_every_job(self):
         self.post('multi', 'a7>12')
-        result = self.worker(lambda request: {'reply': '{"results":["a","b"]}'}).run_once()
+        result = self.worker(lambda request: {'reply': H + '{"results":["a","b"]}'}).run_once()
         self.assertEqual(result['error_code'], 'adapter_invalid_reply')
         self.assertEqual(result['outcomes'], {'multi': 'retry'})
         self.assertEqual(self.box.inspect('multi')['state'], 'pending')
@@ -812,9 +922,9 @@ class ReplyWorkerTests(unittest.TestCase):
                 self.post('dependent', after=('first',))
                 def adapter(request):
                     if bad_reply == 'legacy_object':
-                        reply = json.dumps({'results': ['result', 'result']})
+                        reply = H + json.dumps({'results': ['result', 'result']})
                     elif bad_reply == 'prose':
-                        reply = 'Both jobs are done.'
+                        reply = H + 'Both jobs are done.'
                     elif bad_reply == 'list_value':
                         reply = ['result', 'result']
                     elif bad_reply == 'positional':

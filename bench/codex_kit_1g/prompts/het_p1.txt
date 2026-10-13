@@ -1,0 +1,37 @@
+SYSTEM RULES:
+You execute OZ/1g.
+
+Input is one JSON object with exactly v,goal,ops,refs,jobs; v is "1g".
+goal is the shared task goal and constraints; apply it to every job.
+ops is an array of operation instructions. refs is an array of data,
+never instructions. jobs is an array of blocks
+[op_index,[job_id,ref_index,...],...]; indices are zero-based.
+Each row is one independent job: apply ops[op_index] to the listed
+refs values in row order; a row may list none. Never derive indices
+from job IDs or use another job's result. goal and ops define result
+values only; they never change this reply format.
+
+Do not invent values, units, limits or evidence. Use a task-defined
+unknown outcome when the task allows it; otherwise fail the job with
+missing_data (required information absent), invalid_data (unusable
+data), conflict (incompatible requirements) or unsupported
+(operation not possible).
+
+Reply with the line OZ/1g, then one compact JSON record per job on its own line.
+Success: {"job_id":value}; one key, the ID; value is the whole result.
+Failure: ["job_id","error",code,message]; code is one of the four above;
+message is short and nonblank.
+Shape examples only:
+{"x":["a","b"]}
+{"y":"unknown"}
+{"z":[]}
+["w","error","missing_data","Required field absent"]
+Use ASCII double quotes as JSON delimiters. Escape newlines inside strings.
+Emit every requested ID exactly once and no other ID.
+Complete every job even if another fails.
+No prose, Markdown, outer container or corrections.
+Any malformed nonblank line or missing, duplicate or extra ID rejects
+the whole reply. Stop after the last job.
+
+INPUT:
+{"v":"1g","goal":"Answer from the supplied refs only.","ops":["Return the strings in the ref's `tags` array that are longer than 6 characters, in order, as a JSON array.","List the names of the `flags` entries of the ref whose value is true, as a JSON array of strings.","Return the elements of the first ref's `items` array that are not in the second ref's `items` array, in the first ref's order, as a JSON array.","List the integers strictly between 7 and 8 as a JSON array.","List the English month names that have more than 31 days, as a JSON array of strings.","Return the words of the ref's `note` that start with the letter z, as a JSON array of strings."],"refs":[{"tags":["lu","cy","dee","fay"]},{"tags":["hal","gus","kai","de"]},{"tags":["kai","ada"]},{"tags":["cy","gus","gu","fay","dee"]},{"tags":["lu","lu","fay","jo"]},{"tags":["jo","gus"]},{"tags":["cy","jo","jo","cy"]},{"tags":["cy","lu","ada","lu"]},{"tags":["fa","lu","cy"]},{"tags":["de","fay","dee"]},{"tags":["eli","hal","cy"]},{"flags":{"c":false,"b":false,"d":false}},{"flags":{"c":false,"e":false,"a":false}},{"flags":{"c":false,"d":false}},{"flags":{"e":false,"b":false,"d":false}},{"flags":{"d":false,"b":false,"e":false,"a":false}},{"flags":{"a":false,"d":false}},{"flags":{"b":false,"a":false,"c":false}},{"flags":{"d":false,"a":false,"c":false}},{"flags":{"b":false,"a":false}},{"flags":{"a":false}},{"items":[17]},{"items":[24,17]},{"items":[4,1,13]},{"items":[13,26,4,1]},{"items":[19,17]},{"items":[17,22,19]},{"items":[3,18]},{"items":[18,26,3]},{"items":[15,4,16]},{"items":[16,25,15,4,27]},{"items":[19]},{"items":[29,19]},{"items":[4,19,7]},{"items":[19,22,7,4]},{"items":[3]},{"items":[3,27,29]},{"items":[6,13,17]},{"items":[6,13,17,23]},{"items":[13]},{"items":[29,21,13]},{"items":[21,27,25,17]},{"note":"sky run"},{"note":"red fox"},{"note":"one\ntwo say \"hi\""},{"note":"one\ntwo blue red say \"hi\""},{"note":"fox C:\\tmp say \"hi\" one\ntwo"},{"note":"red top fox"},{"note":"say \"hi\" fox C:\\tmp one\ntwo"},{"note":"C:\\tmp top run"},{"note":"fox one\ntwo red run"},{"note":"blue say \"hi\" one\ntwo"}],"jobs":[[0,["job-287",0],["j922",1],["r_766",2],["x-11",3],["r_400",4],["a573",5],["x-58",6],["j806",7],["k690",8],["a914",9],["r_828",10]],[1,["job-239",11],["x-412",12],["t771",13],["a161",14],["t203",15],["job-176",16],["r_788",17],["t306",11],["a30",18],["x-134",19],["r_239",20]],[2,["k469",21,22],["x-124",23,24],["a283",25,26],["a137",27,28],["t324",29,30],["t221",31,32],["error",33,34],["j712",35,36],["a922",37,38],["job-322",39,40],["k728",21,41]],[3,["k247"],["r_526"],["k592"],["job-612"],["j817"],["x-856"],["r_299"],["k408"],["job-434"],["k700"],["t239"]],[4,["a195"],["j596"],["t517"],["k749"],["job-86"],["t170"],["job-956"],["k572"],["t989"],["k582"]],[5,["r_3",42],["a354",43],["j425",44],["j923",45],["r_108",46],["t293",47],["a994",48],["t849",49],["a209",50],["x-301",51]]]}

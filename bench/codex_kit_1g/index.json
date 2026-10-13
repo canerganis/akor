@@ -1,0 +1,87 @@
+[
+ {
+  "file": "std_2005.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "std",
+  "seed": 2005,
+  "o200k": 1479
+ },
+ {
+  "file": "std_2006.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "std",
+  "seed": 2006,
+  "o200k": 1474
+ },
+ {
+  "file": "std_2007.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "std",
+  "seed": 2007,
+  "o200k": 1483
+ },
+ {
+  "file": "std_2008.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "std",
+  "seed": 2008,
+  "o200k": 1477
+ },
+ {
+  "file": "std_2009.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "std",
+  "seed": 2009,
+  "o200k": 1477
+ },
+ {
+  "file": "het_p1.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "het",
+  "packet": 1,
+  "seed": 3001,
+  "o200k": 1479
+ },
+ {
+  "file": "het_p2.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "het",
+  "packet": 2,
+  "seed": 3002,
+  "o200k": 1392
+ },
+ {
+  "file": "het_p3.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "het",
+  "packet": 3,
+  "seed": 3003,
+  "o200k": 1666
+ },
+ {
+  "file": "het_p4.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "het",
+  "packet": 4,
+  "seed": 3004,
+  "o200k": 1813
+ },
+ {
+  "file": "het_p5.txt",
+  "arm": "H",
+  "n": 64,
+  "kind": "het",
+  "packet": 5,
+  "seed": 3005,
+  "o200k": 1608
+ }
+]

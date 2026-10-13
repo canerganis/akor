@@ -17,15 +17,18 @@ from test_oz2 import extended
 CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
 
 
+H = 'OZ/1g' + chr(10)
+
+
 def items(request):
     """Number of model jobs (jobs items) in the request body."""
     return len(job_ids(request['prompt']))
 
 
 def reply(request, texts):
-    """Adapter response: raw JSONL text, one {"id":result} line per packet job, in request order."""
+    """Adapter response: the OZ/1g header, then raw JSONL text, one {"id":result} line per packet job, in request order."""
     ids = job_ids(request['prompt'])
-    return {'reply': chr(10).join(json.dumps({mid: text}, ensure_ascii=False) for mid, text in zip(ids, texts))}
+    return {'reply': chr(10).join(['OZ/1g', *(json.dumps({mid: text}, ensure_ascii=False) for mid, text in zip(ids, texts))])}
 
 
 class WorkerTests(unittest.TestCase):
@@ -153,7 +156,7 @@ class WorkerTests(unittest.TestCase):
                 loads(text)
 
     def test_invalid_responses_and_usage_are_rejected(self):
-        good = '{"one":"x"}'
+        good = 'OZ/1g' + chr(10) + '{"one":"x"}'
         job_map = (('one', 0),)
         cases = [None, {}, {'reply': {'results': ['x']}}, {'reply': ['0123456789abcdef', 'x']},
                  {'reply': 5}, {'reply': None},
@@ -169,7 +172,7 @@ class WorkerTests(unittest.TestCase):
     def test_stdio_adapter_real_process_round_trip_and_unicode(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
                   'j=json.loads(r["prompt"])["jobs"]; '
-                  'json.dump({"reply":json.dumps({j[0][1][0]:"12.50 ± 0.02 mm"},ensure_ascii=False)},sys.stdout)')
+                  'json.dump({"reply":"OZ/1g"+chr(10)+json.dumps({j[0][1][0]:"12.50 ± 0.02 mm"},ensure_ascii=False)},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post(wire='>12')
         result = self.worker(adapter, timeout=10).run_once()
@@ -178,7 +181,7 @@ class WorkerTests(unittest.TestCase):
 
     def test_stdio_adapter_receives_oz9_request_with_packet_ids_in_prompt(self):
         script = ('import json,sys; r=json.load(sys.stdin); '
-                  'json.dump({"reply":json.dumps({json.loads(r["prompt"])["jobs"][0][1][0]:json.dumps(r)})},sys.stdout)')
+                  'json.dump({"reply":"OZ/1g"+chr(10)+json.dumps({json.loads(r["prompt"])["jobs"][0][1][0]:json.dumps(r)})},sys.stdout)')
         adapter = StdioAdapter((sys.executable, '-c', script), timeout=10, capabilities=CAPS)
         self.post('secret_job', '>12')
         self.worker(adapter, timeout=10).run_once()
@@ -407,33 +410,33 @@ class LedgerTests(unittest.TestCase):
 
     def test_invalid_response_outcome_keeps_validation_counts(self):
         self.post('one')
-        self.worker(lambda r: {'reply': '{"one.0":"a"}' + chr(10) + '{"one.1":"b"'},
+        self.worker(lambda r: {'reply': H + '{"one.0":"a"}' + chr(10) + '{"one.1":"b"'},
                     retry_delay=0).run_once()
         end = self.lines()[-1]
         # One valid line of two: nothing is accepted, the job retries as a whole.
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
             expected_results=2, received_results=1, accepted_results=0, failed_results=0,
-            violations=[{'line': 2, 'reason': 'malformed JSON line'}],
+            violations=[{'line': 3, 'reason': 'malformed JSON line'}],
             binding='declared', semantic_verified=False))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
 
     def test_reply_without_any_valid_line_keeps_counts_and_violations(self):
         self.post('one')
-        self.worker(lambda r: {'reply': '{"one.0":"a","one.1":"b"}'}, retry_delay=0).run_once()
+        self.worker(lambda r: {'reply': H + '{"one.0":"a","one.1":"b"}'}, retry_delay=0).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation'], dict(
             expected_results=2, received_results=1, accepted_results=0, failed_results=0,
-            violations=[{'line': 1, 'reason': 'line must be a one-member {id:value} object or a four-element '
+            violations=[{'line': 2, 'reason': 'line must be a one-member {id:value} object or a four-element '
                                               '[id,"error",code,message] array'}],
             binding='declared', semantic_verified=False))
         self.assertEqual(end['error'], 'adapter_invalid_reply (Error)')
 
     def test_violations_are_capped_at_twenty(self):
         self.post('one', '>12')
-        text = chr(10).join(['{"one":"ok"}'] + ['[7,'] * 30)
+        text = chr(10).join(['OZ/1g', '{"one":"ok"}'] + ['[7,'] * 30)
         self.worker(lambda r: {'reply': text}, retry_delay=0).run_once()
         end = self.lines()[-1]
         # Every line fails to parse: the whole reply is refused and the violation list stays capped.
@@ -441,13 +444,13 @@ class LedgerTests(unittest.TestCase):
         self.assertEqual(end['validation']['accepted_results'], 0)
         self.assertEqual(self.box.inspect('one')['state'], 'pending')
         self.post('two', 'a7>12')
-        text = chr(10).join(['{"two.0":"ok"}', '{"two.1":"ok"}'] + ['prose'] * 2)
+        text = chr(10).join(['OZ/1g', '{"two.0":"ok"}', '{"two.1":"ok"}'] + ['prose'] * 2)
         self.worker(lambda r: {'reply': text}, retry_delay=0).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'invalid_response')
         self.assertEqual(end['validation']['accepted_results'], 0)
         self.assertEqual(self.box.inspect('two')['state'], 'pending')
-        many = chr(10).join(['x'] * 4)
+        many = chr(10).join(['OZ/1g'] + ['x'] * 4)
         self.post('three', 'a7>12a7')
         self.worker(lambda r: {'reply': many}, retry_delay=0, batch_size=1).run_once()
         self.assertEqual(self.lines()[-1]['validation']['accepted_results'], 0)
@@ -455,7 +458,7 @@ class LedgerTests(unittest.TestCase):
     def test_job_errors_are_recorded_as_failed_results_and_a_job_error_outcome(self):
         self.post('one', '>12')
         self.post('two', '>12')
-        reply = '["one","error","missing_data","Missing x."]' + chr(10) + '{"two":"fine"}'
+        reply = H + '["one","error","missing_data","Missing x."]' + chr(10) + '{"two":"fine"}'
         report = self.worker(lambda r: {'reply': reply}).run_once()
         end = self.lines()[-1]
         self.assertEqual((report['status'], report['outcomes']), ('received', {'one': 'failed', 'two': 'ok'}))
@@ -471,13 +474,13 @@ class LedgerTests(unittest.TestCase):
         self.post('two', '>12', max_attempts=5)
         def twice(request):
             line = json.dumps({'one': 'a'}) + chr(10) + json.dumps({'two': 'b'})
-            return {'reply': line + chr(10) + chr(10).join(line.split(chr(10)))}
+            return {'reply': H + line + chr(10) + chr(10).join(line.split(chr(10)))}
         self.worker(twice, retry_delay=0).run_once()
         end = self.lines()[-1]
         self.assertEqual((end['outcome'], end['validation']['accepted_results']), ('invalid_response', 0))
         self.assertEqual(self.box.stats(), {'pending': 2})
         def conflicting(request):
-            return {'reply': '{"one":"a"}' + chr(10) + '{"two":"b"}' + chr(10) + '{"one":"c"}'}
+            return {'reply': H + '{"one":"a"}' + chr(10) + '{"two":"b"}' + chr(10) + '{"one":"c"}'}
         self.worker(conflicting, retry_delay=0).run_once()
         end = self.lines()[-1]
         self.assertEqual(end['outcome'], 'invalid_response')

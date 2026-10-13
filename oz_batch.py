@@ -1,6 +1,6 @@
 """OZ/9 request packets (wire stage-1g): one fixed system text and one compact JSON body.
 
-The body is {"v":"1g","goal","ops","refs","jobs"} (docs/design/stage-1f-astra.md, reply stage-1g-joint-decision.md). goal is the channel goal,
+The body is {"v":"1g","goal","ops","refs","jobs"} (docs/design/stage-1f-astra.md, reply stage-1g-final-decision.md). goal is the channel goal,
 required and nonblank, copied unchanged. ops is the array of operation instructions in first-use order, one per
 used operation. refs is the array of referenced channel records and accepted predecessor results, each source
 once, in first-use order. jobs is one block per used operation, [op_index,[job_id,ref_index,...],...], in
@@ -24,7 +24,7 @@ LANGUAGE = 'OZ/9'
 PREVIEW_RECEIPT = '0' * 16
 WIRE = 'stage-1g'
 VERSION = '1g'
-# Normative worker contract (Stage 1g, docs/design/stage-1g-joint-decision.md): the one system text, nothing appended.
+# Normative worker contract (Stage 1g, docs/design/stage-1g-final-decision.md, text H): the one system text, nothing appended.
 SYSTEM = '''You execute OZ/1g.
 
 Input is one JSON object with exactly v,goal,ops,refs,jobs; v is "1g".
@@ -43,7 +43,7 @@ missing_data (required information absent), invalid_data (unusable
 data), conflict (incompatible requirements) or unsupported
 (operation not possible).
 
-Reply with one compact JSON record per job on its own line.
+Reply with the line OZ/1g, then one compact JSON record per job on its own line.
 Success: {"job_id":value}; one key, the ID; value is the whole result.
 Failure: ["job_id","error",code,message]; code is one of the four above;
 message is short and nonblank.

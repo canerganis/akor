@@ -4,6 +4,7 @@ Sonnet 5.5, 64 jobs, candidate arm 20 calls on data seeds 1005-1024, 0.8-exec 5 
 1021, paired order shuffled, concurrency 1, no reply retry. The arm stops at its second failed packet.
 Before the first call the manifest (texts, packets, settings, schedule) is hashed and written next to the data.
 Usage: ARM=H OUT=live22_1g_A_H.jsonl python bench/live/run1g.py
+Stage D: MODEL=haiku N=64 SEEDS=2005-2014 BASE= ARM=H OUT=... (the second-failure stop still applies)
 """
 import hashlib, json, os, random, sys
 from pathlib import Path
@@ -13,9 +14,11 @@ import live11 as M
 import run_live as L
 
 ARM = os.environ['ARM']
-N = 64
-SEEDS = list(range(1005, 1025))
-BASE = {1005, 1009, 1013, 1017, 1021}
+N = int(os.environ.get('N', '64'))
+lo, hi = map(int, os.environ.get('SEEDS', '1005-1024').split('-'))
+SEEDS = list(range(lo, hi + 1))
+# Stage D cells run without baseline: BASE= (empty).
+BASE = {int(s) for s in os.environ.get('BASE', '1005,1009,1013,1017,1021').split(',') if s}
 OUT = M.X.V.LIVE / 'data' / os.environ['OUT']
 
 

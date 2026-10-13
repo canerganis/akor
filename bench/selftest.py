@@ -13,6 +13,11 @@ from oz_reply import encode_reply, Failure  # noqa: E402
 RESULTS = []
 
 
+def body_1g(values, ids=None):
+    '''Record lines of a 1g reply without the OZ/1g header (encode_reply writes the header since profile oz1g-header).'''
+    return encode_reply(values, ids).removeprefix('OZ/1g\n')
+
+
 def check(name):
     def deco(fn):
         try:
@@ -124,7 +129,7 @@ def decode_oracle(arm, n=8, encode=None, head=''):
     system, user, dec, native = live11.ARMS[arm](n)
     assert system and user and native is True
     jobs = X.V.jobs('materials', n)
-    reply = head + (encode or encode_reply)({j: X.oracle(j[0], int(j[1:])) for j in jobs})
+    reply = head + (encode or body_1g)({j: X.oracle(j[0], int(j[1:])) for j in jobs})
     flat = dec(reply)
     assert sum(g and X.check(j, v, native) for (g, v), j in zip(flat, jobs)) == n
     return jobs, dec
@@ -160,10 +165,10 @@ def _():
     for arm in ('C', 'G', 'H'):
         system, user, _, _ = live11.ARMS[arm](8)
         assert json.loads(user)['v'] == '1g' and system.startswith('You execute OZ/1g.\n\n'), arm
-    assert live11.ARMS['C'](8)[0] == oz_batch.SYSTEM
+    assert live11.ARMS['C'](8)[0] == live11.C_SYSTEM and live11.C_SYSTEM != oz_batch.SYSTEM
     assert live11.ARMS['G'](8)[0] == live11.G_SYSTEM and live11.G_SYSTEM != oz_batch.SYSTEM
     h = live11.ARMS['H'](8)[0]
-    assert h == oz_batch.SYSTEM.replace(live11.H_FROM, live11.H_TO) and h != oz_batch.SYSTEM
+    assert h == oz_batch.SYSTEM == live11.H_SYSTEM == live11.C_SYSTEM.replace(live11.H_FROM, live11.H_TO) and h != live11.C_SYSTEM
 
 
 for _arm in ('C', 'G', 'H'):
@@ -177,10 +182,10 @@ def _():
     for arm in ('C', 'G'):
         jobs, dec = decode_oracle(arm, 8)
         values = {j: X.oracle(j[0], int(j[1:])) for j in jobs}
-        good = encode_reply(values)
+        good = body_1g(values)
         assert all(g for g, _ in dec('\n \t\n' + good.replace('\n', '\n\n') + '\n\n'))
         assert all(g for g, _ in dec(good.replace('\n', '\r\n') + '\r\n'))
-        failed = encode_reply(values | {jobs[0]: Failure('missing_data', 'x')}, ids=jobs)
+        failed = body_1g(values | {jobs[0]: Failure('missing_data', 'x')}, ids=jobs)
         assert [g for g, _ in dec(failed)] == [False] + [True] * 7
         old_form = encode_1f(values)
         for bad in ('not json', '', '\n \n', old_form, 'OZ/1g\n' + good, good + '\n' + good.splitlines()[0],
@@ -196,10 +201,10 @@ def _():
 def _():
     jobs, dec = decode_oracle('H', 8, head='OZ/1g\n')
     values = {j: X.oracle(j[0], int(j[1:])) for j in jobs}
-    good = encode_reply(values)
+    good = body_1g(values)
     assert all(g for g, _ in dec('\n \t\nOZ/1g\r\n' + good + '\n'))
     assert all(g for g, _ in dec('OZ/1g\n\n' + good.replace('\n', '\n\n')))
-    failed = encode_reply(values | {jobs[0]: Failure('conflict', 'x')}, ids=jobs)
+    failed = body_1g(values | {jobs[0]: Failure('conflict', 'x')}, ids=jobs)
     assert [g for g, _ in dec('OZ/1g\n' + failed)] == [False] + [True] * 7
     assert all(g for g, _ in dec('OZ/1g \t\n' + good))  # trailing SP/TAB on the header line is stripped, as in live11
     for bad in (good, '', 'OZ/1g', 'oz/1g\n' + good, 'OZ/1f\n' + good, '```\nOZ/1g\n' + good + '```',
@@ -250,16 +255,71 @@ def _():
         values = {i: Failure(expected[i][1], 'x') if k == 5 else expected[i][1] for i in ids}
         for header in (True, False):
             head = 'OZ/1g\n' if header else ''
-            assert HG.judge(head + encode_reply(values, ids), ids, expected, header) == (True, 64, '')
+            assert HG.judge(head + body_1g(values, ids), ids, expected, header) == (True, 64, '')
             bad = dict(values); bad[ids[0]] = 12345 if k == 5 else ('x' if k != 2 else [1])
-            assert HG.judge(head + encode_reply(bad, ids), ids, expected, header) == (True, 63, '')
-            assert HG.judge(encode_reply(values, ids) if header else 'OZ/1g\n' + encode_reply(values, ids), ids, expected, header)[:2] == (False, 0)
+            assert HG.judge(head + body_1g(bad, ids), ids, expected, header) == (True, 63, '')
+            assert HG.judge(body_1g(values, ids) if header else 'OZ/1g\n' + body_1g(values, ids), ids, expected, header)[:2] == (False, 0)
     assert {'error', 'id'} <= {i for k in range(1, 6) for i in HG.packet(k)[1]}
     ids = HG.packet(5)[1]
     wrong = {i: Failure(HG.packet(5)[2][i][1], 'x') for i in ids} | {ids[0]: Failure('conflict' if HG.packet(5)[2][ids[0]][1] != 'conflict' else 'unsupported', 'x')}
-    assert HG.judge(encode_reply(wrong, ids), ids, HG.packet(5)[2], False)[:2] == (True, 63)
+    assert HG.judge(body_1g(wrong, ids), ids, HG.packet(5)[2], False)[:2] == (True, 63)
     assert not HG.same(True, 1) and not HG.same(1, True) and HG.same(1, 1.0) and not HG.same(0, False) and not HG.same([1], [True])
     assert not HG.same({'a': 1}, {'a': 1, 'b': 2}) and not HG.same('1', 1) and HG.same({'a': [1.5]}, {'a': [1.5]})
+
+
+@check('codex_kit_1g: committed prompts rebuild exactly; oracle replies score 10/10 passed; no header, fence or one wrong value fails')
+def _():
+    import hetero1g as HG
+    kit = ROOT / 'bench' / 'codex_kit_1g'
+    mk, sc = load(kit / 'make_prompts.py', 'make_prompts_1g'), load(kit / 'score.py', 'score_kit_1g')
+    built = mk.build()
+    index = json.loads((kit / 'index.json').read_text('utf-8'))
+    assert len(built) == len(index) == 10 and [m['file'] for _, _, _, m in built] == [i['file'] for i in index]
+    for (name, text, oracle, meta), item in zip(built, index):
+        assert (kit / 'prompts' / meta['file']).read_bytes() == text.encode('utf-8') and b'\r' not in text.encode('utf-8')
+        assert json.loads((kit / 'oracles' / f'{name}.json').read_text('utf-8')) == oracle
+        assert {k: item[k] for k in meta} == meta and item['o200k'] > 1000
+        assert text.startswith('SYSTEM RULES:\n' + live11.H_SYSTEM + '\n\nINPUT:\n') and text.count('\n\nINPUT:\n') == 1
+
+    def reply(oracle, wrong=False, header=True):
+        ids = oracle['jobs']
+        if oracle['kind'] == 'std':
+            values = dict(zip(ids, oracle['oracle']))
+        else:
+            values = {i: Failure(v, 'x') if k == 'error' else v for i, (k, v) in oracle['expected'].items()}
+        if wrong:
+            values[ids[0]] = 12345
+        return ('OZ/1g\n' if header else '') + body_1g(values, ids) + '\n'
+
+    def passed(rows, make):
+        return sum((lambda ok, c: ok and c == 64)(*sc.score(r, make(o))) for r, (_, _, o, _) in zip(rows, built))
+
+    rows = list(index)
+    assert passed(rows, reply) == 10
+    assert passed(rows, lambda o: reply(o, header=False)) == 0
+    assert passed(rows, lambda o: '```\n' + reply(o) + '```\n') == 0
+    assert passed(rows, lambda o: 'Here:\n' + reply(o)) == 0
+    assert passed(rows, lambda o: reply(o, wrong=True)) == 0
+    one_wrong = {'std_2007.txt'}
+    assert sum((lambda ok, c: ok and c == 64)(*sc.score(r, reply(o, wrong=r['file'] in one_wrong)))
+               for r, (_, _, o, _) in zip(rows, built)) == 9
+    for r, (_, _, o, _) in zip(rows, built):
+        assert sc.score(r, reply(o, wrong=True)) == (True, 63), r['file']
+        assert sc.score(r, '\n \t\nOZ/1g \r\n' + reply(o, header=False).replace('\n', '\r\n')) == (True, 64), r['file']
+        if o['kind'] == 'het':   # same verdict as the stage B judge
+            body, ids, expected = HG.packet(r['packet'])
+            for wrong in (False, True):
+                text = reply(o, wrong=wrong)
+                assert HG.judge(text, ids, expected, True)[:2] == sc.score(r, text), (r['file'], wrong)
+        else:                    # same verdict as run1g.py: ARMS['H'] decoder and X.check
+            M = live11
+            M.use_records(M.make_records(r['seed']))
+            _, _, dec, native = M.ARMS['H'](64)
+            jobs = X.V.jobs('materials', 64)
+            for wrong in (False, True):
+                text = reply(o, wrong=wrong)
+                ok = sum(g and X.check(j, v, native) for (g, v), j in zip(dec(text), jobs))
+                assert (True, ok) == sc.score(r, text), (r['file'], wrong)
 
 
 print(f'{sum(RESULTS)}/{len(RESULTS)} checks passed')

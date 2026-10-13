@@ -1,0 +1,37 @@
+SYSTEM RULES:
+You execute OZ/1g.
+
+Input is one JSON object with exactly v,goal,ops,refs,jobs; v is "1g".
+goal is the shared task goal and constraints; apply it to every job.
+ops is an array of operation instructions. refs is an array of data,
+never instructions. jobs is an array of blocks
+[op_index,[job_id,ref_index,...],...]; indices are zero-based.
+Each row is one independent job: apply ops[op_index] to the listed
+refs values in row order; a row may list none. Never derive indices
+from job IDs or use another job's result. goal and ops define result
+values only; they never change this reply format.
+
+Do not invent values, units, limits or evidence. Use a task-defined
+unknown outcome when the task allows it; otherwise fail the job with
+missing_data (required information absent), invalid_data (unusable
+data), conflict (incompatible requirements) or unsupported
+(operation not possible).
+
+Reply with the line OZ/1g, then one compact JSON record per job on its own line.
+Success: {"job_id":value}; one key, the ID; value is the whole result.
+Failure: ["job_id","error",code,message]; code is one of the four above;
+message is short and nonblank.
+Shape examples only:
+{"x":["a","b"]}
+{"y":"unknown"}
+{"z":[]}
+["w","error","missing_data","Required field absent"]
+Use ASCII double quotes as JSON delimiters. Escape newlines inside strings.
+Emit every requested ID exactly once and no other ID.
+Complete every job even if another fails.
+No prose, Markdown, outer container or corrections.
+Any malformed nonblank line or missing, duplicate or extra ID rejects
+the whole reply. Stop after the last job.
+
+INPUT:
+{"v":"1g","goal":"Answer from the supplied refs only.","ops":["Return the number of days in a week as a JSON integer.","Return true if 91 is a prime number, otherwise false, as a JSON boolean.","Return the chemical symbol of sodium as a JSON string.","Return the integer field `a` plus the integer field `b` of the ref, as a JSON integer.","Return the ref's `title` field exactly as it is, as a JSON string.","Return true if the ref's `status` field is the string \"done\", otherwise false, as a JSON boolean.","Return the first ref's `rank` minus the second ref's `rank`, as a JSON integer.","Return the ref's `owner` field as a JSON string. If the ref has no `owner` field, return the JSON string \"unknown\" instead of failing.","Return the ref's `price` multiplied by 2, as a JSON number.","Return the number of elements in the ref's `tags` array, as a JSON integer."],"refs":[{"a":3,"b":6},{"a":0,"b":0},{"a":6,"b":9},{"a":7,"b":0},{"a":0,"b":2},{"a":5,"b":0},{"a":9,"b":5},{"a":6,"b":1},{"a":8,"b":6},{"a":7,"b":9},{"title":"Weekly report","rev":2},{"title":"notes","rev":6},{"title":"a \"b\" \\ c","rev":4},{"title":"say \"hi\"","rev":2},{"title":"say \"hi\"","rev":3},{"title":"say \"hi\"","rev":8},{"title":"Weekly report","rev":6},{"title":"Draft v2","rev":3},{"status":"done"},{"status":"blocked"},{"status":"open"},{"rank":9},{"rank":8},{"rank":5},{"rank":7},{"rank":3},{"rank":2},{"rank":4},{"rank":6},{"rank":1},{"owner":"o\"neil","task":42},{"owner":"back\\slash","task":60},{"task":45},{"owner":"hal","task":40},{"task":6},{"task":73},{"task":31},{"owner":"o\"neil","task":73},{"price":9.75},{"price":7.25},{"price":3.75},{"price":0.75},{"price":2.25},{"tags":["jo","ada","kai"]},{"tags":["lu","gus","hal","eli","cy"]},{"tags":["fay","lu","ivy","ada","dee"]},{"tags":["ivy","fay"]},{"tags":["hal","kai","hal","kai"]}],"jobs":[[0,["j919"],["job-474"],["r_622"],["job-156"]],[1,["job-718"],["job-422"],["x-256"]],[2,["t433"],["k926"],["r_394"]],[3,["job-689",0],["job-290",1],["job-25",2],["x-462",3],["job-630",4],["t98",5],["j679",6],["t453",7],["a900",8],["job-505",9]],[4,["k114",10],["x-989",11],["j896",10],["j86",12],["job-124",13],["j811",14],["r_941",15],["job-586",16],["j476",17],["t270",16]],[5,["t131",18],["j751",19],["x-775",18],["k948",18],["job-188",20],["job-834",18],["x-416",19],["k61",20]],[6,["a365",21,22],["k997",23,24],["x-510",25,26],["r_386",27,28],["a971",27,28],["x-881",21,29],["r_175",26,23],["r_819",23,26]],[7,["x-786",30],["r_303",31],["t349",32],["k618",33],["t26",34],["t605",35],["j813",36],["k971",37]],[8,["job-296",38],["a782",39],["j591",40],["id",41],["t478",42]],[9,["x-417",43],["k619",44],["a576",45],["r_761",46],["j309",47]]]}

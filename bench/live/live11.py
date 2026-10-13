@@ -342,17 +342,17 @@ def _s1f(n):
 G_SYSTEM = (Path(__file__).parent / 'stage1g_G_system.txt').read_text(encoding='utf-8').rstrip('\n')
 H_FROM = 'Reply with one compact JSON record per job on its own line.'
 H_TO = 'Reply with the line OZ/1g, then one compact JSON record per job on its own line.'
+# C is frozen as screened in live21 (the product moved on to H, oz_batch.SYSTEM == H_SYSTEM).
+C_SYSTEM = (Path(__file__).parent / 'stage1g_C_system.txt').read_text(encoding='utf-8').rstrip('\n')
+assert C_SYSTEM.count(H_FROM) == 1
+H_SYSTEM = C_SYSTEM.replace(H_FROM, H_TO)
 
 
 def stage1g_flat(reply, ids, header=False):
+    """The product parser (profile oz1g-header) judges H directly; for the headerless arms (C, G) the host
+    supplies the header line, so a reply that writes its own header has a repeated header and is rejected."""
     from oz_reply import parse_reply
-    if header:
-        lines = reply.split('\n')
-        first = next((k for k, line in enumerate(lines) if line.removesuffix('\r').strip(' \t')), None)
-        if first is None or lines[first].removesuffix('\r').rstrip(' \t') != 'OZ/1g':
-            raise ValueError('first nonblank line is not OZ/1g')
-        reply = '\n'.join(lines[first + 1:])
-    p = parse_reply(reply, ids)
+    p = parse_reply(reply if header else 'OZ/1g\n' + reply, ids)
     if p.rejection:
         raise ValueError(f'{p.rejection}: {p.violations[:2]}')
     return [(i in p.accepted, p.accepted.get(i, p.failed.get(i))) for i in ids]
@@ -360,8 +360,8 @@ def stage1g_flat(reply, ids, header=False):
 
 @arm('C')
 def _c(n):
-    system, body, ids = stage1f_packet(n)
-    return system, body, lambda reply: stage1g_flat(reply, ids), True
+    _, body, ids = stage1f_packet(n)
+    return C_SYSTEM, body, lambda reply: stage1g_flat(reply, ids), True
 
 
 @arm('G')
@@ -372,9 +372,8 @@ def _g(n):
 
 @arm('H')
 def _h(n):
-    system, body, ids = stage1f_packet(n)
-    assert system.count(H_FROM) == 1
-    return system.replace(H_FROM, H_TO), body, lambda reply: stage1g_flat(reply, ids, header=True), True
+    _, body, ids = stage1f_packet(n)
+    return H_SYSTEM, body, lambda reply: stage1g_flat(reply, ids, header=True), True
 
 
 if __name__ == '__main__':
