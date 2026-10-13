@@ -8,4 +8,9 @@ Owner request. Same design Astra and Fable approved for Opus (stage-1g-opus.md),
 
 ## Result
 
-(pending)
+Run 2026-10-13 as preregistered (bench/live/data/live28_1g_fable_paired.jsonl and its manifest).
+
+- H 5/5 accepted and fully correct (320/320); plain JSON 5/5 (320/320).
+- Benchmark token savings (pooled): H 27,811 tokens / 320 verified jobs = 86.9 per job; plain JSON 46,822 / 320 requested = 146.3; saving 40.6% (gate 35%): PASS.
+- Speed (reported): 314.0 ms per verified job against 375.8; median call 18.7 s against 23.4 s.
+- Money units (reported): 227.7 against 342.8 per job.

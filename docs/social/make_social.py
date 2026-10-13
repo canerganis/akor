@@ -229,7 +229,7 @@ def reply(t, times, t_check):
             y += LH
     if t >= t_check:
         text(d, (36, y + 36), '✓', 34, ACCENT, True)
-        text(d, (36 + 2 * 19.6, y + 36), '81/81 replies accepted on the first try.', 34, ACCENT, True)
+        text(d, (36 + 2 * 19.6, y + 36), '86/86 replies accepted on the first try.', 34, ACCENT, True)
         text(d, (36 + 2 * 19.6, y + 36 + 48), 'Nothing repaired.', 34, ACCENT, True)
     elif cursor and int(t * 3) % 2 == 0:
         x, cy = cursor

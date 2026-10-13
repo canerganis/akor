@@ -12,7 +12,7 @@
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5 and Opus 5.5. Faster replies. 81 of 81 replies accepted on the first try.**
+**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1. Faster replies. 86 of 86 replies accepted on the first try.**
 
 [Quick start](#quick-start) · [Results](#results) · [How it works](#how-it-works) · [The design debates](docs/design/)
 
@@ -59,14 +59,14 @@ oz run --adapter adapter.json --workspace team --min-batch 32 --max-wait 30
 
 **It cuts the bill for agent-to-agent traffic by about 40%, and proves it.** 64 jobs travel in one call. The goal,
 each operation and each shared input are written once; jobs point at them by index. On Claude Sonnet 5.5 that is
-40.7% fewer tokens per verified job than plain JSON, on Opus 5.5 42.8%, and both answer faster.
+40.7% fewer tokens per verified job than plain JSON, on Opus 5.5 42.8%, on Fable 5.1 40.6%, and all three answer faster.
 
 **Every number is a billed number.** Most token-saving claims count tokens with a tokenizer and stop there. AKOR's
 counts are what the provider billed: prompt, CLI overhead, visible answer and hidden reasoning, with failed calls
 included. Thresholds, call budgets and data were frozen and hashed before the first call of every test.
 
 **Nothing is repaired.** No quote fixing, no stripping of chatter, no rescue of half-broken lines. A reply is either
-exactly right or rejected. On the final wire, 81 of 81 Claude replies were accepted on the first try.
+exactly right or rejected. On the final wire, 86 of 86 Claude replies were accepted on the first try.
 
 **A protocol designed by AI, for AI, argued in public.** One model (GPT-6 Astra) owns the language. Another (Claude
 Fable 5.1) reviews it and proposes its own fixes. A third (Claude Opus 5.5) implements and measures. When a test
@@ -89,8 +89,8 @@ of such work finishes with zero model calls.
 <img src="docs/assets/results.svg" alt="Tokens per verified job, plain JSON against AKOR: Sonnet 5.5 146.7 to 87.0, Opus 5.5 144.3 to 82.6; median seconds per call: Sonnet 13.8 to 12.5, Opus 17.9 to 14.0." width="100%">
 
 On a live, pre-registered benchmark where every job is checked by a deterministic oracle, AKOR used
-**41% to 43% fewer total tokens per verified job** than plain JSON carrying the same 64 jobs in one call, on Claude Sonnet 5.5
-and Opus 5.5 with 64 jobs per call, with every reply accepted on the first try and every job correct.
+**41% to 43% fewer total tokens per verified job** than plain JSON carrying the same 64 jobs in one call, on Claude Sonnet 5.5,
+Opus 5.5 and Fable 5.1 with 64 jobs per call, with every reply accepted on the first try and every job correct.
 
 | 64 jobs per call | Calls | Replies accepted | Correct jobs | Tokens per call | Median time | Tokens per verified job |
 |---|---:|---:|---:|---:|---:|---:|
@@ -98,6 +98,8 @@ and Opus 5.5 with 64 jobs per call, with every reply accepted on the first try a
 | Sonnet 5.5, AKOR | 20 | **20/20** | **1280/1280** | **5,568** | **12.5 s** | **87.0 (-40.7%)** |
 | Opus 5.5, plain JSON | 5 | 5/5 | 319/320 | 9,235 | 17.9 s | 144.3 per requested job |
 | Opus 5.5, AKOR | 5 | **5/5** | **320/320** | **5,285** | **14.0 s** | **82.6 (-42.8%)** |
+| Fable 5.1, plain JSON | 5 | 5/5 | 320/320 | 9,364 | 23.4 s | 146.3 |
+| Fable 5.1, AKOR | 5 | **5/5** | **320/320** | **5,562** | **18.7 s** | **86.9 (-40.6%)** |
 
 Tokens are everything that was billed: the prompt, the CLI's own fixed overhead (about 950 tokens per call), the
 visible answer and hidden reasoning. Each AKOR call was paired with a plain JSON call on the same data; failed calls
@@ -112,7 +114,7 @@ The same wire was then checked on other models for breakage (no paired baseline 
 | Sonnet 5.5, 32 | 5 | 5/5 | 160/160 | 3,891 | 7.0 s |
 
 Plus five stress packets per model whose results are all empty arrays, scalars, objects, nested arrays or
-genuine job failures. Across all 81 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
+genuine job failures. Across all 86 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
 thinks much longer on this wire than Sonnet (up to 10k output tokens per 64-job packet), so it is not the cheaper
 model here. Raw data, manifests and the harness are in [`bench/`](bench/); every decision is in [`docs/design/`](docs/design/).
 
@@ -184,10 +186,10 @@ The full specification is in [`OZ9.md`](OZ9.md).
 ## Limits
 
 - Savings come from batching. With 1 to 4 jobs per call there is no gain; the fixed per-call overhead dominates.
-- The paired savings figures are for Sonnet 5.5 and Opus 5.5 at 64 jobs on one task family with oracles. Other models were
+- The paired savings figures are for Sonnet 5.5, Opus 5.5 and Fable 5.1 at 64 jobs on one task family with oracles. Other models were
   checked for correctness, not for savings; your workload may differ, and [`bench/`](bench/) lets you measure it.
 - Acceptance is all or nothing per reply: one malformed line costs a retry of the whole batch. On the final wire
-  that did not happen in 81 calls, which bounds the per-call failure rate (about 4% at 95% confidence), it does
+  that did not happen in 86 calls, which bounds the per-call failure rate (about 3.5% at 95% confidence), it does
   not prove it is zero.
 - Only the Claude configurations listed under Supported models are qualified for this wire.
 
