@@ -22,7 +22,7 @@ Implementation status: The shipped product implements the OZ/1g wire and the hos
 
 ## 2. Worker wire
 
-Qualification scope: this wire is qualified only for `claude-sonnet-5-5` (32 and 64 jobs per call), `claude-haiku-5-5` and `claude-fable-5-1` (64 jobs per call), through `claude -p` at default effort. The universal qualification failed on `gpt-6-luna` at medium effort through the Codex CLI; other configurations use the 0.8 release (`oz-0.8.0-full`). There is no runtime model detection or fallback. Record: `docs/design/stage-1g-release-scope.md`.
+Qualification scope: this wire is qualified only for `claude-sonnet-5-5` (32 and 64 jobs per call), `claude-opus-5-5`, `claude-haiku-5-5` and `claude-fable-5-1` (64 jobs per call), through `claude -p` at default effort. The universal qualification failed on `gpt-6-luna` at medium effort through the Codex CLI; other configurations use the 0.8 release (`oz-0.8.0-full`). There is no runtime model detection or fallback. Record: `docs/design/stage-1g-release-scope.md` and `docs/design/stage-1g-opus.md`.
 
 ### 2.1 Exact system text
 

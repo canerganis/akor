@@ -1,0 +1,54 @@
+{
+ "arm": "H",
+ "n": 64,
+ "model": "claude-opus-5-5",
+ "effort": null,
+ "schedule": [
+  [
+   4005,
+   "0.8-exec"
+  ],
+  [
+   4005,
+   "H"
+  ],
+  [
+   4006,
+   "0.8-exec"
+  ],
+  [
+   4006,
+   "H"
+  ],
+  [
+   4007,
+   "H"
+  ],
+  [
+   4007,
+   "0.8-exec"
+  ],
+  [
+   4008,
+   "0.8-exec"
+  ],
+  [
+   4008,
+   "H"
+  ],
+  [
+   4009,
+   "0.8-exec"
+  ],
+  [
+   4009,
+   "H"
+  ]
+ ],
+ "sha256": "b8273ec9197012183bfac2e2c5460641d8e5f1639dad7fae48eec6dff4aa2510",
+ "reply_retry": 0,
+ "concurrency": 1,
+ "timeout_s": 300,
+ "output_limit": "claude -p default (no --max-tokens); a truncated reply is a failure",
+ "note": "seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport retries on HTTP errors are not configurable here and never resample a completed reply"
+}

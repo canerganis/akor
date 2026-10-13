@@ -8,6 +8,7 @@ The universal 1g qualification failed at its last cell (Luna medium on the Codex
 |---|---|---|---|
 | claude-sonnet-5-5 | default | 64 | Stage A 20/20 with paired 0.8-exec baseline (40.7% fewer tokens per verified job); heterogeneous P1-P5 |
 | claude-sonnet-5-5 | default | 32 | 5/5 |
+| claude-opus-5-5 | default | 64 | Added after release: 5/5 standard with paired 0.8-exec baseline (42.8% benchmark token savings), heterogeneous P1-P5 rev 3 5/5; stage-1g-opus.md |
 | claude-haiku-5-5 | default | 64 | 10/10 standard; heterogeneous P1-P3, P5, and P4 rev 3 three times |
 | claude-fable-5-1 | default | 64 | 5/5 standard; heterogeneous P1-P4 rev 3 and P5 |
 

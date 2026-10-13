@@ -24,16 +24,19 @@ and a verbose reply format, and a malformed answer forces a retry. AKOR attacks 
 The work itself, the quality checks and the correctness bar stay the same.
 
 On a live, pre-registered benchmark where every job is checked by a deterministic oracle, AKOR used
-**40.7% fewer total tokens per verified job** than its own JSON-based predecessor (0.8) on Claude Sonnet 5.5
-with 64 jobs per call, with every reply accepted on the first try and every job correct.
+**41% to 43% fewer total tokens per verified job** than its own JSON-based predecessor (0.8) on Claude Sonnet 5.5
+and Opus 5.5 with 64 jobs per call, with every reply accepted on the first try and every job correct.
 
-| Sonnet 5.5, 64 jobs per call | Calls | Replies accepted | Correct jobs | Tokens per call | Median time |
-|---|---:|---:|---:|---:|---:|
-| AKOR 0.8 | 5 | 5/5 | 320/320 | 9,387 | 13.8 s |
-| AKOR (stage 1g) | 20 | **20/20** | **1280/1280** | **5,568** | **12.5 s** |
+| 64 jobs per call | Calls | Replies accepted | Correct jobs | Tokens per call | Median time | Tokens per verified job |
+|---|---:|---:|---:|---:|---:|---:|
+| Sonnet 5.5, AKOR 0.8 | 5 | 5/5 | 320/320 | 9,387 | 13.8 s | 146.7 |
+| Sonnet 5.5, AKOR (stage 1g) | 20 | **20/20** | **1280/1280** | **5,568** | **12.5 s** | **87.0 (-40.7%)** |
+| Opus 5.5, AKOR 0.8 | 5 | 5/5 | 319/320 | 9,235 | 17.9 s | 144.3 per requested job |
+| Opus 5.5, AKOR (stage 1g) | 5 | **5/5** | **320/320** | **5,285** | **14.0 s** | **82.6 (-42.8%)** |
 
 Tokens are everything that was billed: the prompt, the CLI's own fixed overhead (about 950 tokens per call), the
-visible answer and hidden reasoning. Per verified job: 87.0 tokens against 146.7.
+visible answer and hidden reasoning. Each AKOR call was paired with a 0.8 call on the same data; failed calls
+count in the cost.
 
 The same wire was then checked on other models for breakage (no paired baseline there, so no savings claim):
 
@@ -44,14 +47,15 @@ The same wire was then checked on other models for breakage (no paired baseline 
 | Sonnet 5.5, 32 | 5 | 5/5 | 160/160 | 3,891 | 7.0 s |
 
 Plus five stress packets per model whose results are all empty arrays, scalars, objects, nested arrays or
-genuine job failures. Across all 71 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
+genuine job failures. Across all 81 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
 thinks much longer on this wire than Sonnet (up to 10k output tokens per 64-job packet), so it is not the cheaper
 model here. Raw data, manifests and the harness are in [`bench/`](bench/); every decision is in [`docs/design/`](docs/design/).
 
 ### Supported models
 
 This release is qualified for the tested Claude configurations only: `claude-sonnet-5-5` (32 and 64 jobs per
-call), `claude-haiku-5-5` and `claude-fable-5-1` (64 jobs per call), all through `claude -p` at default effort.
+call), `claude-opus-5-5`, `claude-haiku-5-5` and `claude-fable-5-1` (64 jobs per call), all through `claude -p` at
+default effort. Opus was added after the release in its own preregistered run ([`docs/design/stage-1g-opus.md`](docs/design/stage-1g-opus.md)).
 The broader qualification, which also covered a Codex model, failed: GPT-6 Luna at medium effort through the
 Codex CLI got 1 of 10 packets right, binding jobs to the wrong operation or input and slipping out of the reply
 format. For other models, use the 0.8 release (tag `oz-0.8.0-full`). The scope was chosen after that failure and
@@ -137,10 +141,10 @@ The full specification is in [`OZ9.md`](OZ9.md).
 ## Limits
 
 - Savings come from batching. With 1 to 4 jobs per call there is no gain; the fixed per-call overhead dominates.
-- The paired savings figure is for Sonnet 5.5 at 64 jobs on one task family with oracles. Other models were
+- The paired savings figures are for Sonnet 5.5 and Opus 5.5 at 64 jobs on one task family with oracles. Other models were
   checked for correctness, not for savings; your workload may differ, and [`bench/`](bench/) lets you measure it.
 - Acceptance is all or nothing per reply: one malformed line costs a retry of the whole batch. On the final wire
-  that did not happen in 71 calls, which bounds the per-call failure rate (about 4% at 95% confidence), it does
+  that did not happen in 81 calls, which bounds the per-call failure rate (about 4% at 95% confidence), it does
   not prove it is zero.
 - Codex-based models are not supported by this wire (see Supported models; kit and raw replies in
   [`bench/codex_kit_1g`](bench/codex_kit_1g/)). The Codex CLI also adds about 24,500 fixed input tokens per call, so
