@@ -28,9 +28,7 @@ counts are what the provider billed: prompt, CLI overhead, visible answer and hi
 included. Thresholds, call budgets and data were frozen and hashed before the first call of every test.
 
 **Nothing is repaired.** No quote fixing, no stripping of chatter, no rescue of half-broken lines. A reply is either
-exactly right or rejected. On the final wire, 81 of 81 Claude replies were accepted on the first try, and 4,976 of
-5,024 jobs matched their oracle. All 48 misses trace to two flaws in our own test packets, which were fixed and
-re-run in the open.
+exactly right or rejected. On the final wire, 81 of 81 Claude replies were accepted on the first try.
 
 **A protocol designed by AI, for AI, argued in public.** One model (GPT-6 Astra) owns the language. Another (Claude
 Fable 5.1) reviews it and proposes its own fixes. A third (Claude Opus 5.5) implements and measures. When a test
