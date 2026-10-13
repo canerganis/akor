@@ -51,7 +51,7 @@ This does not make the model's context free. The goal and sources needed to unde
 ## Usage
 
 ```powershell
-cd C:\Users\can02\Projects\akor
+cd akor
 python -X utf8 -m examples.oz_demo
 python -m unittest discover -s tests -v
 ```
