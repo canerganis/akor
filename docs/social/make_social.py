@@ -144,41 +144,41 @@ def packet_frames():
 
 
 # ---------------------------------------------------------------- 3. results
-BAR_X, BAR_MAX = 270, 520
+BAR_X, BAR_MAX = 490, 330
 
 
 def results_screen(d, title, groups, unit, scale_max, t, deltas, ga):
-    text(d, (40, 80), title, 46, fade(TEXT, ga), True)
+    text(d, (40, 70), title, 46, fade(TEXT, ga), True)
     for g, (name, base, new_v, delta) in enumerate(groups):
-        y0 = 142 + g * 148
-        text(d, (40, y0), name, 38, fade(TEXT, ga), True)
+        y0 = 104 + g * 112
+        text(d, (40, y0 + 57), name, 34, fade(TEXT, ga), True)
         for k, (tag, v, color, tcol) in enumerate((('Plain JSON', base, BAR_GREY, DIM),
                                                    ('AKOR', new_v, ACCENT, TEXT))):
-            top = y0 + 12 + k * 52
-            start = 0.25 + 0.2 * (g * 2 + k)
+            top = y0 + k * 48
+            start = 0.25 + 0.12 * (g * 2 + k)
             p = ease_out((t - start) / 0.9)
-            text(d, (40, top + 35), tag, 34, fade(tcol, ga), k == 1)
+            text(d, (270, top + 33), tag, 34, fade(tcol, ga), k == 1)
             w = max(0, round(BAR_MAX * v / scale_max * p))
             if w:
-                d.rectangle([BAR_X, top, BAR_X + w, top + 44], fill=fade(color, ga))
+                d.rectangle([BAR_X, top, BAR_X + w, top + 42], fill=fade(color, ga))
             shown = v * p
             label = f'{shown:.1f}{unit}'
             if p > 0.01:
-                text(d, (BAR_X + w + 14, top + 35), label, 34, fade(TEXT if k else DIM, ga))
+                text(d, (BAR_X + w + 14, top + 33), label, 34, fade(TEXT if k else DIM, ga))
             if k == 1 and deltas and delta:
                 a = ease_out((t - start - 0.8) / 0.4)
                 if a > 0:
-                    d.text((W - 40, top + 38), delta, fill=fade(ACCENT, a * ga), font=font(48, True), anchor='rs')
+                    d.text((W - 40, top + 36), delta, fill=fade(ACCENT, a * ga), font=font(48, True), anchor='rs')
 
 
 def results(t):
     img, d = new()
     s1 = [('Sonnet 5.5', 146.7, 87.0, '-40.7%'), ('Opus 5.5', 144.3, 82.6, '-42.8%'),
-          ('Fable 5.1', 146.3, 86.9, '-40.6%')]
-    s2 = [('Sonnet 5.5', 13.8, 12.5, ''), ('Opus 5.5', 17.9, 14.0, ''), ('Fable 5.1', 23.4, 18.7, '')]
+          ('Fable 5.1', 146.3, 86.9, '-40.6%'), ('Haiku 5.5', 205.3, 142.1, '-30.8%')]
+    s2 = [('Sonnet 5.5', 13.8, 12.5, ''), ('Opus 5.5', 17.9, 14.0, ''), ('Fable 5.1', 23.4, 18.7, ''), ('Haiku 5.5', 21.0, 18.5, '')]
     if t < 3.1:
         ga = 1 - clamp((t - 2.85) / 0.25)
-        results_screen(d, 'Tokens per verified job', s1, '', 146.7, t, True, ga)
+        results_screen(d, 'Tokens per verified job', s1, '', 205.3, t, True, ga)
     else:
         results_screen(d, 'Median seconds per 64-job call', s2, ' s', 23.4, t - 3.1, False, 1.0)
     centered(d, 590, 'Billed tokens, hidden reasoning', 34, fade(DIM, ease_out(t / 0.5)))

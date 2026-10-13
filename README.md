@@ -12,7 +12,7 @@
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1. Faster replies. 91 of 91 replies accepted on the first try.**
+**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. Faster replies on all four. 91 of 91 replies accepted on the first try.**
 
 [Quick start](#quick-start) · [Results](#results) · [How it works](#how-it-works) · [The design debates](docs/design/)
 
@@ -59,7 +59,7 @@ oz run --adapter adapter.json --workspace team --min-batch 32 --max-wait 30
 
 **It cuts the bill for agent-to-agent traffic by about 40%, and proves it.** 64 jobs travel in one call. The goal,
 each operation and each shared input are written once; jobs point at them by index. On Claude Sonnet 5.5 that is
-40.7% fewer tokens per verified job than plain JSON, on Opus 5.5 42.8%, on Fable 5.1 40.6%, and all three answer faster.
+40.7% fewer tokens per verified job than plain JSON, on Opus 5.5 42.8%, on Fable 5.1 40.6%, on Haiku 5.5 30.8%, and all four answer faster.
 
 **Every number is a billed number.** Most token-saving claims count tokens with a tokenizer and stop there. AKOR's
 counts are what the provider billed: prompt, CLI overhead, visible answer and hidden reasoning, with failed calls
@@ -90,7 +90,9 @@ of such work finishes with zero model calls.
 
 On a live, pre-registered benchmark where every job is checked by a deterministic oracle, AKOR used
 **41% to 43% fewer total tokens per verified job** than plain JSON carrying the same 64 jobs in one call, on Claude Sonnet 5.5,
-Opus 5.5 and Fable 5.1 with 64 jobs per call, with every reply accepted on the first try and every job correct.
+Opus 5.5 and Fable 5.1 with 64 jobs per call, and 31% on Haiku 5.5, with every reply accepted on the first try and every job
+correct. Haiku saves less because it thinks at length in both formats (about 6,000 output tokens per call), and AKOR only
+shrinks what the model reads and writes, not how long it thinks.
 
 | 64 jobs per call | Calls | Replies accepted | Correct jobs | Tokens per call | Median time | Tokens per verified job |
 |---|---:|---:|---:|---:|---:|---:|
@@ -100,6 +102,8 @@ Opus 5.5 and Fable 5.1 with 64 jobs per call, with every reply accepted on the f
 | Opus 5.5, AKOR | 5 | **5/5** | **320/320** | **5,285** | **14.0 s** | **82.6 (-42.8%)** |
 | Fable 5.1, plain JSON | 5 | 5/5 | 320/320 | 9,364 | 23.4 s | 146.3 |
 | Fable 5.1, AKOR | 5 | **5/5** | **320/320** | **5,562** | **18.7 s** | **86.9 (-40.6%)** |
+| Haiku 5.5, plain JSON | 5 | 5/5 | 320/320 | 13,140 | 21.0 s | 205.3 |
+| Haiku 5.5, AKOR | 5 | **5/5** | **320/320** | **9,095** | **18.5 s** | **142.1 (-30.8%)** |
 
 Tokens are everything that was billed: the prompt, the CLI's own fixed overhead (about 950 tokens per call), the
 visible answer and hidden reasoning. Each AKOR call was paired with a plain JSON call on the same data; failed calls
@@ -186,8 +190,9 @@ The full specification is in [`OZ9.md`](OZ9.md).
 ## Limits
 
 - Savings come from batching. With 1 to 4 jobs per call there is no gain; the fixed per-call overhead dominates.
-- The paired savings figures are for Sonnet 5.5, Opus 5.5 and Fable 5.1 at 64 jobs on one task family with oracles. Other models were
-  checked for correctness, not for savings; your workload may differ, and [`bench/`](bench/) lets you measure it.
+- The paired savings figures are for Sonnet 5.5, Opus 5.5, Fable 5.1 and Haiku 5.5 at 64 jobs on one task family with
+  oracles; your workload may differ, and [`bench/`](bench/) lets you measure it. Models that think at length save less,
+  because thinking tokens do not shrink with the packet.
 - Acceptance is all or nothing per reply: one malformed line costs a retry of the whole batch. On the final wire
   that did not happen in 91 calls, which bounds the per-call failure rate (about 3.3% at 95% confidence), it does
   not prove it is zero.
