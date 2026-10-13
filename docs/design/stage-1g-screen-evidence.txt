@@ -1,0 +1,90 @@
+Stage 1g screen, claude-sonnet-5-5, default effort, 64 jobs (first 16 extract), 5 reps, call order shuffled per rep, retry=0.
+Raw data: bench/live/data/live21_1g_screen_sonnet.jsonl. Arms as defined in stage-1g-joint-decision.md.
+Budget gate (system+body o200k, seed 1000): C 1012 at 32 (<=1019), 1471 at 64 (<=1478); G 991/1450; H 1020/1479; 0.8-exec 1713/3268.
+
+arm       accepted  correct   mean_in  mean_out  mean_api_ms
+0.8-exec  5/5       319/320      6591      2871        14152
+G         5/5       320/320      3334      2318        13336
+C         3/5       192/320      3332      2212        12294
+H         5/5       320/320      3339      2323        12954
+
+Per call (seq rep arm accepted correct out thinking_chars):
+0 0 H True 64 2409 1069
+1 0 0.8-exec True 64 3002 971
+2 0 G True 64 2412 1079
+3 0 C False 0 2285 953
+4 1 C True 64 2049 731
+5 1 G True 64 2396 1078
+6 1 H True 64 2237 912
+7 1 0.8-exec True 63 2907 892
+8 2 H True 64 2308 984
+9 2 0.8-exec True 64 2866 851
+10 2 G True 64 2263 946
+11 2 C False 0 2389 859
+12 3 G True 64 2104 797
+13 3 H True 64 2284 970
+14 3 0.8-exec True 64 2679 690
+15 3 C True 64 2034 727
+16 4 G True 64 2416 1100
+17 4 0.8-exec True 64 2905 891
+18 4 C True 64 2304 988
+19 4 H True 64 2377 1054
+
+--- C failure seq 3 rep 0: 64 lines; parser: a malformed or unknown line rejects the whole reply: ({'line': 1, 'reason': 'lin
+  1 ["e1",["12.53 mm","0.01 mm","4","micrometer","unknown","not_claimed"]]
+  2 {"e2":["12.54 mm","0.02 mm","5","micrometer","unknown","not_claimed"]}
+  3 {"e3":["12.47 mm","0.02 mm","3","caliper","expanded","not_claimed"]}
+  4 {"e4":["12.46 mm","0.03 mm","2","micrometer","unknown","not_claimed"]}
+  5 {"e5":["12.41 mm","unknown","2","micrometer","resolution","not_claimed"]}
+  6 {"e6":["12.53 mm","0.02 mm","1","caliper","expanded","not_claimed"]}
+  7 {"e7":["12.46 mm","0.02 mm","6","caliper","unknown","not_claimed"]}
+  8 {"e8":["12.48 mm","0.02 mm","3","unknown","unknown","not_claimed"]}
+  9 {"e9":["12.50 mm","0.01 mm","6","micrometer","expanded","not_claimed"]}
+ 10 {"e10":["12.56 mm","0.01 mm","2","micrometer","expanded","not_claimed"]}
+ 11 {"e11":["12.50 mm","0.02 mm","2","micrometer","resolution","not_claimed"]}
+ 12 {"e12":["12.55 mm","0.01 mm","3","micrometer","expanded","not_claimed"]}
+ 13 {"e13":["12.51 mm","unknown","5","micrometer","expanded","not_claimed"]}
+ 14 {"e14":["12.50 mm","0.01 mm","1","unknown","expanded","not_claimed"]}
+ 15 {"e15":["12.60 mm","0.01 mm","2","micrometer","unknown","not_claimed"]}
+ 16 {"e16":["12.51 mm","0.02 mm","2","unknown","resolution","not_claimed"]}
+ 17 {"b1":["12.52 mm","12.54 mm"]}
+ 18 {"b2":["12.52 mm","12.56 mm"]}
+ 19 {"b3":["12.45 mm","12.49 mm"]}
+ 20 {"b4":["12.43 mm","12.49 mm"]}
+ 21 {"b5":"unknown"}
+ 22 {"b6":["12.51 mm","12.55 mm"]}
+  ...
+ 62 {"v14":"inside"}
+ 63 {"v15":"outside"}
+ 64 {"v16":"outside"}
+
+--- C failure seq 11 rep 2: 83 lines; parser: a malformed or unknown line rejects the whole reply: ({'line': 1, 'reason': 'err
+  1 ["e1","error","x","x"]
+  2 ["e2","error","x","x"]
+  3 ["e3","error","x","x"]
+  4 ["e4","error","x","x"]
+  5 ["e5","error","x","x"]
+  6 ["e6","error","x","x"]
+  7 ["e7","error","x","x"]
+  8 ["e8","error","x","x"]
+  9 ["e9","error","x","x"]
+ 10 ["e10","error","x","x"]
+ 11 ["e11","error","x","x"]
+ 12 ["e12","error","x","x"]
+ 13 ["e13","error","x","x"]
+ 14 ["e14","error","x","x"]
+ 15 ["e15","error","x","x"]
+ 16 ["e16","error","x","x"]
+ 17 
+ 18 Correction is not allowed, so I must give the correct lines only:
+ 19 
+ 20 {"e1":["12.56 mm","unknown","2","unknown","unknown","not_claimed"]}
+ 21 {"e2":["12.48 mm","unknown","2","caliper","resolution","not_claimed"]}
+ 22 {"e3":["12.59 mm","0.01 mm","6","micrometer","resolution","not_claimed"]}
+  ...
+ 81 {"v14":"outside"}
+ 82 {"v15":"outside"}
+ 83 {"v16":"unknown"}
+
+Note: 0.8-exec rep 1 was accepted but 63/64 correct (one wrong value).
+Note: in the 1f run the slips were typographic quotes on line 1; here line 1 is [id,value] (old 1f shape) once and a block of 16 placeholder error lines followed by prose and a full redo once. Both failures are in the first visible lines, after thinking.

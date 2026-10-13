@@ -1,10 +1,11 @@
-"""OZ/9 replies, receipts, adapter capabilities and provider usage (wire stage-1f).
+"""OZ/9 replies, receipts, adapter capabilities and provider usage (wire stage-1g).
 
-A reply is raw model text, one compact JSON array per packet job (docs/design/stage-1f-astra.md): [id,value]
-for a success, [id,"error",code,message] for a job failure, id being the packet job ID. Acceptance is atomic:
-the whole reply is accepted or none of it. Lines are split on LF (CRLF accepted, one trailing line end optional);
-a blank line, a malformed line, an unknown, duplicate or missing ID, a line of any other length than two or four,
-or a bad error code or message rejects everything. Nothing is repaired or merged. Valid successes and valid job failures are committed together.
+A reply is raw model text, one compact JSON record per packet job (docs/design/stage-1g-joint-decision.md):
+{"id":value} for a success, a one-member object whose value is the whole result, and [id,"error",code,message]
+for a job failure, id being the packet job ID. Acceptance is atomic: the whole reply is accepted or none of it.
+Lines are split on LF (CRLF accepted, one trailing line end optional); lines that are empty or hold only ASCII
+spaces and tabs are skipped. A malformed line, an object with other than one member, an array other than the
+four-element error line, an unknown, duplicate or missing ID, or a bad error code or message rejects everything. Nothing is repaired or merged. Valid successes and valid job failures are committed together.
 The host, not the model, decides routing: an ID written by the model proves nothing about the answer next to it,
 so the ledger records binding "declared" and semantic_verified false. regroup() folds the accepted results, the
 job failures and the slots the host filled itself back into inbox jobs. Receipts stay host-side: the adapter
@@ -127,13 +128,12 @@ def parse_reply(text: object, ids) -> Parsed:
     lines = text.split('\n')
     if lines[-1] == '':
         lines.pop()
-    if not lines:
+    if not any(line.removesuffix('\r').strip(' \t') for line in lines):
         return _rejected(n, 0, {}, 'reply has no result line')
     bad, received, seen = {}, 0, {}
     for number, line in enumerate(lines, 1):
         line = line[:-1] if line.endswith('\r') else line
         if not line.strip(' \t'):
-            bad[number] = 'blank line'
             continue
         if len(line.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES:
             bad[number] = f'line exceeds {MAX_LINE_BYTES} bytes'
@@ -144,23 +144,26 @@ def parse_reply(text: object, ids) -> Parsed:
             bad[number] = 'malformed JSON line'
             continue
         received += 1
-        if not isinstance(value, list) or len(value) not in (2, 4):
-            bad[number] = 'line must be a two-element [id,value] or four-element [id,"error",code,message] array'
+        if isinstance(value, dict) and len(value) == 1:
+            (key, result), = value.items()
+        elif isinstance(value, list) and len(value) == 4:
+            key = value[0]
+        else:
+            bad[number] = 'line must be a one-member {id:value} object or a four-element [id,"error",code,message] array'
             continue
-        key = value[0]
         if not isinstance(key, str) or key not in ids:
             bad[number] = 'unknown or non-string id'
             continue
         if key in seen:
             bad[number] = f'duplicate id {key}'
             continue
-        if len(value) == 2:
+        if isinstance(value, dict):
             try:
-                _store(value[1])
+                _store(result)
             except (ValueError, UnicodeEncodeError):
                 bad[number] = 'result is not storable or exceeds its size limit'
                 continue
-            seen[key] = (True, value[1])
+            seen[key] = (True, result)
             continue
         _, marker, code, message = value
         if not isinstance(marker, str) or marker != 'error':
@@ -264,8 +267,8 @@ class Failure:
 def encode_reply(results: dict, ids=None) -> str:
     """Build reply text from {packet job ID: result value}, e.g. for test adapters: one line per ID.
 
-    A Failure value becomes the error line [id,"error",code,message]."""
+    A success becomes {"id":value}; a Failure value becomes the error line [id,"error",code,message]."""
     def line(mid):
         value = results[mid]
-        return _json([mid, 'error', value.code, value.message] if isinstance(value, Failure) else [mid, value])
+        return _json([mid, 'error', value.code, value.message] if isinstance(value, Failure) else {mid: value})
     return '\n'.join(line(mid) for mid in (results if ids is None else ids))

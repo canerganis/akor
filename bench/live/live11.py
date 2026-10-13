@@ -290,12 +290,13 @@ def stage1e_packet(n):
 
 
 def stage1e_flat(reply, ids):
-    """Stage 1e and 1f replies: the product parser; a job-error line is a job that is not ok."""
-    from oz_reply import parse_reply
-    parsed = parse_reply(reply, ids)
-    if parsed.rejection:
-        raise ValueError(parsed.rejection)
-    return [(i in parsed.accepted, parsed.accepted.get(i)) for i in ids]
+    """Stage 1e and 1f replies ([id,value] lines), judged by bench/oldwire.py (the product parser now speaks
+    stage 1g); a job-error line is a job that is not ok."""
+    from oldwire import judge_s1f
+    valid, got = judge_s1f(reply, ids)
+    if not valid:
+        raise ValueError('stage-1f reply rejected')
+    return [(i in got, got.get(i)) for i in ids]
 
 
 @arm('S1e')
@@ -318,14 +319,62 @@ def stage1f_packet(n):
         if ref not in ref_idx:
             ref_idx[ref] = len(refs); refs.append(b['c'][ref])
         blocks[op].append([job, ref_idx[ref]])
-    body = {'v': '1f', 'goal': b['goal'], 'ops': ops, 'refs': refs, 'jobs': list(blocks.values())}
+    body = {'v': oz_batch.VERSION, 'goal': b['goal'], 'ops': ops, 'refs': refs, 'jobs': list(blocks.values())}
     return oz_batch.SYSTEM, json.dumps(body, ensure_ascii=False, separators=(',', ':')), jobs
+
+
+F_SYSTEM = (Path(__file__).parent / 'stage1f_system.txt').read_text(encoding='utf-8').rstrip('\n')
 
 
 @arm('S1f')
 def _s1f(n):
+    """Retired stage 1f, kept so old results rescore and the arm can still run: the 1f system text (git 23565bb,
+    stage1f_system.txt), the same packet with v "1f", replies judged by oldwire.judge_s1f."""
+    _, text, ids = stage1f_packet(n)
+    body = json.loads(text)
+    body['v'] = '1f'
+    return F_SYSTEM, json.dumps(body, ensure_ascii=False, separators=(',', ':')), lambda reply: stage1e_flat(reply, ids), True
+
+
+# ---- Stage 1g screen (docs/design/stage-1g-joint-decision.md): arms G, C, H against 0.8-exec ----
+# G is Astra's first 1g text (stage-1g-astra.md) verbatim; C is the final joint text (oz_batch.SYSTEM);
+# H is C with the reply sentence asking for an OZ/1g header line. All use the product parser.
+G_SYSTEM = (Path(__file__).parent / 'stage1g_G_system.txt').read_text(encoding='utf-8').rstrip('\n')
+H_FROM = 'Reply with one compact JSON record per job on its own line.'
+H_TO = 'Reply with the line OZ/1g, then one compact JSON record per job on its own line.'
+
+
+def stage1g_flat(reply, ids, header=False):
+    from oz_reply import parse_reply
+    if header:
+        lines = reply.split('\n')
+        first = next((k for k, line in enumerate(lines) if line.removesuffix('\r').strip(' \t')), None)
+        if first is None or lines[first].removesuffix('\r') != 'OZ/1g':
+            raise ValueError('first nonblank line is not OZ/1g')
+        reply = '\n'.join(lines[first + 1:])
+    p = parse_reply(reply, ids)
+    if p.rejection:
+        raise ValueError(f'{p.rejection}: {p.violations[:2]}')
+    return [(i in p.accepted, p.accepted.get(i, p.failed.get(i))) for i in ids]
+
+
+@arm('C')
+def _c(n):
     system, body, ids = stage1f_packet(n)
-    return system, body, lambda reply: stage1e_flat(reply, ids), True
+    return system, body, lambda reply: stage1g_flat(reply, ids), True
+
+
+@arm('G')
+def _g(n):
+    _, body, ids = stage1f_packet(n)
+    return G_SYSTEM, body, lambda reply: stage1g_flat(reply, ids), True
+
+
+@arm('H')
+def _h(n):
+    system, body, ids = stage1f_packet(n)
+    assert system.count(H_FROM) == 1
+    return system.replace(H_FROM, H_TO), body, lambda reply: stage1g_flat(reply, ids, header=True), True
 
 
 if __name__ == '__main__':

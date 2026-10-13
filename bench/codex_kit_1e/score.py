@@ -10,8 +10,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from oz_reply import parse_reply  # noqa: E402  (the product parser, stage 1f: S1e and S1f replies)
-from oldwire import judge_s1c, judge_s1d  # noqa: E402  (retired wires, judged as they were when recorded)
+from oldwire import judge_s1c, judge_s1d, judge_s1f  # noqa: E402  (retired wires, judged as they were when recorded)
 
 KIT = Path(__file__).parent
 
@@ -41,9 +40,8 @@ def score(item, text):
                 ids = list(range(n))
             elif item['arm'] == 'S1d':
                 valid, got = judge_s1d(text, ids)
-            else:  # S1e, S1f: [id,value] / [id,"error",code,message], atomic
-                parsed = parse_reply(text, ids)
-                valid, got = not parsed.rejection, parsed.accepted
+            else:  # S1e, S1f: [id,value] / [id,"error",code,message], atomic (the product now speaks stage 1g)
+                valid, got = judge_s1f(text, ids)
             if not valid:
                 return False, 0
             ok = [i in got for i in ids]

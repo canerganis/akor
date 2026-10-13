@@ -295,7 +295,7 @@ class WorkspaceTests(unittest.TestCase):
         initialize(self.root)
         script = ('import json,sys; r=json.load(sys.stdin); j=json.loads(r["prompt"])["jobs"]; '
                   'ids=[x[0] for b in j for x in b[1:]]; '
-                  'rows=[[ids[0],"error","missing_data","Missing required field y."]]+[[i,"done"] for i in ids[1:]]; '
+                  'rows=[[ids[0],"error","missing_data","Missing required field y."]]+[{i:"done"} for i in ids[1:]]; '
                   'json.dump({"reply":"\\n".join(json.dumps(x) for x in rows)},sys.stdout)')
         adapter = self.root / 'adapter.json'
         adapter.write_text(json.dumps({'argv': [sys.executable, '-c', script], **DEMO_CAPABILITIES}), encoding='utf8')
@@ -338,7 +338,7 @@ class WorkspaceTests(unittest.TestCase):
         self.assertNotIn('ref_map', value)
         self.assertNotIn('alternatives', value)
 
-    def test_context_option_accepts_only_needed_in_stage_1f(self):
+    def test_context_option_accepts_only_needed_in_stage_1g(self):
         initialize(self.root)
         base = ('--workspace', str(self.root))
         self.cli('send', '>2', '--id', 'first', *base)

@@ -111,33 +111,116 @@ def _():
     import live6 as X  # noqa: F401
 
 
-def decode_oracle(arm, n=8):
+def encode_1f(results, ids=None):
+    """Stage-1f reply text ([id,value] / [id,"error",code,message] lines), as S1e and S1f arms expect."""
+    def line(mid):
+        v = results[mid]
+        return json.dumps([mid, 'error', v.code, v.message] if isinstance(v, Failure) else [mid, v], ensure_ascii=False)
+    return '\n'.join(line(mid) for mid in (results if ids is None else ids))
+
+
+def decode_oracle(arm, n=8, encode=None, head=''):
+    """Packet of the arm builds; the oracle answer (1f lines for S1e/S1f, 1g lines otherwise, head first) decodes n/n."""
     system, user, dec, native = live11.ARMS[arm](n)
     assert system and user and native is True
     jobs = X.V.jobs('materials', n)
-    reply = encode_reply({j: X.oracle(j[0], int(j[1:])) for j in jobs})
+    reply = head + (encode or encode_reply)({j: X.oracle(j[0], int(j[1:])) for j in jobs})
     flat = dec(reply)
     assert sum(g and X.check(j, v, native) for (g, v), j in zip(flat, jobs)) == n
     return jobs, dec
 
 
 for _arm in ('S1e', 'S1f'):
-    @check(f'live11 arm {_arm}: packet builds, oracle answer decodes 8/8')
+    @check(f'live11 arm {_arm}: packet builds, oracle answer in 1f form decodes 8/8')
     def _(arm=_arm):
-        decode_oracle(arm)
+        decode_oracle(arm, encode=encode_1f)
 
 
-@check('live11 arm S1f: a job-error line decodes as not ok; a rejected reply raises')
+@check('live11 arm S1f: a job-error line decodes as not ok; a rejected reply raises; 1g lines and blank lines reject')
 def _():
-    jobs, dec = decode_oracle('S1f')
-    reply = encode_reply({j: X.oracle(j[0], int(j[1:])) for j in jobs[1:]} | {jobs[0]: Failure('missing_data', 'x')},
-                         ids=jobs)
-    assert [g for g, _ in dec(reply)] == [False] + [True] * 7
-    try:
-        dec('not json')
-    except ValueError:
-        return
-    raise AssertionError('rejected reply did not raise')
+    jobs, dec = decode_oracle('S1f', encode=encode_1f)
+    values = {j: X.oracle(j[0], int(j[1:])) for j in jobs[1:]} | {jobs[0]: Failure('missing_data', 'x')}
+    assert [g for g, _ in dec(encode_1f(values, ids=jobs))] == [False] + [True] * 7
+    good = encode_1f({j: X.oracle(j[0], int(j[1:])) for j in jobs})
+    for bad in ('not json', encode_reply({j: 1 for j in jobs}), good.replace('\n', '\n\n', 1), 'OZ/1g\n' + good):
+        try:
+            dec(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f'rejected reply did not raise: {bad[:40]!r}')
+
+
+@check('live11 arm S1f: 1f system text and body v "1f"; arms C, G, H carry the 1g body')
+def _():
+    import oz_batch
+    system, user, _, _ = live11.ARMS['S1f'](8)
+    assert system.startswith('You execute OZ/1f.\n\n') and system.endswith('Escape newlines inside JSON strings.')
+    body = json.loads(user)
+    assert list(body) == ['v', 'goal', 'ops', 'refs', 'jobs'] and body['v'] == '1f'
+    for arm in ('C', 'G', 'H'):
+        system, user, _, _ = live11.ARMS[arm](8)
+        assert json.loads(user)['v'] == '1g' and system.startswith('You execute OZ/1g.\n\n'), arm
+    assert live11.ARMS['C'](8)[0] == oz_batch.SYSTEM
+    assert live11.ARMS['G'](8)[0] == live11.G_SYSTEM and live11.G_SYSTEM != oz_batch.SYSTEM
+    h = live11.ARMS['H'](8)[0]
+    assert h == oz_batch.SYSTEM.replace(live11.H_FROM, live11.H_TO) and h != oz_batch.SYSTEM
+
+
+for _arm in ('C', 'G', 'H'):
+    @check(f'live11 arm {_arm}: packet builds, oracle answer in 1g form decodes 64/64')
+    def _(arm=_arm):
+        decode_oracle(arm, 64, head='OZ/1g\n' if arm == 'H' else '')
+
+
+@check('live11 arm C and G: blank lines are skipped, CRLF works, a job-error line is not ok, bad replies raise')
+def _():
+    for arm in ('C', 'G'):
+        jobs, dec = decode_oracle(arm, 8)
+        values = {j: X.oracle(j[0], int(j[1:])) for j in jobs}
+        good = encode_reply(values)
+        assert all(g for g, _ in dec('\n \t\n' + good.replace('\n', '\n\n') + '\n\n'))
+        assert all(g for g, _ in dec(good.replace('\n', '\r\n') + '\r\n'))
+        failed = encode_reply(values | {jobs[0]: Failure('missing_data', 'x')}, ids=jobs)
+        assert [g for g, _ in dec(failed)] == [False] + [True] * 7
+        old_form = encode_1f(values)
+        for bad in ('not json', '', '\n \n', old_form, 'OZ/1g\n' + good, good + '\n' + good.splitlines()[0],
+                    good + '\nDone.', '```\n' + good + '\n```'):
+            try:
+                dec(bad)
+            except ValueError:
+                continue
+            raise AssertionError(f'{arm}: rejected reply did not raise: {bad[:40]!r}')
+
+
+@check('live11 arm H: the first nonblank line must be exactly OZ/1g; the rest follows the C rules')
+def _():
+    jobs, dec = decode_oracle('H', 8, head='OZ/1g\n')
+    values = {j: X.oracle(j[0], int(j[1:])) for j in jobs}
+    good = encode_reply(values)
+    assert all(g for g, _ in dec('\n \t\nOZ/1g\r\n' + good + '\n'))
+    assert all(g for g, _ in dec('OZ/1g\n\n' + good.replace('\n', '\n\n')))
+    failed = encode_reply(values | {jobs[0]: Failure('conflict', 'x')}, ids=jobs)
+    assert [g for g, _ in dec('OZ/1g\n' + failed)] == [False] + [True] * 7
+    for bad in (good, '', 'OZ/1g', 'oz/1g\n' + good, 'OZ/1g \n' + good, 'OZ/1f\n' + good, '```\nOZ/1g\n' + good + '```',
+                'OZ/1g\nOZ/1g\n' + good, 'OZ/1g\n' + good + '\n' + good.splitlines()[0], 'Here:\nOZ/1g\n' + good,
+                '\xa0OZ/1g\n' + good, 'OZ/1g\n' + encode_1f(values)):
+        try:
+            dec(bad)
+        except ValueError:
+            continue
+        raise AssertionError(f'H: rejected reply did not raise: {bad[:40]!r}')
+
+
+@check('oldwire.judge_s1f follows the 1f rules: blank line, wrong shape and duplicate ID reject; errors are not values')
+def _():
+    from oldwire import judge_s1f
+    ids = ('a', 'b')
+    assert judge_s1f('["a",1]\n["b",2]\n', ids) == (True, {'a': 1, 'b': 2})
+    assert judge_s1f('["b","error","conflict","x"]\r\n["a",null]', ids) == (True, {'a': None})
+    for bad in ('', '\n', '["a",1]\n\n["b",2]', '["a",1]\n  \n["b",2]', '{"a":1}\n{"b":2}', '["a",1]', '["a",1]\n["a",1]\n["b",2]',
+                '["a",1,2]\n["b",2]', '["a","error","timeout","x"]\n["b",2]', '["a","error","conflict"," "]\n["b",2]',
+                '["a",1]\n["b",2]\n\n', '["a",NaN]\n["b",2]', '["a",{"k":1,"k":2}]\n["b",2]'):
+        assert judge_s1f(bad, ids) == (False, {}), bad
 
 
 @check('live11 retired decoders (S1c index lines, S1d id lines) still decode oracle answers')

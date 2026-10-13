@@ -10,7 +10,7 @@ from test_oz import channel
 from test_oz2 import extended
 from wire_helpers import job_ids, rows
 
-DESIGN = Path(__file__).resolve().parent.parent / 'docs' / 'design' / 'stage-1f-astra.md'
+DESIGN = Path(__file__).resolve().parent.parent / 'docs' / 'design' / 'stage-1g-joint-decision.md'
 
 AUDIT = ('Review the supplied patch for defects and unintended public-API changes. Report failures shown in '
          'supplied test results and recommend missing checks.')
@@ -40,7 +40,7 @@ def twins():
 
 
 def valid_body(**overrides):
-    body = {'v': '1f', 'goal': 'g', 'ops': ['x'], 'refs': ['k', None], 'jobs': [[0, ['a', 0], ['b', 1, 0]]]}
+    body = {'v': '1g', 'goal': 'g', 'ops': ['x'], 'refs': ['k', None], 'jobs': [[0, ['a', 0], ['b', 1, 0]]]}
     body.update(overrides)
     return body
 
@@ -48,12 +48,12 @@ def valid_body(**overrides):
 class BatchTests(unittest.TestCase):
     def test_system_text_is_byte_exact_with_the_design_document(self):
         doc = DESIGN.read_text(encoding='utf-8')
-        blocks = re.findall(r'aşağıdaki metin olsun:\*\*\s*```text\n(.*?)\n```', doc, re.S)
+        blocks = re.findall(r'\*\*tam sistem metni\*\* aşağıdadır[^\n]*\n\s*```text\n(.*?)\n```', doc, re.S)
         self.assertEqual(len(blocks), 1)
         self.assertEqual(SYSTEM.encode('utf-8'), blocks[0].encode('utf-8'))
-        self.assertTrue(SYSTEM.startswith('You execute OZ/1f.\n\n'))
-        self.assertTrue(SYSTEM.endswith('Escape newlines inside JSON strings.'))
-        self.assertEqual((WIRE, VERSION), ('stage-1f', '1f'))
+        self.assertTrue(SYSTEM.startswith('You execute OZ/1g.\n\n'))
+        self.assertTrue(SYSTEM.endswith('Stop after the last job.'))
+        self.assertEqual((WIRE, VERSION), ('stage-1g', '1g'))
 
     def test_system_text_is_independent_of_the_jobs(self):
         for jobs in ([('j1', 'V')], [('x', ':text'), ('y', '>12')]):
@@ -76,7 +76,7 @@ class BatchTests(unittest.TestCase):
         self.assertFalse(packet.text.endswith('\n'))
         self.assertNotIn('\n', packet.text)
         body = data(packet)
-        self.assertEqual(body['v'], '1f')
+        self.assertEqual(body['v'], '1g')
         self.assertEqual(body['goal'], GOAL)
         self.assertEqual(body['ops'], [AUDIT, PROPOSE])
         self.assertEqual(body['refs'], ['demo patch at revision a1', 'Use 5 seconds per attempt', 'result'])
@@ -359,7 +359,7 @@ class BatchTests(unittest.TestCase):
                 render(extended(), [('a', 'V'), ('b', 'V')], counters=[len], handoffs=links)
 
     def test_packet_validation_accepts_the_design_example_and_refuses_everything_else(self):
-        example = {'v': '1f', 'goal': 'Prepare an evidence-limited inspection handoff.',
+        example = {'v': '1g', 'goal': 'Prepare an evidence-limited inspection handoff.',
                    'ops': ['Input fields are length_mm and uncertainty_mm.'],
                    'refs': [{'length_mm': 12.5, 'uncertainty_mm': 0.02}, {'length_mm': 12.51, 'uncertainty_mm': 0.02},
                             {'length_mm': 12.5, 'uncertainty_mm': None}],

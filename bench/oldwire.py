@@ -1,10 +1,11 @@
-"""Reply judges for the retired wires S1c and S1d, kept only so recorded Codex runs can still be scored.
+"""Reply judges for the retired wires S1c, S1d and S1f, kept only so recorded runs can still be scored.
 
-The product parser (oz_reply.parse_reply) speaks stage 1f only. These two functions reproduce what the
-product parser accepted at stage 1c (commit 3ea6989) and stage 1d (commit 8ac429c), so the recorded
-results_*.jsonl files score exactly as they did when they were measured. Each returns
-(valid, values): valid is False when the reply as a whole counted as invalid, values maps the expected
-key (zero-based index for S1c, packet job ID for S1d) to the accepted result value.
+The product parser (oz_reply.parse_reply) speaks stage 1g only. These functions reproduce what the
+product parser accepted at stage 1c (commit 3ea6989), stage 1d (commit 8ac429c) and stage 1f (commit
+23565bb; S1e replies were judged the same way), so the recorded results_*.jsonl files score exactly as
+they did when they were measured. Each returns (valid, values): valid is False when the reply as a whole
+counted as invalid, values maps the expected key (zero-based index for S1c, packet job ID for S1d and
+S1f) to the accepted result value (S1f: successes only, a valid job-error line is not a value).
 """
 import re
 import sys
@@ -12,7 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from oz import Error  # noqa: E402
-from oz_reply import loads, _store, MAX_LINE_BYTES, CAPTURE_SLACK  # noqa: E402
+from oz_reply import loads, _store, _encodable, MAX_LINE_BYTES, CAPTURE_SLACK, ERROR_CODES  # noqa: E402
 
 MAX_ERROR_BYTES = 1024
 INDEX_TOKEN = re.compile(r'0|[1-9][0-9]*')
@@ -115,3 +116,50 @@ def judge_s1d(text, ids):
     if set(seen) != set(ids):
         return False, {}
     return True, {k: v for k, (_, v) in seen.items()}
+
+
+def judge_s1f(text, ids):
+    """Stage 1f (commit 23565bb): JSONL, lines [id,value] or [id,"error",code,message], atomic acceptance.
+
+    LF or CRLF, one trailing line end optional; a blank or space/tab-only line, a malformed line, any other
+    array length than two or four, an unknown, duplicate or missing ID, or a bad error line rejects
+    everything. A valid job-error line covers its ID but is not a value.
+    """
+    ids = tuple(ids)
+    n = len(ids)
+    if not isinstance(text, str):
+        raise Error('reply must be raw text')
+    if _too_long(text, n):
+        return False, {}
+    lines = text.split('\n')
+    if lines[-1] == '':
+        lines.pop()
+    if not lines:
+        return False, {}
+    seen = {}
+    for line in lines:
+        line = line[:-1] if line.endswith('\r') else line
+        if not line.strip(' \t') or len(line.encode('utf-8', 'surrogatepass')) > MAX_LINE_BYTES:
+            return False, {}
+        try:
+            row = loads(line)
+        except (ValueError, RecursionError, Error):
+            return False, {}
+        if (not isinstance(row, list) or len(row) not in (2, 4) or not isinstance(row[0], str)
+                or row[0] not in ids or row[0] in seen):
+            return False, {}
+        if len(row) == 2:
+            try:
+                _store(row[1])
+            except (ValueError, UnicodeEncodeError):
+                return False, {}
+            seen[row[0]] = (True, row[1])
+            continue
+        _, marker, code, message = row
+        if (marker != 'error' or not isinstance(code, str) or code not in ERROR_CODES
+                or not isinstance(message, str) or not message.strip() or not _encodable(message)):
+            return False, {}
+        seen[row[0]] = (False, None)
+    if set(seen) != set(ids):
+        return False, {}
+    return True, {k: v for k, (ok, v) in seen.items() if ok}
