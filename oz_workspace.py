@@ -14,11 +14,17 @@ from oz_runtime import Inbox
 from oz_worker import StdioAdapter, Worker, loads, process_host
 
 
+def approximate_tokens(text):
+    """Upper estimate when tiktoken is absent: one token per 3 UTF-8 bytes (o200k averages about 4 on JSON),
+    so packet budgets stay on the safe side. Install akor-protocol[benchmark] for exact counts."""
+    return len(text.encode('utf-8', 'surrogatepass')) // 3 + 1
+
+
 def token_counters(names):
     try:
         import tiktoken
     except ImportError:
-        raise Error('Token counting requires: python -m pip install "akor-protocol[benchmark]"') from None
+        return (approximate_tokens,)
     encodings = [tiktoken.get_encoding(name) for name in names]
     return tuple(lambda text, enc=enc: len(enc.encode(text, disallowed_special=())) for enc in encodings)
 

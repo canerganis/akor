@@ -388,3 +388,14 @@ class WorkspaceTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ApproximateTokenTests(unittest.TestCase):
+    def test_without_tiktoken_counts_fall_back_to_a_safe_upper_estimate(self):
+        from oz_workspace import approximate_tokens, token_counters
+        with patch.dict(sys.modules, {'tiktoken': None}):
+            counters = token_counters(['o200k_base'])
+        self.assertEqual(counters, (approximate_tokens,))
+        text = '{"v":"1g","jobs":[[0,["e1",0]]]}'
+        self.assertGreaterEqual(approximate_tokens(text), len(text) // 4)
+        self.assertEqual(approximate_tokens(''), 1)

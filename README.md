@@ -8,13 +8,17 @@
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
-![Tests](https://img.shields.io/badge/tests-336%20passing-1a7f4b)
+![Tests](https://img.shields.io/badge/tests-337%20passing-1a7f4b)
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
 **41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. Faster replies on all four. 91 of 91 replies accepted on the first try.**
 
-[Quick start](#quick-start) · [Results](#results) · [How it works](#how-it-works) · [The design debates](docs/design/)
+```bash
+pip install git+https://github.com/canerganis/akor
+```
+
+[Try it in 60 seconds](#try-it-in-60-seconds) · [Results](#results) · [How it works](#how-it-works) · [FAQ](#faq) · [The design debates](docs/design/)
 
 </div>
 
@@ -28,32 +32,47 @@ once, and jobs point at them by index. Reads, tests and status events never touc
 short record per job, and the host checks the whole reply before it delivers anything.
 
 **The proof.** Live, preregistered tests on billed tokens, with hidden reasoning and failed calls counted, against
-a plain JSON format carrying the same 64 jobs in one call. Nothing in the reply is repaired, so every correct job is really
-correct.
+a plain JSON format carrying the same 64 jobs in one call. Nothing in the reply is repaired, so every correct job is
+really correct.
 
 <img src="docs/assets/packet.svg" alt="The same 64-job packet: 3,268 tokens as plain JSON, 1,471 tokens in AKOR, because shared parts are written once and jobs are referenced by index." width="100%">
 
-<img src="docs/assets/flow.svg" alt="Ready jobs from several agents are packed into one call; the model answers one record per job, keyed by job ID; the host checks the whole reply before it delivers anything." width="100%">
+## Who it is for
 
-## Quick start
+- You run **several agents or many small model tasks** (reviews, extractions, checks, triage) and the token bill or
+  the rate limit is what stops you from doing more.
+- You use **Claude through `claude -p`** and want batching, retries, a durable queue and a cost ledger without
+  writing them yourself.
+- You care about **numbers you can audit**: every call is logged with tokens, time and validation.
+
+If you send one prompt at a time and wait for each answer, AKOR will not save you anything; savings start at a few
+dozen jobs per call.
+
+## Try it in 60 seconds
 
 ```bash
-pip install .
-oz demo ./demo
+pip install git+https://github.com/canerganis/akor
+oz demo ./demo                    # model-free end-to-end run: queue, packet, reply, validation
 oz status --workspace ./demo
 ```
 
 <img src="docs/assets/demo.gif" alt="Terminal session: create a workspace, send a job, inspect the packet that reaches the model, run the demo and check status." width="100%">
 
-Connect a real agent with the bundled `claude -p` adapter ([`examples/claude_cli_adapter.py`](examples/claude_cli_adapter.py)),
-or any program that reads one JSON request on stdin and prints one JSON reply. No API key is needed; AKOR uses
-the CLI login you already have.
+**With a real model.** The bundled adapter runs each packet through your existing `claude -p` login. No API key.
 
 ```bash
+git clone https://github.com/canerganis/akor && cd akor && pip install .
 oz init team --goal "Review the patch" --kind patch --source fix.diff --procedure checks.txt
-oz send V --id review --workspace team
-oz run --adapter adapter.json --workspace team --min-batch 32 --max-wait 30
+oz send V --id review --workspace team                     # queue a job (read, audit, test)
+oz plan --show-prompt --workspace team                     # see exactly what the model will receive
+oz run --adapter examples/claude_adapter.json --workspace team --min-batch 32 --max-wait 30
+oz status --workspace team
 ```
+
+`--min-batch` and `--max-wait` let small jobs wait briefly for a bigger, cheaper call. Any program that reads one JSON
+request on stdin and prints one JSON reply can be an adapter; see [`USAGE.md`](USAGE.md).
+
+<img src="docs/assets/flow.svg" alt="Ready jobs from several agents are packed into one call; the model answers one record per job, keyed by job ID; the host checks the whole reply before it delivers anything." width="100%">
 
 ## What AKOR does differently
 
@@ -215,6 +234,40 @@ baselines, so their numbers are not directly comparable.
 - [`USAGE.md`](USAGE.md): command-line guide.
 - [`bench/`](bench/): live measurement harness, raw results and measurement kits.
 - [`docs/HISTORY.md`](docs/HISTORY.md): how the protocol evolved.
+
+## FAQ
+
+**Is this another agent framework?** No. AKOR is the layer between your agents and the model call: a queue, a packet
+format, a strict reply check and a cost ledger. Your agents keep their own logic.
+
+**Do I need an API key?** No. It runs on the `claude -p` login you already have. Adapters are plain stdin/stdout
+programs, so other runtimes can be connected.
+
+**Which models are supported?** Claude Sonnet 5.5, Opus 5.5, Fable 5.1 and Haiku 5.5 through `claude -p` at default
+effort, tested at 32 and 64 jobs per call. Other models are not qualified yet.
+
+**What happens when the model gets something wrong?** A malformed reply is rejected as a whole and the batch is
+retried (two attempts by default). A job the model cannot do comes back as an explicit error record and fails only
+that job. Nothing is silently repaired.
+
+**How do I check the numbers myself?** Raw replies, manifests and the harness are in [`bench/`](bench/);
+after `pip install ".[benchmark]"`, `python bench/selftest.py` checks the scoring, and `bench/live/` reruns the live tests on your own login.
+
+**Why is Haiku's saving smaller?** Haiku thinks at length in both formats. AKOR shrinks what the model reads and
+writes, not how long it thinks.
+
+## Roadmap
+
+- More task families in the public benchmark (code review, log triage) next to the current extraction tasks.
+- A comparison against one call per job, the way many pipelines run today.
+- More models and runtimes, each added only after its own preregistered qualification.
+
+Issues and pull requests are welcome.
+
+## Author
+
+Built by [@canerganis](https://github.com/canerganis), with GPT-6 Astra as language designer, Claude Fable 5.1 as
+reviewer and Claude Opus 5.5 as implementer. Questions, ideas or work inquiries: open an issue or reach out on GitHub.
 
 ## License
 
