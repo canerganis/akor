@@ -42,6 +42,8 @@ class WorkspaceTests(unittest.TestCase):
         self.assertEqual(Workspace(self.root).channel().binding, workspace.channel().binding)
         with workspace.inbox() as box:
             self.assertEqual(box.stats(), {})
+        self.assertTrue((self.root / 'START.md').is_file())
+        self.assertIn('oz send', (self.root / 'START.md').read_text(encoding='utf-8'))
 
     def test_missing_queue_is_not_silently_recreated(self):
         workspace = initialize(self.root)

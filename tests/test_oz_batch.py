@@ -49,7 +49,8 @@ class BatchTests(unittest.TestCase):
     def test_system_text_is_byte_exact_with_the_design_document_text_h(self):
         # Text H (stage-1g-final-decision.md) is the C block of the joint decision with one sentence replaced.
         doc = DESIGN.read_text(encoding='utf-8')
-        blocks = re.findall(r'\*\*tam sistem metni\*\* aşağıdadır[^\n]*\n\s*```text\n(.*?)\n```', doc, re.S)
+        # The document language does not matter: exactly one fenced text block opens like the system text.
+        blocks = re.findall(r'```text\n(You execute OZ/1g\.\n.*?)\n```', doc, re.S)
         self.assertEqual(len(blocks), 1)
         c_sentence = 'Reply with one compact JSON record per job on its own line.'
         h_sentence = 'Reply with the line OZ/1g, then one compact JSON record per job on its own line.'

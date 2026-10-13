@@ -88,13 +88,13 @@ def main(argv=None):
         if args.command not in {'decode', 'prompt', 'pack'}:
             value = workspace_command(args)
             if args.command == 'status' and not args.json:
-                print('Durum: ' + ', '.join(f'{k}={v}' for k, v in value['states'].items()))
-                print('ID\tKanal\tDurum\tDeneme\tBeklediği')
+                print('Status: ' + ', '.join(f'{k}={v}' for k, v in value['states'].items()))
+                print('ID\tChannel\tState\tAttempts\tWaiting for')
                 for job in value['jobs']:
                     waiting = ','.join(p['id'] for p in job['waiting_for']) or '-'
                     print(f"{job['id']}\t{job['channel']}\t{job['availability']}\t{job['attempts']}/{job['max_attempts']}\t{waiting}")
                 if value['next_after_seq'] is not None:
-                    print(f"Devamı: --after-seq {value['next_after_seq']}")
+                    print(f"More: --after-seq {value['next_after_seq']}")
             else:
                 print(json.dumps(value, ensure_ascii=False, indent=2))
             if args.command == 'run' and any(r['status'] == 'adapter_error' or any(v != 'ok' for v in r.get('outcomes', {}).values())
@@ -137,7 +137,7 @@ def workspace_command(args):
     if args.command == 'init':
         if (bool(args.goal) != bool(args.source) or (args.channel and (args.goal or args.source or args.procedure))
                 or (args.procedure and not args.source)):
-            raise Error('--goal ve --source birlikte kullanılır; --channel ile birleştirilmez')
+            raise Error('--goal and --source go together; they cannot be combined with --channel')
         channel = Channel.from_snapshot(read_json(args.channel)) if args.channel else None
         if args.source:
             channel = channel_from_files(args.goal, args.source, kind=args.kind, procedure=args.procedure)
@@ -155,7 +155,7 @@ def workspace_command(args):
     with workspace.inbox() as box:
         if args.command == 'send':
             if (args.frame is None) == (args.file is None):
-                raise Error('Bir frame veya --file seç; ikisini birlikte kullanma')
+                raise Error('Give exactly one of a frame or --file')
             wire = args.frame if args.file is None else ':' + read_utf8(args.file)
             channel = workspace.channel(args.to)
             mid = args.id or 'm' + uuid.uuid4().hex[:8]

@@ -13,5 +13,5 @@ usage = {'input_tokens': u['input_tokens'] + u['cache_creation_input_tokens'] + 
          'cached_input_tokens': u['cache_read_input_tokens'],
          'cache_creation_input_tokens': u['cache_creation_input_tokens'],
          'output_tokens': u['output_tokens']}
-# The reply is the model's raw text (stage-1e: one [id,result] or [id,"error",code,detail] JSON line per job); the worker parses and validates it.
+# The reply is the model's raw text (stage 1g: the line OZ/1g, then one {"id":result} or [id,"error",code,message] JSON record per job); the worker parses and validates it.
 json.dump({'reply': data['result'], 'usage': usage}, sys.stdout)

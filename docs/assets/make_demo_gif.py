@@ -24,7 +24,7 @@ SCENES = [
         ('note', '# V = read + audit + test; read and test run on the host'),
     ]),
     ('oz plan --show-prompt --workspace team', [
-        ('dim', '{ "ids": ["review"], "mode": "named", "input_tokens": [465], …'),
+        ('dim', '{ "ids": ["review"], "mode": "named", "input_tokens": [464], …'),
         ('dim', '  "system": "You execute OZ/1g. … Reply with the line OZ/1g, then one compact JSON'),
         ('dim', '             record per job on its own line. … Any malformed nonblank line … rejects'),
         ('dim', '             the whole reply. Stop after the last job.",'),
@@ -45,12 +45,12 @@ SCENES = [
         ('note', '# one stdio adapter call for the whole batch; no model was called'),
     ]),
     ('oz status --workspace ./demo', [
-        ('ok', 'Durum: done=4'),
-        ('dim', 'ID       Kanal     Durum  Deneme  Beklediği'),
-        ('text', 'read     worker    done   1/2     -'),
-        ('text', 'propose  worker    done   1/2     -'),
-        ('text', 'review   reviewer  done   1/2     -'),
-        ('text', 'notice   worker    done   1/2     -'),
+        ('ok', 'Status: done=4'),
+        ('dim', 'ID       Channel   State  Attempts  Waiting for'),
+        ('text', 'read     worker    done   1/2       -'),
+        ('text', 'propose  worker    done   1/2       -'),
+        ('text', 'review   reviewer  done   1/2       -'),
+        ('text', 'notice   worker    done   1/2       -'),
     ]),
 ]
 COLOURS = {'dim': DIM, 'json': TEXT, 'key': BLUE, 'note': AMBER, 'ok': GREEN, 'text': TEXT}

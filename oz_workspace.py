@@ -18,7 +18,7 @@ def token_counters(names):
     try:
         import tiktoken
     except ImportError:
-        raise Error('Token ölçümü için kur: python -m pip install "akor-protocol[benchmark]"') from None
+        raise Error('Token counting requires: python -m pip install "akor-protocol[benchmark]"') from None
     encodings = [tiktoken.get_encoding(name) for name in names]
     return tuple(lambda text, enc=enc: len(enc.encode(text, disallowed_special=())) for enc in encodings)
 
@@ -39,7 +39,7 @@ def read_utf8(path: Path) -> str:
 
 def channel_from_files(goal: str, source: Path, *, kind='source', procedure: Path | None = None):
     if kind not in {'source', 'patch'}:
-        raise Error('Kaynak türü source veya patch olmalı')
+        raise Error('Source kind must be source or patch')
     def reference(number, ref_kind, path):
         data = path.read_bytes()
         return Reference(number, ref_kind, data.decode('utf-8'),
@@ -60,7 +60,7 @@ def initialize(path: Path, channel: Channel | None = None):
     root = path.resolve()
     root.mkdir(parents=True, exist_ok=True)
     if any(root.iterdir()):
-        raise Error('Başlangıç klasörü boş olmalı; mevcut dosyaların üzerine yazılmaz')
+        raise Error('The target directory must be empty; existing files are never overwritten')
     channel = channel or default_channel()
     reviewer = channel.snapshot()
     reviewer['recipient'] = 'reviewer'
@@ -75,18 +75,18 @@ def initialize(path: Path, channel: Channel | None = None):
         channel.accept(start_wire, binding=channel.binding)
     except Error:
         start_wire = 'r'
-    (root / 'BASLANGIC.md').write_text(
-        '# ÖZ çalışma alanı\n\nBu klasörde çalıştır:\n\n'
-        f'```text\noz send {start_wire} --id ilk\noz send r{channel.active} --to reviewer --id kontrol --after ilk\n'
+    (root / 'START.md').write_text(
+        '# ÖZ workspace\n\nRun these in this directory:\n\n'
+        f'```text\noz send {start_wire} --id first\noz send r{channel.active} --to reviewer --id check --after first\n'
         'oz plan\noz status\n```\n\n'
-        'Gerçek ajan için JSON stdin/stdout adaptörünü açıkça seç:\n\n'
+        'For a real agent, choose the JSON stdin/stdout adapter explicitly:\n\n'
         '`oz run --adapter adapter.json`\n\n'
         'adapter.json: {"argv":["python","worker.py"],"protocols":["oz.adapter/3"],"languages":["OZ/9"]}\n'
-        'Adaptör istemi modele iletir, {"reply":...,"usage":...} döndürür (OZ9.md).\n'
-        'Komut çalışma dizini adaptör dosyasının klasörüdür. oz init hiçbir adaptör çalıştırmaz.\n'
-        'oz.json içinde kanallar, hedef tokenizer, girdi bütçesi ve paket büyüklüğü bulunur.\n'
-        'Yeni kaynak/sözlük için yeni kanal ekle: oz channel-add yeni kanal.json\n'
-        'Tamamlanan işin sonucunu görmek için: oz inspect ilk\n', encoding='utf-8')
+        'The adapter passes the prompt to the model and returns {"reply":...,"usage":...} (see OZ9.md).\n'
+        "The command runs in the adapter file's directory. oz init never runs an adapter.\n"
+        'oz.json holds the channels, the target tokenizer, the input budget and the batch size.\n'
+        'For a new source or codebook, add a channel: oz channel-add new-channel channel.json\n'
+        'To see the result of a finished job: oz inspect first\n', encoding='utf-8')
     with Inbox(root / 'inbox.sqlite'):
         pass
     return Workspace(root)
@@ -98,7 +98,7 @@ class Workspace:
         try:
             self.config = loads((self.root / 'oz.json').read_text(encoding='utf-8'))
         except FileNotFoundError:
-            raise Error('Çalışma alanı bulunamadı; önce oz init KLASOR çalıştır') from None
+            raise Error('Workspace not found; run oz init DIRECTORY first') from None
         value = self.config
         if (not isinstance(value, dict) or set(value) != {'version', 'channels', 'encodings', 'max_tokens', 'batch_size'}
                 or type(value['version']) is not int or value['version'] != 1
@@ -108,18 +108,18 @@ class Workspace:
                 or any(not isinstance(n, str) or not n for n in value['encodings'])
                 or type(value['max_tokens']) is not int or not 1 <= value['max_tokens'] <= 1000000
                 or type(value['batch_size']) is not int or not 1 <= value['batch_size'] <= 64):
-            raise Error('Geçersiz oz.json yapılandırması')
+            raise Error('Invalid oz.json configuration')
         self.channels = {name: Channel.from_snapshot(snapshot) for name, snapshot in value['channels'].items()}
 
     def channel(self, name='worker'):
         if name not in self.channels:
-            raise Error('Kanal bulunamadı: ' + name)
+            raise Error('Channel not found: ' + name)
         return self.channels[name]
 
     def inbox(self):
         path = self.root / 'inbox.sqlite'
         if not path.exists():
-            raise Error('Kuyruk dosyası bulunamadı; boş kuyruk sessizce oluşturulmadı')
+            raise Error('Queue file not found; an empty queue is not created silently')
         return Inbox(path)
 
     def counters(self):
@@ -127,7 +127,7 @@ class Workspace:
 
     def add_channel(self, name: str, channel: Channel):
         if not valid_id(name) or name in self.channels or len(self.channels) >= 32:
-            raise Error('Yeni, geçerli bir kanal adı gerekiyor (en fazla 32 kanal)')
+            raise Error('A new, valid channel name is required (at most 32 channels)')
         # Serialize CLI configuration writers using the workspace database lock.
         # A stale in-memory config must never replace another writer's additions.
         with self.inbox() as box:
@@ -138,7 +138,7 @@ class Workspace:
         config_path = self.root / 'oz.json'
         current = loads(config_path.read_text(encoding='utf-8'))
         if current != self.config:
-            raise Error('Yapılandırma değişti; yeniden yükle')
+            raise Error('Configuration changed; reload it')
         updated = dict(current, channels=dict(current['channels'], **{name: channel.snapshot()}))
         temp = self.root / ('oz-' + uuid.uuid4().hex + '.tmp')
         assert temp.resolve().parent == self.root and config_path.resolve().parent == self.root
@@ -165,7 +165,7 @@ class Workspace:
         spec = loads(adapter_path.read_text(encoding='utf-8'))
         if (not isinstance(spec, dict) or set(spec) != {'argv', 'protocols', 'languages'}
                 or not isinstance(spec['argv'], list)):
-            raise Error('Adaptör dosyası argv, protocols ve languages içermeli (oz.adapter/3, OZ/9)')
+            raise Error('The adapter file must contain argv, protocols and languages (oz.adapter/3, OZ/9)')
         adapter = StdioAdapter(tuple(spec['argv']), cwd=adapter_path.parent, timeout=timeout,
                                capabilities={k: spec[k] for k in ('protocols', 'languages')})
         results = []
