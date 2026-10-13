@@ -2,7 +2,7 @@
 
 Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
 
-`docs/design/stage-1g-final-decision.md`, stage D, the "Luna medium-64 5+5" cell. There is one arm: H (the ÖZ/1g text; the first
+`docs/design/stage-1g-final-decision.md`, stage D, the "Luna medium-64 5+5" cell. There is one arm: H (the OZ/1g text; the first
 non-blank line of the reply must be exactly `OZ/1g`). 10 prompts, 64 jobs each:
 
 - 5 standard packets: data seeds 2005 to 2009 (`std_*.txt`), same setup as `bench/live/run1g.py`.

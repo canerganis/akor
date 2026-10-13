@@ -10,7 +10,7 @@ and accepts an answer only when every job in it is accounted for.
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
 ![Tests](https://img.shields.io/badge/tests-336%20passing-1a7f4b)
-![Protocol](https://img.shields.io/badge/wire-%C3%96Z%2F9%20stage%201g-52514e)
+![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
 <img src="docs/assets/flow.svg" alt="Ready jobs from several agents are packed into one call; the model answers one record per job, keyed by job ID; the host checks the whole reply before it delivers anything." width="100%">

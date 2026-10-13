@@ -76,7 +76,7 @@ def initialize(path: Path, channel: Channel | None = None):
     except Error:
         start_wire = 'r'
     (root / 'START.md').write_text(
-        '# ÖZ workspace\n\nRun these in this directory:\n\n'
+        '# AKOR workspace\n\nRun these in this directory:\n\n'
         f'```text\noz send {start_wire} --id first\noz send r{channel.active} --to reviewer --id check --after first\n'
         'oz plan\noz status\n```\n\n'
         'For a real agent, choose the JSON stdin/stdout adapter explicitly:\n\n'

@@ -3,10 +3,10 @@
 Translated from Turkish by Claude Sonnet 5.5; the original text is in git history (commit 5abbc82).
 
 The same job set used on the Claude models: 16 material records × 4 operations, different records in every repeat,
-exact correct answers (`oracles/`). Two arms: `0.8-exec` (the old version that does the same job) and `S1e` (the current ÖZ form).
+exact correct answers (`oracles/`). Two arms: `0.8-exec` (the old version that does the same job) and `S1e` (the current OZ form).
 32 and 64 jobs, 3 repeats, 12 prompts in total (`prompts/`).
 
-Codex has no separate system field, so the ÖZ rules go at the start of the prompt under the `SYSTEM RULES:` heading
+Codex has no separate system field, so the OZ rules go at the start of the prompt under the `SYSTEM RULES:` heading
 and the job body goes under `INPUT:`.
 
 ## Automatic (recommended)
