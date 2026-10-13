@@ -1,0 +1,113 @@
+{
+ "arm": "H",
+ "n": 64,
+ "model": "claude-sonnet-5-5",
+ "effort": null,
+ "schedule": [
+  [
+   1005,
+   "H"
+  ],
+  [
+   1005,
+   "0.8-exec"
+  ],
+  [
+   1006,
+   "H"
+  ],
+  [
+   1007,
+   "H"
+  ],
+  [
+   1008,
+   "H"
+  ],
+  [
+   1009,
+   "H"
+  ],
+  [
+   1009,
+   "0.8-exec"
+  ],
+  [
+   1010,
+   "H"
+  ],
+  [
+   1011,
+   "H"
+  ],
+  [
+   1012,
+   "H"
+  ],
+  [
+   1013,
+   "0.8-exec"
+  ],
+  [
+   1013,
+   "H"
+  ],
+  [
+   1014,
+   "H"
+  ],
+  [
+   1015,
+   "H"
+  ],
+  [
+   1016,
+   "H"
+  ],
+  [
+   1017,
+   "0.8-exec"
+  ],
+  [
+   1017,
+   "H"
+  ],
+  [
+   1018,
+   "H"
+  ],
+  [
+   1019,
+   "H"
+  ],
+  [
+   1020,
+   "H"
+  ],
+  [
+   1021,
+   "H"
+  ],
+  [
+   1021,
+   "0.8-exec"
+  ],
+  [
+   1022,
+   "H"
+  ],
+  [
+   1023,
+   "H"
+  ],
+  [
+   1024,
+   "H"
+  ]
+ ],
+ "sha256": "bf843cfad7607cec3e026fa4c12803e42acbc7d13aad2d6a7ab16b935128e537",
+ "reply_retry": 0,
+ "concurrency": 1,
+ "timeout_s": 300,
+ "note": "seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport retries on HTTP errors are not configurable here and never resample a completed reply"
+}

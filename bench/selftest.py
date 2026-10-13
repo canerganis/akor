@@ -201,7 +201,8 @@ def _():
     assert all(g for g, _ in dec('OZ/1g\n\n' + good.replace('\n', '\n\n')))
     failed = encode_reply(values | {jobs[0]: Failure('conflict', 'x')}, ids=jobs)
     assert [g for g, _ in dec('OZ/1g\n' + failed)] == [False] + [True] * 7
-    for bad in (good, '', 'OZ/1g', 'oz/1g\n' + good, 'OZ/1g \n' + good, 'OZ/1f\n' + good, '```\nOZ/1g\n' + good + '```',
+    assert all(g for g, _ in dec('OZ/1g \t\n' + good))  # trailing SP/TAB on the header line is stripped, as in live11
+    for bad in (good, '', 'OZ/1g', 'oz/1g\n' + good, 'OZ/1f\n' + good, '```\nOZ/1g\n' + good + '```',
                 'OZ/1g\nOZ/1g\n' + good, 'OZ/1g\n' + good + '\n' + good.splitlines()[0], 'Here:\nOZ/1g\n' + good,
                 '\xa0OZ/1g\n' + good, 'OZ/1g\n' + encode_1f(values)):
         try:
@@ -231,6 +232,34 @@ def _():
     assert [v for _, v in flat] == want and all(g for g, _ in flat)
     flat = live11.stage1d_flat('\n'.join(json.dumps([j, v]) for j, v in zip(jobs, want)), jobs)
     assert [v for _, v in flat] == want
+
+
+@check('hetero1g: five 64-job single-family packets validate; oracle judges 64/64, one wrong value 63/64, P5 success line is wrong')
+def _():
+    import hetero1g as HG, oz_batch
+    first = {1: lambda v: v == [], 2: lambda v: not isinstance(v, (list, dict)), 3: lambda v: isinstance(v, dict),
+             4: lambda v: isinstance(v, list) and v and all(isinstance(x, list) for x in v)}
+    for k in range(1, 6):
+        body, ids, expected = HG.packet(k)
+        assert (body, ids, expected) == HG.packet(k) and len(ids) == 64 and set(ids) == set(expected)
+        oz_batch.validate_packet(json.loads(body))
+        if k < 5:
+            assert all(t == 'ok' and first[k](v) for t, v in expected.values()), k
+        else:
+            assert sorted(v for _, v in expected.values()) == sorted(c for c in ('missing_data', 'invalid_data', 'conflict', 'unsupported') for _ in range(16))
+        values = {i: Failure(expected[i][1], 'x') if k == 5 else expected[i][1] for i in ids}
+        for header in (True, False):
+            head = 'OZ/1g\n' if header else ''
+            assert HG.judge(head + encode_reply(values, ids), ids, expected, header) == (True, 64, '')
+            bad = dict(values); bad[ids[0]] = 12345 if k == 5 else ('x' if k != 2 else [1])
+            assert HG.judge(head + encode_reply(bad, ids), ids, expected, header) == (True, 63, '')
+            assert HG.judge(encode_reply(values, ids) if header else 'OZ/1g\n' + encode_reply(values, ids), ids, expected, header)[:2] == (False, 0)
+    assert {'error', 'id'} <= {i for k in range(1, 6) for i in HG.packet(k)[1]}
+    ids = HG.packet(5)[1]
+    wrong = {i: Failure(HG.packet(5)[2][i][1], 'x') for i in ids} | {ids[0]: Failure('conflict' if HG.packet(5)[2][ids[0]][1] != 'conflict' else 'unsupported', 'x')}
+    assert HG.judge(encode_reply(wrong, ids), ids, HG.packet(5)[2], False)[:2] == (True, 63)
+    assert not HG.same(True, 1) and not HG.same(1, True) and HG.same(1, 1.0) and not HG.same(0, False) and not HG.same([1], [True])
+    assert not HG.same({'a': 1}, {'a': 1, 'b': 2}) and not HG.same('1', 1) and HG.same({'a': [1.5]}, {'a': [1.5]})
 
 
 print(f'{sum(RESULTS)}/{len(RESULTS)} checks passed')
