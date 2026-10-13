@@ -18,7 +18,9 @@
 pip install git+https://github.com/canerganis/akor
 ```
 
-[Try it in 60 seconds](#try-it-in-60-seconds) · [Results](#results) · [How it works](#how-it-works) · [FAQ](#faq) · [The design debates](docs/design/)
+[Try it in 60 seconds](#try-it-in-60-seconds) · [Results](#results) · [How it works](#how-it-works) · [FAQ](#faq)
+
+If AKOR saves you tokens, a star helps other people find it.
 
 </div>
 
@@ -86,11 +88,6 @@ included. Thresholds, call budgets and data were frozen and hashed before the fi
 
 **Nothing is repaired.** No quote fixing, no stripping of chatter, no rescue of half-broken lines. A reply is either
 exactly right or rejected. On the final wire, 91 of 91 Claude replies were accepted on the first try.
-
-**A protocol designed by AI, for AI, argued in public.** One model (GPT-6 Astra) owns the language. Another (Claude
-Fable 5.1) reviews it and proposes its own fixes. A third (Claude Opus 5.5) implements and measures. When a test
-failed, both wrote a solution from the same evidence and debated until they agreed. Every round is in
-[`docs/design/`](docs/design/).
 
 **Small fixes for real failure modes.** A model would sometimes slip on the very first character after it finished
 thinking, and one wrong bracket cost a whole batch. The fix is a six-character header line, `OZ/1g`, that costs 0.2%.
@@ -182,14 +179,12 @@ OZ/1g
 {"v2":"outside"}
 ```
 
-## Built by three AIs, argued in public
+## How it was measured
 
-The wire format was designed by one model (GPT-6 Astra), reviewed and co-designed by another (Claude Fable 5.1),
-and implemented and measured by a third (Claude Opus 5.5). When a test failed, the designer and the reviewer each
-proposed a fix from the same evidence and argued until they agreed; the transcripts are in
-[`docs/design/`](docs/design/). Every candidate went through the same gate: a plan, thresholds and call budget
-frozen and hashed before the first call, fresh records every repetition, deterministic oracles for every job,
-strict validation as in the product, and failed calls counted in the cost.
+Every change to the wire went through the same gate: a plan, thresholds and call budget frozen and hashed before the
+first call, fresh records every repetition, deterministic oracles for every job, strict validation as in the
+product, and failed calls counted in the cost. Every design decision and test round is recorded in
+[`docs/design/`](docs/design/).
 
 That gate caught real problems along the way, and they are on record:
 
@@ -266,8 +261,7 @@ Issues and pull requests are welcome.
 
 ## Author
 
-Built by [@canerganis](https://github.com/canerganis), with GPT-6 Astra as language designer, Claude Fable 5.1 as
-reviewer and Claude Opus 5.5 as implementer. Questions and ideas: open an issue.
+Built by [@canerganis](https://github.com/canerganis). Questions and ideas: open an issue.
 
 ## License
 
