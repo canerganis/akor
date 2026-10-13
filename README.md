@@ -267,7 +267,7 @@ Issues and pull requests are welcome.
 ## Author
 
 Built by [@canerganis](https://github.com/canerganis), with GPT-6 Astra as language designer, Claude Fable 5.1 as
-reviewer and Claude Opus 5.5 as implementer. Questions, ideas or work inquiries: open an issue or reach out on GitHub.
+reviewer and Claude Opus 5.5 as implementer. Questions and ideas: open an issue.
 
 ## License
 
