@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="t d">
-  <title id="t">AKOR uses fewer tokens per verified job than plain JSON and answers faster</title>
-  <desc id="d">Tokens per verified job, plain JSON versus AKOR: Sonnet 5.5 146.7 versus 87.0, 40.7 percent fewer; Opus 5.5 144.3 versus 82.6, 42.8 percent fewer. Median seconds per 64-job call: Sonnet 5.5 13.8 versus 12.5; Opus 5.5 17.9 versus 14.0. Billed tokens include CLI overhead and hidden reasoning; failed calls are counted.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 420" width="960" height="420" role="img" aria-labelledby="t d">
+  <title id="t">AKOR uses fewer tokens per verified job than plain JSON and answers faster, on three models</title>
+  <desc id="d">Tokens per verified job, plain JSON versus AKOR: Sonnet 5.5 146.7 versus 87.0, 40.7 percent fewer; Opus 5.5 144.3 versus 82.6, 42.8 percent fewer; Fable 5.1 146.3 versus 86.9, 40.6 percent fewer. Median seconds per 64-job call: Sonnet 5.5 13.8 versus 12.5; Opus 5.5 17.9 versus 14.0; Fable 5.1 23.4 versus 18.7. Billed tokens include CLI overhead and hidden reasoning; failed calls are counted.</desc>
   <style>
     .bg { fill: #fcfcfb; }
     .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
@@ -40,52 +40,68 @@
     }
   </style>
 
-  <rect class="bg" width="960" height="360" rx="16"/>
-  <path class="rule" d="M480 28 V 274"/>
+  <rect class="bg" width="960" height="420" rx="16"/>
+  <path class="rule" d="M566 24 V 340"/>
 
-  <text class="ink sans" x="24" y="44" font-size="26" font-weight="800">Sonnet 5.5</text>
-  <text class="ink2 sans" x="24" y="82" font-size="16">Tokens per verified job</text>
-  <text class="ink2 sans" x="456" y="82" font-size="14" text-anchor="end">same 64 jobs, one call</text>
-  <text class="ink2 sans" x="24" y="113" font-size="15" font-weight="400">Plain JSON</text>
-  <rect class="track" x="112" y="94" width="250" height="26" rx="6"/>
-  <rect class="grey grow" x="112" y="94" width="250.0" height="26" rx="6" style="animation-delay:0.10s"/>
-  <text class="ink sans fade" x="372.0" y="114" font-size="18" font-weight="700" style="animation-delay:1.00s">146.7</text>
-  <text class="ink sans" x="24" y="147" font-size="15" font-weight="700">AKOR</text>
-  <rect class="track" x="112" y="128" width="250" height="26" rx="6"/>
-  <rect class="accent grow" x="112" y="128" width="148.3" height="26" rx="6" style="animation-delay:0.25s"/>
-  <text class="ink sans fade" x="270.3" y="148" font-size="18" font-weight="700" style="animation-delay:1.15s">87.0</text>
-  <g class="badge" style="animation-delay:1.35s"><rect class="accent" x="334.3" y="129" width="82" height="24" rx="12"/><text class="sans" x="375.3" y="146" font-size="15" font-weight="800" fill="#fff" text-anchor="middle">-40.7%</text></g>
-  <text class="ink2 sans" x="24" y="196" font-size="16">Median seconds per 64-job call</text>
-  <text class="ink2 sans" x="24" y="227" font-size="15" font-weight="400">Plain JSON</text>
-  <rect class="track" x="112" y="208" width="250" height="26" rx="6"/>
-  <rect class="grey grow" x="112" y="208" width="192.7" height="26" rx="6" style="animation-delay:0.60s"/>
-  <text class="ink sans fade" x="314.7" y="228" font-size="18" font-weight="700" style="animation-delay:1.50s">13.8 s</text>
-  <text class="ink sans" x="24" y="261" font-size="15" font-weight="700">AKOR</text>
-  <rect class="track" x="112" y="242" width="250" height="26" rx="6"/>
-  <rect class="accent grow" x="112" y="242" width="174.6" height="26" rx="6" style="animation-delay:0.75s"/>
-  <text class="ink sans fade" x="296.6" y="262" font-size="18" font-weight="700" style="animation-delay:1.65s">12.5 s</text>
-  <text class="ink sans" x="492" y="44" font-size="26" font-weight="800">Opus 5.5</text>
-  <text class="ink2 sans" x="492" y="82" font-size="16">Tokens per verified job</text>
-  <text class="ink2 sans" x="924" y="82" font-size="14" text-anchor="end">same 64 jobs, one call</text>
-  <text class="ink2 sans" x="492" y="113" font-size="15" font-weight="400">Plain JSON</text>
-  <rect class="track" x="580" y="94" width="250" height="26" rx="6"/>
-  <rect class="grey grow" x="580" y="94" width="245.9" height="26" rx="6" style="animation-delay:0.10s"/>
-  <text class="ink sans fade" x="835.9" y="114" font-size="18" font-weight="700" style="animation-delay:1.00s">144.3</text>
-  <text class="ink sans" x="492" y="147" font-size="15" font-weight="700">AKOR</text>
-  <rect class="track" x="580" y="128" width="250" height="26" rx="6"/>
-  <rect class="accent grow" x="580" y="128" width="140.8" height="26" rx="6" style="animation-delay:0.25s"/>
-  <text class="ink sans fade" x="730.8" y="148" font-size="18" font-weight="700" style="animation-delay:1.15s">82.6</text>
-  <g class="badge" style="animation-delay:1.35s"><rect class="accent" x="794.8" y="129" width="82" height="24" rx="12"/><text class="sans" x="835.8" y="146" font-size="15" font-weight="800" fill="#fff" text-anchor="middle">-42.8%</text></g>
-  <text class="ink2 sans" x="492" y="196" font-size="16">Median seconds per 64-job call</text>
-  <text class="ink2 sans" x="492" y="227" font-size="15" font-weight="400">Plain JSON</text>
-  <rect class="track" x="580" y="208" width="250" height="26" rx="6"/>
-  <rect class="grey grow" x="580" y="208" width="250.0" height="26" rx="6" style="animation-delay:0.60s"/>
-  <text class="ink sans fade" x="840.0" y="228" font-size="18" font-weight="700" style="animation-delay:1.50s">17.9 s</text>
-  <text class="ink sans" x="492" y="261" font-size="15" font-weight="700">AKOR</text>
-  <rect class="track" x="580" y="242" width="250" height="26" rx="6"/>
-  <rect class="accent grow" x="580" y="242" width="195.5" height="26" rx="6" style="animation-delay:0.75s"/>
-  <text class="ink sans fade" x="785.5" y="262" font-size="18" font-weight="700" style="animation-delay:1.65s">14.0 s</text>
+  <text class="ink sans" x="170" y="40" font-size="19" font-weight="800">Tokens per verified job</text>
+  <text class="ink sans" x="588" y="40" font-size="19" font-weight="800">Median seconds per 64-job call</text>
+  <text class="ink sans" x="24" y="110" font-size="21" font-weight="800">Sonnet 5.5</text>
+  <text class="ink2 sans" x="170" y="89" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="258" y="70" width="220" height="26" rx="6"/>
+  <rect class="grey grow" x="258" y="70" width="220.0" height="26" rx="6" style="animation-delay:0.10s"/>
+  <text class="ink sans fade" x="488.0" y="90" font-size="18" font-weight="700" style="animation-delay:1.00s">146.7</text>
+  <text class="ink sans" x="170" y="123" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="258" y="104" width="220" height="26" rx="6"/>
+  <rect class="accent grow" x="258" y="104" width="130.5" height="26" rx="6" style="animation-delay:0.25s"/>
+  <text class="ink sans fade" x="398.5" y="124" font-size="18" font-weight="700" style="animation-delay:1.15s">87.0</text>
+  <g class="badge" style="animation-delay:1.35s"><rect class="accent" x="462.5" y="105" width="82" height="24" rx="12"/><text class="sans" x="503.5" y="122" font-size="15" font-weight="800" fill="#fff" text-anchor="middle">-40.7%</text></g>
+  <text class="ink2 sans" x="588" y="89" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="676" y="70" width="190" height="26" rx="6"/>
+  <rect class="grey grow" x="676" y="70" width="112.1" height="26" rx="6" style="animation-delay:0.20s"/>
+  <text class="ink sans fade" x="798.1" y="90" font-size="18" font-weight="700" style="animation-delay:1.10s">13.8 s</text>
+  <text class="ink sans" x="588" y="123" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="676" y="104" width="190" height="26" rx="6"/>
+  <rect class="accent grow" x="676" y="104" width="101.5" height="26" rx="6" style="animation-delay:0.35s"/>
+  <text class="ink sans fade" x="787.5" y="124" font-size="18" font-weight="700" style="animation-delay:1.25s">12.5 s</text>
+  <path class="rule" d="M24 150 H 936"/>
+  <text class="ink sans" x="24" y="210" font-size="21" font-weight="800">Opus 5.5</text>
+  <text class="ink2 sans" x="170" y="189" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="258" y="170" width="220" height="26" rx="6"/>
+  <rect class="grey grow" x="258" y="170" width="216.4" height="26" rx="6" style="animation-delay:0.50s"/>
+  <text class="ink sans fade" x="484.4" y="190" font-size="18" font-weight="700" style="animation-delay:1.40s">144.3</text>
+  <text class="ink sans" x="170" y="223" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="258" y="204" width="220" height="26" rx="6"/>
+  <rect class="accent grow" x="258" y="204" width="123.9" height="26" rx="6" style="animation-delay:0.65s"/>
+  <text class="ink sans fade" x="391.9" y="224" font-size="18" font-weight="700" style="animation-delay:1.55s">82.6</text>
+  <g class="badge" style="animation-delay:1.75s"><rect class="accent" x="455.9" y="205" width="82" height="24" rx="12"/><text class="sans" x="496.9" y="222" font-size="15" font-weight="800" fill="#fff" text-anchor="middle">-42.8%</text></g>
+  <text class="ink2 sans" x="588" y="189" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="676" y="170" width="190" height="26" rx="6"/>
+  <rect class="grey grow" x="676" y="170" width="145.3" height="26" rx="6" style="animation-delay:0.60s"/>
+  <text class="ink sans fade" x="831.3" y="190" font-size="18" font-weight="700" style="animation-delay:1.50s">17.9 s</text>
+  <text class="ink sans" x="588" y="223" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="676" y="204" width="190" height="26" rx="6"/>
+  <rect class="accent grow" x="676" y="204" width="113.7" height="26" rx="6" style="animation-delay:0.75s"/>
+  <text class="ink sans fade" x="799.7" y="224" font-size="18" font-weight="700" style="animation-delay:1.65s">14.0 s</text>
+  <path class="rule" d="M24 250 H 936"/>
+  <text class="ink sans" x="24" y="310" font-size="21" font-weight="800">Fable 5.1</text>
+  <text class="ink2 sans" x="170" y="289" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="258" y="270" width="220" height="26" rx="6"/>
+  <rect class="grey grow" x="258" y="270" width="219.4" height="26" rx="6" style="animation-delay:0.90s"/>
+  <text class="ink sans fade" x="487.4" y="290" font-size="18" font-weight="700" style="animation-delay:1.80s">146.3</text>
+  <text class="ink sans" x="170" y="323" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="258" y="304" width="220" height="26" rx="6"/>
+  <rect class="accent grow" x="258" y="304" width="130.3" height="26" rx="6" style="animation-delay:1.05s"/>
+  <text class="ink sans fade" x="398.3" y="324" font-size="18" font-weight="700" style="animation-delay:1.95s">86.9</text>
+  <g class="badge" style="animation-delay:2.15s"><rect class="accent" x="462.3" y="305" width="82" height="24" rx="12"/><text class="sans" x="503.3" y="322" font-size="15" font-weight="800" fill="#fff" text-anchor="middle">-40.6%</text></g>
+  <text class="ink2 sans" x="588" y="289" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="676" y="270" width="190" height="26" rx="6"/>
+  <rect class="grey grow" x="676" y="270" width="190.0" height="26" rx="6" style="animation-delay:1.00s"/>
+  <text class="ink sans fade" x="876.0" y="290" font-size="18" font-weight="700" style="animation-delay:1.90s">23.4 s</text>
+  <text class="ink sans" x="588" y="323" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="676" y="304" width="190" height="26" rx="6"/>
+  <rect class="accent grow" x="676" y="304" width="151.8" height="26" rx="6" style="animation-delay:1.15s"/>
+  <text class="ink sans fade" x="837.8" y="324" font-size="18" font-weight="700" style="animation-delay:2.05s">18.7 s</text>
 
-  <path class="rule" d="M24 296 H 936"/>
-  <text class="ink2 sans" x="24" y="328" font-size="16">Billed tokens incl. CLI overhead and hidden reasoning; failed calls counted. 64 jobs per call.</text>
+  <path class="rule" d="M24 360 H 936"/>
+  <text class="ink2 sans" x="24" y="392" font-size="16">Billed tokens incl. CLI overhead and hidden reasoning; failed calls counted. 64 jobs per call.</text>
 </svg>
