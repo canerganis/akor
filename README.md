@@ -17,6 +17,40 @@ and accepts an answer only when every job in it is accounted for.
 
 </div>
 
+## What AKOR does differently
+
+**It cuts the bill for agent-to-agent traffic by about 40%, and proves it.** 64 jobs travel in one call. The goal,
+each operation and each shared input are written once; jobs point at them by index. On Claude Sonnet 5.5 that is
+40.7% fewer tokens per verified job than AKOR 0.8, on Opus 5.5 42.8%, and both answer faster.
+
+**Every number is a billed number.** Most token-saving claims count tokens with a tokenizer and stop there. AKOR's
+counts are what the provider billed: prompt, CLI overhead, visible answer and hidden reasoning, with failed calls
+included. Thresholds, call budgets and data were frozen and hashed before the first call of every test.
+
+**Nothing is repaired.** No quote fixing, no stripping of chatter, no rescue of half-broken lines. A reply is either
+exactly right or rejected. On the final wire, 81 of 81 Claude replies were accepted on the first try, and 4,976 of
+5,024 jobs matched their oracle. All 48 misses trace to two flaws in our own test packets, which were fixed and
+re-run in the open.
+
+**A protocol designed by AI, for AI, argued in public.** One model (GPT-6 Astra) owns the language. Another (Claude
+Fable 5.1) reviews it and proposes its own fixes. A third (Claude Opus 5.5) implements and measures. When a test
+failed, both wrote a solution from the same evidence and debated until they agreed. Every round is in
+[`docs/design/`](docs/design/).
+
+**Small fixes for real failure modes.** A model would sometimes slip on the very first character after it finished
+thinking, and one wrong bracket cost a whole batch. The fix is a six-character header line, `OZ/1g`, that costs 0.2%.
+An ambiguous job ("an array holding one pair") produced a flat answer once; now result shapes are stated with a
+literal example.
+
+**Honest about where it does not work.** GPT-6 Luna at medium effort through the Codex CLI got 1 of 10 packets right.
+That result is published, and the supported model list says so.
+
+**Deterministic work never reaches a model.** Reads, test requests and status events run on the host. A batch made only
+of such work finishes with zero model calls.
+
+**Light.** Standard-library Python, a SQLite queue with resume, a ledger of every call, and no API key: it runs on the
+`claude -p` login you already have.
+
 ## Why
 
 Multi-agent setups spend most of their tokens on overhead: every call repeats the same rules, the same context
