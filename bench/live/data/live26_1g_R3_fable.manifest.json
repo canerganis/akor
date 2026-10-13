@@ -1,0 +1,32 @@
+{
+ "arm": "H",
+ "header": true,
+ "n": 64,
+ "model": "claude-fable-5-1",
+ "effort": null,
+ "schedule": [
+  [
+   3001,
+   1
+  ],
+  [
+   3002,
+   2
+  ],
+  [
+   3003,
+   3
+  ],
+  [
+   3004,
+   4
+  ]
+ ],
+ "sha256": "378039263dd125fa4a0a0fcc7111bbf60c1c7cd85a62e602f2b1b7d6ea4b18ef",
+ "reply_retry": 0,
+ "concurrency": 1,
+ "timeout_s": 300,
+ "rev": 3,
+ "stop_at_first_failure": true,
+ "note": "seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport retries on HTTP errors are not configurable here and never resample a completed reply"
+}

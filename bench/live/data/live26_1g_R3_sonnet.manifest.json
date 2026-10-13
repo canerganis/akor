@@ -1,0 +1,20 @@
+{
+ "arm": "H",
+ "header": true,
+ "n": 64,
+ "model": "claude-sonnet-5-5",
+ "effort": null,
+ "schedule": [
+  [
+   3004,
+   4
+  ]
+ ],
+ "sha256": "75c0536b71acbdee7db3743207dbfd12e99719a31bc6ce8a392988fe8d674860",
+ "reply_retry": 0,
+ "concurrency": 1,
+ "timeout_s": 300,
+ "rev": 3,
+ "stop_at_first_failure": true,
+ "note": "seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport retries on HTTP errors are not configurable here and never resample a completed reply"
+}
