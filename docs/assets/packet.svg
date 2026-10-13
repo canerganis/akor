@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" width="960" height="340" role="img" aria-labelledby="t d">
+  <title id="t">One 64-job packet: 3,268 tokens in plain JSON, 1,471 tokens in AKOR</title>
+  <desc id="d">Plain JSON repeats goal, op and reference in every one of 64 job lines and takes 3,268 tokens (o200k, system plus body). AKOR writes goal, ops and refs once and sends each job as a tiny index row such as [0,["e1",0],["e2",1]], which takes 1,471 tokens. The packet is 55 percent smaller.</desc>
+  <style>
+    .bg { fill: #fcfcfb; }
+    .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
+    .ink { fill: #0b0b0b; }
+    .ink2 { fill: #52514e; }
+    .accent { fill: #2a78d6; }
+    .accent-s { stroke: #2a78d6; }
+    .grey { fill: #a6a59f; }
+    .grey-s { stroke: #8a8984; }
+    .track { fill: #ecebe6; }
+    .rule { stroke: #e2e1dc; stroke-width: 1.5; }
+    .mono { font-family: "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace; }
+    .sans { font-family: -apple-system, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+    .gs { stop-color: #2a78d6; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #1a1a19; }
+      .panel { fill: #232322; stroke: #3a3a38; }
+      .ink { fill: #ffffff; }
+      .ink2 { fill: #c3c2b7; }
+      .accent { fill: #3987e5; }
+      .accent-s { stroke: #3987e5; }
+      .grey { fill: #75746f; }
+      .grey-s { stroke: #75746f; }
+      .track { fill: #2b2b29; }
+      .rule { stroke: #3a3a38; }
+      .gs { stop-color: #3987e5; }
+    }
+
+    .scene { animation: scene 10s ease-in-out infinite; }
+    @keyframes scene { 0% { opacity: 0; } 4%, 92% { opacity: 1; } 97%, 100% { opacity: 0; } }
+    .l, .r { animation-duration: 10s; animation-iteration-count: infinite; animation-timing-function: ease-in-out; }
+    @keyframes l0 { 0%, 34.0% { opacity: 1; } 37.0%, 100% { opacity: .22; } }
+    @keyframes l1 { 0%, 33.0% { opacity: 1; } 36.0%, 100% { opacity: .22; } }
+    @keyframes l2 { 0%, 32.0% { opacity: 1; } 35.0%, 100% { opacity: .22; } }
+    @keyframes l3 { 0%, 31.0% { opacity: 1; } 34.0%, 100% { opacity: .22; } }
+    @keyframes l4 { 0%, 30.0% { opacity: 1; } 33.0%, 100% { opacity: .22; } }
+    @keyframes l5 { 0%, 29.0% { opacity: 1; } 32.0%, 100% { opacity: .22; } }
+    @keyframes l6 { 0%, 28.0% { opacity: 1; } 31.0%, 100% { opacity: .22; } }
+    @keyframes l7 { 0%, 27.0% { opacity: 1; } 30.0%, 100% { opacity: .22; } }
+    @keyframes l8 { 0%, 26.0% { opacity: 1; } 29.0%, 100% { opacity: .22; } }
+    @keyframes l9 { 0%, 25.0% { opacity: 1; } 28.0%, 100% { opacity: .22; } }
+    @keyframes l10 { 0%, 24.0% { opacity: 1; } 27.0%, 100% { opacity: .22; } }
+    @keyframes l11 { 0%, 23.0% { opacity: 1; } 26.0%, 100% { opacity: .22; } }
+    @keyframes l12 { 0%, 22.0% { opacity: 1; } 25.0%, 100% { opacity: .22; } }
+    @keyframes r0 { 0%, 40% { opacity: 0; transform: translateY(6px); } 44%, 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes r1 { 0%, 42% { opacity: 0; transform: translateY(6px); } 46%, 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes r2 { 0%, 44% { opacity: 0; transform: translateY(6px); } 48%, 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes r3 { 0%, 46% { opacity: 0; transform: translateY(6px); } 50%, 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes r4 { 0%, 48% { opacity: 0; transform: translateY(6px); } 52%, 100% { opacity: 1; transform: translateY(0); } }
+    @keyframes r5 { 0%, 50% { opacity: 0; transform: translateY(6px); } 54%, 100% { opacity: 1; transform: translateY(0); } }
+    .lp { animation: lp 10s ease-in-out infinite; }
+    @keyframes lp { 0%, 22% { opacity: 1; } 40%, 100% { opacity: .8; } }
+    .rp { animation: rp 10s ease-in-out infinite; }
+    @keyframes rp { 0%, 36% { opacity: 0; } 42%, 100% { opacity: 1; } }
+    .rbar { transform-box: fill-box; transform-origin: left center; animation: rbar 10s cubic-bezier(.3,.7,.2,1) infinite; }
+    @keyframes rbar { 0%, 34% { transform: scaleX(0); } 54%, 100% { transform: scaleX(1); } }
+    .pop { transform-box: fill-box; transform-origin: left center; animation: pop 10s cubic-bezier(.2,.9,.3,1.2) infinite; }
+    @keyframes pop { 0%, 52% { opacity: 0; transform: scale(.6); } 59%, 100% { opacity: 1; transform: scale(1); } }
+    .cap { animation: cap 10s ease-out infinite; }
+    @keyframes cap { 0%, 60% { opacity: 0; transform: translateY(8px); } 68%, 100% { opacity: 1; transform: translateY(0); } }
+    .arrow { stroke-dasharray: 6 6; animation: dash 1.2s linear infinite; }
+    @keyframes dash { to { stroke-dashoffset: -24; } }
+    @media (prefers-reduced-motion: reduce) {
+      .scene, .l, .r, .lp, .rp, .rbar, .pop, .cap, .arrow { animation: none; }
+    }
+  </style>
+
+  <rect class="bg" width="960" height="340" rx="16"/>
+
+  <g class="scene">
+    <g class="sans">
+      <text class="ink" x="24" y="46" font-size="26" font-weight="800">Plain JSON</text>
+      <text class="ink2" x="444" y="46" font-size="22" font-weight="700" text-anchor="end">3,268 tokens</text>
+      <text class="ink" x="516" y="46" font-size="26" font-weight="800">AKOR</text>
+      <text class="accent" x="936" y="46" font-size="22" font-weight="700" text-anchor="end">1,471 tokens</text>
+    </g>
+
+    <rect class="panel lp" x="24" y="64" width="420" height="216" rx="12"/>
+    <g class="mono" font-size="11.5">
+      <text class="ink l" style="animation-name:l0" x="38" y="88.0">{"id":"e1","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l1" x="38" y="103.4">{"id":"e2","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l2" x="38" y="118.8">{"id":"e3","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l3" x="38" y="134.2">{"id":"e4","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l4" x="38" y="149.6">{"id":"e5","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l5" x="38" y="165.0">{"id":"e6","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l6" x="38" y="180.4">{"id":"e7","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l7" x="38" y="195.8">{"id":"e8","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l8" x="38" y="211.2">{"id":"e9","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l9" x="38" y="226.6">{"id":"e10","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l10" x="38" y="242.0">…</text>
+      <text class="ink l" style="animation-name:l11" x="38" y="257.4">{"id":"e63","op":"extract","goal":"read mm","ref":"r0"}</text>
+      <text class="ink l" style="animation-name:l12" x="38" y="272.8">{"id":"e64","op":"extract","goal":"read mm","ref":"r0"}</text>
+    </g>
+
+    <path class="accent-s arrow" d="M456 126 H 496" stroke-width="3" fill="none"/>
+    <path class="accent" d="M498 118 L 512 126 L 498 134 Z"/>
+
+    <rect class="panel rp" x="516" y="64" width="420" height="132" rx="12"/>
+    <g class="mono" font-size="13">
+      <text class="accent r" style="animation-name:r0" x="534" y="92.0" xml:space="preserve">{"goal":"read mm",</text>
+      <text class="accent r" style="animation-name:r1" x="534" y="109.5" xml:space="preserve"> "ops":["extract"],</text>
+      <text class="accent r" style="animation-name:r2" x="534" y="127.0" xml:space="preserve"> "refs":["r0"],</text>
+      <text class="ink r" style="animation-name:r3" x="534" y="144.5" xml:space="preserve"> "jobs":[</text>
+      <text class="ink r" style="animation-name:r4" x="534" y="162.0" xml:space="preserve">  [0,["e1",0],["e2",1],["e3",2],…]</text>
+      <text class="ink r" style="animation-name:r5" x="534" y="179.5" xml:space="preserve"> ]}</text>
+    </g>
+    <g class="sans rp" font-size="15" font-weight="700">
+      <path class="accent-s" d="M828 80 V 128" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <text class="accent" x="840" y="109">written once</text>
+      <path class="grey-s" d="M828 138 V 184" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <text class="ink2" x="840" y="165">index rows</text>
+    </g>
+
+    <g class="sans pop">
+      <text class="accent" x="516" y="262" font-size="64" font-weight="800">-55%</text>
+    </g>
+    <g class="sans cap">
+      <text class="ink2" x="696" y="240" font-size="16">tokens counted with o200k,</text>
+      <text class="ink2" x="696" y="262" font-size="16">system + body</text>
+    </g>
+
+    <rect class="track" x="24" y="292" width="420" height="10" rx="5"/>
+    <rect class="grey" x="24" y="292" width="420" height="10" rx="5"/>
+    <rect class="track" x="516" y="292" width="420" height="10" rx="5"/>
+    <rect class="accent rbar" x="516" y="292" width="189" height="10" rx="5"/>
+
+    <text class="ink sans cap" x="480" y="328" font-size="21" font-weight="700" text-anchor="middle">-55% packet size, written once, referenced by index</text>
+  </g>
+</svg>

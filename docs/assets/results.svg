@@ -1,82 +1,91 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560" role="img" aria-labelledby="t d">
-  <title id="t">Fewer total tokens than AKOR 0.8 for the same verified work</title>
-  <desc id="d">Live measurements with claude -p; every job checked by deterministic oracles. 64 uniform jobs per call: Opus 5.5 47 percent fewer tokens, Sonnet 5.5 47, Fable 5.1 45, Haiku 5.5 33. 32 uniform jobs: Opus 38, Sonnet 35, Fable 35, Haiku 32. 64 mixed jobs: Sonnet 28, Haiku 11.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" width="960" height="360" role="img" aria-labelledby="t d">
+  <title id="t">AKOR uses fewer tokens per verified job than plain JSON and answers faster</title>
+  <desc id="d">Tokens per verified job, plain JSON versus AKOR: Sonnet 5.5 146.7 versus 87.0, 40.7 percent fewer; Opus 5.5 144.3 versus 82.6, 42.8 percent fewer. Median seconds per 64-job call: Sonnet 5.5 13.8 versus 12.5; Opus 5.5 17.9 versus 14.0. Billed tokens include CLI overhead and hidden reasoning; failed calls are counted.</desc>
   <style>
     .bg { fill: #fcfcfb; }
+    .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
     .ink { fill: #0b0b0b; }
     .ink2 { fill: #52514e; }
-    .muted { fill: #898781; }
-    .grid { stroke: #e7e6e1; stroke-width: 1; }
-    .axis { stroke: #c9c8c2; stroke-width: 1; }
-    .bar { fill: #2a78d6; }
-    .target { stroke: #52514e; stroke-width: 1.5; stroke-dasharray: 4 4; }
-    .val { paint-order: stroke; stroke: #fcfcfb; stroke-width: 5px; stroke-linejoin: round; }
-    text { font-family: -apple-system, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
-    .grow { animation: grow 1.1s cubic-bezier(.2,.7,.2,1) both; transform-box: fill-box; transform-origin: left center; }
-    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .accent { fill: #2a78d6; }
+    .accent-s { stroke: #2a78d6; }
+    .grey { fill: #a6a59f; }
+    .grey-s { stroke: #8a8984; }
+    .track { fill: #ecebe6; }
+    .rule { stroke: #e2e1dc; stroke-width: 1.5; }
+    .mono { font-family: "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, monospace; }
+    .sans { font-family: -apple-system, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+    .gs { stop-color: #2a78d6; }
     @media (prefers-color-scheme: dark) {
       .bg { fill: #1a1a19; }
+      .panel { fill: #232322; stroke: #3a3a38; }
       .ink { fill: #ffffff; }
       .ink2 { fill: #c3c2b7; }
-      .muted { fill: #9a998f; }
-      .grid { stroke: #2e2e2c; }
-      .axis { stroke: #45453f; }
-      .bar { fill: #3987e5; }
-      .target { stroke: #c3c2b7; }
-      .val { stroke: #1a1a19; }
+      .accent { fill: #3987e5; }
+      .accent-s { stroke: #3987e5; }
+      .grey { fill: #75746f; }
+      .grey-s { stroke: #75746f; }
+      .track { fill: #2b2b29; }
+      .rule { stroke: #3a3a38; }
+      .gs { stop-color: #3987e5; }
     }
-    @media (prefers-reduced-motion: reduce) { .grow { animation: none; } }
+
+    .grow { transform-box: fill-box; transform-origin: left center; animation: grow 1s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .fade { animation: fade .5s ease-out both; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    .badge { transform-box: fill-box; transform-origin: left center; animation: pop .5s cubic-bezier(.2,.9,.3,1.3) both; }
+    @keyframes pop { from { opacity: 0; transform: scale(.5); } to { opacity: 1; transform: scale(1); } }
+    @media (prefers-reduced-motion: reduce) {
+      .grow, .fade, .badge { animation: none; }
+    }
   </style>
-  <rect class="bg" width="960" height="560" rx="16"/>
-  <text class="ink" x="32" y="44" font-size="18" font-weight="600">Fewer total tokens than AKOR 0.8, same verified work</text>
-  <text class="ink2" x="32" y="68" font-size="13">Input + billed output incl. hidden reasoning and CLI overhead · live claude -p · 3 to 5 calls per bar · every job oracle-checked</text>
-    <line class="grid" x1="400" y1="92" x2="400" y2="510"/>
-    <line class="grid" x1="500" y1="92" x2="500" y2="510"/>
-    <line class="grid" x1="600" y1="92" x2="600" y2="510"/>
-    <line class="grid" x1="700" y1="92" x2="700" y2="510"/>
-    <line class="grid" x1="800" y1="92" x2="800" y2="510"/>
-    <line class="axis" x1="300" y1="92" x2="300" y2="510"/>
-    <text class="muted" x="300" y="530" text-anchor="middle">0%</text>
-    <text class="muted" x="400" y="530" text-anchor="middle">10%</text>
-    <text class="muted" x="500" y="530" text-anchor="middle">20%</text>
-    <text class="muted" x="600" y="530" text-anchor="middle">30%</text>
-    <text class="muted" x="700" y="530" text-anchor="middle">40%</text>
-    <text class="muted" x="800" y="530" text-anchor="middle">50%</text>
-  <line class="target" x1="650" y1="88" x2="650" y2="510"/>
-  <text class="ink2" x="656" y="100" font-size="12">35% target</text>
-  <g>
-    <text class="ink" x="32" y="112" font-size="14" font-weight="600">64 jobs per call, uniform</text>
-    <text class="ink2" x="48" y="139" font-size="13">Opus 5.5</text>
-    <rect class="bar grow" x="300" y="125" width="470" height="20" rx="4" style="animation-delay:0.00s"/>
-    <text class="ink val" x="778" y="140" font-size="13" font-weight="600">47%</text>
-    <text class="ink2" x="48" y="169" font-size="13">Sonnet 5.5</text>
-    <rect class="bar grow" x="300" y="155" width="470" height="20" rx="4" style="animation-delay:0.06s"/>
-    <text class="ink val" x="778" y="170" font-size="13" font-weight="600">47%</text>
-    <text class="ink2" x="48" y="199" font-size="13">Fable 5.1</text>
-    <rect class="bar grow" x="300" y="185" width="450" height="20" rx="4" style="animation-delay:0.12s"/>
-    <text class="ink val" x="758" y="200" font-size="13" font-weight="600">45%</text>
-    <text class="ink2" x="48" y="229" font-size="13">Haiku 5.5</text>
-    <rect class="bar grow" x="300" y="215" width="330" height="20" rx="4" style="animation-delay:0.18s"/>
-    <text class="ink val" x="638" y="230" font-size="13" font-weight="600">33%</text>
-    <text class="ink" x="32" y="270" font-size="14" font-weight="600">32 jobs per call, uniform</text>
-    <text class="ink2" x="48" y="297" font-size="13">Opus 5.5</text>
-    <rect class="bar grow" x="300" y="283" width="380" height="20" rx="4" style="animation-delay:0.24s"/>
-    <text class="ink val" x="688" y="298" font-size="13" font-weight="600">38%</text>
-    <text class="ink2" x="48" y="327" font-size="13">Sonnet 5.5</text>
-    <rect class="bar grow" x="300" y="313" width="350" height="20" rx="4" style="animation-delay:0.30s"/>
-    <text class="ink val" x="658" y="328" font-size="13" font-weight="600">35%</text>
-    <text class="ink2" x="48" y="357" font-size="13">Fable 5.1</text>
-    <rect class="bar grow" x="300" y="343" width="350" height="20" rx="4" style="animation-delay:0.36s"/>
-    <text class="ink val" x="658" y="358" font-size="13" font-weight="600">35%</text>
-    <text class="ink2" x="48" y="387" font-size="13">Haiku 5.5</text>
-    <rect class="bar grow" x="300" y="373" width="320" height="20" rx="4" style="animation-delay:0.42s"/>
-    <text class="ink val" x="628" y="388" font-size="13" font-weight="600">32%</text>
-    <text class="ink" x="32" y="428" font-size="14" font-weight="600">64 jobs per call, mixed (3 domains, 10 operations)</text>
-    <text class="ink2" x="48" y="455" font-size="13">Sonnet 5.5</text>
-    <rect class="bar grow" x="300" y="441" width="280" height="20" rx="4" style="animation-delay:0.48s"/>
-    <text class="ink val" x="588" y="456" font-size="13" font-weight="600">28%</text>
-    <text class="ink2" x="48" y="485" font-size="13">Haiku 5.5</text>
-    <rect class="bar grow" x="300" y="471" width="110" height="20" rx="4" style="animation-delay:0.54s"/>
-    <text class="ink val" x="418" y="486" font-size="13" font-weight="600">11%</text>
-  </g>
+
+  <rect class="bg" width="960" height="360" rx="16"/>
+  <path class="rule" d="M480 28 V 274"/>
+
+  <text class="ink sans" x="24" y="44" font-size="26" font-weight="800">Sonnet 5.5</text>
+  <text class="ink2 sans" x="24" y="82" font-size="16">Tokens per verified job</text>
+  <text class="ink2 sans" x="456" y="82" font-size="14" text-anchor="end">same 64 jobs, one call</text>
+  <text class="ink2 sans" x="24" y="113" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="112" y="94" width="250" height="26" rx="6"/>
+  <rect class="grey grow" x="112" y="94" width="250.0" height="26" rx="6" style="animation-delay:0.10s"/>
+  <text class="ink sans fade" x="372.0" y="114" font-size="18" font-weight="700" style="animation-delay:1.00s">146.7</text>
+  <text class="ink sans" x="24" y="147" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="112" y="128" width="250" height="26" rx="6"/>
+  <rect class="accent grow" x="112" y="128" width="148.3" height="26" rx="6" style="animation-delay:0.25s"/>
+  <text class="ink sans fade" x="270.3" y="148" font-size="18" font-weight="700" style="animation-delay:1.15s">87.0</text>
+  <g class="badge" style="animation-delay:1.35s"><rect class="accent" x="334.3" y="129" width="82" height="24" rx="12"/><text class="sans" x="375.3" y="146" font-size="15" font-weight="800" fill="#fff" text-anchor="middle">-40.7%</text></g>
+  <text class="ink2 sans" x="24" y="196" font-size="16">Median seconds per 64-job call</text>
+  <text class="ink2 sans" x="24" y="227" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="112" y="208" width="250" height="26" rx="6"/>
+  <rect class="grey grow" x="112" y="208" width="192.7" height="26" rx="6" style="animation-delay:0.60s"/>
+  <text class="ink sans fade" x="314.7" y="228" font-size="18" font-weight="700" style="animation-delay:1.50s">13.8 s</text>
+  <text class="ink sans" x="24" y="261" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="112" y="242" width="250" height="26" rx="6"/>
+  <rect class="accent grow" x="112" y="242" width="174.6" height="26" rx="6" style="animation-delay:0.75s"/>
+  <text class="ink sans fade" x="296.6" y="262" font-size="18" font-weight="700" style="animation-delay:1.65s">12.5 s</text>
+  <text class="ink sans" x="492" y="44" font-size="26" font-weight="800">Opus 5.5</text>
+  <text class="ink2 sans" x="492" y="82" font-size="16">Tokens per verified job</text>
+  <text class="ink2 sans" x="924" y="82" font-size="14" text-anchor="end">same 64 jobs, one call</text>
+  <text class="ink2 sans" x="492" y="113" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="580" y="94" width="250" height="26" rx="6"/>
+  <rect class="grey grow" x="580" y="94" width="245.9" height="26" rx="6" style="animation-delay:0.10s"/>
+  <text class="ink sans fade" x="835.9" y="114" font-size="18" font-weight="700" style="animation-delay:1.00s">144.3</text>
+  <text class="ink sans" x="492" y="147" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="580" y="128" width="250" height="26" rx="6"/>
+  <rect class="accent grow" x="580" y="128" width="140.8" height="26" rx="6" style="animation-delay:0.25s"/>
+  <text class="ink sans fade" x="730.8" y="148" font-size="18" font-weight="700" style="animation-delay:1.15s">82.6</text>
+  <g class="badge" style="animation-delay:1.35s"><rect class="accent" x="794.8" y="129" width="82" height="24" rx="12"/><text class="sans" x="835.8" y="146" font-size="15" font-weight="800" fill="#fff" text-anchor="middle">-42.8%</text></g>
+  <text class="ink2 sans" x="492" y="196" font-size="16">Median seconds per 64-job call</text>
+  <text class="ink2 sans" x="492" y="227" font-size="15" font-weight="400">Plain JSON</text>
+  <rect class="track" x="580" y="208" width="250" height="26" rx="6"/>
+  <rect class="grey grow" x="580" y="208" width="250.0" height="26" rx="6" style="animation-delay:0.60s"/>
+  <text class="ink sans fade" x="840.0" y="228" font-size="18" font-weight="700" style="animation-delay:1.50s">17.9 s</text>
+  <text class="ink sans" x="492" y="261" font-size="15" font-weight="700">AKOR</text>
+  <rect class="track" x="580" y="242" width="250" height="26" rx="6"/>
+  <rect class="accent grow" x="580" y="242" width="195.5" height="26" rx="6" style="animation-delay:0.75s"/>
+  <text class="ink sans fade" x="785.5" y="262" font-size="18" font-weight="700" style="animation-delay:1.65s">14.0 s</text>
+
+  <path class="rule" d="M24 296 H 936"/>
+  <text class="ink2 sans" x="24" y="328" font-size="16">Billed tokens incl. CLI overhead and hidden reasoning; failed calls counted. 64 jobs per call.</text>
 </svg>
