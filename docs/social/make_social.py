@@ -1,7 +1,7 @@
 """Render the X (Twitter) GIFs into docs/social/: 1200x675, dark terminal palette, one green accent.
 
 Run with any Python that has Pillow (not in .venv):  python docs/social/make_social.py
-Writes x_hero.gif, x_packet.gif, x_results.gif, x_reply.gif, x_debate.gif and first/last frame PNGs
+Writes x_hero.gif, x_packet.gif, x_results.gif, x_reply.gif, x_debate.gif, x_language.gif and first/last frame PNGs
 into docs/social/preview/. No network, no model calls.
 """
 from functools import lru_cache
@@ -273,8 +273,111 @@ def debate_frames():
     return [debate(i * DT) for i in range(int(4.9 / DT) + 1)]
 
 
+# ---------------------------------------------------------------- 6. language
+AG_W, AG_H, AG_Y = 200, 130, 335          # agent box size and vertical centre
+AG_A, AG_B = 30, W - 30 - 200             # left x of agent A and agent B
+LANG_ROWS = STACK_ROWS[:17] + ['...'] + STACK_ROWS[-1:]
+AKOR_MSG = [('goal, ops, refs: once', DIM), ('[0,["e1",0],["e2",1]]', TEXT), ('OZ/1g', ACCENT),
+            ('{"e1":["12.53 mm","0.01 mm"]}', TEXT), ('{"e2":["12.54 mm","0.02 mm"]}', TEXT)]
+AKOR_REQ = [('goal, ops, refs: once', DIM), ('[0,["e1",0],["e2",1],...]', TEXT)]
+SCENE = 3.0        # seconds, plain JSON scene
+SCENE2 = 3.5       # seconds, AKOR scene (request, then reply)
+CARD_IN = 0.5      # seconds for the final card to fade in
+CARD_HOLD = 2000   # ms the final card stays on screen
+
+
+def agents(d, arrive_b, color, arrive_a=0.0):
+    for x, name in ((AG_A, 'Agent A'), (AG_B, 'Agent B')):
+        edge = mix(LINE_C, color, arrive_b if x == AG_B else arrive_a)
+        d.rounded_rectangle([x, AG_Y - AG_H // 2, x + AG_W, AG_Y + AG_H // 2], radius=18, fill=BAR, outline=edge, width=3)
+        text(d, (x + AG_W // 2, AG_Y + 12), name, 34, TEXT, True, anchor='ms')
+
+
+def draw_packet(d, rows, size, lh, pad, left, cy, outline, t0, per, t):
+    """Rounded message box with rows typed in from t0; returns its width."""
+    f = font(size)
+    pw = round(max(f.getlength(r) for r, _ in rows)) + 2 * pad + 6
+    ph = lh * (len(rows) - 1) + size + 2 * pad
+    top = cy - ph / 2
+    d.rounded_rectangle([left, top, left + pw, top + ph], radius=16, fill=BAR, outline=outline, width=3)
+    for i, (row, color) in enumerate(rows):
+        a = clamp((t - t0 - per * i) / 0.12)
+        if a > 0:
+            d.text((left + pad, top + pad + i * lh + size * 0.85), row, fill=fade(color, a), font=f, anchor='ls')
+    return pw, top
+
+
+def lang_scene(t, akor):
+    """One scene. Plain JSON: one long message A to B. AKOR: short request A to B, then a checked reply B to A."""
+    img, d = new()
+    d.line([(AG_A + AG_W, AG_Y), (AG_B, AG_Y)], fill=LINE_C, width=3)
+    arrive_b = arrive_a = 0.0
+    if not akor:
+        rows = [(r, '#aab2bb') for r in LANG_ROWS]
+        start, travel, count_end, final = 0.15, (1.0, 2.4), 2.4, 3268
+        pw = round(max(font(15).getlength(r) for r, _ in rows)) + 42
+        x0, x1 = AG_A + 120, AG_B - 10 - pw        # tucked under A at the start, next to B at the end
+        left = x0 + (x1 - x0) * ease_io((t - travel[0]) / (travel[1] - travel[0]))
+        draw_packet(d, rows, 15, 20, 18, left, AG_Y, GHOST_DIM, start, 0.8 / len(rows), t)
+        arrive_b = ease_out((t - travel[1]) / 0.3)
+        label, color = 'Plain JSON', TEXT
+    else:
+        start, travel, count_end, final = 0.1, (0.55, 1.4), 1.4, 1471
+        label, color = 'AKOR', ACCENT
+        if t < 1.7:        # request A to B
+            rows = [AKOR_REQ[0], AKOR_REQ[1]]
+            pw = round(max(font(30).getlength(r) for r, _ in rows)) + 58
+            x0, x1 = AG_A + 120, AG_B - 10 - pw
+            left = x0 + (x1 - x0) * ease_io((t - travel[0]) / (travel[1] - travel[0]))
+            draw_packet(d, rows, 30, 44, 26, left, AG_Y, ACCENT, start, 0.3, t)
+            arrive_b = ease_out((t - travel[1]) / 0.3)
+        else:              # checked reply B to A
+            r0, r1 = 1.7, (1.9, 2.8)
+            rows = AKOR_MSG[2:]
+            pw = round(max(font(30).getlength(r) for r, _ in rows)) + 58
+            x0, x1 = AG_B + 80 - pw, AG_A + AG_W + 10
+            left = x0 + (x1 - x0) * ease_io((t - r1[0]) / (r1[1] - r1[0]))
+            _, top = draw_packet(d, rows, 30, 44, 26, left, AG_Y, ACCENT, r0, 0.15, t)
+            text(d, (left + pw / 2, top - 16), 'checked reply', 34, fade(ACCENT, ease_out((t - r0) / 0.3)), True, anchor='ms')
+            arrive_a = ease_out((t - r1[1]) / 0.3)
+    agents(d, arrive_b, color, arrive_a)
+    text(d, (W // 2, 78), label, 52, color, True, anchor='ms')
+    n = round(final * ease_io((t - start) / (count_end - start)))
+    cf = font(56, True)
+    cx = W // 2 - cf.getlength(f'{final:,} tokens') / 2
+    if akor:
+        old = font(44)
+        w_old = old.getlength('3,268')
+        cx -= (w_old + 36) / 2
+        a = ease_out((t - count_end) / 0.3)
+        if a > 0:
+            d.text((cx, 625), '3,268', fill=fade(DIM, a), font=old, anchor='ls')
+            d.line([(cx - 6, 607), (cx + w_old + 6, 607)], fill=fade(DIM, a), width=3)
+        cx += w_old + 36
+    d.text((cx, 625), f'{n:,} tokens', fill=ACCENT if akor else TEXT, font=cf, anchor='ls')
+    return img
+
+
+def lang_card(t):
+    img, d = new()
+    a = lambda s: ease_out((t - s) / 0.35)
+    centered(d, 160, 'A compact language', 76, fade(TEXT, a(0.0)), True)
+    centered(d, 250, 'for AI agents', 76, fade(TEXT, a(0.0)), True)
+    centered(d, 356, '-55% tokens per packet', 46, fade(ACCENT, a(0.1)), True)
+    centered(d, 418, '~40% fewer billed tokens per job', 46, fade(ACCENT, a(0.2)), True)
+    centered(d, 480, 'faster replies', 46, fade(ACCENT, a(0.3)), True)
+    centered(d, 626, 'github.com/canerganis/akor', 34, fade(DIM, a(0.4)))
+    return img
+
+
+def language_frames():
+    n = int(SCENE / DT)
+    return ([lang_scene(i * DT, False) for i in range(n)] + [lang_scene(i * DT, True) for i in range(int(SCENE2 / DT))]
+            + [lang_card(i * DT) for i in range(int(CARD_IN / DT) + 1)])
+
+
 # ---------------------------------------------------------------- output
-def save_gif(name, frames, colors):
+def save_gif(name, frames, colors, hold=HOLD):
     sample = frames[::4] + [frames[-1]]
     mosaic = Image.new('RGB', (W, H * len(sample)))
     for i, f in enumerate(sample):
@@ -282,7 +385,7 @@ def save_gif(name, frames, colors):
     pal = mosaic.quantize(colors=colors, method=Image.Quantize.MEDIANCUT)
     q = [f.quantize(palette=pal, dither=Image.Dither.NONE) for f in frames]
     durations = [round(DT * 1000)] * len(q)
-    durations[-1] = HOLD
+    durations[-1] = hold
     path = OUT / name
     q[0].save(path, save_all=True, append_images=q[1:], duration=durations, loop=0, optimize=True)
     secs = sum(durations) / 1000
@@ -302,3 +405,13 @@ if __name__ == '__main__':
     save_gif('x_results.gif', results_frames(), 32)
     save_gif('x_reply.gif', reply_frames(), 24)
     save_gif('x_debate.gif', debate_frames(), 32)
+    save_gif('x_language.gif', language_frames(), 32, hold=CARD_HOLD)
+    with Image.open(OUT / 'x_language.gif') as im:
+        for secs, tag in ((SCENE * 0.8, 'scene1_arrive'), (SCENE + 1.5, 'request'), (SCENE + 2.5, 'reply')):
+            at = 0.0   # frames with equal pixels are merged on save, so find the frame by elapsed time
+            for k in range(im.n_frames):
+                im.seek(k)
+                at += im.info['duration'] / 1000
+                if at > secs:
+                    break
+            im.convert('RGB').save(OUT / 'preview' / f'x_language_{tag}.png')
