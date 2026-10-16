@@ -2,7 +2,9 @@
 
 # AKOR
 
-### Your AI agents keep repeating themselves. AKOR stops you paying for it.
+### A compact language for AI agents to talk to each other, faster and with fewer tokens.
+
+Your agents keep repeating themselves on every call. AKOR stops you paying for it.
 
 <img src="docs/assets/hero.svg" alt="Minus 42 percent tokens per verified job on Claude Opus 5.5, 64 jobs per call, every reply accepted on the first try." width="100%">
 
@@ -25,6 +27,10 @@ If AKOR saves you tokens, a star helps other people find it.
 </div>
 
 ## The 30-second version
+
+AKOR is a compact message language and a small runtime for agent-to-agent work. Agents send jobs in a short,
+indexed format instead of verbose JSON, and get back one checked record per job: fewer tokens on every call, and
+faster replies.
 
 **The problem.** Multi-agent pipelines pay again and again for the same thing: every call resends the rules, the
 context and a verbose reply format, and one malformed answer forces a retry.
