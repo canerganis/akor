@@ -8,6 +8,8 @@ Your agents keep repeating themselves on every call. AKOR stops you paying for i
 
 <img src="docs/assets/hero.svg" alt="Minus 42 percent tokens per verified job on Claude Opus 5.5, 64 jobs per call, every reply accepted on the first try." width="100%">
 
+<img src="docs/social/x_language.gif" alt="Two agents exchange the same 64 jobs: plain JSON takes 3,268 tokens, the AKOR request takes 1,471 and comes back as a short checked reply." width="100%">
+
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
 ![Tests](https://img.shields.io/badge/tests-337%20passing-1a7f4b)
