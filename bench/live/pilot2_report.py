@@ -9,7 +9,7 @@ NAMES = {'H': 'OZ/1g, one call', 'J': 'plain JSON, one call', 'P': 'plain JSON, 
 
 
 def main(files):
-    print('| Model | Arm | Calls | Replies accepted | Correct jobs | Tokens | Cache reads | Tokens per requested job | Tokens per verified job | Median s per 16 jobs |')
+    print('| Model | Arm | Calls | Replies accepted | Correct jobs | Tokens | Cache reads | Tokens per requested job | Tokens per verified job | Median s per seed (all jobs) |')
     print('|---|---|---:|---:|---:|---:|---:|---:|---:|---:|')
     for f in files:
         R = [json.loads(l) for l in open(f, encoding='utf-8')]

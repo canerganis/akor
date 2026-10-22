@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent)); sys.path.insert(0, str(Path(__fi
 import live11 as M
 import run_live as L
 
-N = 16
+N = int(os.environ.get('N', '16'))
 lo, hi = map(int, os.environ.get('SEEDS', '3005-3007').split('-'))
 SEEDS = list(range(lo, hi + 1))
 ARMS = os.environ.get('ARMS', 'H,J,P,S').split(',')
