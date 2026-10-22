@@ -37,5 +37,10 @@ Branch `oz-0.9`, nothing pushed, nothing posted. Tests: 449 passing. Claude week
 1. **LinkedIn post:** draft at `docs/social/linkedin_pilot.md`, chart `docs/assets/pilot_subagents.svg`. Post only if you approve.
 2. **Push:** many commits since `main`. The new raw transcripts under `bench/live/data/pilot_k2/` contain local Windows
    paths with your user name (118 files). Redact before pushing, or keep as raw evidence?
-3. **Next step:** step 4, the 20-step executor, needs a recorded real workflow to judge it. Its design was started
-   tonight if quota allowed (see HANDOFF.md).
+3. **Step 4, real workflow (O1):** Astra and Opus signed a step 4 plan ([step4-2026-10-23](../docs/design/step4-2026-10-23/README.md)):
+   a 20-node `inspection-handoff-20/v1` workflow with five scenarios (clean, repeat, hard-kill interruption, stale
+   input, revision bump), a zero-token dry gate and a no-orchestration baseline. Both say plainly that it is a
+   conformance gate: the host could do every model job in it exactly, so it does not by itself meet your criterion
+   "judged against a recorded 20-step real workflow". Your call: accept it as the step 4 gate, or also require a
+   workflow that needs the model (their candidate: the live2 code-repair domain, recorded after step 4 passes).
+   The executor build through the dry gate was started tonight; live runs wait for review.
