@@ -31,3 +31,10 @@ or one subagent per job), compared with one batched call in plain JSON and one O
 2. Expansion: if H's correct jobs are at least those of P and S on every model and H's tokens per verified job
    are lower, repeat the comparison at 64 jobs on Sonnet (H, J, P, S, seeds 3105 to 3107).
 3. Anything else is published as measured, with the gate result stated.
+
+## Addendum, 2026-10-23 (frozen before its first counted call)
+
+Arm **Q**: 16 OZ/1g calls, one job each, the H body cut to that job's operation and reference (same system text H,
+same strict parser). Added because arm P used plain JSON, so P did not show how single-job OZ/1g behaves (Astra,
+foundation round 2). Same seeds 3005 to 3007, same models, concurrency 1. Single-job OZ/1g is outside the qualified
+cells; the result is reported as measured and qualifies nothing.

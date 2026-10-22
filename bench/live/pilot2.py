@@ -4,6 +4,7 @@ Same 16 materials jobs per seed, four ways:
   H   one OZ/1g call with all 16 jobs
   J   one plain JSON call with all 16 jobs (0.8-exec, the batched control)
   P   16 plain JSON calls, one job each (one call per job), run one after another
+  Q   16 OZ/1g calls, one job each (the H body cut to that job's op and ref)
   S   one orchestrator call that must spawn one subagent per job (Agent tool), then reply in the 0.8 format
 Tokens are summed from modelUsage, which includes subagents; the CLI's `usage` field covers only the last
 turn. Every reply is judged strictly by the same oracles; nothing is repaired.
@@ -87,6 +88,19 @@ def calls(seed, arm):
     if arm == 'H':
         system, user, dec, native = M.ARMS['H'](N)
         return [(system, user, '', dec, native, js)]
+    if arm == 'Q':
+        # One OZ/1g call per job: the same body cut to that job's op and ref.
+        system, user, _, native = M.ARMS['H'](N)
+        body = json.loads(user)
+        out = []
+        for block in body['jobs']:
+            op = body['ops'][block[0]]
+            for job, ref in block[1:]:
+                one = dict(body, ops=[op], refs=[body['refs'][ref]], jobs=[[0, [job, 0]]])
+                text = json.dumps(one, ensure_ascii=False, separators=(',', ':'))
+                out.append((system, text, '', lambda reply, job=job: M.stage1g_flat(reply, [job], header=True), native, [job]))
+        out.sort(key=lambda c: js.index(c[5][0]))
+        return out
     system, user, dec, native = M.ARMS['0.8-exec'](N)
     if arm == 'J':
         return [(system, user, '', dec, native, js)]
