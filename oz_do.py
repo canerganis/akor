@@ -9,6 +9,10 @@ refs. Nothing on the model wire is new: the system text, packet grammar and repl
 
 Resubmitting the same request (same request_id and work) posts nothing new and never calls a model for a job that
 is already settled. The same request_id with different work is refused before anything runs.
+
+"profile": "oz1g-selective-v1" (opt-in; the default stays oz1g-header) pins the selective host acceptance profile and
+optional per-operation "checks" on every job (oz_accept), runs the adapter under the durable runner (captures in
+<run_dir>/captures), and makes each foreground call a new coordinator epoch that first recovers earlier dispatches.
 """
 from __future__ import annotations
 
@@ -19,8 +23,10 @@ from pathlib import Path
 import re
 import time
 import uuid
+from dataclasses import replace
 
 from oz import Channel, Error, Reference
+from oz_accept import HEADER, PROFILES, SELECTIVE, pin, summary
 from oz_batch import J, valid_id
 from oz_reply import ERROR_CODES, USAGE_FIELDS, RawJSON, loads
 from oz_runtime import Inbox
@@ -49,7 +55,8 @@ MAX_JOBS = 256
 MAX_REF_BYTES = 65536
 MAX_MESSAGE = 300
 OPTIONS = {'v', 'request_id', 'goal', 'ops', 'refs', 'jobs', 'max_attempts', 'model', 'allow_experimental',
-           'deadline_seconds', 'call_timeout_seconds', 'max_jobs_per_call', 'max_input_tokens', 'max_inline_bytes'}
+           'deadline_seconds', 'call_timeout_seconds', 'max_jobs_per_call', 'max_input_tokens', 'max_inline_bytes',
+           'profile', 'checks'}
 FAILURE = re.compile(r'(' + '|'.join(ERROR_CODES) + r'): (.*)', re.S)
 
 
@@ -133,6 +140,18 @@ def normalize(request: dict, *, allow: Path, config: dict) -> dict:
     work = {'goal': goal, 'ops': {k: ops[k] for k in sorted({r[1] for r in rows})},
             'refs': {n: texts[n]['source'] for n in sorted({x for r in rows for x in r[2:]})}, 'jobs': rows,
             'max_attempts': _number(request.get('max_attempts', 2), 1, 10, 'max_attempts', True)}
+    profile, checks = request.get('profile', HEADER), request.get('checks')
+    if profile not in PROFILES:
+        raise Error('profile must be one of ' + ', '.join(PROFILES))
+    if checks is not None:
+        if profile != SELECTIVE:
+            raise Error(f'checks need "profile": "{SELECTIVE}"')
+        if not isinstance(checks, dict) or any(k not in ops for k in checks):
+            raise Error('checks maps operation names to lists of check specs')
+    if profile != HEADER:
+        # Only a non-default profile enters the work (and its digest), so default requests keep their identity.
+        work['profile'] = profile
+        work['checks'] = {k: list(pin(checks[k])) for k in work['ops'] if checks and checks.get(k)}
     digest = hashlib.sha256(J(work).encode('utf-8')).hexdigest()
     return dict(work=work, texts=texts, sha256=digest, request_id=request_id or 'h' + digest[:16], model=model,
                 allow_experimental=request.get('allow_experimental', False), deadline=deadline,
@@ -181,7 +200,8 @@ def _create_run(root: Path, req: dict, config: dict) -> Path:
             box.post(refs, 'ref-' + name, f'r{i + 1}', binding=refs.binding, max_attempts=1)
         for mid, op, *uses in req['work']['jobs']:
             box.post(work, mid, ':' + req['work']['ops'][op], binding=work.binding,
-                     after=['ref-' + n for n in uses], max_attempts=req['work']['max_attempts'])
+                     after=['ref-' + n for n in uses], max_attempts=req['work']['max_attempts'],
+                     profile=req['work'].get('profile', HEADER), checks=req['work'].get('checks', {}).get(op))
     return run
 
 
@@ -194,8 +214,10 @@ def _read_refs(box: Inbox, channel: Channel, texts: dict):
         box.complete(delivery, {j.id: texts[j.id[4:]]['text'] for j in delivery.jobs})
 
 
-def _accounting(run: Path) -> dict:
-    """Request totals from the run's call ledger (all invocations, failed calls included) and dispatch log."""
+def _accounting(run: Path, journal=()) -> dict:
+    """Request totals from the run's call ledger (all invocations, failed calls included) and dispatch log. With a
+    dispatch journal (oz1g-selective-v1), journaled calls missing from the ledger are counted too, a captured envelope
+    supplies usage a crash kept out of the ledger, and an uncertain dispatch keeps the usage coverage incomplete."""
     starts, ends = {}, {}
     ledger = run / 'calls.jsonl'
     for line in (ledger.read_text(encoding='utf-8').splitlines() if ledger.exists() else ()):
@@ -212,23 +234,43 @@ def _accounting(run: Path) -> dict:
             profiles[record['call_id']] = record['profile']
         except (ValueError, KeyError, TypeError):
             continue
-    calls = list(dict.fromkeys([*starts, *ends]))
-    with_usage = [c for c in calls if c in ends and isinstance((ends[c].get('usage') or {}).get('raw'), dict)
-                  and {'input_tokens', 'output_tokens'} <= set(ends[c]['usage']['raw'])]
-    tokens = {k: sum(ends[c]['usage']['raw'].get(k, 0) for c in with_usage) for k in USAGE_FIELDS}
+    calls = list(dict.fromkeys([*starts, *ends, *(d['call_id'] for d in journal if d['call_id'])]))
+    raw = {c: ends[c]['usage']['raw'] for c in calls if c in ends
+           and isinstance((ends[c].get('usage') or {}).get('raw'), dict)}
+    for d in journal:
+        usage = (d['response'] or {}).get('usage') if isinstance(d['response'], dict) else None
+        if d['call_id'] and d['call_id'] not in raw and d['state'] == 'captured' and isinstance(usage, dict):
+            raw[d['call_id']] = usage
+    with_usage = [c for c in calls if c in raw and {'input_tokens', 'output_tokens'} <= set(raw[c])]
+    tokens = {k: sum(raw[c].get(k, 0) for c in with_usage) for k in USAGE_FIELDS}
     coverage = 'complete' if len(with_usage) == len(calls) else 'none' if not with_usage else 'partial'
     count = lambda name: sum(1 for c in calls if profiles.get(c, 'unrecorded') == name)
-    return {'calls': len(calls),
+    extra = {}
+    if journal:
+        states = {}
+        for d in journal:
+            states[d['state']] = states.get(d['state'], 0) + 1
+        extra = {'dispatches': states, 'unreconciled_dispatches': states.get('uncertain', 0) + states.get('intent', 0)
+                 + states.get('launched', 0)}
+    return dict({'calls': len(calls),
             'failed_calls': sum(1 for c in calls if c not in ends or ends[c].get('outcome') not in ('ok', 'job_error')),
             'unfinished_calls': sum(1 for c in calls if c not in ends),
             'experimental_calls': count('experimental'), 'qualified_cell_calls': count('qualified_cell'),
             'usage_coverage': coverage, 'calls_with_usage': len(with_usage),
-            'tokens': tokens, 'tokens_scope': 'all calls' if coverage == 'complete' else 'calls with reported usage only'}
+            'tokens': tokens, 'tokens_scope': 'all calls' if coverage == 'complete' else 'calls with reported usage only'},
+                **extra)
 
 
-def _outcome(mid: str, row: dict | None, blocker: dict | None, now: float, run: Path, root: Path, max_inline: int):
+def _outcome(mid: str, row: dict | None, blocker: dict | None, now: float, run: Path, root: Path, max_inline: int,
+             evidence: dict | None = None):
     if row is None:
         return {'status': 'unresolved', 'reason': 'not_posted'}
+    if row['state'] == 'done' and evidence is not None:
+        return dict(_outcome(mid, row, blocker, now, run, root, max_inline), evidence=evidence)
+    if row['state'] == 'checking':
+        return {'status': 'unresolved', 'reason': 'awaiting_checks', 'detail': (row['error'] or '')[:MAX_MESSAGE]}
+    if row['state'] == 'quarantined':
+        return {'status': 'quarantined', 'reason': (row['error'] or '')[:MAX_MESSAGE], 'attempts': row['attempts']}
     if row['state'] == 'done':
         # The stored bytes of the accepted value, unchanged (clause 12); oz_reply.dumps writes them verbatim.
         value = RawJSON(row['result_json']) if row['result_json'] is not None else row['result']
@@ -280,15 +322,26 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
     refs, work = runspace.channel('refs'), runspace.channel('worker')
     ids = [r[0] for r in req['work']['jobs']]
     calls, blocker = [], None
+    selective = req['work'].get('profile') == SELECTIVE
+
+    def file_adapter(timeout):
+        made = adapter_from_file(Path(adapter), timeout=timeout)
+        # The selective profile runs the adapter under the durable runner (clause 5).
+        return replace(made, capture_dir=run / 'captures') if selective else made
+
     with runspace.inbox() as box:
         _read_refs(box, refs, req['texts'])
         counters = runspace.counters()
         callable_adapter = not isinstance(adapter, (str, Path))
-        worker = Worker(box, work, adapter if callable_adapter else adapter_from_file(Path(adapter), timeout=1),
+        worker = Worker(box, work, adapter if callable_adapter else file_adapter(1),
                         counters=counters, owner='do', batch_size=req['per_call'], timeout=req['call_timeout'],
                         max_tokens=req['max_tokens'], retry_delay=0, ledger_path=run / 'calls.jsonl',
-                        tokenizer=space.config['encodings'][0])
+                        tokenizer=space.config['encodings'][0],
+                        # Each selective foreground call is a new coordinator epoch: an older one cannot commit.
+                        epoch=box.take_over() if selective else None, route={'model': req['model']})
         while True:
+            if selective:
+                worker.recover()
             remaining = req['deadline'] - (clock() - started)
             plan = box.plan(work, counters=counters, limit=req['per_call'], max_tokens=req['max_tokens'],
                             receipt=box.next_receipt())
@@ -306,7 +359,7 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
                                       else 'experimental_size_not_authorized'), 'size': size, 'model': req['model']}
                 break
             if not callable_adapter:
-                worker.adapter = adapter_from_file(Path(adapter), timeout=min(req['call_timeout'], remaining))
+                worker.adapter = file_adapter(min(req['call_timeout'], remaining))
             report = worker.run_once()
             if report['status'] in ('idle', 'waiting'):
                 break
@@ -320,16 +373,26 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
                                   'model': req['model']}) + '\n')
         rows = box.records(ids)
         now = box.clock()
-    jobs = {mid: _outcome(mid, rows.get(mid), blocker, now, run, root, req['max_inline']) for mid in ids}
+        journal = box.dispatches() if selective else []
+        evidence, checks_run = {}, 0
+        for c in (box.candidates() if selective else []):
+            checks_run += len(c['verdicts'])
+            if c['status'] == 'accepted' and c['job'] in rows:
+                evidence[c['job']] = {'profile': SELECTIVE, 'summary': summary(c['verdicts']),
+                                      'checks': [f"{v['check']}@{v['version']}" for v in c['verdicts']]}
+    jobs = {mid: _outcome(mid, rows.get(mid), blocker, now, run, root, req['max_inline'], evidence.get(mid))
+            for mid in ids}
     counts = {}
     for outcome in jobs.values():
         counts[outcome['status']] = counts.get(outcome['status'], 0) + 1
-    accounting = _accounting(run)
+    accounting = _accounting(run, journal)
     return {'schema': RESULT_SCHEMA,
             'status': 'complete' if 'unresolved' not in counts else 'incomplete',
             'counts': counts,
             'jobs': jobs,
-            'evidence': {'scope': 'model_declared', 'checks_run': 0, 'id_binding': 'declared'},
+            'evidence': ({'scope': 'per_job_checks', 'profile': SELECTIVE, 'checks_run': checks_run,
+                          'id_binding': 'declared'} if selective else
+                         {'scope': 'model_declared', 'checks_run': 0, 'id_binding': 'declared'}),
             'calls': calls,
             'accounting': accounting,
             # What a qualified_cell label covers, shown only when one was used.

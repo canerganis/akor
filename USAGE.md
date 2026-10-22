@@ -189,6 +189,19 @@ A job is `accepted` (with `value`, or `value_file` when it is larger than `max_i
 
 Each request has its own run directory, `do/<request_id>/`, which is an ordinary workspace: `oz status --workspace do/batch-17`, `oz inspect e1 --workspace do/batch-17` and `oz retry` work on it, and its `calls.jsonl` is the call ledger. References are loaded by host read jobs named `ref-<name>`, so a job ID may not take that form.
 
+## Per-job checks: profile `oz1g-selective-v1` (opt-in)
+
+The default acceptance profile is `oz1g-header`: a wire-valid reply commits every job, a rejected reply retries every job. `oz1g-selective-v1` keeps the same system text, packet and parser (a malformed, truncated or mismatched reply still yields nothing), then judges each job's value on its own with host checks pinned to that job:
+
+```json
+{"profile": "oz1g-selective-v1",
+ "checks": {"extract": [{"check": "quoted_span"}], "bounds": [{"check": "one_of", "values": ["in", "out"]}]}}
+```
+
+Add these two keys to an `oz do` request (or pass `profile=` and `checks=` to `Inbox.post`). Registered checks: `json_type` (`types`), `max_bytes` (`bytes`), `one_of` (`values`), `quoted_span` (the value, or its string member `field`, occurs verbatim in one of the job's own references) and `expect` (`value`, a host oracle). The last two are job-bound. A job that fails a check retries alone, within its attempts. A failed job-bound check marks the reply suspect: its other jobs commit only with their own passing job-bound check; the rest are quarantined and redispatched while attempts remain, else reported `quarantined`. A verifier that is unavailable leaves the job `unresolved` with reason `awaiting_checks` and spends no model call; the next `oz do` rechecks it. Accepted jobs carry `evidence` (`checked` or `declared`, plus the checks that ran).
+
+With this profile, `oz do` runs the adapter under `oz_runner.py`, which publishes `do/<request_id>/captures/<receipt>.done` atomically, and journals every dispatch (intent, launch with PID and creation time, capture, or `uncertain`) in the run's SQLite inbox. A rerun after a crash reuses a published capture without a new call, adopts a late reply only into a job that is still unresolved, never overwrites an accepted result, and reports dispatches it cannot reconcile under `accounting.unreconciled_dispatches` with usage left unknown. The profile's reliability and savings are not yet measured.
+
 ## Budget, retries and visibility
 
 In `oz.json`, `max_tokens` is the upper bound on the receiver's input. `encodings` are the target tokenizer names; with more than one, the limit applies to each. `batch_size` sets how many ready jobs are scanned at most (1 to 64). The defaults are 2048 tokens and 64 jobs. Ready jobs are collected into one call without waiting.
