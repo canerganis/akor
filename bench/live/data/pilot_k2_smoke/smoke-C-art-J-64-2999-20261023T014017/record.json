@@ -1,0 +1,123 @@
+{
+ "tag": "smoke-C-art-J-64-2999",
+ "block": "C",
+ "contract": "art",
+ "arm": "J",
+ "n": 64,
+ "seed": 2999,
+ "input_sha256": "287b499e86e9b9c41787121bbed5eb413730d296672877b20f2727dd5d737eee",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "outside_qualified",
+ "jobs": 64,
+ "verified": 64,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 64,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 23.95,
+ "is_error": false,
+ "has_result": true,
+ "turns": 6,
+ "bash_calls": 5,
+ "oz_do_calls": 0,
+ "oz_invocations": 0,
+ "caller_in": 56630,
+ "caller_in_uncached": 12,
+ "caller_cache_read": 47131,
+ "caller_cache_write": 9487,
+ "caller_out": 1870,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 0,
+ "worker_calls_with_usage": 0,
+ "worker_in": 0,
+ "worker_cached_in": 0,
+ "worker_out": 0,
+ "total_tokens": 58500,
+ "usage_complete": true,
+ "tokens_per_verified": 914.06,
+ "results_sha256": "b204319463b0dc90e10423c64e10c6e6b39b3b38ac3e54e4989b80c35cfa6af9",
+ "published_sha256": null,
+ "artifact_intact": null,
+ "messages": [
+  {
+   "id": "msg_011CgJ5bwdSdjiJng9f6E6hu",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 5565,
+   "cache_read_input_tokens": 1700,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ5cCDXrPepuA8xgjEV4",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 977,
+   "cache_read_input_tokens": 7265,
+   "output_tokens": 37
+  },
+  {
+   "id": "msg_011CgJ5cNxh5XCA9a2dZepvk",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 1106,
+   "cache_read_input_tokens": 8242,
+   "output_tokens": 3
+  },
+  {
+   "id": "msg_011CgJ5cuSm9TajHM7G8oL3q",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 844,
+   "cache_read_input_tokens": 9348,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ5d1zQxqW6Qk1Xze5ie",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 192,
+   "cache_read_input_tokens": 10192,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ5dKnyzkYbdELktMoAd",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 803,
+   "cache_read_input_tokens": 10384,
+   "output_tokens": 121
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ5bwdSdjiJng9f6E6hu",
+   "input_bytes": 86,
+   "result_bytes": 2255
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ5cCDXrPepuA8xgjEV4",
+   "input_bytes": 173,
+   "result_bytes": 1884
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ5cNxh5XCA9a2dZepvk",
+   "input_bytes": 1114,
+   "result_bytes": 29
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ5cuSm9TajHM7G8oL3q",
+   "input_bytes": 54,
+   "result_bytes": 201
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ5d1zQxqW6Qk1Xze5ie",
+   "input_bytes": 1122,
+   "result_bytes": 195
+  }
+ ],
+ "attribution": null,
+ "text": "{\"outside\":[\"ma_04\",\"ma_08\",\"ma_12\",\"ma_20\",\"ma_28\",\"ma_36\",\"ma_44\",\"ma_48\",\"ma_52\",\"ma_60\",\"ma_64\"],\"unknown\":[\"ma_22\",\"ma_24\",\"ma_30\",\"ma_32\",\"ma_38\",\"ma_40\",\"ma_54\",\"ma_56\"],\"not_accepted\":[]}"
+}
