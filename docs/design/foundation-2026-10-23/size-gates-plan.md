@@ -19,3 +19,14 @@ does not permit weaker checks or filler jobs.
 
 Earlier exploratory evidence (pilot arm Q, one OZ/1g call per job, not a qualification): Opus 41/48 replies accepted,
 every rejection a reasoning line before the header. It is not counted here.
+
+## Addendum after the first run (2026-10-23, before any rerun call)
+
+All nine cells passed 10/10 (data: `bench/live/data/gate_{model}_{n}.jsonl`). Review found a coverage defect in the
+size-1 cells: `jobs('materials', 1)` is always the first operation (field extraction), so the size-1 gate never
+exercised the other three operations. Pilot arm Q (exploratory) showed Opus failing exactly on those operations.
+The size-1 result is therefore void as a qualification. Sizes 4 and 16 cover all four operations and stand.
+
+Rerun for size 1: `bench/live/pilot2.py` arm Q with N=4, seeds 4105 to 4107, so each seed sends four single-job
+OZ/1g calls, one per operation: 12 calls per model, every operation three times. Gate: 12 of 12 replies accepted and
+every job correct. Same models, CLI 2.1.306, default effort, concurrency 1.
