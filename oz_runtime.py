@@ -463,6 +463,18 @@ class Inbox:
             WHERE d.job=? AND p.state!='done' ORDER BY p.seq''', (mid,))]
         return result
 
+    def records(self, ids: Iterable[str]) -> dict[str, dict]:
+        """Read-only state, attempts, lease deadline, stored result, accepted JSON value (result_json) and error
+        of these jobs; unknown IDs are omitted. Never changes a job."""
+        ids = tuple(ids)
+        found = {}
+        for start in range(0, len(ids), 500):
+            chunk = ids[start:start + 500]
+            for row in self.db.execute('SELECT id,state,attempts,max_attempts,available_at,deadline,result,result_json,'
+                                       'error FROM jobs WHERE id IN (' + ','.join('?' for _ in chunk) + ')', chunk):
+                found[row['id']] = dict(row)
+        return {mid: found[mid] for mid in ids if mid in found}
+
     def list_jobs(self, *, limit: int = 100, after_seq: int = 0) -> list[dict]:
         if type(limit) is not int or not 1 <= limit <= 1000 or type(after_seq) is not int or after_seq < 0:
             raise Error('invalid listing limits')

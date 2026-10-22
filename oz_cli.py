@@ -8,6 +8,7 @@ import uuid
 
 from oz import Channel, Error
 from oz_batch import render
+from oz_do import do
 from oz_workspace import Workspace, channel_from_files, demo, initialize, read_utf8
 from oz_worker import process_host
 
@@ -47,6 +48,11 @@ def main(argv=None):
             p.add_argument('--source', type=Path)
             p.add_argument('--kind', choices=['source', 'patch'], default='source')
             p.add_argument('--procedure', type=Path, help='Optional UTF-8 test procedure description')
+    p = sub.add_parser('do', help='Run one bounded fan-out request and print one compact JSON result')
+    p.add_argument('request', nargs='?', default='-', help='Request JSON file; - or omitted reads stdin')
+    p.add_argument('--workspace', type=Path, default=Path('.'), help='Directory containing oz.json')
+    p.add_argument('--adapter', type=Path, required=True, help='Explicit JSON file containing an argv list')
+    p.add_argument('--allow', type=Path, help='Directory reference paths must stay inside (default: workspace)')
     for command in ['send', 'plan', 'run', 'events', 'status', 'inspect', 'retry', 'channel-add']:
         p = sub.add_parser(command)
         p.add_argument('--workspace', type=Path, default=Path('.'), help='Directory containing oz.json')
@@ -85,6 +91,11 @@ def main(argv=None):
             p.add_argument('manifest', type=Path)
     args = parser.parse_args(argv)
     try:
+        if args.command == 'do':
+            text = (sys.stdin.buffer.read() if args.request == '-' else Path(args.request).read_bytes()).decode('utf-8')
+            value = do(text, workspace=args.workspace, adapter=args.adapter, allow=args.allow)
+            print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))
+            return 0 if value['counts'].get('accepted', 0) == len(value['jobs']) else 3
         if args.command not in {'decode', 'prompt', 'pack'}:
             value = workspace_command(args)
             if args.command == 'status' and not args.json:

@@ -134,6 +134,61 @@ report = worker.run_once()
 
 `existing_agent`, `inbox`, `channel` and the tokenizer come from your own application. The required JSON contract is in the `system` text. A Python callable must enforce its own timeout in your provider client; an arbitrary Python function is not forcibly stopped. The stdio adapter terminates the process tree it started on timeout. The stdio output size is checked after capture; this is not a memory quota or a tool sandbox.
 
+## One call for a fan-out: `oz do`
+
+`oz do` is the default entry point for an agent. One command takes a whole request, runs it to completion or to its deadline in the foreground, and prints one compact JSON result. It uses the same inbox, worker, adapter contract, ledger and OZ/1g wire as `send` and `run`; nothing on the model wire is new.
+
+```powershell
+oz do request.json --workspace . --adapter adapter.json
+Get-Content request.json | oz do --adapter adapter.json
+```
+
+The workspace must already exist (`oz init`); it supplies the tokenizer and the defaults. The same call from Python returns the same result: `from oz_do import do; do(request, workspace=".", adapter="adapter.json")`.
+
+The request (`oz.do/1`):
+
+```json
+{
+  "request_id": "batch-17",
+  "goal": "Prepare an evidence-limited inspection handoff. The interval is [12.48,12.52] mm.",
+  "ops": {"extract": "Extract the length and its uncertainty.", "bounds": "Check the length against the interval."},
+  "refs": {"c1": "length=12.50 mm; uncertainty=0.02 mm", "c2": {"path": "data/sample2.txt"}},
+  "jobs": [["e1", "extract", "c1"], ["b1", "bounds", "c1"], ["e2", "extract", "c2"]],
+  "model": "claude-sonnet-5-5",
+  "allow_experimental": false,
+  "deadline_seconds": 600
+}
+```
+
+`goal`, `ops`, `refs` and `jobs` are required (`refs` may be empty). A job is `[id, op, ref...]` or `{"id","op","refs"}`; it applies one operation to its references in the listed order, and a job may list none. A reference is inline text or `{"path": ...}`, a UTF-8 file read byte for byte that must resolve inside the authorized directory (the workspace, or `--allow DIR`). Optional: `request_id` (default: derived from the work's SHA-256), `max_attempts` (2), `model`, `allow_experimental` (false), `deadline_seconds` (600, at most 3600), `call_timeout_seconds` (300), `max_jobs_per_call` (the workspace `batch_size`), `max_input_tokens` (the workspace `max_tokens`; raise it for large packets) and `max_inline_bytes` (4096). Unknown keys are refused. The adapter always comes from the command line, never from the request.
+
+The model sees exactly the shipped packet: `goal`, the instruction texts in `ops`, the reference texts in `refs` (each once), and the jobs grouped by operation, under the job IDs you gave.
+
+The result (`oz.do.result/1`):
+
+```json
+{"schema":"oz.do.result/1","status":"complete","counts":{"accepted":2,"failed":1},
+ "jobs":{"e1":{"status":"accepted","value":["12.50 mm","0.02 mm"]},
+         "b1":{"status":"accepted","value_file":"do/batch-17/values/b1.json","bytes":5120,"sha256":"..."},
+         "e2":{"status":"failed","code":"missing_data","message":"No uncertainty given"}},
+ "evidence":{"scope":"model_declared","checks_run":0,"id_binding":"declared"},
+ "calls":[{"jobs":3,"profile":"experimental","status":"received"}],
+ "accounting":{"calls":1,"failed_calls":0,"unfinished_calls":0,"experimental_calls":1,"qualified_cell_calls":0,
+               "usage_coverage":"complete","calls_with_usage":1,"tokens":{"input_tokens":1840,"output_tokens":96,"...":0},
+               "tokens_scope":"all calls"},
+ "qualification":null,"blocker":null,
+ "run":{"workspace":"...","run_dir":"do/batch-17","request_id":"batch-17","request_sha256":"...","binding":"...",
+        "model":"claude-sonnet-5-5","elapsed_seconds":41.2}}
+```
+
+A job is `accepted` (with `value`, or `value_file` when it is larger than `max_inline_bytes`), `failed` (a valid job failure reported by the model) or `unresolved` with a `reason`: `deadline`, `in_flight` (an earlier attempt still holds the lease), `attempts_exhausted`, `backoff`, `input_budget`, `experimental_size_not_authorized` or `unsupported_size`. Accepted values are what the model declared: no check ran, and the ID binding is declared, not proven. `calls` lists this invocation's calls; `accounting` covers every call of the request across invocations, failed and unfinished calls included, from the adapter's reported usage. When a call reported no usage, `usage_coverage` is `partial` or `none` and the token sums cover only the calls that reported it. Exit code 0 means every job was accepted, 3 means some job failed or is unresolved, 2 is a request or configuration error.
+
+**Resubmission.** Run the same request again after a timeout or a crash. The same `request_id` with the same work posts no new job and makes no call for a job that is already settled; only unfinished jobs are sent. A job whose call was interrupted stays `in_flight` until its lease (call timeout plus 30 seconds) ends, so a crashed call is not blindly replayed. The same `request_id` with different work is refused before anything runs. Execution options (deadline, model, experimental authorization, output limits) may change between submissions.
+
+**Sizes.** Every call is labeled with its job count and a profile. `qualified_cell` means the declared `model` passed the size gate for exactly that job count: Sonnet 5.5 at 1, 4, 16, 32 and 64; Opus 5.5 at 4, 16 and 64; Haiku 5.5 at 1, 4, 16 and 64; Fable 5.1 at 64 ([size gates](docs/design/foundation-2026-10-23/size-gates-results.md), [OZ9.md](OZ9.md)). `oz do` checks only the declared model and the size; the CLI version, effort, adapter and workload class those cells were qualified under are not verified, and the `qualification` field says so whenever a qualified label is used. Any other size, or no declared model, is `experimental` and is sent only with `"allow_experimental": true`; otherwise the jobs stay unresolved with a blocker and no call is made. A failed gate (Opus 5.5 at 1 job) is never sent. The cells are one table, `oz_do.CELLS`; a new gate adds rows there.
+
+Each request has its own run directory, `do/<request_id>/`, which is an ordinary workspace: `oz status --workspace do/batch-17`, `oz inspect e1 --workspace do/batch-17` and `oz retry` work on it, and its `calls.jsonl` is the call ledger. References are loaded by host read jobs named `ref-<name>`, so a job ID may not take that form.
+
 ## Budget, retries and visibility
 
 In `oz.json`, `max_tokens` is the upper bound on the receiver's input. `encodings` are the target tokenizer names; with more than one, the limit applies to each. `batch_size` sets how many ready jobs are scanned at most (1 to 64). The defaults are 2048 tokens and 64 jobs. Ready jobs are collected into one call without waiting.

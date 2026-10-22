@@ -98,6 +98,17 @@ def initialize(path: Path, channel: Channel | None = None):
     return Workspace(root)
 
 
+def adapter_from_file(adapter_path: Path, *, timeout: float = 120) -> StdioAdapter:
+    """The explicit adapter JSON file: argv, protocols and languages; the command runs in the file's directory."""
+    adapter_path = Path(adapter_path).resolve()
+    spec = loads(adapter_path.read_text(encoding='utf-8'))
+    if (not isinstance(spec, dict) or set(spec) != {'argv', 'protocols', 'languages'}
+            or not isinstance(spec['argv'], list)):
+        raise Error('The adapter file must contain argv, protocols and languages (oz.adapter/3, OZ/9)')
+    return StdioAdapter(tuple(spec['argv']), cwd=adapter_path.parent, timeout=timeout,
+                        capabilities={k: spec[k] for k in ('protocols', 'languages')})
+
+
 class Workspace:
     def __init__(self, path: Path):
         self.root = path.resolve()
@@ -167,13 +178,7 @@ class Workspace:
             min_batch=1, max_wait=0):
         if type(max_calls) is not int or not 1 <= max_calls <= 100:
             raise Error('max_calls must be 1..100')
-        adapter_path = adapter_path.resolve()
-        spec = loads(adapter_path.read_text(encoding='utf-8'))
-        if (not isinstance(spec, dict) or set(spec) != {'argv', 'protocols', 'languages'}
-                or not isinstance(spec['argv'], list)):
-            raise Error('The adapter file must contain argv, protocols and languages (oz.adapter/3, OZ/9)')
-        adapter = StdioAdapter(tuple(spec['argv']), cwd=adapter_path.parent, timeout=timeout,
-                               capabilities={k: spec[k] for k in ('protocols', 'languages')})
+        adapter = adapter_from_file(adapter_path, timeout=timeout)
         results = []
         counters = self.counters()
         with self.inbox() as box:
