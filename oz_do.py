@@ -289,6 +289,9 @@ def _outcome(mid: str, row: dict | None, blocker: dict | None, now: float, run: 
         match = FAILURE.fullmatch(error)
         if match:
             return {'status': 'failed', 'code': match.group(1), 'message': match.group(2)[:MAX_MESSAGE]}
+        if error.startswith('pinned_computation_mismatch:'):
+            return {'status': 'unresolved', 'reason': 'pinned_computation_mismatch', 'last_error': error[:MAX_MESSAGE],
+                    'attempts': row['attempts']}
         return {'status': 'unresolved', 'reason': 'attempts_exhausted', 'last_error': error[:MAX_MESSAGE],
                 'attempts': row['attempts']}
     if row['state'] == 'leased':
@@ -361,6 +364,9 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
             if not callable_adapter:
                 worker.adapter = file_adapter(min(req['call_timeout'], remaining))
             report = worker.run_once()
+            if report['status'] == 'fenced':
+                blocker = {'reason': 'coordinator_superseded'}
+                break
             if report['status'] in ('idle', 'waiting'):
                 break
             entry = {'jobs': size, 'profile': profile, 'status': report['status']}

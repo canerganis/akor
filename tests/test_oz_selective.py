@@ -15,7 +15,7 @@ from oz_accept import REGISTRY, SELECTIVE, Check, Unavailable, compute_key, deci
 from oz_batch import render
 from oz_do import do
 from oz_reply import Failure, encode_reply
-from oz_runner import done_path, process_identity, request_path
+from oz_runner import done_path, process_identity, read_capture, request_path
 from oz_runtime import Inbox
 from oz_worker import RUNNER, StdioAdapter, Worker
 from oz_workspace import initialize
@@ -103,8 +103,10 @@ class ProfileTests(Base):
             with self.subTest(checks=checks, profile=profile), self.assertRaises(Error):
                 self.post('z', '=1', checks, profile)
 
-    def test_without_checks_the_selective_profile_reproduces_every_header_outcome(self):
-        # Annex A: with no added checks or containment triggers, same outcomes, errors and parser limits.
+    def test_selective_profile_without_checks_equals_header_on_every_wire_case(self):
+        # Annex A: with no added checks or containment triggers, same outcomes, errors and parser limits. Both
+        # profiles run under the current code; that the default path itself is unchanged is shown by the
+        # shipped header tests and the git diff, not by this test.
         def cut(text):
             return text[:-5]
 
@@ -421,14 +423,29 @@ class IdentityTests(Base):
                    self.key(self.ch, [('a', ':Extract the length!')], 'a')]
         self.assertNotEqual(*literal)
 
-    def test_a_pinned_computation_refuses_another_route_before_charging_an_attempt(self):
+    def test_a_pinned_computation_fails_only_its_own_job_when_the_route_changes_and_charges_nothing(self):
+        self.post('a', '=1')
+        self.crash_once_with(route={'model': 'm1'})
+        self.post('b', '=2')
+        self.now[0] += 1000
+        fake = Fake()
+        result = self.worker(fake, route={'model': 'm2'}).run_once()
+        # The mismatching job does not block the channel: b runs, a is refused before any attempt is charged.
+        self.assertEqual(result['outcomes'], {'b': 'ok'})
+        self.assertEqual(fake.calls, [['b']])
+        a = self.box.records(['a'])['a']
+        self.assertEqual((a['state'], a['attempts']), ('failed', 1))
+        self.assertTrue(a['error'].startswith('pinned_computation_mismatch:'))
+        self.assertEqual(self.events('a', 'pinned_computation_mismatch'), 1)
+        self.assertEqual(len(self.box.dispatches()), 2)  # the crashed one and b's; none for a under m2
+        self.assertEqual(self.worker(Fake(), route={'model': 'm2'}).run_once()['status'], 'idle')
+
+    def test_a_mismatching_job_alone_gives_idle_not_an_exception(self):
         self.post('a', '=1')
         self.crash_once_with(route={'model': 'm1'})
         self.now[0] += 1000
-        with self.assertRaisesRegex(Error, 'pinned to another computation'):
-            self.worker(Fake(), route={'model': 'm2'}).run_once()
-        self.assertEqual((self.box.records(['a'])['a']['attempts'], len(self.box.dispatches())), (1, 1))
-        self.assertEqual(self.worker(Fake(), route={'model': 'm1'}).run_once()['outcomes'], {'a': 'ok'})
+        self.assertEqual(self.worker(Fake(), route={'model': 'm2'}).run_once()['status'], 'idle')
+        self.assertEqual(self.state('a'), 'failed')
 
     def crash_once_with(self, **kw):
         with self.assertRaises(Crash):
@@ -531,13 +548,43 @@ json.dump({'reply': '\n'.join(lines), 'usage': {'input_tokens': 70, 'output_toke
         self.assertEqual(self.box.dispatch(receipt)['state'], 'captured')
         self.assertEqual([c['status'] for c in self.box.candidates(job='a')], ['accepted', 'superseded'])
 
+    # A launched adapter that makes the runner's completion record impossible to publish (a directory sits where
+    # <receipt>.done must go), so the runner dies after the adapter ran and nothing valid is published.
+    BLOCKER = r'''
+import json, os, sys
+os.mkdir(os.path.join('captures', json.load(sys.stdin)['receipt'] + '.done'))
+'''
+
     def test_a_runner_ending_without_a_completion_record_is_uncertain_not_failed(self):
         self.post('a', '=1', [{'check': 'quoted_span'}])
-        adapter = self.adapter(argv=(str(self.dir / 'missing-program.exe'),))
-        result = self.worker(adapter, timeout=60).run_once()
+        (self.dir / 'blocker.py').write_text(self.BLOCKER, encoding='utf-8')
+        result = self.worker(self.adapter(argv=(sys.executable, 'blocker.py')), timeout=60).run_once()
         self.assertEqual((result['error_code'], result['outcomes']), ('adapter_capture_missing', {'a': 'retry'}))
         d = self.box.dispatches()[0]
         self.assertEqual((d['state'], d['reservation_state']), ('uncertain', 'held'))
+        self.assertFalse(done_path(self.captures, d['receipt']).is_file())
+
+    def test_an_adapter_executable_that_cannot_be_started_is_not_launched_and_releases_the_reservation(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        adapter = self.adapter(argv=(str(self.dir / 'missing-program.exe'),))
+        result = self.worker(adapter, timeout=60).run_once()
+        self.assertEqual((result['error_code'], result['outcomes']), ('adapter_start_failed', {'a': 'retry'}))
+        d = self.box.dispatches()[0]
+        self.assertEqual((d['state'], d['reservation_state']), ('not_launched', 'released'))
+        self.assertEqual(self.events('a', 'dispatch_not_launched'), 1)
+        # Same meaning as the pipe path's adapter_start_failed: a plain retry, the job stays within its allowance.
+        self.assertEqual(self.state('a'), 'pending')
+
+    def test_a_start_failure_recorded_by_the_runner_is_recovered_as_not_launched(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        receipt, _ = self.manual_dispatch(['a'])
+        self.assertEqual(self.run_runner(receipt, argv=(str(self.dir / 'missing-program.exe'),)).returncode, 0)
+        self.assertEqual(read_capture(self.captures, receipt)['start_failed'], True)
+        self.now[0] += 1000
+        summary = self.worker(Fake(crash=True)).recover()
+        self.assertEqual((summary['captured'], summary['settled']), ([receipt], [receipt]))
+        d = self.box.dispatch(receipt)
+        self.assertEqual((d['state'], d['reservation_state']), ('not_launched', 'released'))
 
     def test_temporary_or_schema_less_capture_files_do_not_count_as_completion(self):
         self.post('a', '=1', [{'check': 'quoted_span'}])
@@ -572,6 +619,139 @@ json.dump({'reply': '\n'.join(lines), 'usage': {'input_tokens': 70, 'output_toke
         self.now[0] += 1000
         summary = self.worker(Fake()).recover()
         self.assertEqual((summary['captured'], summary['uncertain']), ([], [receipt]))
+
+
+class ReviewFixTests(Base):
+    """Reviewed defects of the selective path: stale rechecks, obsolete epochs, cancellation in flight."""
+
+    def flaky_registry(self, state):
+        def run(value, spec, inputs):
+            if state[0] == 'down':
+                raise Unavailable('lab database offline')
+            return value == spec['expected']
+        return dict(REGISTRY, flaky=Check('flaky', 1, True, lambda spec: None, run))
+
+    def awaiting_setup(self, expected):
+        state = ['down']
+        registry = self.flaky_registry(state)
+        self.post('a', '=1', [{'check': 'flaky', 'expected': expected}], registry=registry)
+        w1, w2 = self.worker(Fake(), registry=registry), self.worker(Fake(), registry=registry)
+        self.assertEqual(w1.run_once()['outcomes'], {'a': 'checking'})
+        state[0] = 'up'
+        return w1, w2
+
+    def stale_snapshot(self):
+        """What a second coordinator read before the first one committed: every candidate still awaiting."""
+        snapshot = [dict(c, status='awaiting') for c in self.box.candidates()]
+        self.assertTrue(snapshot)
+        return lambda **kw: [c for c in snapshot if kw.get('status') in (None, 'awaiting')]
+
+    def test_a_second_coordinator_cannot_overwrite_an_accepted_candidate_with_a_stale_recheck(self):
+        w1, w2 = self.awaiting_setup('12.50 mm')
+        stale, real = self.stale_snapshot(), self.box.candidates
+        self.assertEqual([r['state'] for r in w1.recheck()], ['done'])
+        self.box.candidates = stale
+        try:
+            self.assertEqual([r['state'] for r in w2.recheck()], ['stale'])
+        finally:
+            self.box.candidates = real
+        self.assertEqual([c['status'] for c in self.box.candidates(job='a')], ['accepted'])
+        self.assertEqual((self.state('a'), self.events('a', 'released')), ('done', 1))
+
+    def test_a_second_coordinator_cannot_re_accept_a_candidate_the_first_rejected(self):
+        w1, w2 = self.awaiting_setup('something else')
+        stale, real = self.stale_snapshot(), self.box.candidates
+        self.assertEqual([r['state'] for r in w1.recheck()], ['pending'])
+        self.assertEqual([c['status'] for c in self.box.candidates(job='a')], ['rejected'])
+        # w2's stale view of the same candidate, judged by a check that would pass.
+        view = stale()
+        view[0]['checks'] = [dict(view[0]['checks'][0], expected='12.50 mm')]
+        self.box.candidates = lambda **kw: view
+        try:
+            self.assertEqual([r['state'] for r in w2.recheck()], ['stale'])
+        finally:
+            self.box.candidates = real
+        self.assertEqual([x['status'] for x in self.box.candidates(job='a')], ['rejected'])
+        self.assertEqual(self.state('a'), 'pending')
+
+    def test_a_stale_release_cannot_overwrite_a_candidate_that_is_no_longer_waiting(self):
+        w1, w2 = self.awaiting_setup('12.50 mm')
+        stale, real = self.stale_snapshot(), self.box.candidates
+        seq = real()[0]['seq']
+        self.assertEqual([r['state'] for r in w1.recheck()], ['done'])
+        self.box.candidates = stale
+        try:
+            result = w2.release(seq, [{'check': 'quoted_span'}])
+        finally:
+            self.box.candidates = real
+        self.assertEqual(result['status'], 'not_released')
+        self.assertEqual([x['status'] for x in self.box.candidates(job='a')], ['accepted'])
+        self.assertEqual(self.state('a'), 'done')
+
+    def test_an_obsolete_epoch_worker_is_refused_before_charging_an_attempt_or_calling_the_model(self):
+        self.post('a', '=1', [{'check': 'expect', 'value': 'nope'}])
+        fake = Fake()
+        old = self.worker(fake)
+        self.box.take_over()
+        result = old.run_once()
+        self.assertEqual((result['status'], result['model_calls'], result['settlement']), ('fenced', 0, 'fenced'))
+        self.assertEqual(fake.calls, [])
+        row = self.box.records(['a'])['a']
+        self.assertEqual((row['state'], row['attempts'], self.box.dispatches(), self.box.candidates()),
+                         ('pending', 0, [], []))
+        new = Fake()
+        self.assertEqual(self.worker(new).run_once()['status'], 'received')
+        self.assertEqual(new.calls, [['a']])
+
+    def test_an_obsolete_epoch_header_only_worker_is_not_affected(self):
+        self.post('a', '=1', profile='oz1g-header')
+        old = self.worker(Fake())
+        self.box.take_over()
+        self.assertEqual(old.run_once()['outcomes'], {'a': 'ok'})
+
+    def test_cancel_cannot_break_header_settlement_and_siblings_keep_their_results(self):
+        for mid, wire in (('a', '=1'), ('b', '=2')):
+            self.post(mid, wire, profile='oz1g-header')
+        refusals = []
+
+        def hook(request):
+            try:
+                self.box.cancel('a', 'withdrawn')
+            except Error as exc:
+                refusals.append(str(exc))
+
+        result = self.worker(Fake(hook=hook)).run_once()
+        self.assertEqual(result['outcomes'], {'a': 'ok', 'b': 'ok'})
+        self.assertEqual(len(refusals), 1)
+        self.assertIn('in-flight delivery', refusals[0])
+        self.assertEqual((self.state('a'), self.state('b')), ('done', 'done'))
+        with self.assertRaises(Error):
+            self.box.cancel('a')
+
+    def test_cancel_works_before_delivery_and_after_lease_expiry_and_requeue_never_reopens_it(self):
+        self.post('a', '=1', profile='oz1g-header')
+        self.box.cancel('a', 'before any delivery')
+        row = self.box.db.execute("SELECT state,failure_kind FROM jobs WHERE id='a'").fetchone()
+        self.assertEqual(tuple(row), ('failed', 'cancelled'))
+        with self.assertRaisesRegex(Error, 'cancelled'):
+            self.box.requeue('a')
+        self.assertEqual(self.state('a'), 'failed')
+        self.post('b', '=2', profile='oz1g-header')
+        self.assertIsNotNone(self.box.claim(self.ch, owner='x'))
+        with self.assertRaisesRegex(Error, 'in-flight delivery'):
+            self.box.cancel('b')
+        self.now[0] += 1000
+        self.box.cancel('b')
+        with self.assertRaises(Error):
+            self.box.requeue('b')
+        self.assertEqual(self.state('b'), 'failed')
+
+    def test_a_permanent_retry_is_still_requeueable_as_before(self):
+        self.post('a', '=1', profile='oz1g-header')
+        delivery = self.box.claim(self.ch, owner='x')
+        self.box.retry(delivery, 'give up', permanent=True)
+        self.box.requeue('a')
+        self.assertEqual(self.state('a'), 'pending')
 
 
 class DoSelectiveTests(unittest.TestCase):
@@ -621,6 +801,27 @@ class DoSelectiveTests(unittest.TestCase):
                       {'profile': SELECTIVE, 'checks': {'unknown_op': []}}):
             with self.subTest(extra=extra), self.assertRaises(Error):
                 do(do_request(**extra), workspace=self.root, adapter=self.root / 'adapter.json')
+
+    def test_resuming_a_selective_run_with_another_model_returns_a_result_with_the_pinned_jobs_unresolved(self):
+        checks = {'bounds': [{'check': 'json_type', 'types': ['string']}]}
+        n = [0]
+
+        def clock():
+            n[0] += 1
+            return 0 if n[0] <= 2 else 10 ** 6
+
+        first = do(do_request(4, profile=SELECTIVE, checks=checks, max_attempts=3, model='m-one'),
+                   workspace=self.root, adapter=self.root / 'adapter.json', clock=clock)
+        self.assertEqual(first['counts'], {'accepted': 2, 'unresolved': 2})
+        calls = len(self.calls())
+        second = do(do_request(4, profile=SELECTIVE, checks=checks, max_attempts=3, model='m-two'),
+                    workspace=self.root, adapter=self.root / 'adapter.json')
+        self.assertEqual(second['counts'], {'accepted': 2, 'unresolved': 2})
+        for job in ('j2', 'j4'):
+            self.assertEqual(second['jobs'][job]['reason'], 'pinned_computation_mismatch')
+            self.assertIn('post it as a new job', second['jobs'][job]['last_error'])
+        self.assertEqual(second['jobs']['j1'], first['jobs']['j1'])
+        self.assertEqual(len(self.calls()), calls)  # no model call, nothing charged
 
 
 if __name__ == '__main__':

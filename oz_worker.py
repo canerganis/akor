@@ -21,7 +21,7 @@ from oz_accept import HEADER, REGISTRY, Inputs, decide, job_inputs, pin, run_che
 from oz_batch import WIRE, valid_receipt
 from oz_reply import BINDING, LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
 from oz_runner import done_path, process_alive, process_identity, publish, read_capture, request_path
-from oz_runtime import Inbox, Outcome
+from oz_runtime import Fenced, Inbox, Outcome
 
 RUNNER = Path(__file__).resolve().with_name('oz_runner.py')
 
@@ -99,7 +99,10 @@ class StdioAdapter:
     def _durable(self, request: dict, payload: bytes, on_launch) -> dict:
         """The runner path: the request goes to <receipt>.request.json, oz_runner runs the command and publishes
         <receipt>.done; only that published record is read back. A runner that ends without publishing raises
-        adapter_capture_missing: the adapter may have run, so the dispatch is uncertain, not failed."""
+        adapter_capture_missing: the adapter may have run, so the dispatch is uncertain, not failed. A record marked
+        start_failed (the executable could not be started) raises adapter_start_failed: not launched. An interrupt
+        of this coordinator (KeyboardInterrupt, timeout) terminates the runner tree, so it publishes nothing and the
+        dispatch is uncertain; only a hard coordinator death leaves the runner to publish."""
         receipt = request.get('receipt')
         if not valid_receipt(receipt):
             raise Error('the durable adapter path needs the request receipt')
@@ -153,6 +156,8 @@ def _terminate(proc) -> None:
 
 def _capture_response(capture: dict, max_output_bytes: int = 1048576, stderr_bytes: int = 0) -> dict:
     """The adapter response of a completed capture, with the same errors as the pipe path."""
+    if capture.get('start_failed'):
+        raise AdapterError('adapter_start_failed')
     if capture['exit_code']:
         raise AdapterError(f'adapter_exit_{capture["exit_code"]}')
     if len(capture['stdout']) > max_output_bytes or (type(stderr_bytes) is int and stderr_bytes > max_output_bytes):
@@ -273,9 +278,13 @@ class Worker:
         receipt = self.inbox.new_receipt()
         call_id = uuid.uuid4().hex
         # The dispatch options only journal a packet that holds an oz1g-selective-v1 job.
-        claimed = self.inbox.claim_prepared(self.channel, receipt=receipt, dispatch=dict(
-            epoch=self.epoch, route=self._route(), call_id=call_id, timeout=self.timeout,
-            capture_dir=getattr(self.adapter, 'capture_dir', None)), **self.options)
+        try:
+            claimed = self.inbox.claim_prepared(self.channel, receipt=receipt, dispatch=dict(
+                epoch=self.epoch, route=self._route(), call_id=call_id, timeout=self.timeout,
+                capture_dir=getattr(self.adapter, 'capture_dir', None)), **self.options)
+        except Fenced:
+            # An obsolete coordinator epoch: nothing was leased or charged and no model was called.
+            return {'status': 'fenced', 'model_calls': 0, 'settlement': 'fenced', 'outcomes': {}}
         if claimed is None:
             return {'status': 'idle', 'model_calls': 0}
         delivery, packet = claimed
@@ -435,7 +444,7 @@ class Worker:
                     try:
                         self.inbox.dispatch_captured(receipt, response=_capture_response(capture))
                     except AdapterError as exc:
-                        self.inbox.dispatch_captured(receipt, error=exc.code)
+                        self.inbox.dispatch_captured(receipt, error=exc.code, executed=exc.code != 'adapter_start_failed')
                     summary['captured'].append(receipt)
                     d = self.inbox.dispatch(receipt)
                 else:

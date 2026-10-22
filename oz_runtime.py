@@ -26,6 +26,10 @@ from oz_batch import PREVIEW_RECEIPT, Batch, BudgetError, render, valid_id
 from oz_reply import RawJSON, slot_ids
 
 
+class Fenced(Error):
+    """A worker of an obsolete coordinator epoch asked to claim selective work: refused before any attempt is charged."""
+
+
 @dataclass(frozen=True)
 class Job:
     id: str
@@ -365,8 +369,10 @@ class Inbox:
         plan, at most four times; only reserved jobs receive a lease/attempt.
 
         With dispatch ({epoch, route, call_id, timeout, capture_dir}), a packet holding an oz1g-selective-v1 job
-        also gets its launch intent journaled in the same transaction as the lease (clause 5 step 1); a job whose
-        pinned computation key differs is refused before any attempt is charged. Header-only packets journal nothing.
+        also gets its launch intent journaled in the same transaction as the lease (clause 5 step 1). Before any attempt is
+        charged, a worker of an obsolete epoch is refused (Fenced) and a job whose pinned computation key differs is
+        failed on its own (unresolved, reason pinned_computation_mismatch) without blocking the other jobs of the
+        channel. Header-only packets journal nothing and are never screened.
         """
         if not valid_id(owner) or type(lease_seconds) not in {int, float} or not 0 < lease_seconds <= 86400:
             raise Error('invalid delivery options')
@@ -374,7 +380,8 @@ class Inbox:
             # A real call needs a fresh receipt; the zero receipt is for previews only.
             raise Error('claim requires a fresh receipt, not the preview receipt')
         counters = tuple(counters)
-        for _ in range(4):
+        races = 0
+        while races < 4:
             with self._transaction():
                 self._recover(channel.binding, 'work')
             plan = self.plan(channel, counters=counters, limit=limit, max_tokens=max_tokens,
@@ -388,7 +395,13 @@ class Inbox:
                 ready = {r['id']: r for r in self._ready(channel, 'work', len(plan.jobs), tuple(j.id for j in plan.jobs))}
                 if any(j.id not in ready or ready[j.id]['state'] != 'pending'
                        or ready[j.id]['attempts'] + 1 != j.attempt for j in plan.jobs):
+                    races += 1
                     continue
+                if dispatch is not None:
+                    # Refused before any attempt is charged: an obsolete epoch (raises Fenced) or a job pinned to
+                    # another computation (fails that job alone, then the packet is planned again without it).
+                    if self._screen_dispatch(plan, channel.binding, dispatch):
+                        continue
                 self._lease(plan.jobs, token, owner, lease_seconds)
                 if dispatch is not None:
                     self._open_dispatch(plan, channel.binding, token, owner, receipt, dispatch, max_tokens, lease_seconds)
@@ -500,6 +513,9 @@ class Inbox:
             row = self.db.execute('SELECT state,attempts,max_attempts FROM jobs WHERE id=?', (mid,)).fetchone()
             if row is None or row['state'] not in ('failed', 'quarantined'):
                 raise Error('only a failed job can be requeued; completed jobs need a new ID')
+            if self.db.execute("SELECT 1 FROM events WHERE mid=? AND event='cancelled'", (mid,)).fetchone():
+                # cancel() is final; a permanent retry() also reads failure_kind 'cancelled' but stays requeueable.
+                raise Error('a cancelled job cannot be requeued; post it under a new ID')
             self.db.execute('''UPDATE jobs SET state='pending',available_at=0,error='',failure_kind=NULL,
                 max_attempts=? WHERE id=?''', (max(row['attempts'], row['max_attempts']) + extra_attempts, mid))
             self._event(mid, 'requeued', extra_attempts=extra_attempts)
@@ -596,12 +612,51 @@ class Inbox:
             self.db.execute('UPDATE coordinator SET epoch=epoch+1 WHERE id=1')
             return self.epoch()
 
+    def _selective_packet(self, plan, rows) -> bool:
+        return bool(plan.packet.job_map) and not all(rows[j.id]['profile'] == HEADER for j in plan.jobs)
+
+    def _computation_keys(self, plan, route) -> dict:
+        packet = plan.packet
+        inputs = job_inputs(packet.text, packet.job_map)
+        goal = json.loads(packet.text)['goal']
+        return {job.id: compute_key(goal, inputs[job.id], route) for job in plan.jobs if job.id in inputs}
+
+    def _screen_dispatch(self, plan, binding, options) -> bool:
+        """Checks that must precede the lease of a packet holding a selective job; call inside the lease transaction.
+
+        An epoch other than the current one raises Fenced (nothing is charged, no model call follows). A selective
+        job pinned to another computation key is failed with a clear reason (still unresolved, attempts unchanged)
+        and True is returned so the caller plans again without it; the other jobs are unaffected."""
+        if not isinstance(options, dict):
+            return False  # _open_dispatch rejects it and the lease transaction rolls back
+        rows = {r['id']: r for r in self.db.execute(
+            'SELECT id,profile,compute_key FROM jobs WHERE id IN (' + ','.join('?' for _ in plan.jobs) + ')',
+            [j.id for j in plan.jobs])}
+        if not self._selective_packet(plan, rows):
+            return False
+        epoch = options.get('epoch', self.epoch())
+        if epoch != self.epoch():
+            raise Fenced(f'coordinator epoch {epoch} is obsolete (current {self.epoch()}); nothing claimed')
+        keys = self._computation_keys(plan, dict(options.get('route') or {}))
+        refused = False
+        for job in plan.jobs:
+            row = rows[job.id]
+            if row['profile'] == SELECTIVE and keys.get(job.id) is not None and row['compute_key'] not in (None, keys[job.id]):
+                reason = ('pinned_computation_mismatch: its inputs or execution route differ from the computation this '
+                          'job is pinned to; post it as a new job')
+                # Failed as exhausted (unresolved): a late capture of the pinned computation may still be adopted.
+                self.db.execute("UPDATE jobs SET state='failed',failure_kind='exhausted',error=?,available_at=0,"
+                                "lease=NULL,owner=NULL,deadline=NULL WHERE id=?", (reason, job.id))
+                self._event(job.id, 'pinned_computation_mismatch')
+                refused = True
+        return refused
+
     def _open_dispatch(self, plan, binding, lease, owner, receipt, options, max_tokens, lease_seconds) -> bool:
         """Launch intent and protective reservations, inside the lease transaction (clause 5 step 1)."""
         packet = plan.packet
         rows = {r['id']: r for r in self.db.execute(
             'SELECT id,profile,generation,compute_key FROM jobs WHERE lease=?', (lease,))}
-        if not packet.job_map or all(rows[j.id]['profile'] == HEADER for j in plan.jobs):
+        if not self._selective_packet(plan, rows):
             return False
         if not isinstance(options, dict) or set(options) - {'epoch', 'route', 'call_id', 'timeout', 'capture_dir'}:
             raise Error('dispatch options are epoch, route, call_id, timeout and capture_dir')
@@ -839,6 +894,12 @@ class Inbox:
         if kind not in ('accept', 'reject', 'await', 'quarantine'):
             raise Error('unknown decision kind')
         seq, reason = decision.get('seq'), decision.get('reason')
+        if seq is not None and self.db.execute("SELECT 1 FROM candidates WHERE seq=? AND job=? AND receipt=? "
+                                               "AND status IN ('awaiting','quarantined')",
+                                               (seq, mid, receipt)).fetchone() is None:
+            # Another coordinator already decided this candidate: nothing changes (no overwrite, no re-accept).
+            self._event(mid, 'late_reply_ignored', receipt=receipt)
+            return 'stale'
         status, key, state = {'accept': 'accepted', 'reject': 'rejected', 'await': 'awaiting',
                               'quarantine': 'quarantined'}[kind], None, row['state']
         current = inlease or (recheck and row['state'] == 'checking' and self.db.execute(
@@ -884,9 +945,12 @@ class Inbox:
                              decision['text'], _dump([dict(s) for s in decision['inputs'].slots]), row['checks'],
                              verdicts, status, reason, int(bool(decision.get('suspect'))), now, key))
         else:
-            self.db.execute('''UPDATE candidates SET status=?,reason=?,verdicts=?,suspect=MAX(suspect,?),at=?,
-                accept_key=? WHERE seq=?''', (status, reason, verdicts, int(bool(decision.get('suspect'))), now, key,
-                                              seq))
+            changed = self.db.execute('''UPDATE candidates SET status=?,reason=?,verdicts=?,suspect=MAX(suspect,?),at=?,
+                accept_key=? WHERE seq=? AND status IN ('awaiting','quarantined')''',
+                                      (status, reason, verdicts, int(bool(decision.get('suspect'))), now, key,
+                                       seq)).rowcount
+            if changed != 1:
+                raise Error('candidate changed during settlement; nothing applied')
         return state
 
     def cancel(self, mid: str, reason: str = 'cancelled') -> None:
@@ -894,11 +958,17 @@ class Inbox:
         if not isinstance(reason, str) or not reason.strip() or len(reason.encode('utf-8')) > 4096:
             raise Error('cancel requires a bounded reason')
         with self._transaction():
-            row = self.db.execute('SELECT state,failure_kind FROM jobs WHERE id=?', (mid,)).fetchone()
+            row = self.db.execute('SELECT state,failure_kind,lease,deadline FROM jobs WHERE id=?', (mid,)).fetchone()
             if row is None:
                 raise Error('unknown message ID')
             if row['state'] == 'done' or (row['state'] == 'failed' and row['failure_kind'] != 'exhausted'):
                 raise Error('only an unresolved job can be cancelled')
+            if (row['state'] == 'leased' and row['deadline'] > self.clock()
+                    and self.db.execute('SELECT 1 FROM dispatches WHERE lease=?', (row['lease'],)).fetchone() is None):
+                # A header delivery settles all its jobs together; releasing one would make settle() refuse the
+                # whole delivery. A journaled dispatch settles per job and handles a cancelled member.
+                raise Error('job is leased in an in-flight delivery; cancel it after the delivery settles or its '
+                            'lease expires')
             self.db.execute('''UPDATE jobs SET state='failed',failure_kind='cancelled',error=?,lease=NULL,owner=NULL,
                 deadline=NULL WHERE id=?''', (reason, mid))
             self._event(mid, 'cancelled')

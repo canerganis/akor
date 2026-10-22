@@ -7,8 +7,11 @@ publishes the completion itself: the adapter's exit status and stdout, bound to 
 request bytes, go to a temporary file that is flushed, synchronized and atomically renamed to <receipt>.done on the
 same filesystem. Only a valid record published this way counts as a completed capture; a completed capture can record
 a failed process and is never accepted work by itself. If the coordinator dies, the runner still publishes, so a
-later coordinator can reuse the capture without another model call. If the runner dies first, nothing is published
-and recovery records the dispatch as uncertain.
+later coordinator can reuse the capture without another model call. That holds when the coordinator process is killed
+or crashes. A coordinator that is still running and unwinds (KeyboardInterrupt, a call timeout or any other exception
+inside the adapter call) terminates the runner and its adapter tree first, so nothing is published and recovery
+records the dispatch as uncertain, exactly as when the runner dies on its own. If the adapter executable cannot be
+started, the runner publishes a record marked start_failed (confirmed non-execution), not a failed run.
 
 Process identity is the PID plus the process creation time (GetProcessTimes through ctypes on Windows, /proc on Linux);
 a PID alone is not an identity.
@@ -118,6 +121,7 @@ def read_capture(directory, receipt: str, request_sha256: str | None = None) -> 
         return None
     if (not isinstance(record, dict) or record.get('v') != CAPTURE_SCHEMA or record.get('receipt') != receipt
             or type(record.get('exit_code')) is not int or not isinstance(record.get('stdout_b64'), str)
+            or ('start_failed' in record and record['start_failed'] is not True)
             or (request_sha256 is not None and record.get('request_sha256') != request_sha256)):
         return None
     try:
@@ -133,12 +137,21 @@ def main(argv: list[str]) -> int:
         return 2
     directory, receipt, command = Path(argv[0]), argv[1], argv[3:]
     data = request_path(directory, receipt).read_bytes()
-    proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            env=dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1'),
-                            creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+    digest = hashlib.sha256(data).hexdigest()
+    try:
+        proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                env=dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1'),
+                                creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
+    except OSError:
+        # The adapter never started, so it never ran: publish that fact (confirmed non-execution), not a failed run.
+        record = {'v': CAPTURE_SCHEMA, 'receipt': receipt, 'request_sha256': digest, 'exit_code': -1,
+                  'stdout_b64': '', 'stderr_bytes': 0, 'runner': process_identity(os.getpid()), 'adapter': None,
+                  'start_failed': True}
+        publish(done_path(directory, receipt), json.dumps(record, separators=(',', ':')).encode('utf-8'))
+        return 0
     child = process_identity(proc.pid)
     stdout, stderr = proc.communicate(data)
-    record = {'v': CAPTURE_SCHEMA, 'receipt': receipt, 'request_sha256': hashlib.sha256(data).hexdigest(),
+    record = {'v': CAPTURE_SCHEMA, 'receipt': receipt, 'request_sha256': digest,
               'exit_code': proc.returncode, 'stdout_b64': base64.b64encode(stdout).decode('ascii'),
               'stderr_bytes': len(stderr), 'runner': process_identity(os.getpid()), 'adapter': child}
     publish(done_path(directory, receipt), json.dumps(record, separators=(',', ':')).encode('utf-8'))
