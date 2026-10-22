@@ -1,0 +1,13 @@
+{
+ "model": "claude-sonnet-5-5",
+ "n": 16,
+ "schedule": [
+  [
+   2999,
+   "S"
+  ]
+ ],
+ "sha256": "bfd70a4a689ad0e11f6379a2b1cb13ddb0744a35f857fada8812659caec7b33c",
+ "concurrency": 1,
+ "reply_retry": 0
+}
