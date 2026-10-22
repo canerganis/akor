@@ -1,0 +1,21 @@
+{
+ "model": "claude-opus-5-5",
+ "n": 4,
+ "schedule": [
+  [
+   4105,
+   "Q"
+  ],
+  [
+   4106,
+   "Q"
+  ],
+  [
+   4107,
+   "Q"
+  ]
+ ],
+ "sha256": "146d5566dc3b0308a49577439007f29c5557666fecad5be51a6e3eb886fe99ab",
+ "concurrency": 1,
+ "reply_retry": 0
+}
