@@ -6,7 +6,7 @@ Before the first call the manifest (texts, packets, settings, schedule) is hashe
 Usage: ARM=H OUT=live22_1g_A_H.jsonl python bench/live/run1g.py
 Stage D: MODEL=haiku N=64 SEEDS=2005-2014 BASE= ARM=H OUT=... (the second-failure stop still applies)
 """
-import hashlib, json, os, random, sys
+import hashlib, json, os, random, subprocess, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent)); sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -38,7 +38,8 @@ def manifest(plan):
         system, user, _, _ = M.ARMS[a](N)
         h.update(json.dumps([seed, a, system, user], ensure_ascii=False).encode('utf-8'))
     return {'arm': ARM, 'n': N, 'model': L.MODEL_IDS[os.environ.get('MODEL', 'sonnet')], 'effort': os.environ.get('EFFORT'),
-            'schedule': plan, 'sha256': h.hexdigest(), 'reply_retry': 0, 'concurrency': 1, 'timeout_s': 300, 'output_limit': 'claude -p default (no --max-tokens); a truncated reply is a failure',
+            'schedule': plan, 'sha256': h.hexdigest(),
+            'cli_version': subprocess.run([L.CLAUDE, '--version'], capture_output=True, text=True).stdout.strip(), 'reply_retry': 0, 'concurrency': 1, 'timeout_s': 300, 'output_limit': 'claude -p default (no --max-tokens); a truncated reply is a failure',
             'note': 'seeds drive the data generator only; provider sampling is uncontrolled; claude -p transport '
                     'retries on HTTP errors are not configurable here and never resample a completed reply'}
 
@@ -50,7 +51,7 @@ def main():
     print('manifest', man['sha256'], flush=True)
     fails = 0
     for seq, (seed, a) in enumerate(plan):
-        if a == ARM and fails >= 2:
+        if a == ARM and fails >= int(os.environ.get('STOP', '2')):
             continue
         M.use_records(M.make_records(seed))
         system, user, dec, native = M.ARMS[a](N)
