@@ -16,6 +16,7 @@ import uuid
 
 from oz import Channel, Error, TokenMeter, _dump
 from oz_batch import PREVIEW_RECEIPT, Batch, BudgetError, render, valid_id
+from oz_reply import RawJSON
 
 
 @dataclass(frozen=True)
@@ -297,13 +298,14 @@ class Inbox:
     def _handoffs(self, ids):
         """[job, predecessor, result record] per delivered job, in dependency declaration order.
 
-        Only direct predecessors that are done. The record is the accepted JSON value (result_json);
-        a job settled without one yields its stored result text as a string. Unverified agent data."""
+        Only direct predecessors that are done. The record is the accepted JSON value (result_json) as a RawJSON,
+        so the packet carries its stored bytes unchanged (clause 12); a job settled without one yields its stored
+        result text as a string. Unverified agent data."""
         links = []
         for mid in ids:
             rows = self.db.execute('''SELECT p.id,p.result,p.result_json FROM dependencies d JOIN jobs p ON p.id=d.prior
                 WHERE d.job=? AND p.state='done' ORDER BY d.rowid''', (mid,)).fetchall()
-            links.extend((mid, r['id'], r['result'] if r['result_json'] is None else json.loads(r['result_json']))
+            links.extend((mid, r['id'], r['result'] if r['result_json'] is None else RawJSON(r['result_json']))
                          for r in rows)
         return links
 

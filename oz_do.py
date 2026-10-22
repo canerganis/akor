@@ -22,7 +22,7 @@ import uuid
 
 from oz import Channel, Error, Reference
 from oz_batch import J, valid_id
-from oz_reply import ERROR_CODES, USAGE_FIELDS, loads
+from oz_reply import ERROR_CODES, USAGE_FIELDS, RawJSON, loads
 from oz_runtime import Inbox
 from oz_worker import Worker
 from oz_workspace import Workspace, adapter_from_file
@@ -230,7 +230,8 @@ def _outcome(mid: str, row: dict | None, blocker: dict | None, now: float, run: 
     if row is None:
         return {'status': 'unresolved', 'reason': 'not_posted'}
     if row['state'] == 'done':
-        value = json.loads(row['result_json']) if row['result_json'] is not None else row['result']
+        # The stored bytes of the accepted value, unchanged (clause 12); oz_reply.dumps writes them verbatim.
+        value = RawJSON(row['result_json']) if row['result_json'] is not None else row['result']
         text = J(value)
         size = len(text.encode('utf-8'))
         if size <= max_inline:

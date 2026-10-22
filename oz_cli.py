@@ -9,6 +9,7 @@ import uuid
 from oz import Channel, Error
 from oz_batch import render
 from oz_do import do
+from oz_reply import dumps
 from oz_workspace import Workspace, channel_from_files, demo, initialize, read_utf8
 from oz_worker import process_host
 
@@ -94,7 +95,7 @@ def main(argv=None):
         if args.command == 'do':
             text = (sys.stdin.buffer.read() if args.request == '-' else Path(args.request).read_bytes()).decode('utf-8')
             value = do(text, workspace=args.workspace, adapter=args.adapter, allow=args.allow)
-            print(json.dumps(value, ensure_ascii=False, separators=(',', ':')))
+            print(dumps(value, ensure_ascii=False, separators=(',', ':')))
             return 0 if value['counts'].get('accepted', 0) == len(value['jobs']) else 3
         if args.command not in {'decode', 'prompt', 'pack'}:
             value = workspace_command(args)

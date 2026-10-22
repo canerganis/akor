@@ -143,7 +143,7 @@ oz do request.json --workspace . --adapter adapter.json
 Get-Content request.json | oz do --adapter adapter.json
 ```
 
-The workspace must already exist (`oz init`); it supplies the tokenizer and the defaults. The same call from Python returns the same result: `from oz_do import do; do(request, workspace=".", adapter="adapter.json")`.
+The workspace must already exist (`oz init`); it supplies the tokenizer and the defaults. The same call from Python returns the same result: `from oz_do import do; do(request, workspace=".", adapter="adapter.json")`. Accepted values keep the exact bytes the model wrote (`12.50` stays `12.50`), so in Python they are `oz_reply.RawJSON` objects that compare like their decoded values; serialize a result with `oz_reply.dumps`, not `json.dumps`.
 
 The request (`oz.do/1`):
 
