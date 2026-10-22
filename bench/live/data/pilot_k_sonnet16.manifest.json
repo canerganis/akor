@@ -1,0 +1,12 @@
+{
+ "model": "claude-sonnet-5-5",
+ "n": 16,
+ "seeds": [
+  3005,
+  3006,
+  3007
+ ],
+ "sha256": "c2b03cf64a22783f61e24c33356b4e6281f454f229d33a64dd866a79f9ca0ee8",
+ "cli_version": "2.1.306 (Claude Code)",
+ "concurrency": 1
+}

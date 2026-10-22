@@ -102,6 +102,7 @@ def main():
             calls, w_in, w_out = worker_usage(ws)
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+        M.use_records(M.make_records(seed))   # the oracle reads the current records; plan() left the last seed's
         err, ok = P.judge(dec, r['text'], js, native)
         rec = {'seq': seq, 'seed': seed, 'arm': 'K', 'n': N, 'valid': not err, 'error': err, 'jobs_passed': ok, 'jobs': N,
                'worker_calls': calls, 'worker_in': w_in, 'worker_out': w_out,
@@ -112,5 +113,17 @@ def main():
               'worker', calls, w_in, w_out, 'bash', r['bash_calls'], 'wall', r['wall_s'], flush=True)
 
 
+def rescore(path):
+    """Re-judge stored replies with each record's own seed (fixes files written before the records fix)."""
+    rows = [json.loads(l) for l in Path(path).read_text(encoding='utf-8').splitlines()]
+    for r in rows:
+        M.use_records(M.make_records(r['seed']))
+        _, _, dec, native = M.ARMS['0.8-exec'](r['n'])
+        r['error'], r['jobs_passed'] = P.judge(dec, r['text'], M.X.V.jobs('materials', r['n']), native)
+        r['valid'] = not r['error']
+        r['rescored'] = True
+    Path(path).write_text(''.join(json.dumps(r, ensure_ascii=False) + chr(10) for r in rows), encoding='utf-8')
+
+
 if __name__ == '__main__':
-    main()
+    rescore(sys.argv[2]) if sys.argv[1:2] == ['rescore'] else main()
