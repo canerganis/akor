@@ -104,3 +104,21 @@ batched arms in a consistent direction at 16 jobs (Sonnet 12.9 s vs 9.9 s, Opus 
 8. Cache reads are counted at full weight. No price weighting is applied. Cache reads are shown in their own column.
 9. The CLI `usage` field covers only the last turn, so it is not used. All tokens come from `modelUsage`, which covers
    the whole call including subagents. For the 162 single-call records both agree.
+
+## Addendum: arm Q, one OZ/1g call per job (preregistered 2026-10-23, commit e4bd9c4)
+
+| 16 jobs, 3 seeds | Replies accepted | Correct jobs | Tokens per requested job | Tokens per verified job | Median s per seed |
+|---|---:|---:|---:|---:|---:|
+| Sonnet 5.5, OZ/1g one call per job | 48/48 | 48/48 | 2,389.0 | 2,389.0 | 114.6 |
+| Opus 5.5, OZ/1g one call per job | 41/48 | 41/48 | 2,360.6 | 2,763.6 | 109.4 |
+| Haiku 5.5, OZ/1g one call per job | 48/48 | 46/48 | 2,633.2 | 2,747.7 | 116.8 |
+
+What it adds:
+1. Per job, the OZ/1g format answers far more cleanly than plain JSON did (Sonnet 48/48 vs 34/48 in arm P), so most
+   of arm P's correctness loss was the plain format inviting explanations, not the one-job setting.
+2. Cost does not follow the format: one call per job costs about 2,400 to 2,600 tokens per requested job in either
+   format, about 12x one batched OZ/1g call at 16 jobs. The fixed cost of a call dominates; batching is the lever.
+3. All 7 rejected Opus replies wrote a short reasoning line before the `OZ/1g` header (the values were right). That
+   failure was not seen in 100+ batched OZ/1g replies at 16 to 64 jobs. One-job OZ/1g is not qualified, and this is
+   evidence for qualifying each batch size separately, as the foundation record requires.
+Data: `bench/live/data/pilot2q_{sonnet,opus,haiku}.jsonl`.

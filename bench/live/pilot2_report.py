@@ -5,7 +5,7 @@ from pathlib import Path
 
 DATA = Path(__file__).parent / 'data'
 NAMES = {'H': 'OZ/1g, one call', 'J': 'plain JSON, one call', 'P': 'plain JSON, one call per job',
-         'S': 'one subagent per job'}
+         'S': 'one subagent per job', 'Q': 'OZ/1g, one call per job'}
 
 
 def main(files):
@@ -17,7 +17,7 @@ def main(files):
         g = defaultdict(list)
         for r in R:
             g[r['arm']].append(r)
-        for arm in 'HJPS':
+        for arm in 'HJPQS':
             X = g.get(arm)
             if not X:
                 continue
