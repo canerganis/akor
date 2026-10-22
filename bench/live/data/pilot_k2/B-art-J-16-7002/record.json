@@ -1,0 +1,84 @@
+{
+ "tag": "B-art-J-16-7002",
+ "block": "B",
+ "contract": "art",
+ "arm": "J",
+ "n": 16,
+ "seed": 7002,
+ "input_sha256": "d57d183e34cfd9939906498b0d7f7aafeb3e340eb6fb8c8d81212ba02439aac1",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "standard",
+ "jobs": 16,
+ "verified": 16,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 16,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 15.25,
+ "is_error": false,
+ "has_result": true,
+ "turns": 3,
+ "bash_calls": 2,
+ "oz_do_calls": 0,
+ "oz_invocations": 0,
+ "caller_in": 14022,
+ "caller_in_uncached": 6,
+ "caller_cache_read": 12265,
+ "caller_cache_write": 1751,
+ "caller_out": 866,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 0,
+ "worker_calls_with_usage": 0,
+ "worker_in": 0,
+ "worker_cached_in": 0,
+ "worker_out": 0,
+ "total_tokens": 14888,
+ "usage_complete": true,
+ "tokens_per_verified": 930.5,
+ "results_sha256": "19ea65b5f8c2440d1a0de1de3bebaab7e6c0dc2e6c5daf28fd6158d703013e7f",
+ "published_sha256": null,
+ "artifact_intact": null,
+ "messages": [
+  {
+   "id": "msg_011CgJ7qCxnKwuDdXQNQdjxQ",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 662,
+   "cache_read_input_tokens": 3540,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ7qQusVrr66QPUUWgmn",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 321,
+   "cache_read_input_tokens": 4202,
+   "output_tokens": 5
+  },
+  {
+   "id": "msg_011CgJ7qpXwEKhexzGc5Evw2",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 768,
+   "cache_read_input_tokens": 4523,
+   "output_tokens": 56
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ7qCxnKwuDdXQNQdjxQ",
+   "input_bytes": 76,
+   "result_bytes": 451
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ7qQusVrr66QPUUWgmn",
+   "input_bytes": 1307,
+   "result_bytes": 31
+  }
+ ],
+ "attribution": null,
+ "text": "{\"outside\":[\"ma_04\",\"ma_12\"],\"unknown\":[\"ma_06\",\"ma_08\",\"ma_14\",\"ma_16\"],\"not_accepted\":[]}"
+}

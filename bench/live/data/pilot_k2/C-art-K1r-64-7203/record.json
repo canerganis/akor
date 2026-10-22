@@ -1,0 +1,92 @@
+{
+ "tag": "C-art-K1r-64-7203",
+ "block": "C",
+ "contract": "art",
+ "arm": "K1r",
+ "n": 64,
+ "seed": 7203,
+ "input_sha256": "03bbd1828d8b7794dbc17748db06eb0124e99a691563bebc6c8c313c5182ee98",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "outside_qualified",
+ "jobs": 64,
+ "verified": 64,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 64,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 38.47,
+ "is_error": false,
+ "has_result": true,
+ "turns": 3,
+ "bash_calls": 2,
+ "oz_do_calls": 1,
+ "oz_invocations": 1,
+ "caller_in": 27082,
+ "caller_in_uncached": 6,
+ "caller_cache_read": 24140,
+ "caller_cache_write": 2936,
+ "caller_out": 1923,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 1,
+ "worker_calls_with_usage": 1,
+ "worker_in": 25926,
+ "worker_cached_in": 603,
+ "worker_out": 2624,
+ "total_tokens": 57555,
+ "usage_complete": true,
+ "tokens_per_verified": 899.3,
+ "results_sha256": "c32593a7bffb5ab6cec44d797f7bc4c9cd04650a4ac7d06dfb60c740e62ae7f1",
+ "published_sha256": "c32593a7bffb5ab6cec44d797f7bc4c9cd04650a4ac7d06dfb60c740e62ae7f1",
+ "artifact_intact": true,
+ "messages": [
+  {
+   "id": "msg_011CgJ9QCnQcPDMZnkS2f37G",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 666,
+   "cache_read_input_tokens": 6999,
+   "output_tokens": 17
+  },
+  {
+   "id": "msg_011CgJ9SNXLYNcJAJNHr97bg",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 1811,
+   "cache_read_input_tokens": 7665,
+   "output_tokens": 37
+  },
+  {
+   "id": "msg_011CgJ9Sb4ez3sVkhhpzABq9",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 459,
+   "cache_read_input_tokens": 9476,
+   "output_tokens": 121
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9QCnQcPDMZnkS2f37G",
+   "input_bytes": 3388,
+   "result_bytes": 549
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9SNXLYNcJAJNHr97bg",
+   "input_bytes": 577,
+   "result_bytes": 195
+  }
+ ],
+ "attribution": {
+  "carriers": 1,
+  "request_o200k": 948,
+  "out_ratio": 1.4046749452154859,
+  "estimate": 3994.895544192842,
+  "upper": 51,
+  "estimate_share": 0.06941005202315771,
+  "upper_share": 0.0008861089392754757
+ },
+ "text": "{\"outside\":[\"ma_04\",\"ma_16\",\"ma_24\",\"ma_28\",\"ma_36\",\"ma_40\",\"ma_44\",\"ma_48\",\"ma_56\",\"ma_60\",\"ma_64\"],\"unknown\":[\"ma_06\",\"ma_08\",\"ma_10\",\"ma_12\",\"ma_30\",\"ma_32\",\"ma_50\",\"ma_52\"],\"not_accepted\":[]}"
+}

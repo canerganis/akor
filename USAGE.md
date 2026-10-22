@@ -136,6 +136,8 @@ report = worker.run_once()
 
 ## One call for a fan-out: `oz do`
 
+**When it pays.** Measured with Sonnet 5.5 as both caller and worker ([caller-cost results](docs/design/caller-cost-2026-10-23/results.md)): if the caller can do a batch of small jobs itself in one reply, that is cheaper in tokens than handing them to `oz do`, even with inputs in files. Handing them to `oz do` is 9 to 10 times cheaper than one subagent per job ([arm K](docs/design/foundation-2026-10-23/arm-k-results.md)), and it adds durable retries, resume, per-job checks and a separate worker. Use it for those, or instead of spawning subagents; do not expect it to beat inline work on tokens with the same model.
+
 `oz do` is the default entry point for an agent. One command takes a whole request, runs it to completion or to its deadline in the foreground, and prints one compact JSON result. It uses the same inbox, worker, adapter contract, ledger and OZ/1g wire as `send` and `run`; nothing on the model wire is new.
 
 ```powershell

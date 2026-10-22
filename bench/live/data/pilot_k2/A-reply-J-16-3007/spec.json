@@ -1,0 +1,111 @@
+{
+ "tag": "A-reply-J-16-3007",
+ "block": "A",
+ "contract": "reply",
+ "arm": "J",
+ "n": 16,
+ "seed": 3007,
+ "system": "You are a worker agent in a multi-agent orchestration. Do what the packet asks and reply exactly in its format.",
+ "tools": "Bash",
+ "files_sha256": {},
+ "ids": [
+  "ma_01",
+  "ma_02",
+  "ma_03",
+  "ma_04",
+  "ma_05",
+  "ma_06",
+  "ma_07",
+  "ma_08",
+  "ma_09",
+  "ma_10",
+  "ma_11",
+  "ma_12",
+  "ma_13",
+  "ma_14",
+  "ma_15",
+  "ma_16"
+ ],
+ "jobs": [
+  "e1",
+  "b1",
+  "m1",
+  "v1",
+  "e2",
+  "b2",
+  "m2",
+  "v2",
+  "e3",
+  "b3",
+  "m3",
+  "v3",
+  "e4",
+  "b4",
+  "m4",
+  "v4"
+ ],
+ "expected": {
+  "ma_01": [
+   "12.51 mm",
+   "unknown",
+   "5",
+   "micrometer",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_02": "unknown",
+  "ma_03": [
+   "uncertainty"
+  ],
+  "ma_04": "unknown",
+  "ma_05": [
+   "12.46 mm",
+   "0.01 mm",
+   "3",
+   "micrometer",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_06": [
+   "12.45 mm",
+   "12.47 mm"
+  ],
+  "ma_07": [],
+  "ma_08": "outside",
+  "ma_09": [
+   "12.49 mm",
+   "0.01 mm",
+   "3",
+   "micrometer",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_10": [
+   "12.48 mm",
+   "12.50 mm"
+  ],
+  "ma_11": [
+   "basis"
+  ],
+  "ma_12": "inside",
+  "ma_13": [
+   "12.46 mm",
+   "0.01 mm",
+   "6",
+   "micrometer",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_14": [
+   "12.45 mm",
+   "12.47 mm"
+  ],
+  "ma_15": [],
+  "ma_16": "outside"
+ },
+ "oz": null,
+ "max_tokens": null,
+ "workload_class": "standard",
+ "oracle_version": "k2-oracle/1",
+ "input_sha256": "467417ba2e821f949e28ae508305c0ff461d5e90eeabd893be2fecf699048b1d"
+}

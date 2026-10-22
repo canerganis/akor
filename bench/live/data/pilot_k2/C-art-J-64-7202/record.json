@@ -1,0 +1,123 @@
+{
+ "tag": "C-art-J-64-7202",
+ "block": "C",
+ "contract": "art",
+ "arm": "J",
+ "n": 64,
+ "seed": 7202,
+ "input_sha256": "ea93a19955722c58390d63299145e429271e4913c8629371c3e100b106cec3ad",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "outside_qualified",
+ "jobs": 64,
+ "verified": 64,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 64,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 24.17,
+ "is_error": false,
+ "has_result": true,
+ "turns": 6,
+ "bash_calls": 5,
+ "oz_do_calls": 0,
+ "oz_invocations": 0,
+ "caller_in": 56426,
+ "caller_in_uncached": 12,
+ "caller_cache_read": 51941,
+ "caller_cache_write": 4473,
+ "caller_out": 1931,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 0,
+ "worker_calls_with_usage": 0,
+ "worker_in": 0,
+ "worker_cached_in": 0,
+ "worker_out": 0,
+ "total_tokens": 58357,
+ "usage_complete": true,
+ "tokens_per_verified": 911.83,
+ "results_sha256": "fe11546da92ad409e3dd3d79780f57af0989c34c92802d20f7fcc55f9186c0bc",
+ "published_sha256": null,
+ "artifact_intact": null,
+ "messages": [
+  {
+   "id": "msg_011CgJ9KVU7YUocs9MzN3wA4",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 664,
+   "cache_read_input_tokens": 6600,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ9Ki87nfyddrgqz7ncz",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 982,
+   "cache_read_input_tokens": 7264,
+   "output_tokens": 39
+  },
+  {
+   "id": "msg_011CgJ9KtGZb59Ks9h9Es7B3",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 1125,
+   "cache_read_input_tokens": 8246,
+   "output_tokens": 7
+  },
+  {
+   "id": "msg_011CgJ9LGkADFtRRWxXazoLx",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 763,
+   "cache_read_input_tokens": 9371,
+   "output_tokens": 17
+  },
+  {
+   "id": "msg_011CgJ9LPZgtREPL4evrWV6c",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 192,
+   "cache_read_input_tokens": 10134,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ9LgVfhFJAtpGuMhnVc",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 747,
+   "cache_read_input_tokens": 10326,
+   "output_tokens": 3
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9KVU7YUocs9MzN3wA4",
+   "input_bytes": 86,
+   "result_bytes": 2255
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9Ki87nfyddrgqz7ncz",
+   "input_bytes": 187,
+   "result_bytes": 1893
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9KtGZb59Ks9h9Es7B3",
+   "input_bytes": 1211,
+   "result_bytes": 29
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9LGkADFtRRWxXazoLx",
+   "input_bytes": 54,
+   "result_bytes": 201
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9LPZgtREPL4evrWV6c",
+   "input_bytes": 1198,
+   "result_bytes": 195
+  }
+ ],
+ "attribution": null,
+ "text": "{\"outside\":[\"ma_04\",\"ma_08\",\"ma_12\",\"ma_16\",\"ma_24\",\"ma_32\",\"ma_36\",\"ma_40\",\"ma_44\",\"ma_48\",\"ma_52\",\"ma_56\",\"ma_60\"],\"unknown\":[\"ma_18\",\"ma_20\",\"ma_26\",\"ma_28\",\"ma_62\",\"ma_64\"],\"not_accepted\":[]}"
+}

@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "channels": {
+    "worker": {
+      "session": "do-ha41ba37a5c4d21d8",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "worker",
+      "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.43 mm; uncertainty=unknown; n=1; method=micrometer; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/1.txt@sha256:2633aff480260aab6593c47ef82270c568fa81e3708681638c7241e9606d490a",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "source",
+          "text": "length=12.49 mm; uncertainty=0.02 mm; n=5; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/2.txt@sha256:537a809cee7425e42c9885ce83c91c0a866a384a645c3dc64f59e174cb78bca9",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "source",
+          "text": "length=12.60 mm; uncertainty=0.01 mm; n=3; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "refs/3.txt@sha256:568b5680ab8b68048feb9035ae5f1c7ab5b2a7d84efc8964ceae84cca3146720",
+          "status": ""
+        },
+        {
+          "number": 4,
+          "kind": "source",
+          "text": "length=12.56 mm; uncertainty=0.03 mm; n=6; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/4.txt@sha256:7cec22066fe3ee252b0f67346c5fdb9310e9f833307ba6efc4149a843c180911",
+          "status": ""
+        }
+      ],
+      "macros": []
+    },
+    "refs": {
+      "session": "do-ha41ba37a5c4d21d8",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "host",
+      "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.43 mm; uncertainty=unknown; n=1; method=micrometer; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/1.txt@sha256:2633aff480260aab6593c47ef82270c568fa81e3708681638c7241e9606d490a",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "source",
+          "text": "length=12.49 mm; uncertainty=0.02 mm; n=5; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/2.txt@sha256:537a809cee7425e42c9885ce83c91c0a866a384a645c3dc64f59e174cb78bca9",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "source",
+          "text": "length=12.60 mm; uncertainty=0.01 mm; n=3; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "refs/3.txt@sha256:568b5680ab8b68048feb9035ae5f1c7ab5b2a7d84efc8964ceae84cca3146720",
+          "status": ""
+        },
+        {
+          "number": 4,
+          "kind": "source",
+          "text": "length=12.56 mm; uncertainty=0.03 mm; n=6; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/4.txt@sha256:7cec22066fe3ee252b0f67346c5fdb9310e9f833307ba6efc4149a843c180911",
+          "status": ""
+        }
+      ],
+      "macros": []
+    }
+  },
+  "encodings": [
+    "o200k_base"
+  ],
+  "max_tokens": 2048,
+  "batch_size": 64
+}

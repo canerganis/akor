@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "channels": {
+    "worker": {
+      "session": "do-h78235792bf5edb72",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "worker",
+      "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.43 mm; uncertainty=0.03 mm; n=6; method=micrometer; basis=resolution; physical_validation=not_claimed",
+          "source": "refs/1.txt@sha256:134757cf7a513a1a73b53a0d2f9e91ffe61656892939dd45887807837035bb8f",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=0.03 mm; n=6; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/2.txt@sha256:8e779f43282b53be1aef0a5828ad220e6fb75fe6214465dd969528e1001b5535",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "source",
+          "text": "length=12.46 mm; uncertainty=unknown; n=2; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "refs/3.txt@sha256:ca377ab3694ab3021da1414da091336324e13095f29061b0d7178975860ee4a3",
+          "status": ""
+        },
+        {
+          "number": 4,
+          "kind": "source",
+          "text": "length=12.49 mm; uncertainty=0.02 mm; n=3; method=micrometer; basis=resolution; physical_validation=not_claimed",
+          "source": "refs/4.txt@sha256:d091d31c440aae2b8c4e182fa324eaba6646bb5d19c842ed05944cab1d50f4ec",
+          "status": ""
+        }
+      ],
+      "macros": []
+    },
+    "refs": {
+      "session": "do-h78235792bf5edb72",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "host",
+      "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.43 mm; uncertainty=0.03 mm; n=6; method=micrometer; basis=resolution; physical_validation=not_claimed",
+          "source": "refs/1.txt@sha256:134757cf7a513a1a73b53a0d2f9e91ffe61656892939dd45887807837035bb8f",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=0.03 mm; n=6; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "refs/2.txt@sha256:8e779f43282b53be1aef0a5828ad220e6fb75fe6214465dd969528e1001b5535",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "source",
+          "text": "length=12.46 mm; uncertainty=unknown; n=2; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "refs/3.txt@sha256:ca377ab3694ab3021da1414da091336324e13095f29061b0d7178975860ee4a3",
+          "status": ""
+        },
+        {
+          "number": 4,
+          "kind": "source",
+          "text": "length=12.49 mm; uncertainty=0.02 mm; n=3; method=micrometer; basis=resolution; physical_validation=not_claimed",
+          "source": "refs/4.txt@sha256:d091d31c440aae2b8c4e182fa324eaba6646bb5d19c842ed05944cab1d50f4ec",
+          "status": ""
+        }
+      ],
+      "macros": []
+    }
+  },
+  "encodings": [
+    "o200k_base"
+  ],
+  "max_tokens": 2048,
+  "batch_size": 64
+}

@@ -1,0 +1,17 @@
+{"model":"claude-sonnet-5-5","goal":"Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.","ops":{"fields":"Return a compact JSON array of strings containing the reference's length, uncertainty, n, method, basis, physical_validation, in that order, preserving field values exactly.","bounds":"Return a compact JSON array [length-uncertainty,length+uncertainty], each formatted as a string with two decimal places and unit mm. If uncertainty is unknown, return unknown.","unk":"Return a compact JSON array of field names whose values are unknown, in this order: uncertainty, method, basis.","incl":"Return inside if the entire length +/- uncertainty interval lies within the acceptance interval [12.48,12.52] mm inclusive; outside otherwise. If uncertainty is unknown, return unknown."},"refs":{"1":{"path":"refs/1.txt"},"2":{"path":"refs/2.txt"},"3":{"path":"refs/3.txt"},"4":{"path":"refs/4.txt"},"5":{"path":"refs/5.txt"},"6":{"path":"refs/6.txt"},"7":{"path":"refs/7.txt"},"8":{"path":"refs/8.txt"},"9":{"path":"refs/9.txt"},"10":{"path":"refs/10.txt"},"11":{"path":"refs/11.txt"},"12":{"path":"refs/12.txt"},"13":{"path":"refs/13.txt"},"14":{"path":"refs/14.txt"},"15":{"path":"refs/15.txt"},"16":{"path":"refs/16.txt"}},"jobs":[
+["ma_01","fields","1"],["ma_02","bounds","1"],["ma_03","unk","1"],["ma_04","incl","1"],
+["ma_05","fields","2"],["ma_06","bounds","2"],["ma_07","unk","2"],["ma_08","incl","2"],
+["ma_09","fields","3"],["ma_10","bounds","3"],["ma_11","unk","3"],["ma_12","incl","3"],
+["ma_13","fields","4"],["ma_14","bounds","4"],["ma_15","unk","4"],["ma_16","incl","4"],
+["ma_17","fields","5"],["ma_18","bounds","5"],["ma_19","unk","5"],["ma_20","incl","5"],
+["ma_21","fields","6"],["ma_22","bounds","6"],["ma_23","unk","6"],["ma_24","incl","6"],
+["ma_25","fields","7"],["ma_26","bounds","7"],["ma_27","unk","7"],["ma_28","incl","7"],
+["ma_29","fields","8"],["ma_30","bounds","8"],["ma_31","unk","8"],["ma_32","incl","8"],
+["ma_33","fields","9"],["ma_34","bounds","9"],["ma_35","unk","9"],["ma_36","incl","9"],
+["ma_37","fields","10"],["ma_38","bounds","10"],["ma_39","unk","10"],["ma_40","incl","10"],
+["ma_41","fields","11"],["ma_42","bounds","11"],["ma_43","unk","11"],["ma_44","incl","11"],
+["ma_45","fields","12"],["ma_46","bounds","12"],["ma_47","unk","12"],["ma_48","incl","12"],
+["ma_49","fields","13"],["ma_50","bounds","13"],["ma_51","unk","13"],["ma_52","incl","13"],
+["ma_53","fields","14"],["ma_54","bounds","14"],["ma_55","unk","14"],["ma_56","incl","14"],
+["ma_57","fields","15"],["ma_58","bounds","15"],["ma_59","unk","15"],["ma_60","incl","15"],
+["ma_61","fields","16"],["ma_62","bounds","16"],["ma_63","unk","16"],["ma_64","incl","16"]]}

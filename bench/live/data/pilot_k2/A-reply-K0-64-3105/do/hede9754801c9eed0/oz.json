@@ -1,0 +1,258 @@
+{
+  "version": 1,
+  "channels": {
+    "worker": {
+      "session": "do-hede9754801c9eed0",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "worker",
+      "goal": "Prepare an evidence-limited inspection handoff. Acceptance interval [12.48,12.52] mm inclusive; arithmetic only.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.55 mm; uncertainty=0.03 mm; n=2; method=micrometer; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:0c761aa36dc8cdae34c4dee16a8c78638ef66b34d95d3dc12d3febb6ee57ef1c",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "source",
+          "text": "length=12.56 mm; uncertainty=0.02 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:340466db66110bc849b64723cf1f78dfebb88c4a8c8b537ed869421cfcb19416",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "source",
+          "text": "length=12.54 mm; uncertainty=0.03 mm; n=3; method=micrometer; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:0fe24cba5ab2a66d875782d947e6a253fa36817990e57a0dc1833cfc6eca9796",
+          "status": ""
+        },
+        {
+          "number": 4,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=unknown; n=3; method=micrometer; basis=expanded; physical_validation=not_claimed",
+          "source": "inline@sha256:a88d11d011a73b11bbe9fd06334516f7e6b3ff890457d8f2cdd02f8e5ff26475",
+          "status": ""
+        },
+        {
+          "number": 5,
+          "kind": "source",
+          "text": "length=12.48 mm; uncertainty=unknown; n=5; method=unknown; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:f1e36d904b8f3dafdc28fb89981236d01e07f189c20a6d878fddefaca574efac",
+          "status": ""
+        },
+        {
+          "number": 6,
+          "kind": "source",
+          "text": "length=12.59 mm; uncertainty=0.02 mm; n=1; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "inline@sha256:f07147e640cca1770e4a7f017cfba09a83357b368daf3f321194d82333fd1fc8",
+          "status": ""
+        },
+        {
+          "number": 7,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=0.02 mm; n=4; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:c9e95a22aca8888b7aadc9570279f196a4798875188b8c43d196c85aa24d3140",
+          "status": ""
+        },
+        {
+          "number": 8,
+          "kind": "source",
+          "text": "length=12.54 mm; uncertainty=0.01 mm; n=6; method=micrometer; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:041c88a3be65eba6f227bd09d5c3b32343ecd5528e718787d6d1cf910061c040",
+          "status": ""
+        },
+        {
+          "number": 9,
+          "kind": "source",
+          "text": "length=12.41 mm; uncertainty=0.01 mm; n=6; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:366c046145dad2673a4f428ea594c708d2c2118ad1ccd0d1086c95e50ccc8d64",
+          "status": ""
+        },
+        {
+          "number": 10,
+          "kind": "source",
+          "text": "length=12.58 mm; uncertainty=0.03 mm; n=3; method=caliper; basis=expanded; physical_validation=not_claimed",
+          "source": "inline@sha256:ae175548531e4750ddc339172a711ac562236007873e838bc2fc38cec7cd7059",
+          "status": ""
+        },
+        {
+          "number": 11,
+          "kind": "source",
+          "text": "length=12.58 mm; uncertainty=0.03 mm; n=5; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:7dba500d734c8b334dbb1390b76f96100ec7dc59b7ebba8fc5026a7dcbd00d55",
+          "status": ""
+        },
+        {
+          "number": 12,
+          "kind": "source",
+          "text": "length=12.51 mm; uncertainty=unknown; n=5; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:8f16ff108ab9524e4e580bb597aceb7654cb696905e537a7076cca888edd44cd",
+          "status": ""
+        },
+        {
+          "number": 13,
+          "kind": "source",
+          "text": "length=12.48 mm; uncertainty=unknown; n=6; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:b8b41400eb3b9705c70e0ea494e0fa173fa6891b0672101242d6310c8ac18498",
+          "status": ""
+        },
+        {
+          "number": 14,
+          "kind": "source",
+          "text": "length=12.60 mm; uncertainty=unknown; n=3; method=unknown; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:a87424014a7c408e5549809ffe4e48bc6941cb65ca9eb9199f97dc0178b58ef8",
+          "status": ""
+        },
+        {
+          "number": 15,
+          "kind": "source",
+          "text": "length=12.54 mm; uncertainty=0.02 mm; n=3; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:0c3ad2d7c5f80a60204030625770754dd3b40f6b6094ce7b2c1c2589b3133c11",
+          "status": ""
+        },
+        {
+          "number": 16,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=0.03 mm; n=1; method=unknown; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:ddc95773941044bc0399c294484ada907a5ab95be0d844bc27664319cce331fa",
+          "status": ""
+        }
+      ],
+      "macros": []
+    },
+    "refs": {
+      "session": "do-hede9754801c9eed0",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "host",
+      "goal": "Prepare an evidence-limited inspection handoff. Acceptance interval [12.48,12.52] mm inclusive; arithmetic only.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.55 mm; uncertainty=0.03 mm; n=2; method=micrometer; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:0c761aa36dc8cdae34c4dee16a8c78638ef66b34d95d3dc12d3febb6ee57ef1c",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "source",
+          "text": "length=12.56 mm; uncertainty=0.02 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:340466db66110bc849b64723cf1f78dfebb88c4a8c8b537ed869421cfcb19416",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "source",
+          "text": "length=12.54 mm; uncertainty=0.03 mm; n=3; method=micrometer; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:0fe24cba5ab2a66d875782d947e6a253fa36817990e57a0dc1833cfc6eca9796",
+          "status": ""
+        },
+        {
+          "number": 4,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=unknown; n=3; method=micrometer; basis=expanded; physical_validation=not_claimed",
+          "source": "inline@sha256:a88d11d011a73b11bbe9fd06334516f7e6b3ff890457d8f2cdd02f8e5ff26475",
+          "status": ""
+        },
+        {
+          "number": 5,
+          "kind": "source",
+          "text": "length=12.48 mm; uncertainty=unknown; n=5; method=unknown; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:f1e36d904b8f3dafdc28fb89981236d01e07f189c20a6d878fddefaca574efac",
+          "status": ""
+        },
+        {
+          "number": 6,
+          "kind": "source",
+          "text": "length=12.59 mm; uncertainty=0.02 mm; n=1; method=unknown; basis=expanded; physical_validation=not_claimed",
+          "source": "inline@sha256:f07147e640cca1770e4a7f017cfba09a83357b368daf3f321194d82333fd1fc8",
+          "status": ""
+        },
+        {
+          "number": 7,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=0.02 mm; n=4; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:c9e95a22aca8888b7aadc9570279f196a4798875188b8c43d196c85aa24d3140",
+          "status": ""
+        },
+        {
+          "number": 8,
+          "kind": "source",
+          "text": "length=12.54 mm; uncertainty=0.01 mm; n=6; method=micrometer; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:041c88a3be65eba6f227bd09d5c3b32343ecd5528e718787d6d1cf910061c040",
+          "status": ""
+        },
+        {
+          "number": 9,
+          "kind": "source",
+          "text": "length=12.41 mm; uncertainty=0.01 mm; n=6; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:366c046145dad2673a4f428ea594c708d2c2118ad1ccd0d1086c95e50ccc8d64",
+          "status": ""
+        },
+        {
+          "number": 10,
+          "kind": "source",
+          "text": "length=12.58 mm; uncertainty=0.03 mm; n=3; method=caliper; basis=expanded; physical_validation=not_claimed",
+          "source": "inline@sha256:ae175548531e4750ddc339172a711ac562236007873e838bc2fc38cec7cd7059",
+          "status": ""
+        },
+        {
+          "number": 11,
+          "kind": "source",
+          "text": "length=12.58 mm; uncertainty=0.03 mm; n=5; method=caliper; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:7dba500d734c8b334dbb1390b76f96100ec7dc59b7ebba8fc5026a7dcbd00d55",
+          "status": ""
+        },
+        {
+          "number": 12,
+          "kind": "source",
+          "text": "length=12.51 mm; uncertainty=unknown; n=5; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:8f16ff108ab9524e4e580bb597aceb7654cb696905e537a7076cca888edd44cd",
+          "status": ""
+        },
+        {
+          "number": 13,
+          "kind": "source",
+          "text": "length=12.48 mm; uncertainty=unknown; n=6; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:b8b41400eb3b9705c70e0ea494e0fa173fa6891b0672101242d6310c8ac18498",
+          "status": ""
+        },
+        {
+          "number": 14,
+          "kind": "source",
+          "text": "length=12.60 mm; uncertainty=unknown; n=3; method=unknown; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:a87424014a7c408e5549809ffe4e48bc6941cb65ca9eb9199f97dc0178b58ef8",
+          "status": ""
+        },
+        {
+          "number": 15,
+          "kind": "source",
+          "text": "length=12.54 mm; uncertainty=0.02 mm; n=3; method=caliper; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:0c3ad2d7c5f80a60204030625770754dd3b40f6b6094ce7b2c1c2589b3133c11",
+          "status": ""
+        },
+        {
+          "number": 16,
+          "kind": "source",
+          "text": "length=12.44 mm; uncertainty=0.03 mm; n=1; method=unknown; basis=resolution; physical_validation=not_claimed",
+          "source": "inline@sha256:ddc95773941044bc0399c294484ada907a5ab95be0d844bc27664319cce331fa",
+          "status": ""
+        }
+      ],
+      "macros": []
+    }
+  },
+  "encodings": [
+    "o200k_base"
+  ],
+  "max_tokens": 2048,
+  "batch_size": 64
+}

@@ -1,0 +1,79 @@
+{
+ "tag": "B-art-K1f-64-7103",
+ "block": "B",
+ "contract": "art",
+ "arm": "K1f",
+ "n": 64,
+ "seed": 7103,
+ "input_sha256": "ca6e205c3e020b3ffa983078dcd9b62df59faeba4aca1826aead556411c03869",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "standard",
+ "jobs": 64,
+ "verified": 64,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 64,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 36.59,
+ "is_error": false,
+ "has_result": true,
+ "turns": 2,
+ "bash_calls": 1,
+ "oz_do_calls": 1,
+ "oz_invocations": 1,
+ "caller_in": 19601,
+ "caller_in_uncached": 4,
+ "caller_cache_read": 14579,
+ "caller_cache_write": 5018,
+ "caller_out": 2005,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 1,
+ "worker_calls_with_usage": 1,
+ "worker_in": 3145,
+ "worker_cached_in": 603,
+ "worker_out": 2416,
+ "total_tokens": 27167,
+ "usage_complete": true,
+ "tokens_per_verified": 424.48,
+ "results_sha256": "d49102c2a059dc69e668fe6176725681aa120da835e6f833ab39f51f68149a68",
+ "published_sha256": "d49102c2a059dc69e668fe6176725681aa120da835e6f833ab39f51f68149a68",
+ "artifact_intact": true,
+ "messages": [
+  {
+   "id": "msg_011CgJ99hnkDC6vMSH7ZDFyx",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 661,
+   "cache_read_input_tokens": 6959,
+   "output_tokens": 8
+  },
+  {
+   "id": "msg_011CgJ9BseNvKzePVmgounCQ",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 4357,
+   "cache_read_input_tokens": 7620,
+   "output_tokens": 5
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ99hnkDC6vMSH7ZDFyx",
+   "input_bytes": 3482,
+   "result_bytes": 5277
+  }
+ ],
+ "attribution": {
+  "carriers": 1,
+  "request_o200k": 1028,
+  "out_ratio": 1.5824782951854774,
+  "estimate": 3253.5753749013415,
+  "upper": 16,
+  "estimate_share": 0.11976204125966583,
+  "upper_share": 0.000588949828836456
+ },
+ "text": "{\"outside\":[\"ma_04\",\"ma_12\",\"ma_16\",\"ma_20\",\"ma_28\",\"ma_36\",\"ma_40\",\"ma_52\",\"ma_56\",\"ma_60\",\"ma_64\"],\"unknown\":[\"ma_06\",\"ma_08\",\"ma_22\",\"ma_24\",\"ma_30\",\"ma_32\",\"ma_42\",\"ma_44\",\"ma_46\",\"ma_48\"],\"not_accepted\":[]}"
+}

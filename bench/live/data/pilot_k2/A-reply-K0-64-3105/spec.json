@@ -1,0 +1,386 @@
+{
+ "tag": "A-reply-K0-64-3105",
+ "block": "A",
+ "contract": "reply",
+ "arm": "K0",
+ "n": 64,
+ "seed": 3105,
+ "system": "You are a worker agent in a multi-agent orchestration. Do what the packet asks and reply exactly in its format.",
+ "tools": "Bash",
+ "files_sha256": {},
+ "ids": [
+  "ma_01",
+  "ma_02",
+  "ma_03",
+  "ma_04",
+  "ma_05",
+  "ma_06",
+  "ma_07",
+  "ma_08",
+  "ma_09",
+  "ma_10",
+  "ma_11",
+  "ma_12",
+  "ma_13",
+  "ma_14",
+  "ma_15",
+  "ma_16",
+  "ma_17",
+  "ma_18",
+  "ma_19",
+  "ma_20",
+  "ma_21",
+  "ma_22",
+  "ma_23",
+  "ma_24",
+  "ma_25",
+  "ma_26",
+  "ma_27",
+  "ma_28",
+  "ma_29",
+  "ma_30",
+  "ma_31",
+  "ma_32",
+  "ma_33",
+  "ma_34",
+  "ma_35",
+  "ma_36",
+  "ma_37",
+  "ma_38",
+  "ma_39",
+  "ma_40",
+  "ma_41",
+  "ma_42",
+  "ma_43",
+  "ma_44",
+  "ma_45",
+  "ma_46",
+  "ma_47",
+  "ma_48",
+  "ma_49",
+  "ma_50",
+  "ma_51",
+  "ma_52",
+  "ma_53",
+  "ma_54",
+  "ma_55",
+  "ma_56",
+  "ma_57",
+  "ma_58",
+  "ma_59",
+  "ma_60",
+  "ma_61",
+  "ma_62",
+  "ma_63",
+  "ma_64"
+ ],
+ "jobs": [
+  "e1",
+  "b1",
+  "m1",
+  "v1",
+  "e2",
+  "b2",
+  "m2",
+  "v2",
+  "e3",
+  "b3",
+  "m3",
+  "v3",
+  "e4",
+  "b4",
+  "m4",
+  "v4",
+  "e5",
+  "b5",
+  "m5",
+  "v5",
+  "e6",
+  "b6",
+  "m6",
+  "v6",
+  "e7",
+  "b7",
+  "m7",
+  "v7",
+  "e8",
+  "b8",
+  "m8",
+  "v8",
+  "e9",
+  "b9",
+  "m9",
+  "v9",
+  "e10",
+  "b10",
+  "m10",
+  "v10",
+  "e11",
+  "b11",
+  "m11",
+  "v11",
+  "e12",
+  "b12",
+  "m12",
+  "v12",
+  "e13",
+  "b13",
+  "m13",
+  "v13",
+  "e14",
+  "b14",
+  "m14",
+  "v14",
+  "e15",
+  "b15",
+  "m15",
+  "v15",
+  "e16",
+  "b16",
+  "m16",
+  "v16"
+ ],
+ "expected": {
+  "ma_01": [
+   "12.55 mm",
+   "0.03 mm",
+   "2",
+   "micrometer",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_02": [
+   "12.52 mm",
+   "12.58 mm"
+  ],
+  "ma_03": [],
+  "ma_04": "outside",
+  "ma_05": [
+   "12.41 mm",
+   "0.01 mm",
+   "6",
+   "caliper",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_06": [
+   "12.40 mm",
+   "12.42 mm"
+  ],
+  "ma_07": [
+   "basis"
+  ],
+  "ma_08": "outside",
+  "ma_09": [
+   "12.58 mm",
+   "0.03 mm",
+   "3",
+   "caliper",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_10": [
+   "12.55 mm",
+   "12.61 mm"
+  ],
+  "ma_11": [],
+  "ma_12": "outside",
+  "ma_13": [
+   "12.58 mm",
+   "0.03 mm",
+   "5",
+   "caliper",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_14": [
+   "12.55 mm",
+   "12.61 mm"
+  ],
+  "ma_15": [
+   "basis"
+  ],
+  "ma_16": "outside",
+  "ma_17": [
+   "12.51 mm",
+   "unknown",
+   "5",
+   "caliper",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_18": "unknown",
+  "ma_19": [
+   "uncertainty"
+  ],
+  "ma_20": "unknown",
+  "ma_21": [
+   "12.48 mm",
+   "unknown",
+   "6",
+   "caliper",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_22": "unknown",
+  "ma_23": [
+   "uncertainty"
+  ],
+  "ma_24": "unknown",
+  "ma_25": [
+   "12.60 mm",
+   "unknown",
+   "3",
+   "unknown",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_26": "unknown",
+  "ma_27": [
+   "uncertainty",
+   "method"
+  ],
+  "ma_28": "unknown",
+  "ma_29": [
+   "12.54 mm",
+   "0.02 mm",
+   "3",
+   "caliper",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_30": [
+   "12.52 mm",
+   "12.56 mm"
+  ],
+  "ma_31": [],
+  "ma_32": "outside",
+  "ma_33": [
+   "12.44 mm",
+   "0.03 mm",
+   "1",
+   "unknown",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_34": [
+   "12.41 mm",
+   "12.47 mm"
+  ],
+  "ma_35": [
+   "method"
+  ],
+  "ma_36": "outside",
+  "ma_37": [
+   "12.56 mm",
+   "0.02 mm",
+   "1",
+   "caliper",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_38": [
+   "12.54 mm",
+   "12.58 mm"
+  ],
+  "ma_39": [],
+  "ma_40": "outside",
+  "ma_41": [
+   "12.54 mm",
+   "0.03 mm",
+   "3",
+   "micrometer",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_42": [
+   "12.51 mm",
+   "12.57 mm"
+  ],
+  "ma_43": [
+   "basis"
+  ],
+  "ma_44": "outside",
+  "ma_45": [
+   "12.44 mm",
+   "unknown",
+   "3",
+   "micrometer",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_46": "unknown",
+  "ma_47": [
+   "uncertainty"
+  ],
+  "ma_48": "unknown",
+  "ma_49": [
+   "12.48 mm",
+   "unknown",
+   "5",
+   "unknown",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_50": "unknown",
+  "ma_51": [
+   "uncertainty",
+   "method",
+   "basis"
+  ],
+  "ma_52": "unknown",
+  "ma_53": [
+   "12.59 mm",
+   "0.02 mm",
+   "1",
+   "unknown",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_54": [
+   "12.57 mm",
+   "12.61 mm"
+  ],
+  "ma_55": [
+   "method"
+  ],
+  "ma_56": "outside",
+  "ma_57": [
+   "12.44 mm",
+   "0.02 mm",
+   "4",
+   "caliper",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_58": [
+   "12.42 mm",
+   "12.46 mm"
+  ],
+  "ma_59": [
+   "basis"
+  ],
+  "ma_60": "outside",
+  "ma_61": [
+   "12.54 mm",
+   "0.01 mm",
+   "6",
+   "micrometer",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_62": [
+   "12.53 mm",
+   "12.55 mm"
+  ],
+  "ma_63": [
+   "basis"
+  ],
+  "ma_64": "outside"
+ },
+ "oz": "legacy",
+ "max_tokens": null,
+ "workload_class": "standard",
+ "oracle_version": "k2-oracle/1",
+ "input_sha256": "dcb946ed492e717231c640e0fd3abf84a769373d97fe4729f9d1e690bad8fe71"
+}

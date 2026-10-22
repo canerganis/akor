@@ -1,0 +1,105 @@
+{
+ "tag": "B-art-K1r-64-7103",
+ "block": "B",
+ "contract": "art",
+ "arm": "K1r",
+ "n": 64,
+ "seed": 7103,
+ "input_sha256": "826878c377cdc407afedec4e30331b2333a8feb485fcced9c1bffd6763338e68",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "standard",
+ "jobs": 64,
+ "verified": 64,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 64,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 39.84,
+ "is_error": false,
+ "has_result": true,
+ "turns": 4,
+ "bash_calls": 3,
+ "oz_do_calls": 1,
+ "oz_invocations": 1,
+ "caller_in": 36754,
+ "caller_in_uncached": 8,
+ "caller_cache_read": 33103,
+ "caller_cache_write": 3643,
+ "caller_out": 2447,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 1,
+ "worker_calls_with_usage": 1,
+ "worker_in": 3154,
+ "worker_cached_in": 2438,
+ "worker_out": 2390,
+ "total_tokens": 44745,
+ "usage_complete": true,
+ "tokens_per_verified": 699.14,
+ "results_sha256": "c1fdee20f7dd1b8caa73c368face603ec8298d13770184a41178b875e0b9d07c",
+ "published_sha256": "c1fdee20f7dd1b8caa73c368face603ec8298d13770184a41178b875e0b9d07c",
+ "artifact_intact": true,
+ "messages": [
+  {
+   "id": "msg_011CgJ9CQewm4VY7PLrJUuS9",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 664,
+   "cache_read_input_tokens": 6999,
+   "output_tokens": 17
+  },
+  {
+   "id": "msg_011CgJ9CqWvUPHipm9RQVmaQ",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 669,
+   "cache_read_input_tokens": 7663,
+   "output_tokens": 6
+  },
+  {
+   "id": "msg_011CgJ9Eee834YvJfMEHBD2G",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 1777,
+   "cache_read_input_tokens": 8332,
+   "output_tokens": 36
+  },
+  {
+   "id": "msg_011CgJ9EoqXUA29gMQi4j31K",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 533,
+   "cache_read_input_tokens": 10109,
+   "output_tokens": 3
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9CQewm4VY7PLrJUuS9",
+   "input_bytes": 1433,
+   "result_bytes": 16
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9CqWvUPHipm9RQVmaQ",
+   "input_bytes": 3101,
+   "result_bytes": 548
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ9Eee834YvJfMEHBD2G",
+   "input_bytes": 177,
+   "result_bytes": 694
+  }
+ ],
+ "attribution": {
+  "carriers": 2,
+  "request_o200k": 1296,
+  "out_ratio": 1.5370603015075377,
+  "estimate": 6512.524497487437,
+  "upper": 86,
+  "estimate_share": 0.14554753598139317,
+  "upper_share": 0.0019220024583752374
+ },
+ "text": "{\"outside\":[\"ma_04\",\"ma_12\",\"ma_16\",\"ma_20\",\"ma_28\",\"ma_36\",\"ma_40\",\"ma_52\",\"ma_56\",\"ma_60\",\"ma_64\"],\"unknown\":[\"ma_06\",\"ma_08\",\"ma_22\",\"ma_24\",\"ma_30\",\"ma_32\",\"ma_42\",\"ma_44\",\"ma_46\",\"ma_48\"],\"not_accepted\":[]}"
+}

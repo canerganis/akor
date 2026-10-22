@@ -1,0 +1,120 @@
+{
+ "tag": "B-reply-J-16-7003",
+ "block": "B",
+ "contract": "reply",
+ "arm": "J",
+ "n": 16,
+ "seed": 7003,
+ "system": "You are a worker agent in a multi-agent orchestration. Do what the packet asks and reply exactly in its format.",
+ "tools": "Bash",
+ "files_sha256": {
+  "refs/1.txt": "2633aff480260aab6593c47ef82270c568fa81e3708681638c7241e9606d490a",
+  "refs/2.txt": "537a809cee7425e42c9885ce83c91c0a866a384a645c3dc64f59e174cb78bca9",
+  "refs/3.txt": "568b5680ab8b68048feb9035ae5f1c7ab5b2a7d84efc8964ceae84cca3146720",
+  "refs/4.txt": "7cec22066fe3ee252b0f67346c5fdb9310e9f833307ba6efc4149a843c180911"
+ },
+ "ids": [
+  "ma_01",
+  "ma_02",
+  "ma_03",
+  "ma_04",
+  "ma_05",
+  "ma_06",
+  "ma_07",
+  "ma_08",
+  "ma_09",
+  "ma_10",
+  "ma_11",
+  "ma_12",
+  "ma_13",
+  "ma_14",
+  "ma_15",
+  "ma_16"
+ ],
+ "jobs": [
+  "e1",
+  "b1",
+  "m1",
+  "v1",
+  "e2",
+  "b2",
+  "m2",
+  "v2",
+  "e3",
+  "b3",
+  "m3",
+  "v3",
+  "e4",
+  "b4",
+  "m4",
+  "v4"
+ ],
+ "expected": {
+  "ma_01": [
+   "12.43 mm",
+   "unknown",
+   "1",
+   "micrometer",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_02": "unknown",
+  "ma_03": [
+   "uncertainty"
+  ],
+  "ma_04": "unknown",
+  "ma_05": [
+   "12.49 mm",
+   "0.02 mm",
+   "5",
+   "unknown",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_06": [
+   "12.47 mm",
+   "12.51 mm"
+  ],
+  "ma_07": [
+   "method"
+  ],
+  "ma_08": "outside",
+  "ma_09": [
+   "12.60 mm",
+   "0.01 mm",
+   "3",
+   "caliper",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_10": [
+   "12.59 mm",
+   "12.61 mm"
+  ],
+  "ma_11": [
+   "basis"
+  ],
+  "ma_12": "outside",
+  "ma_13": [
+   "12.56 mm",
+   "0.03 mm",
+   "6",
+   "unknown",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_14": [
+   "12.53 mm",
+   "12.59 mm"
+  ],
+  "ma_15": [
+   "method"
+  ],
+  "ma_16": "outside"
+ },
+ "oz": null,
+ "max_tokens": null,
+ "workload_class": "standard",
+ "oracle_version": "k2-oracle/1",
+ "input_sha256": "70f283ed2394abefeada2ade7b08589f52b1bbdca76d6aba17cc05d012a7e67e"
+}

@@ -1,0 +1,92 @@
+{
+ "tag": "B-art-K1r-16-7003",
+ "block": "B",
+ "contract": "art",
+ "arm": "K1r",
+ "n": 16,
+ "seed": 7003,
+ "input_sha256": "d31c319c68731844e5331638335936d86a18c2c16b6af3f622b642f6c6becad7",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "standard",
+ "jobs": 16,
+ "verified": 16,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 16,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 23.56,
+ "is_error": false,
+ "has_result": true,
+ "turns": 3,
+ "bash_calls": 2,
+ "oz_do_calls": 1,
+ "oz_invocations": 1,
+ "caller_in": 16380,
+ "caller_in_uncached": 6,
+ "caller_cache_read": 14162,
+ "caller_cache_write": 2212,
+ "caller_out": 905,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 1,
+ "worker_calls_with_usage": 1,
+ "worker_in": 2162,
+ "worker_cached_in": 603,
+ "worker_out": 803,
+ "total_tokens": 20250,
+ "usage_complete": true,
+ "tokens_per_verified": 1265.62,
+ "results_sha256": "6bf6b435388fe9cbab2355fed5a00aa40d2ebcb715efb53146794d6f9b7c7c0a",
+ "published_sha256": "6bf6b435388fe9cbab2355fed5a00aa40d2ebcb715efb53146794d6f9b7c7c0a",
+ "artifact_intact": true,
+ "messages": [
+  {
+   "id": "msg_011CgJ7xQyHw7DJRd7WrxL4d",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 662,
+   "cache_read_input_tokens": 3939,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ7yZ1GD52WukobJAGaC",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 1021,
+   "cache_read_input_tokens": 4601,
+   "output_tokens": 30
+  },
+  {
+   "id": "msg_011CgJ7yiw4MYBVvJYcuVEBo",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 529,
+   "cache_read_input_tokens": 5622,
+   "output_tokens": 51
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ7xQyHw7DJRd7WrxL4d",
+   "input_bytes": 1628,
+   "result_bytes": 547
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ7yZ1GD52WukobJAGaC",
+   "input_bytes": 189,
+   "result_bytes": 691
+  }
+ ],
+ "attribution": {
+  "carriers": 1,
+  "request_o200k": 415,
+  "out_ratio": 1.587719298245614,
+  "estimate": 1976.7105263157896,
+  "upper": 48,
+  "estimate_share": 0.0976153346328785,
+  "upper_share": 0.0023703703703703703
+ },
+ "text": "{\"outside\":[\"ma_08\",\"ma_12\",\"ma_16\"],\"unknown\":[\"ma_02\",\"ma_04\"],\"not_accepted\":[]}"
+}

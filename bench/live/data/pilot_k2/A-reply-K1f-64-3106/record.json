@@ -1,0 +1,77 @@
+{
+ "tag": "A-reply-K1f-64-3106",
+ "block": "A",
+ "contract": "reply",
+ "arm": "K1f",
+ "n": 64,
+ "seed": 3106,
+ "input_sha256": "8be4696c164f41c2d227dd0a74b5a01fa5a2c55ec5feaa00589c1d75491b62f5",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "standard",
+ "jobs": 64,
+ "verified": 64,
+ "reply_error": "",
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 45.53,
+ "is_error": false,
+ "has_result": true,
+ "turns": 2,
+ "bash_calls": 1,
+ "oz_do_calls": 1,
+ "oz_invocations": 1,
+ "caller_in": 21929,
+ "caller_in_uncached": 4,
+ "caller_cache_read": 10227,
+ "caller_cache_write": 11698,
+ "caller_out": 4325,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 1,
+ "worker_calls_with_usage": 1,
+ "worker_in": 3137,
+ "worker_cached_in": 603,
+ "worker_out": 2345,
+ "total_tokens": 31736,
+ "usage_complete": true,
+ "tokens_per_verified": 495.88,
+ "results_sha256": "b6d8cc9f44a2cff446c776e9f927bb30ad8cbc5e17fd3efef221dedf2cd633be",
+ "published_sha256": "b6d8cc9f44a2cff446c776e9f927bb30ad8cbc5e17fd3efef221dedf2cd633be",
+ "artifact_intact": true,
+ "messages": [
+  {
+   "id": "msg_011CgJ79pUqZ8eg2eGxnzU8g",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 6827,
+   "cache_read_input_tokens": 1700,
+   "output_tokens": 8
+  },
+  {
+   "id": "msg_011CgJ7C7RsaC2noD1os9J5o",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 4871,
+   "cache_read_input_tokens": 8527,
+   "output_tokens": 3
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ79pUqZ8eg2eGxnzU8g",
+   "input_bytes": 4847,
+   "result_bytes": 5276
+  }
+ ],
+ "attribution": {
+  "carriers": 1,
+  "request_o200k": 1415,
+  "out_ratio": 1.644486692015209,
+  "estimate": 4653.897338403041,
+  "upper": 16,
+  "estimate_share": 0.1466441056970961,
+  "upper_share": 0.0005041593143433325
+ },
+ "text": "{\"results\":[[\"ma_01\",0,\"[\\\"12.40 mm\\\",\\\"0.01 mm\\\",\\\"5\\\",\\\"micrometer\\\",\\\"unknown\\\",\\\"not_claimed\\\"]\"],[\"ma_02\",0,\"[\\\"12.39 mm\\\",\\\"12.41 mm\\\"]\"],[\"ma_03\",0,\"[\\\"basis\\\"]\"],[\"ma_04\",0,\"outside\"],[\"ma_05\",0,\"[\\\"12.46 mm\\\",\\\"0.01 mm\\\",\\\"2\\\",\\\"unknown\\\",\\\"unknown\\\",\\\"not_claimed\\\"]\"],[\"ma_06\",0,\"[\\\"12.45 mm\\\",\\\"12.47 mm\\\"]\"],[\"ma_07\",0,\"[\\\"method\\\",\\\"basis\\\"]\"],[\"ma_08\",0,\"outside\"],[\"ma_09\",0,\"[\\\"12.50 mm\\\",\\\"0.03 mm\\\",\\\"3\\\",\\\"caliper\\\",\\\"unknown\\\",\\\"not_claimed\\\"]\"],[\"ma_10\",0,\"[\\\"12.47 mm\\\",\\\"12.53 mm\\\"]\"],[\"ma_11\",0,\"[\\\"basis\\\"]\"],[\"ma_12\",0,\"outside\"],[\"ma_13\",0,\"[\\\"12.41 mm\\\",\\\"0.02 mm\\\",\\\"6\\\",\\\"micrometer\\\",\\\"expanded\\\",\\\"not_claimed\\\"]\"],[\"ma_14\",0,\"[\\\"12.39 mm\\\",\\\"12.43 mm\\\"]\"],[\"ma_15\",0,\"[]\"],[\"ma_16\",0,\"outside\"],[\"ma_17\",0,\"[\\\"12.46 mm\\\",\\\"0.02 mm\\\",\\\"3\\\",\\\"micrometer\\\",\\\"resolution\\\",\\\"not_claimed\\\"]\"],[\"ma_18\",0,\"[\\\"12.44 mm\\\",\\\"12.48 mm\\\"]\"],[\"ma_19\",0,\"[]\"],[\"ma_20\",0,\"outside\"],[\"ma_21\",0,\"[\\\"12.47 mm\\\",\\\"0.02 mm\\\",\\\"1\\\",\\\"unknown\\\",\\\"expanded\\\",\\\"not_claimed\\\"]\"],[\"ma_22\",0,\"[\\\"12.45 mm\\\",\\\"12.49 mm\\\"]\"],[\"ma_23\",0,\"[\\\"method\\\"]\"],[\"ma_24\",0,\"outside\"],[\"ma_25\",0,\"[\\\"12.51 mm\\\",\\\"unknown\\\",\\\"6\\\",\\\"caliper\\\",\\\"unknown\\\",\\\"not_claimed\\\"]\"],[\"ma_26\",0,\"unknown\"],[\"ma_27\",0,\"[\\\"uncertainty\\\",\\\"basis\\\"]\"],[\"ma_28\",0,\"unknown\"],[\"ma_29\",0,\"[\\\"12.57 mm\\\",\\\"0.02 mm\\\",\\\"5\\\",\\\"caliper\\\",\\\"resolution\\\",\\\"not_claimed\\\"]\"],[\"ma_30\",0,\"[\\\"12.55 mm\\\",\\\"12.59 mm\\\"]\"],[\"ma_31\",0,\"[]\"],[\"ma_32\",0,\"outside\"],[\"ma_33\",0,\"[\\\"12.51 mm\\\",\\\"unknown\\\",\\\"6\\\",\\\"micrometer\\\",\\\"expanded\\\",\\\"not_claimed\\\"]\"],[\"ma_34\",0,\"unknown\"],[\"ma_35\",0,\"[\\\"uncertainty\\\"]\"],[\"ma_36\",0,\"unknown\"],[\"ma_37\",0,\"[\\\"12.41 mm\\\",\\\"unknown\\\",\\\"2\\\",\\\"caliper\\\",\\\"unknown\\\",\\\"not_claimed\\\"]\"],[\"ma_38\",0,\"unknown\"],[\"ma_39\",0,\"[\\\"uncertainty\\\",\\\"basis\\\"]\"],[\"ma_40\",0,\"unknown\"],[\"ma_41\",0,\"[\\\"12.48 mm\\\",\\\"0.01 mm\\\",\\\"2\\\",\\\"micrometer\\\",\\\"resolution\\\",\\\"not_claimed\\\"]\"],[\"ma_42\",0,\"[\\\"12.47 mm\\\",\\\"12.49 mm\\\"]\"],[\"ma_43\",0,\"[]\"],[\"ma_44\",0,\"outside\"],[\"ma_45\",0,\"[\\\"12.48 mm\\\",\\\"0.02 mm\\\",\\\"6\\\",\\\"caliper\\\",\\\"expanded\\\",\\\"not_claimed\\\"]\"],[\"ma_46\",0,\"[\\\"12.46 mm\\\",\\\"12.50 mm\\\"]\"],[\"ma_47\",0,\"[]\"],[\"ma_48\",0,\"outside\"],[\"ma_49\",0,\"[\\\"12.53 mm\\\",\\\"unknown\\\",\\\"5\\\",\\\"micrometer\\\",\\\"unknown\\\",\\\"not_claimed\\\"]\"],[\"ma_50\",0,\"unknown\"],[\"ma_51\",0,\"[\\\"uncertainty\\\",\\\"basis\\\"]\"],[\"ma_52\",0,\"unknown\"],[\"ma_53\",0,\"[\\\"12.47 mm\\\",\\\"unknown\\\",\\\"6\\\",\\\"unknown\\\",\\\"expanded\\\",\\\"not_claimed\\\"]\"],[\"ma_54\",0,\"unknown\"],[\"ma_55\",0,\"[\\\"uncertainty\\\",\\\"method\\\"]\"],[\"ma_56\",0,\"unknown\"],[\"ma_57\",0,\"[\\\"12.41 mm\\\",\\\"0.01 mm\\\",\\\"3\\\",\\\"micrometer\\\",\\\"unknown\\\",\\\"not_claimed\\\"]\"],[\"ma_58\",0,\"[\\\"12.40 mm\\\",\\\"12.42 mm\\\"]\"],[\"ma_59\",0,\"[\\\"basis\\\"]\"],[\"ma_60\",0,\"outside\"],[\"ma_61\",0,\"[\\\"12.44 mm\\\",\\\"0.02 mm\\\",\\\"3\\\",\\\"unknown\\\",\\\"resolution\\\",\\\"not_claimed\\\"]\"],[\"ma_62\",0,\"[\\\"12.42 mm\\\",\\\"12.46 mm\\\"]\"],[\"ma_63\",0,\"[\\\"method\\\"]\"],[\"ma_64\",0,\"outside\"]]}"
+}

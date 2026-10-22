@@ -1,0 +1,117 @@
+{
+ "tag": "B-art-K1f-16-7001",
+ "block": "B",
+ "contract": "art",
+ "arm": "K1f",
+ "n": 16,
+ "seed": 7001,
+ "system": "You are a worker agent in a multi-agent orchestration. Do what the packet asks and reply exactly in its format.",
+ "tools": "Bash",
+ "files_sha256": {
+  "refs/1.txt": "134757cf7a513a1a73b53a0d2f9e91ffe61656892939dd45887807837035bb8f",
+  "refs/2.txt": "8e779f43282b53be1aef0a5828ad220e6fb75fe6214465dd969528e1001b5535",
+  "refs/3.txt": "ca377ab3694ab3021da1414da091336324e13095f29061b0d7178975860ee4a3",
+  "refs/4.txt": "d091d31c440aae2b8c4e182fa324eaba6646bb5d19c842ed05944cab1d50f4ec"
+ },
+ "ids": [
+  "ma_01",
+  "ma_02",
+  "ma_03",
+  "ma_04",
+  "ma_05",
+  "ma_06",
+  "ma_07",
+  "ma_08",
+  "ma_09",
+  "ma_10",
+  "ma_11",
+  "ma_12",
+  "ma_13",
+  "ma_14",
+  "ma_15",
+  "ma_16"
+ ],
+ "jobs": [
+  "e1",
+  "b1",
+  "m1",
+  "v1",
+  "e2",
+  "b2",
+  "m2",
+  "v2",
+  "e3",
+  "b3",
+  "m3",
+  "v3",
+  "e4",
+  "b4",
+  "m4",
+  "v4"
+ ],
+ "expected": {
+  "ma_01": [
+   "12.43 mm",
+   "0.03 mm",
+   "6",
+   "micrometer",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_02": [
+   "12.40 mm",
+   "12.46 mm"
+  ],
+  "ma_03": [],
+  "ma_04": "outside",
+  "ma_05": [
+   "12.44 mm",
+   "0.03 mm",
+   "6",
+   "unknown",
+   "expanded",
+   "not_claimed"
+  ],
+  "ma_06": [
+   "12.41 mm",
+   "12.47 mm"
+  ],
+  "ma_07": [
+   "method"
+  ],
+  "ma_08": "outside",
+  "ma_09": [
+   "12.46 mm",
+   "unknown",
+   "2",
+   "caliper",
+   "unknown",
+   "not_claimed"
+  ],
+  "ma_10": "unknown",
+  "ma_11": [
+   "uncertainty",
+   "basis"
+  ],
+  "ma_12": "unknown",
+  "ma_13": [
+   "12.49 mm",
+   "0.02 mm",
+   "3",
+   "micrometer",
+   "resolution",
+   "not_claimed"
+  ],
+  "ma_14": [
+   "12.47 mm",
+   "12.51 mm"
+  ],
+  "ma_15": [],
+  "ma_16": "outside"
+ },
+ "oz": "k2",
+ "max_tokens": null,
+ "workload_class": "standard",
+ "oracle_version": "k2-oracle/1",
+ "input_sha256": "b951fce3fea07665c2766caba1b8ae03364ec5e5ca779221c91d9ace0f92d0ab"
+}

@@ -1,0 +1,104 @@
+{
+ "tag": "B-art-J-64-7102",
+ "block": "B",
+ "contract": "art",
+ "arm": "J",
+ "n": 64,
+ "seed": 7102,
+ "input_sha256": "d8085dfd3fb7a7ce404c2ed2a16d7e5c248437a1186c4c0dd0514110c133dc06",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "standard",
+ "jobs": 64,
+ "verified": 0,
+ "file_error": "",
+ "reply_error": "Expecting value: line 1 column 1 (char 0)",
+ "file_jobs_passed": 64,
+ "reply_ok": false,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 734.5,
+ "is_error": false,
+ "has_result": true,
+ "turns": 1,
+ "bash_calls": 3,
+ "oz_do_calls": 0,
+ "oz_invocations": 0,
+ "caller_in": 45883,
+ "caller_in_uncached": 12,
+ "caller_cache_read": 41325,
+ "caller_cache_write": 4546,
+ "caller_out": 1689,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 0,
+ "worker_calls_with_usage": 0,
+ "worker_in": 0,
+ "worker_cached_in": 0,
+ "worker_out": 0,
+ "total_tokens": 47572,
+ "usage_complete": true,
+ "tokens_per_verified": null,
+ "results_sha256": "6a108f99b612a41898ba83cddc34dda13d0bf7a9f7d38e42019cae8b20868433",
+ "published_sha256": null,
+ "artifact_intact": null,
+ "messages": [
+  {
+   "id": "msg_011CgJ89hVGkX7S4eMriqj7F",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 671,
+   "cache_read_input_tokens": 6600,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ89vFUkcszwJXY1vFPX",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 989,
+   "cache_read_input_tokens": 7271,
+   "output_tokens": 3
+  },
+  {
+   "id": "msg_011CgJ8KA4vrNPY3MP4wKUnR",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 960,
+   "cache_read_input_tokens": 8260,
+   "output_tokens": 4
+  },
+  {
+   "id": "msg_011CgJ8KV1iLUZBr9PvcWLF1",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 754,
+   "cache_read_input_tokens": 9220,
+   "output_tokens": 101
+  },
+  {
+   "id": "msg_011CgJ95R3ZZoUUbC3DHrDbH",
+   "input_tokens": 4,
+   "cache_creation_input_tokens": 1172,
+   "cache_read_input_tokens": 9974,
+   "output_tokens": 3
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ89hVGkX7S4eMriqj7F",
+   "input_bytes": 86,
+   "result_bytes": 1811
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ89vFUkcszwJXY1vFPX",
+   "input_bytes": 1210,
+   "result_bytes": 468
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ8KA4vrNPY3MP4wKUnR",
+   "input_bytes": 1154,
+   "result_bytes": 163
+  }
+ ],
+ "attribution": null,
+ "text": "The first, stuck attempt was stopped at its time limit. I didn't restart it, because the second run had already finished and written `results.json`.\n\n{\"outside\":[\"ma_08\",\"ma_12\",\"ma_16\",\"ma_24\",\"ma_28\",\"ma_32\",\"ma_36\",\"ma_44\",\"ma_52\",\"ma_56\",\"ma_60\"],\"unknown\":[\"ma_02\",\"ma_04\",\"ma_62\",\"ma_64\"],\"not_accepted\":[]}"
+}

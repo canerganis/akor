@@ -1,0 +1,84 @@
+{
+ "tag": "B-art-J-64-7101",
+ "block": "B",
+ "contract": "art",
+ "arm": "J",
+ "n": 64,
+ "seed": 7101,
+ "input_sha256": "211e4ccbc979480e9d82effa3abafeb20c7b1ed9607835dd4bb08a352b08c453",
+ "oracle_version": "k2-oracle/1",
+ "workload_class": "standard",
+ "jobs": 64,
+ "verified": 64,
+ "file_error": "",
+ "reply_error": "",
+ "file_jobs_passed": 64,
+ "reply_ok": true,
+ "call_error": null,
+ "exit_code": 0,
+ "wall_s": 14.62,
+ "is_error": false,
+ "has_result": true,
+ "turns": 3,
+ "bash_calls": 2,
+ "oz_do_calls": 0,
+ "oz_invocations": 0,
+ "caller_in": 24641,
+ "caller_in_uncached": 6,
+ "caller_cache_read": 22106,
+ "caller_cache_write": 2529,
+ "caller_out": 945,
+ "caller_models": [
+  "claude-sonnet-5-5"
+ ],
+ "worker_calls": 0,
+ "worker_calls_with_usage": 0,
+ "worker_in": 0,
+ "worker_cached_in": 0,
+ "worker_out": 0,
+ "total_tokens": 25586,
+ "usage_complete": true,
+ "tokens_per_verified": 399.78,
+ "results_sha256": "3686552a027578175337d7c5cf94b58db890ba421c5467ec4ff8bd251a4c292b",
+ "published_sha256": null,
+ "artifact_intact": null,
+ "messages": [
+  {
+   "id": "msg_011CgJ835wwbCGXZ2rpoHug5",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 665,
+   "cache_read_input_tokens": 6600,
+   "output_tokens": 16
+  },
+  {
+   "id": "msg_011CgJ83JR2xuYUSx7hbhQtP",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 976,
+   "cache_read_input_tokens": 7265,
+   "output_tokens": 3
+  },
+  {
+   "id": "msg_011CgJ83iLww1A6EqvikKTgr",
+   "input_tokens": 2,
+   "cache_creation_input_tokens": 888,
+   "cache_read_input_tokens": 8241,
+   "output_tokens": 126
+  }
+ ],
+ "tool_calls": [
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ835wwbCGXZ2rpoHug5",
+   "input_bytes": 86,
+   "result_bytes": 1815
+  },
+  {
+   "name": "Bash",
+   "msg": "msg_011CgJ83JR2xuYUSx7hbhQtP",
+   "input_bytes": 1212,
+   "result_bytes": 203
+  }
+ ],
+ "attribution": null,
+ "text": "{\"outside\":[\"ma_16\",\"ma_24\",\"ma_28\",\"ma_44\",\"ma_60\",\"ma_64\"],\"unknown\":[\"ma_10\",\"ma_12\",\"ma_18\",\"ma_20\",\"ma_34\",\"ma_36\",\"ma_38\",\"ma_40\",\"ma_46\",\"ma_48\",\"ma_50\",\"ma_52\",\"ma_54\",\"ma_56\"],\"not_accepted\":[]}"
+}

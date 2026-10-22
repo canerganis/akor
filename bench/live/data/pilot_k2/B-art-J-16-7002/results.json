@@ -1,0 +1,17 @@
+{"jobs":{
+"ma_01":{"status":"accepted","value":["12.57 mm","0.01 mm","1","caliper","resolution","not_claimed"]},
+"ma_02":{"status":"accepted","value":["12.56 mm","12.58 mm"]},
+"ma_03":{"status":"accepted","value":[]},
+"ma_04":{"status":"accepted","value":"outside"},
+"ma_05":{"status":"accepted","value":["12.49 mm","unknown","1","unknown","expanded","not_claimed"]},
+"ma_06":{"status":"accepted","value":"unknown"},
+"ma_07":{"status":"accepted","value":["uncertainty","method"]},
+"ma_08":{"status":"accepted","value":"unknown"},
+"ma_09":{"status":"accepted","value":["12.41 mm","0.03 mm","6","caliper","resolution","not_claimed"]},
+"ma_10":{"status":"accepted","value":["12.38 mm","12.44 mm"]},
+"ma_11":{"status":"accepted","value":[]},
+"ma_12":{"status":"accepted","value":"outside"},
+"ma_13":{"status":"accepted","value":["12.50 mm","unknown","3","micrometer","expanded","not_claimed"]},
+"ma_14":{"status":"accepted","value":"unknown"},
+"ma_15":{"status":"accepted","value":["uncertainty"]},
+"ma_16":{"status":"accepted","value":"unknown"}}}
