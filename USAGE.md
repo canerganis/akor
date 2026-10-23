@@ -251,6 +251,11 @@ python examples/oz_manual_o1/example.py --workspace DIR status
 
 Each command prints one JSON document: the facade result plus a `fixture` block that keeps the fixture adapter's invocations and the usage its stored replies report apart from the model calls and billed tokens, which are zero. For a recovery drill run it with `OZ_FAULTS=worker.after_capture`, then `OZ_FAULTS=flow.publish.after_manifest` (each exits 86), then plainly: the stored capture is reused without a new invocation and the publication is reconciled once. The zero-token acceptance gate is `python -m unittest tests.test_oz_manual`; it establishes usability and compatibility only.
 
+**Known limits of the reads.** `status` reads the flow database and each stage inbox separately, so it is a consistent
+view of each, not one atomic snapshot. If a workspace has a `-wal` file but no `-shm` file (copied or cleaned by hand),
+a read creates the `-shm` file. On filesystems with coarse modification times (FAT, exFAT, some network shares) the
+retry that guards an at-rest read can miss a same-size checkpoint inside one tick; NTFS and ext4 are fine.
+
 ## Budget, retries and visibility
 
 In `oz.json`, `max_tokens` is the upper bound on the receiver's input. `encodings` are the target tokenizer names; with more than one, the limit applies to each. `batch_size` sets how many ready jobs are scanned at most (1 to 64). The defaults are 2048 tokens and 64 jobs. Ready jobs are collected into one call without waiting.

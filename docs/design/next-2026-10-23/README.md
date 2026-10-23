@@ -8,3 +8,9 @@ context), recommended `repair-handoff-20`, confirmed by the owner before any all
 bottleneck step 1 names. Implementation goes to Claude subagents (Codex cannot write this repo), so "zero paid
 experiments" still spends quota. Today: stop new work at 46% weekly (hard stop 49%); step 2 starts only if step 1
 ends below 44%. No boundary study, importer, receipt redesign, replanner or MCP without a demonstrated need.
+
+Status 2026-10-23: step 1 done (no demonstrated actionable bottleneck, step1-results.md); step 2 done (oz_manual,
+962a87b, signed by Opus after review 07; known read limits documented in USAGE.md). Follow-ups from review 07, not
+blocking: `status` should use the flow's injectable clock for `deadline_remaining_seconds`; the facade should stop
+importing the private `oz_do._accounting`. Step 3 (one committed use case qualified) needs the owner to confirm the use
+case and allocation first; recommended: `repair-handoff-20`, testing what the caller-cost study left open.
