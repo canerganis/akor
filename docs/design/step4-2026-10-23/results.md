@@ -50,3 +50,24 @@ per-job checks are outside the baseline's coverage.
 Conformance is not passed: G3 failed as preregistered. Fixing it needs a new preregistration that either budgets for
 check-driven resends or freezes the boundary wording problem first, and a fresh live allocation; that is a decision
 for the owner and the two designers. The real-workflow criterion (O1) stays open.
+
+## Addendum 2026-10-23: hidden reasoning per classification call (measured, from the raw CLI envelopes)
+
+| Call | Thinking tokens | Output tokens | Result |
+|---|---:|---:|---|
+| clean, size-4 classify | 79 | 140 | all four right, including both inclusive edges |
+| interrupted, size-4 classify | 0 | 61 | A and C wrong ("outside") |
+| interrupted, resend classify_A | 51 | 72 | right |
+| interrupted, resend classify_C | 58 | 79 | right |
+| stale, size-4 classify | 0 | 61 | C wrong |
+| stale, resend classify_C | 62 | 83 | right |
+
+The clean and interrupted size-4 classify calls sent byte-identical system and prompt bytes (system d941a86d, prompt
+33ffc1fc) and got different answers. Every wrong answer came from a call with no hidden reasoning and every right one
+from a call with some. That is an observed association on six calls, not an established cause. The baseline's single
+calls used 266 to 363 thinking tokens and classified every edge correctly.
+
+Gate labels, for the record: the plan defined `pass` and `pass_with_recorded_rejections` without binding one; the
+frozen code required `pass`. The stale scenario met the second label and failed only the stale-order observable; the
+interrupted scenario failed both, because the rejection counter counts rejecting replies while recovery resends each
+rejected member. These facts change no verdict. The rerun is G3b ([g3b/README.md](g3b/README.md)).
