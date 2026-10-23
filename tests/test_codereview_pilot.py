@@ -137,8 +137,8 @@ class SpanAndSchemaTests(unittest.TestCase):
         self.assertFalse(O.in_span(27, {'start_line': 25, 'end_line': 26}))
 
     def test_evaluator_imports_no_executor_code(self):
-        allowed = {'__future__', 'ast', 'builtins', 'difflib', 'hashlib', 'inspect', 'json', 'keyword', 'math', 'os',
-                   'pathlib', 'sys', 're', 'subprocess'}
+        allowed = {'__future__', 'ast', 'builtins', 'copy', 'difflib', 'hashlib', 'importlib', 'inspect',
+                   'itertools', 'json', 'keyword', 'math', 'os', 'pathlib', 'sys', 're', 'subprocess'}
         for name in ('oracle.py', 'eval_worker.py', 'verify.py'):
             tree = ast.parse((CR / name).read_text(encoding='utf-8'))
             found = set()
@@ -153,7 +153,9 @@ class SpanAndSchemaTests(unittest.TestCase):
     def test_authored_record_resolves_latest_revision(self):
         files = V.authored(with_source=True)
         self.assertEqual(files['answer_key.json'][1], 'Astra revision 1 (2026-10-24)')
-        self.assertEqual(files['SHA256SUMS'][1], 'Claude regeneration for Astra revision 1 (2026-10-24)')
+        self.assertEqual(files['SHA256SUMS'][1], 'Claude regeneration for Astra revision 2 (2026-10-24)')
+        self.assertEqual(files['DOMAINS.md'][1], 'Astra revision 2 (2026-10-24)')
+        self.assertEqual(files['DOMAINS.md'][0], (O.FIX / 'DOMAINS.md').read_bytes())
         self.assertEqual(files['packA/paging.py'][1], 'original')
         span = next(m for m in KEY['modules'] if m['file'] == 'packA/sample_stats.py')['seeds'][0]['span']
         self.assertEqual(span, {'start_line': 25, 'end_line': 26})
@@ -419,6 +421,60 @@ class DomainTests(unittest.TestCase):
             self.assertEqual(P.counted(P.manifest()[0], '46', out=out), 2)
         self.assertFalse((out / 'attempts.jsonl').exists())
 
+    def test_the_specification_is_astras_frozen_domains_file(self):
+        """Revision 2: the classifier is the executable block of DOMAINS.md, pinned by SHA256SUMS, run as written."""
+        self.assertEqual(O.DOMAIN_STATUS, 'frozen')
+        sums = (O.FIX / 'SHA256SUMS').read_text(encoding='utf-8')
+        self.assertIn(hashlib.sha256((O.FIX / 'DOMAINS.md').read_bytes()).hexdigest() + '  DOMAINS.md', sums)
+        block = re.search(r'^```python\n(.*?)^```$', (O.FIX / 'DOMAINS.md').read_text(encoding='utf-8'),
+                          re.S | re.M).group(1)
+        self.assertEqual(O.domain_spec()['source'], block)
+        self.assertEqual(O.domain_spec()['classify'].__code__.co_filename, 'DOMAINS.md')
+
+    def test_the_spec_names_every_public_function_with_its_real_signature(self):
+        self.assertEqual(V.signature_problems(), [])
+
+    def test_each_domain_kind_per_domains_md(self):
+        allowed = [('packA/sample_stats.py', W('mean', [[1000000]], {'return': 1000000.0})),
+                   ('packA/sample_stats.py', W('latest', [[2000000], 0], {'exception': 'ValueError'})),
+                   ('packA/paging.py', W('page_label', [0, 0, 3], {'exception': 'ValueError'})),
+                   ('packA/labels.py', W('make_header', [['a'], '::'], {'exception': 'ValueError'})),
+                   ('packA/labels.py', W('make_header', [['a']], {'return': 'a'})),
+                   ('packB/ranges.py', W('compact_ranges', [[[]]], {'exception': 'ValueError'})),
+                   ('packB/rotation.py', W('rotation_order', [[], 3], {'return': []})),
+                   ('packB/rotation.py', W('assign_tasks', [[], []], {'exception': 'ValueError'})),
+                   ('packB/settings.py', W('render_settings', [{'a-b': 'x'}], {'exception': 'ValueError'})),
+                   ('packB/settings.py', W('parse_settings', ['broken'], {'exception': 'ValueError'})),
+                   ('packB/settings.py', W('select_prefix', [{'a': ' x\n'}, ' '], {'return': {}}))]
+        for file, w in allowed:
+            self.assertEqual(O.domain_problems(file, w), [], (file, w))
+        refused = [('packA/paging.py', W('page_label', [3, 7, 3], {'exception': 'IndexError'})),
+                   ('packA/paging.py', W('get_page', [['a'], 0, 2.0], {'return': ['a']})),
+                   ('packA/paging.py', W('get_page', [['a'], 0, -1], {'exception': 'TypeError'})),
+                   ('packA/labels.py', W('make_header', [['a'], 5], {'exception': 'ValueError'})),
+                   ('packB/ranges.py', W('compact_ranges', [[[True, 2]]], {'exception': 'ValueError'})),
+                   ('packB/settings.py', W('overlay', [{'a-b': 'x'}, {}], {'return': {'a-b': 'x'}})),
+                   ('packB/settings.py', {'function': 'parse_settings', 'args': [],
+                                          'kwargs': {'text': 'x', 'extra': 1}, 'expected': {'return': {}}})]
+        for file, w in refused:
+            self.assertTrue(O.domain_problems(file, w), (file, w))
+
+    @unittest.skipUnless(os.name == 'nt', WINDOWS)
+    def test_the_acknowledged_overflow_limitation(self):
+        """DOMAINS.md, Compatibility limitation: a sample beyond float range is a ValueError rejection, yet both
+        implementations raise OverflowError, so such a witness is admissible but can never be proven."""
+        w = W('mean', [[10 ** 400]], {'exception': 'ValueError'})
+        self.assertEqual(O.domain_problems('packA/sample_stats.py', w), [])
+        v = O.judge_witness(w, O.source('packA/sample_stats.py'), O.source('ref/packA/sample_stats.py'))
+        self.assertEqual((v['reference']['type'], v['proven']), ('OverflowError', False))
+
+    @unittest.skipUnless(os.name == 'nt', WINDOWS)
+    def test_reference_behaviour_conforms_to_the_spec(self):
+        res = V.conformance()
+        self.assertEqual(res['contradictions'], [], res['contradictions'][:5])
+        self.assertGreater(res['calls'], 1000)
+        self.assertTrue(res['acknowledged'])
+
 
 class GuardTests(unittest.TestCase):
     """Fix 1: no further paid call once it could cross the run cap; admission reserves the overshoot."""
@@ -621,7 +677,8 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(self.res['ok'])
         names = set(self.res['scenarios'])
         for need in ('I-clean', 'D-mixed', 'D-violation', 'I-truncated', 'I-malformed', 'D-unseeded',
-                     'I-oz-violation', 'I-cap', 'D-worker-cap', 'I-missing-counter', 'I-out-of-domain'):
+                     'I-oz-violation', 'I-cap', 'D-worker-cap', 'I-missing-counter', 'I-out-of-domain',
+                     'I-rejection-witness'):
             self.assertIn(need, names)
 
     def test_rejudge_gives_zero_mismatches(self):

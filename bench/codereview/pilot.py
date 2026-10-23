@@ -1016,7 +1016,7 @@ def counted(expect, quota_before, out=DATA, claude=None, delegate=None, extra_en
         print(f'digest {digest} differs from --expect {expect}; refreeze plan-frozen.md first', flush=True)
         return 2
     if live and O.DOMAIN_STATUS != 'frozen':
-        print('the witness domain specification is provisional (oracle.DOMAIN_QUESTIONS); live runs are blocked',
+        print('the witness domain specification is not frozen (oracle.DOMAIN_STATUS); live runs are blocked',
               flush=True)
         return 2
     out.mkdir(parents=True, exist_ok=True)
@@ -1106,7 +1106,7 @@ def manifest() -> tuple:
         'admission': {'below': ADMIT_BELOW, 'ceiling': CEILING, 'factor0': FACTOR0, 'rounding': ROUNDING,
                       'supplied_reading': SUPPLIED_READING},
         'ws_max_tokens': WS_MAX_TOKENS, 'schedule': SCHEDULE, 'packs': PACKS, 'oracle': ORACLE_VERSION,
-        'domain': {'status': O.DOMAIN_STATUS, 'questions': O.DOMAIN_QUESTIONS},
+        'domain': {'status': O.DOMAIN_STATUS, 'spec_sha256': O.domain_spec()['sha256']},
         'texts': {'fill_head': FILL_HEAD, 'fill_tail': FILL_TAIL, 'requirement': REQUIREMENT, 'oz_snippet': OZ_SNIPPET,
                   'task_A_I': task_text('A', 'I')},
         'fill': {'sha256': FILL_SHA256, 'sources': FILL_SOURCES, 'o200k': fill_tokens()},
@@ -1283,6 +1283,12 @@ def dry(base=None) -> dict:
          'witness': _w('select_prefix', [{'a': '1'}, ''], {'return': {'a': '1'}})}]})
     out_of_domain = dict(_perfect('B'), **{'packB/rotation.py': [
         _finding('packB/rotation.py', witness=_w('rotate_left', [[], True], {'return': []}))]})
+    rejection_case = dict(_perfect('A'), **{'packA/paging.py': [
+        _finding('packA/paging.py'),
+        {'file': 'packA/paging.py', 'line': 15, 'class': 'missing_guard',
+         'witness': _w('page_count', [3, 0], {'exception': 'ValueError'})},
+        {'file': 'packA/paging.py', 'line': 15, 'class': 'missing_guard',
+         'witness': _w('page_count', [3, 0], {'return': 0})}]})
     big = {'input_tokens': 20000, 'cache_read_input_tokens': 5000, 'cache_creation_input_tokens': 0,
            'output_tokens': 500}
     plan = {
@@ -1332,6 +1338,12 @@ def dry(base=None) -> dict:
         'I-out-of-domain': ('B', 'I', FIX, None, {'steps': [{'cat': list(PACKS['B'])}],
                                                   'answer': J(out_of_domain)}, None,
                             {'status': 'valid', 'correct': 2, 'out_of_domain': 1, 'recall': 0.5, 'fp': 1}),
+        # DOMAINS.md: page_count(3, 0) is a documented rejection; with {"exception":"ValueError"} it is admitted and
+        # executed (both sides raise ValueError: unproven), with a return expectation it is out of domain.
+        'I-rejection-witness': ('A', 'I', FIX, None, {'steps': [{'cat': list(PACKS['A'])}],
+                                                      'answer': J(rejection_case)}, None,
+                                {'status': 'valid', 'correct': 3, 'recall': 1.0, 'out_of_domain': 1, 'unproven': 2,
+                                 'fp': 2, 'review_both_fail': 0}),
     }
     res = {'ok': True, 'scenarios': {}, 'out': out, 'roots': {}, 'fixes': {}}
     for name, (pack, arm, root, fixes, caller_sc, worker_sc, want) in plan.items():

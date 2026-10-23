@@ -14,9 +14,15 @@ Checks, each per file or module:
   witness    every hidden witness is schema-valid, fails on the shipped module and passes on the reference fix, each
              call in a fresh O1 sandbox process (oracle.judge_witness)
   clean      clean controls have no seeds, use the shipped file as reference and have no ref/ copy
+  domain     DOMAINS.md (Astra revision 2) loads as the oracle's classifier; its SPECS name every public function with
+             the shipped and reference signatures; every hidden witness is a normal-domain call; and a sweep of
+             generated admitted calls against the reference implementation finds no contradiction (a rejection
+             raises exactly ValueError, a normal call returns), apart from the overflow limitation DOMAINS.md itself
+             acknowledges
 """
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import os
@@ -60,8 +66,9 @@ def authored(with_source: bool = False) -> dict:
                 j += 1
             if not path.startswith(PREFIX) or not lines[j].startswith('```'):
                 raise ValueError('unexpected block at line %d' % (i + 1))
+            fence = re.match(r'`{3,}', lines[j]).group(0)   # a block closes with its own fence (``` or ````)
             k = j + 1
-            while lines[k] != '```':
+            while lines[k] != fence:
                 k += 1
             data = ('\n'.join(lines[j + 1:k]) + '\n').encode('utf-8')
             files[path[len(PREFIX):]] = (data, section) if with_source else data
@@ -192,6 +199,121 @@ def check_clean(rows: list) -> None:
         rows.append(('clean', pack, ok, '%d modules, %d defective, %d clean; directory holds %s' % (*shape, on)))
 
 
+def _public_functions(rel: str) -> dict:
+    """{name: (parameter names, {name: default literal})} of a module's public top-level functions (AST only)."""
+    out = {}
+    for node in ast.parse(O.source(rel)).body:
+        if isinstance(node, ast.FunctionDef) and not node.name.startswith('_'):
+            names = [a.arg for a in node.args.args]
+            defaults = dict(zip(names[len(names) - len(node.args.defaults):],
+                                (ast.literal_eval(d) for d in node.args.defaults)))
+            out[node.name] = (names, defaults)
+    return out
+
+
+def signature_problems() -> list:
+    """DOMAINS.md SPECS must name exactly the public functions of every module, with each function's parameter
+    order and defaults as written in both the shipped and the reference module."""
+    specs = O.domain_spec()['SPECS']
+    problems = []
+    for m in O.load_key()['modules']:
+        for rel in sorted({m['file'], m['reference_file']}):
+            funcs = _public_functions(rel)
+            spec_names = {f for (mod, f) in specs if mod == m['file']}
+            if spec_names != set(funcs):
+                problems.append(f'{rel}: SPECS names {sorted(spec_names ^ set(funcs))} differently')
+            for name, (params, defaults) in funcs.items():
+                s = specs.get((m['file'], name))
+                if s and (list(s['parameters']) != params or s['defaults'] != defaults):
+                    problems.append(f'{rel}: {name} signature differs from SPECS')
+    return problems
+
+
+POOLS = {
+    'int': [-2, -1, 0, 1, 2, 3, 7],
+    'str': ['', 'a', 'A b', ',', ';', '\t', '|', '::', 'x=1', '#c', ' k = v ', 'é', 'a\nb', '2x=y', 'a b', ' x'],
+    'json_list': [[], [1], ['a', 'b', 'c'], [1, 2, 3, 4, 5], [None, True, 1.5, {'k': [1]}]],
+    'string_list': [[], ['a'], ['a', 'a'], ['A', 'a-2', ''], ['x', 'y', 'z'], ['é', 'A B']],
+    'sample_list': [[], [1], [1, 2, 6], [1000000], [-1000000, 0.25], [1000001], [-1000000.5], [0.5, 2.5],
+                    [10 ** 400]],
+    'range_list': [[], [[1, 2]], [[2, 1]], [[1]], [[]], [[0, 0], [1, 3]], [[1, 2, 3]], [[5, 7], [-2, 0]],
+                   [[1, 2], [3, 5]]],
+    'string_map': [{}, {'a': '1'}, {'a-b': 'x'}, {'a': ' x'}, {'k': 'x\ny'}, {'_2': 'café'}, {'A': ''},
+                   {'k': 'x y'}],
+    'identifier_map': [{}, {'a': '1'}, {'db_x': 'y', 'm': ' z\n'}]}
+
+
+def _sweep() -> dict:
+    """Run in a separate process: every generated call the specification admits, against the reference
+    implementation (the shipped file for clean controls). A rejection must raise exactly ValueError; a normal call
+    must return. A sample beyond float range raising OverflowError is DOMAINS.md's acknowledged limitation."""
+    import copy
+    import importlib.util
+    import itertools
+    specs = O.domain_spec()['SPECS']
+    modules = {}
+    for m in O.load_key()['modules']:
+        loader = importlib.util.spec_from_file_location('ref_' + m['file'].replace('/', '_')[:-3],
+                                                        FIX / m['reference_file'])
+        mod = importlib.util.module_from_spec(loader)
+        loader.loader.exec_module(mod)
+        modules[m['file']] = mod
+    calls, contradictions, acknowledged, kinds = 0, [], [], {}
+    for (file, name), s in sorted(specs.items()):
+        params = list(s['parameters'])
+        shapes = [params] + ([[p for p in params if p not in s['defaults']]] if s['defaults'] else [])
+        for shape in shapes:
+            for values in itertools.product(*(POOLS[s['parameters'][p]] for p in shape)):
+                args = [copy.deepcopy(v) for v in values]
+                w = {'function': name, 'args': args, 'kwargs': {}, 'expected': {'return': None}}
+                c = O.classify(file, w)
+                if c['kind'] == 'outside' or not c['witness_allowed']:
+                    continue
+                calls += 1
+                kinds[c['kind']] = kinds.get(c['kind'], 0) + 1
+                try:
+                    getattr(modules[file], name)(*copy.deepcopy(args))
+                    got = 'return'
+                except Exception as exc:  # noqa: BLE001  the outcome is what is checked
+                    got = type(exc).__name__
+                want = 'ValueError' if c['kind'] == 'rejection' else 'return'
+                if got == want:
+                    continue
+                huge = file == 'packA/sample_stats.py' and any(
+                    type(x) is int and abs(x) > sys.float_info.max for x in args[0])
+                row = {'file': file, 'function': name, 'args': repr(args)[:120], 'kind': c['kind'], 'got': got}
+                (acknowledged if huge and got == 'OverflowError' else contradictions).append(row)
+    return {'calls': calls, 'kinds': kinds, 'contradictions': contradictions, 'acknowledged': acknowledged}
+
+
+def conformance() -> dict:
+    proc = subprocess.run([sys.executable, '-B', str(Path(__file__).resolve()), '--sweep'], capture_output=True,
+                          text=True, encoding='utf-8', timeout=600)
+    if proc.returncode != 0:
+        raise RuntimeError('the conformance sweep failed: ' + proc.stderr[-800:])
+    return json.loads(proc.stdout)
+
+
+def check_domains(rows: list) -> None:
+    spec = O.domain_spec()
+    rows.append(('domain', 'DOMAINS.md', O.DOMAIN_STATUS == 'frozen',
+                 'executable block sha256 %s, %d functions, status %s' % (spec['sha256'][:16], len(spec['SPECS']),
+                                                                         O.DOMAIN_STATUS)))
+    problems = signature_problems()
+    rows.append(('domain', 'signatures', not problems,
+                 '; '.join(problems) or 'SPECS names every public function with its shipped and reference signature'))
+    for m in O.load_key()['modules']:
+        for seed in m['seeds']:
+            c = O.classify(m['file'], seed['hidden_witness'])
+            rows.append(('domain', '%s %s' % (m['file'], seed['id']), c['kind'] == 'normal' and c['witness_allowed'],
+                         'hidden witness is %s' % c['kind']))
+    res = conformance()
+    rows.append(('domain', 'reference conformance', not res['contradictions'],
+                 '%d admitted calls (%s); contradictions %d; acknowledged overflow limitation %d' % (
+                     res['calls'], ', '.join(f'{k} {v}' for k, v in sorted(res['kinds'].items())),
+                     len(res['contradictions']), len(res['acknowledged']))))
+
+
 def verify() -> dict:
     rows = []
     check_bytes(rows)
@@ -200,6 +322,7 @@ def verify() -> dict:
     check_spans(rows)
     check_witnesses(rows)
     check_clean(rows)
+    check_domains(rows)
     return {'ok': all(r[2] for r in rows), 'rows': rows, 'reference_tests': tests,
             'sha256sums_sha256': hashlib.sha256((FIX / 'SHA256SUMS').read_bytes()).hexdigest()}
 
@@ -216,4 +339,8 @@ def main() -> int:
 
 
 if __name__ == '__main__':
+    if sys.argv[1:] == ['--sweep']:
+        sys.stdout.reconfigure(encoding='utf-8')
+        print(json.dumps(_sweep()))
+        raise SystemExit(0)
     raise SystemExit(main())

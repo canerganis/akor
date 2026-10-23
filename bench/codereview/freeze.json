@@ -1,5 +1,5 @@
 {
- "digest": "a62bd3910ff90408861a555bc0e378f16b7ba0d36c57322a5e873a1c9f1d46f5",
+ "digest": "704ed5c61441d045d9720deb6dbddb87507cbd10b518df1b269d5602988e2a50",
  "environment": {
   "cli_version": "2.1.306 (Claude Code)",
   "base_python": "3.12.10"
@@ -45,10 +45,10 @@
    "fb374d419588a4632f3f557e76b4b70aebbca790": "446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d"
   }
  },
- "domain_status": "provisional",
+ "domain_status": "frozen",
  "fill_sha256": "1458027af83c200d6219b160db201e672e1a469c80780cbe0f6e541eb41ed22a",
  "fill_o200k": 5865,
- "sha256sums_sha256": "0cdd88aa206d1feb5db0e0a34ad91cf73df9ba42dd833b50ab1a3d21fe7e87a8",
+ "sha256sums_sha256": "883a91c0133e0fd650c621be551965b21e767057f2434d451e3627c2755d779d",
  "sandbox_pin": "579417ae66558f87f08a41fde0d3deb0f65fffe92a3767e37a31265c2138ce86",
  "runs": [
   [
@@ -92,5 +92,5 @@
    }
   ]
  ],
- "frozen_at": "2026-10-24T02:12:19"
+ "frozen_at": "2026-10-24T02:24:34"
 }

@@ -13,8 +13,9 @@ evaluator-only storage, and runs witnesses in its own worker (eval_worker.py) un
 
 Categories of one finding (frozen):
   invalid     the record or its witness breaks the codereview-witness-v1 schema
-  out_of_domain  the witness's call leaves its function's documented input domain (DOMAINS) without exercising a
-              documented rejection rule through an exception expectation; never executed
+  out_of_domain  DOMAINS.md does not admit the witness: an outside call (types, binding, unknown function), a call
+              that is not JSON-eligible, or a documented rejection with any expectation but {"exception":"ValueError"};
+              never executed
   seeded      proven (the reference expectation matches; the shipped call completes, by return or target-call
               exception, without matching), the class is a seed's class and the line lies in that seed's span
   mislocated  proven, but no seed of the file has that class and a span holding that line
@@ -33,12 +34,14 @@ module paths makes every file of the run incorrect.
 from __future__ import annotations
 
 import ast
+import builtins
 import difflib
 import hashlib
 import json
 import keyword
 import math
 from pathlib import Path
+import re
 import sys
 
 HERE = Path(__file__).resolve().parent
@@ -193,147 +196,68 @@ def validate_finding(obj, file: str, lines: int) -> list:
     return problems + validate_witness(obj['witness'])
 
 
-# ---- documented input domains (WITNESS_FORMAT.md: inputs must meet each module's documented domain, except when
-# exercising an explicitly documented rejection rule) ----
+# ---- documented input domains: DOMAINS.md (Astra revision 2), executed exactly as written ----
 #
-# DOMAIN_STATUS is 'provisional' until Astra answers the open questions in plan-frozen.md (fix 3 of the review): the
-# rules below are the strict reading of each module's docstrings. A parameter rule is (type, precondition); a
-# precondition marked 'reject' is an explicitly documented rejection rule and may be violated only by a witness that
-# expects an exception (sample_stats states ValueError; page_label's "reject" states no exception type).
-DOMAIN_STATUS = 'provisional'
-DOMAIN_QUESTIONS = (
-    'Q1 Value preconditions written as "must be positive/nonnegative", "invalid", "distinct" or "start <= end" '
-    '(paging sizes, counts and page numbers; sample_stats.latest limit; ranges shape and order; rotation_order round; '
-    'assign_tasks workers; chunk_tasks size; render_settings keys and values): domain limits that a witness must '
-    'satisfy, or documented rejection rules a witness may violate with an exception expectation, and which exception?',
-    'Q2 paging.page_label "reject pages absent from the result set": which exception?',
-    'Q3 labels.make_header "one allowed delimiter": the allowed set is written only in code (",", ";", "\\t", "|"); '
-    'is it the documented domain?',
-    'Q4 ranges.contains: the type of value is not stated (integer excluding booleans?).',
-    'Q5 sample_stats: "finite numbers": are integers allowed and booleans excluded?',
-    'Q6 Element domains not stated: paging items, rotation items and tasks ("JSON-compatible"), settings keys in '
-    'overlay and select_prefix, parse_settings text (any string?).')
+# WITNESS_FORMAT.md admits only witnesses inside each function's documented domain, except when they exercise a
+# documented rejection. Astra's DOMAINS.md (pinned in SHA256SUMS) states that domain as one executable Python block.
+# The oracle runs that block itself, not a transcription: every rule below is a line of DOMAINS.md. The block is
+# checked first: it may import only inspect, math and re and may hold only imports, function definitions and
+# assignments, so loading it executes nothing but those definitions. Fixture modules are never imported here.
+DOMAIN_STATUS = 'frozen'
+DOMAINS_FILE = 'DOMAINS.md'
+SPEC_IMPORTS = {'inspect', 'math', 're'}
+REJECTION_EXPECTATION = {'exception': 'ValueError'}
+_SPECS: dict = {}
 
 
-def _int(v):
-    return type(v) is int
+class DomainSpecError(Exception):
+    """DOMAINS.md is missing, holds no single executable block, or the block does more than define."""
 
 
-def _num(v):
-    return type(v) in (int, float) and math.isfinite(v)
+def domain_spec(root=FIX) -> dict:
+    """{'source', 'classify', 'SPECS', 'sha256'} of the executable block of root/DOMAINS.md."""
+    key = str(Path(root).resolve())
+    if key not in _SPECS:
+        text = (Path(root) / DOMAINS_FILE).read_text(encoding='utf-8')
+        blocks = re.findall(r'^```python\n(.*?)^```$', text, re.S | re.M)
+        if len(blocks) != 1:
+            raise DomainSpecError('DOMAINS.md must hold exactly one ```python block')
+        source = blocks[0]
+        tree = ast.parse(source)
+        for node in tree.body:
+            if isinstance(node, ast.Import):
+                if {a.name for a in node.names} - SPEC_IMPORTS:
+                    raise DomainSpecError('the domain block imports beyond inspect, math and re')
+            elif not isinstance(node, (ast.FunctionDef, ast.Assign)):
+                raise DomainSpecError('the domain block may only import, define and assign')
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                raise DomainSpecError('the domain block may not use from-imports')
+        ns = {'__name__': 'codereview_domains', '__builtins__': builtins}
+        exec(compile(tree, DOMAINS_FILE, 'exec'), ns)
+        _SPECS[key] = {'source': source, 'classify': ns['classify'], 'SPECS': ns['SPECS'],
+                       'sha256': hashlib.sha256(source.encode('utf-8')).hexdigest()}
+    return _SPECS[key]
 
 
-def _strs(v):
-    return type(v) is list and all(type(x) is str for x in v)
-
-
-def _ranges(v):
-    return type(v) is list and all(type(p) is list and len(p) == 2 and all(_int(x) for x in p) for p in v)
-
-
-def _str_map(v):
-    return type(v) is dict and all(type(x) is str for x in v.values())
-
-
-def _ident(key):
-    return (type(key) is str and bool(key) and key[0].isascii() and (key[0].isalpha() or key[0] == '_')
-            and all(c.isascii() and (c.isalnum() or c == '_') for c in key[1:]))
-
-
-def _clean_value(value):
-    return value == value.strip() and (not value or value.splitlines() == [value])
-
-
-T = {'int': (_int, 'an integer (not a boolean)'), 'str': (lambda v: type(v) is str, 'a string'),
-     'list': (lambda v: type(v) is list, 'a list'), 'strs': (_strs, 'a list of strings'),
-     'numbers': (lambda v: type(v) is list and all(_num(x) for x in v), 'a list of finite numbers (no booleans)'),
-     'ranges': (_ranges, 'a list of [start, end] integer pairs'), 'str_map': (_str_map, 'an object of strings')}
-P_SIZE = ('int', lambda v: v > 0, 'must be positive', None)
-P_NONNEG = ('int', lambda v: v >= 0, 'must be nonnegative', None)
-SAMPLES = ('numbers', lambda v: all(abs(x) <= 1000000 for x in v), 'outside [-1000000, 1000000]', 'ValueError')
-DOMAINS = {
-    'packA/paging.py': {
-        'page_count': {'item_count': P_NONNEG, 'page_size': P_SIZE},
-        'get_page': {'items': ('list', None, '', None), 'page_number': P_NONNEG, 'page_size': P_SIZE},
-        'page_for_index': {'item_index': P_NONNEG, 'page_size': P_SIZE},
-        'page_sizes': {'item_count': P_NONNEG, 'page_size': P_SIZE},
-        'page_label': {'page_number': P_NONNEG, 'item_count': P_NONNEG, 'page_size': P_SIZE,
-                       '*': (lambda a: a['page_number'] < -(-a['item_count'] // a['page_size']),
-                             'page absent from the result set', 'any')}},
-    'packA/sample_stats.py': {
-        'mean': {'values': SAMPLES}, 'spread': {'values': SAMPLES}, 'describe': {'values': SAMPLES},
-        'centered': {'values': SAMPLES}, 'latest': {'values': SAMPLES, 'limit': P_NONNEG}},
-    'packA/labels.py': {
-        'slug': {'label': ('str', None, '', None)}, 'unique_labels': {'labels': ('strs', None, '', None)},
-        'make_header': {'labels': ('strs', None, '', None),
-                        'delimiter': ('str', lambda v: v in (',', ';', '\t', '|'), 'not an allowed delimiter', None)},
-        'label_map': {'labels': ('strs', None, '', None)}, 'is_slug': {'value': ('str', None, '', None)}},
-    'packB/ranges.py': {
-        **{f: {'ranges': ('ranges', lambda v: all(a <= b for a, b in v), 'start must not exceed end', None)}
-           for f in ('compact_ranges', 'covered_count', 'bounding_range')},
-        'contains': {'ranges': ('ranges', lambda v: all(a <= b for a, b in v), 'start must not exceed end', None),
-                     'value': ('int', None, '', None)},
-        'shift_ranges': {'ranges': ('ranges', lambda v: all(a <= b for a, b in v), 'start must not exceed end', None),
-                         'offset': ('int', None, '', None)}},
-    'packB/rotation.py': {
-        'rotate_left': {'items': ('list', None, '', None), 'offset': ('int', None, '', None)},
-        'rotation_order': {'workers': ('strs', lambda v: len(set(v)) == len(v), 'workers must be distinct', None),
-                           'round_number': P_NONNEG},
-        'assign_tasks': {'tasks': ('list', None, '', None),
-                         'workers': ('strs', lambda v: bool(v) and len(set(v)) == len(v),
-                                     'workers must be distinct and nonempty', None)},
-        'chunk_tasks': {'tasks': ('list', None, '', None), 'size': P_SIZE},
-        'interleave': {'left': ('list', None, '', None), 'right': ('list', None, '', None)}},
-    'packB/settings.py': {
-        'parse_settings': {'text': ('str', None, '', None)},
-        'render_settings': {'settings': ('str_map', lambda v: all(_ident(k) and _clean_value(x) for k, x in v.items()),
-                                         'keys must be identifiers and values clean', None)},
-        'overlay': {'base': ('str_map', None, '', None), 'updates': ('str_map', None, '', None)},
-        'select_prefix': {'settings': ('str_map', None, '', None), 'prefix': ('str', None, '', None)}}}
-
-
-def _signature(file: str, function: str, root=FIX):
-    """(parameter names, names with defaults) of a module-level function, read from the shipped source's AST."""
-    tree = ast.parse(source(file, root))
-    fn = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == function), None)
-    if fn is None:
-        return None
-    names = [a.arg for a in fn.args.args]
-    return names, set(names[len(names) - len(fn.args.defaults):])
+def classify(file: str, witness: dict, root=FIX) -> dict:
+    """DOMAINS.md classify() of one witness call: kind normal, rejection or outside, and witness_allowed."""
+    return domain_spec(root)['classify'](file, witness.get('function'), witness.get('args'), witness.get('kwargs'))
 
 
 def domain_problems(file: str, witness: dict, root=FIX) -> list:
-    """[] when the witness's call lies inside the documented domain of its function (or exercises a documented
-    rejection rule with an exception expectation), else the reasons. Schema validity is checked first elsewhere."""
-    rules = DOMAINS.get(file, {}).get(witness.get('function'))
-    sig = _signature(file, witness.get('function'), root) if rules is not None else None
-    if rules is None or sig is None:
-        return ['no documented domain for function %s in %s' % (witness.get('function'), file)]
-    names, defaulted = sig
-    args, kwargs = witness['args'], witness['kwargs']
-    if len(args) > len(names) or set(kwargs) - set(names) or set(kwargs) & set(names[:len(args)]):
-        return ['arguments do not bind to %s(%s)' % (witness['function'], ', '.join(names))]
-    bound = dict(zip(names, args), **kwargs)
-    if set(names) - set(bound) - defaulted:
-        return ['missing arguments for %s' % witness['function']]
-    expects_exception = 'exception' in witness['expected']
-    problems, rejected = [], []
-    for name, value in bound.items():
-        kind, pre, why, reject = rules[name]
-        check, label = T[kind]
-        if not check(value):
-            problems.append(f'{name} must be {label}')
-        elif pre is not None and not pre(value):
-            (rejected if reject else problems).append((name, why, reject) if reject else f'{name} {why}')
-    if not problems and '*' in rules:
-        pre, why, reject = rules['*']
-        if not pre(bound):
-            rejected.append(('call', why, reject))
-    for name, why, reject in rejected:
-        if not expects_exception or (reject != 'any' and witness['expected']['exception'] != reject):
-            problems.append(f'{name}: {why} (a documented rejection; only a {reject} expectation may use it)'
-                            if reject != 'any' else f'{name}: {why} (only an exception expectation may use it)')
-    return problems
+    """[] when DOMAINS.md admits the witness: a normal call with any codereview-witness-v1 expectation, or a
+    documented rejection with exactly {"exception":"ValueError"}; never an outside call, never a call that is not
+    JSON-eligible."""
+    c = classify(file, witness, root)
+    if c['kind'] == 'outside':
+        return [f'outside the documented domain of {witness.get("function")} in {file} (DOMAINS.md)']
+    if not c['witness_allowed']:
+        return ['not JSON-eligible as a witness (DOMAINS.md witness_allowed is false)']
+    if c['kind'] == 'rejection' and witness.get('expected') != REJECTION_EXPECTATION:
+        return ['a documented rejection (%s) admits only the expectation {"exception": "ValueError"}'
+                % '; '.join(c['rules'])]
+    return []
 
 
 # ---- execution and matching ----

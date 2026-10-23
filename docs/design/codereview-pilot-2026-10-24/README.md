@@ -13,6 +13,6 @@ clean controls must be empty; no model scores anything. Caps: 60k tokens per run
 2 points per 55k tokens from actual quota readings, refused if it could reach 58%; 60% ceiling.
 Status: signed; fixtures authored (Astra revision 1 after verification found the A2 span outside the reference edit)
 and verified; harness built and revised for Astra's five review findings (isolated run root with an immutable runtime
-snapshot, pre-call cap guard with a 100,000-token per-run reserve, strict accounting, witness domain validators), dry
-gate 11/11 on fixture adapters, frozen at digest `a62bd391...`, not run. Live runs stay blocked until Astra specifies
-the witness domains (six questions). Run plan and exact commands: [plan-frozen.md](plan-frozen.md).
+snapshot, pre-call cap guard with a 100,000-token per-run reserve, strict accounting), witness domains frozen from
+Astra's DOMAINS.md (revision 2, executed as written by the oracle), dry gate 12/12 on fixture adapters, frozen at digest
+`704ed5c6...`, runnable and not run. Run plan and exact commands: [plan-frozen.md](plan-frozen.md).
