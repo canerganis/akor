@@ -1,0 +1,352 @@
+{
+ "gate": "G3 live",
+ "kind": "live",
+ "prefix": "live1",
+ "freeze": {
+  "frozen": true,
+  "digest": "49115f95b40b7e5d43d39585da5f9d69c903608c3daa0ee03451a96c1c0c7847",
+  "current_digest": "49115f95b40b7e5d43d39585da5f9d69c903608c3daa0ee03451a96c1c0c7847",
+  "problems": []
+ },
+ "started_at": 1792716418.4079554,
+ "scenarios": {
+  "clean": {
+   "scenario": "clean",
+   "request_id": "live1-clean",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 3,
+   "expected_launches": 3,
+   "packets": [
+    4,
+    4,
+    4
+   ],
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "memo_hits": 0,
+   "expected_memo_hits": 0,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 3,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 8049,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 0,
+   "pass": true,
+   "pass_with_recorded_rejections": true
+  },
+  "repeat": {
+   "scenario": "repeat",
+   "request_id": "live1-repeat",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "expected_launches": 0,
+   "packets": [],
+   "expected_packets": [],
+   "memo_hits": 12,
+   "expected_memo_hits": 12,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 0,
+   "pass": true,
+   "pass_with_recorded_rejections": true
+  },
+  "interrupt": {
+   "scenario": "interrupt",
+   "request_id": "live1-interrupt",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 5,
+   "expected_launches": 3,
+   "packets": [
+    4,
+    4,
+    4,
+    1,
+    1
+   ],
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "memo_hits": 0,
+   "expected_memo_hits": 0,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 5,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 12860,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 1,
+   "pass": false,
+   "pass_with_recorded_rejections": false,
+   "observables": {
+    "pass": true,
+    "checks": {
+     "kills_at_boundaries": true,
+     "first_capture_recovered_without_new_call": true,
+     "manifest_reconciled_on_resume": true
+    },
+    "exits": [
+     {
+      "faults": [
+       "worker.after_capture"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [
+       "flow.publish.after_manifest"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [],
+      "exit": 0,
+      "expected_exit": 0,
+      "stderr_tail": ""
+     }
+    ]
+   }
+  },
+  "stale": {
+   "scenario": "stale",
+   "request_id": "live1-stale",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 6,
+   "expected_launches": 5,
+   "packets": [
+    4,
+    4,
+    1,
+    1,
+    4,
+    1
+   ],
+   "expected_packets": [
+    4,
+    4,
+    1,
+    1,
+    4
+   ],
+   "memo_hits": 6,
+   "expected_memo_hits": 6,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 6,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 15237,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 1,
+   "pass": false,
+   "pass_with_recorded_rejections": true,
+   "observables": {
+    "pass": false,
+    "checks": {
+     "no_old_A_after_mutation": true,
+     "singletons_then_classify": false,
+     "bcd_reused_by_recorded_identical_input_decision": true,
+     "old_A_history_kept_delivery_cites_rev2": true
+    },
+    "dispatches_after_mutation": [
+     [
+      "extract_A"
+     ],
+     [
+      "bounds_A"
+     ],
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ],
+     [
+      "classify_C"
+     ]
+    ],
+    "leaked_receipts": [],
+    "reused": {
+     "extract_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "extract_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "extract_D": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "bounds_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "bounds_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "bounds_D": {
+      "decision": "hit",
+      "same_inputs": true
+     }
+    }
+   }
+  },
+  "bump": {
+   "scenario": "bump",
+   "request_id": "live1-bump",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "expected_launches": 0,
+   "packets": [],
+   "expected_packets": [],
+   "memo_hits": 20,
+   "expected_memo_hits": 20,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 0,
+   "pass": true,
+   "pass_with_recorded_rejections": true
+  }
+ },
+ "cli_version": "2.1.306",
+ "c5": {
+  "byte_identity": {
+   "pass": true,
+   "clean_repeat_interrupt_identical": true,
+   "bump_differs_only_in_revision": true
+  },
+  "route_change": {
+   "pass": true,
+   "misses": 12,
+   "packets": [
+    4,
+    4,
+    4
+   ]
+  },
+  "strengthened_check": {
+   "pass": true,
+   "launches": 0,
+   "bounds_checks": {
+    "bounds_A": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ],
+    "bounds_B": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ],
+    "bounds_C": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ],
+    "bounds_D": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ]
+   },
+   "evaluator_errors": []
+  },
+  "revocation": {
+   "pass": true,
+   "revoked_entries": [
+    6
+   ],
+   "missed": [
+    "bounds_B"
+   ],
+   "packets": [
+    1
+   ]
+  }
+ },
+ "totals": {
+  "launches": 14,
+  "tokens_known": 36146,
+  "calls_without_usage": 0,
+  "caps": {
+   "max_tokens": 60000,
+   "max_launches": 16,
+   "max_launches_per_flow": 8,
+   "reserve_per_launch": 5000,
+   "estimate_tokens": 28500
+  },
+  "accounting": "complete"
+ },
+ "pass": false,
+ "finished_at": 1792716521.8912673
+}

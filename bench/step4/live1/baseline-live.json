@@ -1,0 +1,68 @@
+{
+ "calls": [
+  {
+   "call": 1,
+   "variant": "rev1",
+   "verified": true,
+   "errors": [],
+   "usage": {
+    "input_tokens": 2703,
+    "cached_input_tokens": 0,
+    "cache_creation_input_tokens": 2701,
+    "output_tokens": 1289
+   },
+   "model_check": "ok"
+  },
+  {
+   "call": 2,
+   "variant": "rev1",
+   "verified": true,
+   "errors": [],
+   "usage": {
+    "input_tokens": 2704,
+    "cached_input_tokens": 2052,
+    "cache_creation_input_tokens": 650,
+    "output_tokens": 1228
+   },
+   "model_check": "ok"
+  },
+  {
+   "call": 3,
+   "variant": "rev1",
+   "verified": true,
+   "errors": [],
+   "usage": {
+    "input_tokens": 2708,
+    "cached_input_tokens": 2052,
+    "cache_creation_input_tokens": 654,
+    "output_tokens": 1316
+   },
+   "model_check": "ok"
+  },
+  {
+   "call": 4,
+   "variant": "rev2",
+   "verified": true,
+   "errors": [],
+   "usage": {
+    "input_tokens": 2710,
+    "cached_input_tokens": 0,
+    "cache_creation_input_tokens": 2708,
+    "output_tokens": 1341
+   },
+   "model_check": "ok"
+  }
+ ],
+ "launches": 4,
+ "tokens_known": 15999,
+ "calls_without_usage": 0,
+ "caps": {
+  "max_tokens": 20000,
+  "max_launches": 5,
+  "reserve_per_launch": 6000,
+  "expected_calls": 4
+ },
+ "accounting": "complete",
+ "note": "measured calls only; repeat, revision bump and interruption are counterfactual estimates",
+ "pass": true
+}
