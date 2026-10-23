@@ -13,8 +13,8 @@ import os
 from pathlib import Path
 import sys
 
-ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location('claude_cli_adapter', ROOT / 'examples' / 'claude_cli_adapter.py')
+HERE = Path(__file__).resolve().parent   # the run root's code/ snapshot, which holds examples/claude_cli_adapter.py
+spec = importlib.util.spec_from_file_location('claude_cli_adapter', HERE / 'examples' / 'claude_cli_adapter.py')
 adapter = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(adapter)
 

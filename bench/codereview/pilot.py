@@ -6,8 +6,15 @@ verify.py; the oracle (oracle.py, eval_worker.py) is evaluator-only and runs wit
 
 Reused machinery: bench/live/pilot_k2.py (caller argv, stream-json parsing, worker ledger usage), bench/live/k2_wrap.py
 (the archived `oz do` shim, full mode), the step 3 quota-before / quota-after pattern, bench/o1/sandbox.py (through the
-oracle). New here: cr_adapter.py (keeps raw worker envelopes), the in-run cap guard, protocol and isolation checks,
-admission, the fill, the dry gate.
+oracle). New here: cr_adapter.py (keeps raw worker envelopes, gates worker calls), the pre-call cap guard, protocol
+and isolation checks, admission, the fill, the dry gate.
+
+Each run executes in its own run root under the system temp directory (review fixes 2 and 5): code/ holds an
+immutable snapshot of the frozen runtime (committed files from the git objects at FROZEN_COMMIT, the pilot's helpers,
+tiktoken, regex and the o200k cache, every file pinned and checked after copying), ws/ the workspace, bin/ the `oz`
+shim, arc/ the archives, state/ the guard's running total and STOP flag. The run uses the base interpreter, not the
+repository's venv, and the caller environment holds no variable naming the repository, so nothing in or around the
+workspace names a route back to the evaluator storage; the tripwire stays as a second layer.
 
 Commands (only `run` can call a model, and only with the real caller):
   python bench/codereview/pilot.py plan                     schedule, prompt digests, sizing and the frozen digest
@@ -27,6 +34,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -72,12 +80,29 @@ SCHEDULE = (('A', 'I'), ('A', 'D'), ('B', 'D'), ('B', 'I'))   # pack A in I/D or
 PACKS = {'A': ('packA/labels.py', 'packA/paging.py', 'packA/sample_stats.py'),
          'B': ('packB/ranges.py', 'packB/rotation.py', 'packB/settings.py')}
 FORMAT = 'WITNESS_FORMAT.md'
+# Harness and evaluator code the harness process itself runs (working tree). The runtime a run imports is pinned
+# separately (RUNTIME_FROM_COMMIT, RUNTIME_LOCAL), so working-tree edits of oz*.py, k2_wrap.py or claude_cli_adapter.py
+# by another session move neither the digest nor a run.
 CODE = ('bench/codereview/pilot.py', 'bench/codereview/oracle.py', 'bench/codereview/eval_worker.py',
-        'bench/codereview/verify.py', 'bench/codereview/cr_adapter.py', 'bench/codereview/fixture_caller.py',
-        'bench/codereview/fixture_worker.py', 'bench/live/pilot_k2.py', 'bench/live/k2_wrap.py',
-        'bench/live/run_live.py', 'bench/o1/sandbox.py', 'examples/claude_cli_adapter.py')
-CORE = ('oz.py', 'oz_batch.py', 'oz_reply.py', 'oz_runtime.py', 'oz_worker.py', 'oz_workspace.py', 'oz_do.py',
-        'oz_cli.py', 'oz_accept.py', 'oz_memo.py', 'oz_flow.py')
+        'bench/codereview/verify.py', 'bench/codereview/fixture_caller.py', 'bench/live/pilot_k2.py',
+        'bench/live/run_live.py', 'bench/o1/sandbox.py')
+# Review fix 1: the cap guard and the overshoot reserve (exact rule in guard_decision, next_call_bound, admission).
+TOOL_ALLOW = 8_000                    # allowance per tool result carried into the next caller call
+OUT_ALLOW = 8_000                     # allowance for the next caller call's own output
+WORKER_OUT_ALLOW = 8_000              # allowance for a worker call's output (its input is bounded by packet bytes)
+RACE = 40_000                         # one racing call: context up to 24,000 plus 16,000 of allowances
+RUN_RESERVE = RUN_CAP + RACE          # the hard per-run bound admission reserves and incomplete runs are charged
+POLL_S = 0.25
+# Review fix 5: the runtime a run imports, copied into its run root at admission. Committed files come from the git
+# object store at FROZEN_COMMIT (immune to edits of the working tree by any session); the pilot's own helpers from the
+# working tree; tiktoken, tiktoken_ext and regex from the venv; the o200k token cache. Every file is pinned.
+FROZEN_COMMIT = '47992b4867b49b053eb868ad51d3d020fae19653'
+RUNTIME_FROM_COMMIT = ('oz.py', 'oz_accept.py', 'oz_batch.py', 'oz_cli.py', 'oz_do.py', 'oz_fault.py', 'oz_memo.py',
+                       'oz_reply.py', 'oz_runner.py', 'oz_runtime.py', 'oz_worker.py', 'oz_workspace.py',
+                       'bench/live/k2_wrap.py', 'examples/claude_cli_adapter.py')
+RUNTIME_LOCAL = ('bench/codereview/cr_adapter.py', 'bench/codereview/fixture_worker.py')
+SITE_PACKAGES = ('tiktoken', 'tiktoken_ext', 'regex')
+TOKEN_CACHE = ROOT / '.token-cache'
 
 # ---- frozen texts (each one line; the arms differ only in REQUIREMENT) ----
 FILL_HEAD = ('Below is the record of two earlier, unrelated sessions in this environment. It is background only: '
@@ -246,54 +271,232 @@ def sizing(root=FIX) -> dict:
             'artifact_read_turn_expected': max(sizes.values()) > INLINE_LIMIT}
 
 
-# ---- workspace ----
+# ---- the run root: an isolated directory holding an immutable snapshot of the frozen runtime ----
 
-def setup(tmp, spec, delegate=None, extra_env=None):
-    """A fresh workspace, identical in both arms: the pack's three modules and WITNESS_FORMAT.md (nothing else from
-    the fixture), an oz workspace with the packet budget raised to WS_MAX_TOKENS, adapter.json (cr_adapter.py around
-    the delegate, by default examples/claude_cli_adapter.py) and an `oz` shim on PATH that runs bench/live/k2_wrap.py
-    in full mode with an archive. The caller environment carries no PYTHONPATH, tiktoken or OZ_ variables: the shim
-    sets those for its own process."""
-    tmp = Path(tmp)
-    ws, archive, bin_dir = tmp / 'ws', tmp / 'arc', tmp / 'bin'
-    archive.mkdir()
-    bin_dir.mkdir()
-    py = Path(sys.executable).resolve()
-    cache = ROOT / '.token-cache'
-    init_env = dict(os.environ, PYTHONPATH=str(ROOT), TIKTOKEN_CACHE_DIR=str(cache), PYTHONIOENCODING='utf-8')
-    subprocess.run([str(py), '-c', 'import sys, oz_cli; sys.exit(oz_cli.main())', 'init', str(ws)], env=init_env,
-                   check=True, capture_output=True)
+class SnapshotError(Exception):
+    """A runtime file, package or token cache file does not match its frozen pin; nothing is launched."""
+
+
+def _git_blob(rel: str) -> bytes:
+    if rel not in _BLOBS:
+        _BLOBS[rel] = subprocess.run(['git', 'show', f'{FROZEN_COMMIT}:{rel}'], cwd=ROOT, capture_output=True,
+                                     check=True).stdout
+    return _BLOBS[rel]
+
+
+_BLOBS: dict = {}
+
+
+def runtime_source(rel: str) -> bytes:
+    """The bytes a runtime file is taken from: the git object at FROZEN_COMMIT for the committed runtime (immune to
+    edits of the working tree by any session), the working tree for this pilot's own runtime helpers."""
+    return _git_blob(rel) if rel in RUNTIME_FROM_COMMIT else (ROOT / rel).read_bytes()
+
+
+def _site_dir() -> Path:
+    import tiktoken
+    return Path(tiktoken.__file__).resolve().parents[1]
+
+
+def _tree_files(base: Path) -> dict:
+    return {p.relative_to(base).as_posix(): p for p in sorted(base.rglob('*'))
+            if p.is_file() and '__pycache__' not in p.parts}
+
+
+def current_pins() -> dict:
+    """sha256 of every runtime file, third-party package file and token cache file, from their sources now."""
+    site = _site_dir()
+    files = {}
+    for pkg in SITE_PACKAGES:
+        files.update({f'{pkg}/{rel}': sha(p.read_bytes()) for rel, p in _tree_files(site / pkg).items()})
+    return {'files': {rel: sha(runtime_source(rel)) for rel in RUNTIME_FROM_COMMIT + RUNTIME_LOCAL},
+            'site': files, 'tok': {rel: sha(p.read_bytes()) for rel, p in _tree_files(TOKEN_CACHE).items()}}
+
+
+def runtime_pins() -> dict:
+    """The frozen runtime pins (freeze.json), as {path: sha256} of the runtime files."""
+    return json.loads(FREEZE_FILE.read_text(encoding='utf-8'))['runtime']['files']
+
+
+def frozen_pins() -> dict:
+    return json.loads(FREEZE_FILE.read_text(encoding='utf-8'))['runtime']
+
+
+def _target(rel: str) -> str:
+    return Path(rel).name if rel in RUNTIME_LOCAL else rel
+
+
+def snapshot(dest: Path, pins=None) -> dict:
+    """Copy the pinned runtime into dest (dest/<runtime path>, dest/site/<package>, dest/tok), check every copy against
+    its pin after writing, mark it read-only and write SNAPSHOT.json. A run imports from here only."""
+    pins = pins or frozen_pins()
+    dest = Path(dest)
+    written = {}
+
+    def put(target: str, data: bytes, want: str, label: str):
+        if sha(data) != want:
+            raise SnapshotError(f'{label} does not match its frozen pin')
+        path = dest / target
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(data)
+        written[target] = want
+
+    if set(pins['files']) != set(RUNTIME_FROM_COMMIT + RUNTIME_LOCAL):
+        raise SnapshotError('the pinned runtime file set differs from the frozen one')
+    for rel in RUNTIME_FROM_COMMIT + RUNTIME_LOCAL:
+        put(_target(rel), runtime_source(rel), pins['files'][rel], rel)
+    site = _site_dir()
+    for rel, want in pins['site'].items():
+        put('site/' + rel, (site / rel).read_bytes(), want, 'site-packages/' + rel)
+    for rel, want in pins['tok'].items():
+        put('tok/' + rel, (TOKEN_CACHE / rel).read_bytes(), want, 'token cache ' + rel)
+    for target, want in written.items():
+        path = dest / target
+        if sha(path.read_bytes()) != want:
+            raise SnapshotError(f'{target} changed after it was written')
+        os.chmod(path, stat.S_IREAD)
+    (dest / 'SNAPSHOT.json').write_text(json.dumps(written, indent=1, sort_keys=True), encoding='utf-8')
+    return written
+
+
+def base_python() -> Path:
+    exe = Path(getattr(sys, '_base_executable', None) or sys.executable).resolve()
+    if exe.is_relative_to(ROOT):
+        raise SnapshotError('the base interpreter lies inside the repository')
+    return exe
+
+
+def shim_command(run_root: Path) -> dict:
+    """The command the `oz` shim runs, and the variables it exports (all inside the run root)."""
+    code = Path(run_root) / 'code'
+    return {'argv': [str(base_python()), '-s', str(code / 'bench' / 'live' / 'k2_wrap.py'), '--archive',
+                     str(Path(run_root) / 'arc' / 'oz')],
+            'env': {'PYTHONPATH': os.pathsep.join([str(code / 'site'), str(code)]),
+                    'TIKTOKEN_CACHE_DIR': str(code / 'tok'), 'OZ_MODEL': MODEL, 'PYTHONIOENCODING': 'utf-8',
+                    'PYTHONDONTWRITEBYTECODE': '1'}}
+
+
+def _repo_forms() -> list:
+    r = str(ROOT).lower()
+    posix = r.replace('\\', '/')
+    forms = [r, posix]
+    if re.match(r'^[a-z]:/', posix):
+        forms.append('/' + posix[0] + posix[2:])
+    return forms
+
+
+def _forms(path) -> list:
+    r = str(Path(path)).lower()
+    posix = r.replace('\\', '/')
+    out = [r, posix]
+    if re.match(r'^[a-z]:/', posix):
+        out.append('/' + posix[0] + posix[2:])
+    return out
+
+
+def caller_environment(bin_dir: Path, extra_env=None) -> dict:
+    """The caller's environment: the harness environment without any variable that names the repository (PATH keeps
+    only entries outside it) or configures Python, tiktoken, oz or this pilot, plus the shim's bin directory."""
+    forms = _repo_forms()
+    env = {}
+    for key, value in os.environ.items():
+        if key.upper() == 'PATH':
+            continue
+        if key.upper() in ('PYTHONPATH', 'PYTHONHOME', 'VIRTUAL_ENV', 'TIKTOKEN_CACHE_DIR', 'MODEL') or \
+                key.upper().startswith(('OZ_', 'CR_', 'PYTHON')):
+            continue
+        if any(f in value.lower() for f in forms):
+            continue
+        env[key] = value
+    path = [p for p in os.environ.get('PATH', '').split(os.pathsep)
+            if p and not any(f in p.lower() for f in forms)]
+    env['PATH'] = os.pathsep.join([str(bin_dir)] + path)
+    env.update(extra_env or {})
+    return env
+
+
+def setup(run_root, spec, delegate=None, extra_env=None, pins=None):
+    """Build one run root: code/ (the snapshot), ws/ (the pack's three modules and WITNESS_FORMAT.md, an oz workspace
+    with the packet budget raised to WS_MAX_TOKENS, adapter.json), bin/oz (the shim), arc/ (archives), state/ (the
+    guard's running total and STOP flag). Nothing in it names the repository. Returns (ws, run_root, caller env)."""
+    run_root = Path(run_root)
+    code, ws, bin_dir, arc, state = (run_root / n for n in ('code', 'ws', 'bin', 'arc', 'state'))
+    for d in (bin_dir, arc, state):
+        d.mkdir(parents=True, exist_ok=True)
+    snapshot(code, pins)
+    shim = shim_command(run_root)
+    py = shim['argv'][0]
+    subprocess.run([py, '-s', '-c', 'import sys, oz_cli; sys.exit(oz_cli.main())', 'init', str(ws)],
+                   env=dict(os.environ, **shim['env']), check=True, capture_output=True)
     cfg = json.loads((ws / 'oz.json').read_text(encoding='utf-8'))
     cfg['max_tokens'] = spec['ws_max_tokens']
     (ws / 'oz.json').write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-    (bin_dir / 'oz').write_text(
-        '#!/bin/sh\n'
-        f'export TIKTOKEN_CACHE_DIR="{cache.as_posix()}"\n'
-        f'export OZ_MODEL="{spec["model"]}"\n'
-        'export PYTHONIOENCODING="utf-8"\n'
-        f'exec "{py.as_posix()}" "{(LIVE / "k2_wrap.py").as_posix()}" --archive "{(archive / "oz").as_posix()}" "$@"\n',
-        encoding='utf-8', newline='\n')
-    delegate = delegate or [py.as_posix(), (ROOT / 'examples' / 'claude_cli_adapter.py').as_posix()]
-    (ws / 'adapter.json').write_text(json.dumps({'argv': [py.as_posix(), (HERE / 'cr_adapter.py').as_posix(),
-                                                          '--archive', (archive / 'worker').as_posix(), '--',
+    exports = ''.join(f'export {k}="{Path(v).as_posix() if k != "PYTHONPATH" else v}"\n'
+                      for k, v in shim['env'].items())
+    argv = ' '.join(f'"{Path(a).as_posix()}"' if i in (0, 2, 4) else a for i, a in enumerate(shim['argv']))
+    (bin_dir / 'oz').write_text('#!/bin/sh\n' + exports + f'exec {argv} "$@"\n', encoding='utf-8', newline='\n')
+    sub = {'{py}': py, '{code}': str(code)}
+    delegate = [sub.get(a, a.replace('{code}', str(code))) for a in
+                (delegate or ['{py}', '-s', '{code}/examples/claude_cli_adapter.py'])]
+    (ws / 'adapter.json').write_text(json.dumps({'argv': [py, '-s', str(code / 'cr_adapter.py'), '--archive',
+                                                          str(arc / 'worker'), '--state', str(state), '--',
                                                           *delegate],
                                                  'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}),
                                      encoding='utf-8')
     for rel, data in spec['files'].items():
         (ws / rel).parent.mkdir(parents=True, exist_ok=True)
         (ws / rel).write_bytes(data)
-    env = {k: v for k, v in os.environ.items()
-           if k not in ('PYTHONPATH', 'TIKTOKEN_CACHE_DIR', 'MODEL') and not k.startswith(('OZ_', 'CR_'))}
-    env['PATH'] = str(bin_dir) + os.pathsep + env.get('PATH', '')
-    env.update(extra_env or {})
-    return ws, archive, env
+    write_state(state, 0)
+    return ws, run_root, caller_environment(bin_dir, extra_env)
+
+
+def write_state(state: Path, caller_tokens: int) -> None:
+    temp = Path(state) / 'run.json.tmp'
+    temp.write_text(json.dumps({'caller_tokens': caller_tokens, 'cap': RUN_CAP, 'worker_out': WORKER_OUT_ALLOW}),
+                    encoding='utf-8')
+    os.replace(temp, Path(state) / 'run.json')
 
 
 def tree_digest(root: Path) -> dict:
     return {p.relative_to(root).as_posix(): sha(p.read_bytes()) for p in sorted(Path(root).rglob('*')) if p.is_file()}
 
 
-# ---- one run ----
+# ---- the cap guard ----
+
+def billed(m: dict) -> int:
+    return sum(m.get(k, 0) for k in ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens',
+                                     'output_tokens'))
+
+
+def next_call_bound(m: dict) -> int:
+    """Upper allowance for the caller call that follows message m: its context (m's input plus m's output) plus
+    TOOL_ALLOW per tool result it will carry plus OUT_ALLOW of output. 0 when m has no tool use (no next call)."""
+    if not m.get('tool_uses'):
+        return 0
+    ctx = sum(m.get(k, 0) for k in ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens'))
+    return ctx + m.get('output_tokens', 0) + TOOL_ALLOW * m['tool_uses'] + OUT_ALLOW
+
+
+def guard_decision(msgs: list, worker_tokens: int):
+    """None to continue, 'cap' or 'turns' to stop now (frozen rule): stop when the running billed tokens reach
+    RUN_CAP, when the last caller message asks for a next call whose allowance would cross RUN_CAP, or when a next
+    call would exceed MAX_TURNS."""
+    running = sum(billed(m) for m in msgs) + worker_tokens
+    if running >= RUN_CAP:
+        return 'cap'
+    if msgs and msgs[-1].get('tool_uses'):
+        if len(msgs) >= MAX_TURNS:
+            return 'turns'
+        if running + next_call_bound(msgs[-1]) > RUN_CAP:
+            return 'cap'
+    return None
+
+
+def charge(total, lower_bound: int) -> int:
+    """Tokens a run is charged against the total cap: its total when accounting is complete, else the hard per-run
+    bound RUN_RESERVE or the observed lower bound when that is larger."""
+    return total if total is not None else max(RUN_RESERVE, lower_bound)
+
 
 def kill_tree(proc) -> None:
     if proc.poll() is not None:
@@ -322,14 +525,31 @@ def ledger_tokens(ws: Path) -> int:
     return total
 
 
-def launch(argv, data: bytes, ws: Path, env: dict, timeout: float, cap: int):
-    """Run the caller with the in-run guard: the run is stopped (process tree killed) as soon as its running billed
-    tokens (per-message caller usage plus worker ledger usage) reach cap, when a model call beyond MAX_TURNS starts,
-    or at the wall timeout. Returns (stdout bytes, stderr bytes, meta)."""
+def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float):
+    """Run the caller under the guard. On every stream event and every POLL_S seconds (worker ledgers) the guard
+    applies guard_decision; on a stop it writes state/STOP (cr_adapter.py then refuses any worker call before launch)
+    and kills the caller's process tree at once, before the tool result of the deciding message can reach a new call.
+    Returns (stdout bytes, stderr bytes, meta)."""
     proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ws,
                             env=env)
-    out, err, state = [], [], {'stop': None, 'peak': 0}
-    msgs = {}
+    out, err = [], []
+    st = {'stop': None, 'peak': 0, 'done': False}
+    msgs, lock = {}, threading.Lock()
+
+    def check():
+        with lock:
+            if st['stop'] is not None:
+                return
+            ordered = list(msgs.values())
+            caller = sum(billed(m) for m in ordered)
+            worker = ledger_tokens(ws)
+            st['peak'] = max(st['peak'], caller + worker)
+            write_state(state, caller)
+            why = guard_decision(ordered, worker)
+            if why:
+                st['stop'] = why
+                (Path(state) / 'STOP').write_text(why, encoding='utf-8')
+                kill_tree(proc)
 
     def feed():
         try:
@@ -345,60 +565,65 @@ def launch(argv, data: bytes, ws: Path, env: dict, timeout: float, cap: int):
                 ev = json.loads(line)
             except ValueError:
                 continue
-            if ev.get('type') != 'assistant' or ev.get('parent_tool_use_id'):
-                continue
-            m = ev.get('message') or {}
-            mid = m.get('id') or 'anon%d' % len(msgs)
-            u = m.get('usage') or {}
-            cur = msgs.setdefault(mid, {})
-            for k in ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'output_tokens'):
-                if type(u.get(k)) is int:
-                    cur[k] = max(u[k], cur.get(k, 0))
-            running = sum(sum(v.values()) for v in msgs.values()) + ledger_tokens(ws)
-            state['peak'] = max(state['peak'], running)
-            if state['stop'] is None and running >= cap:
-                state['stop'] = 'cap'
-                kill_tree(proc)
-            elif state['stop'] is None and len(msgs) > MAX_TURNS:
-                state['stop'] = 'turns'
-                kill_tree(proc)
+            if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
+                m = ev.get('message') or {}
+                with lock:
+                    cur = msgs.setdefault(m.get('id') or 'anon%d' % len(msgs), {'tool_ids': set()})
+                    for k, v in (m.get('usage') or {}).items():
+                        if type(v) is int and k in ('input_tokens', 'cache_read_input_tokens',
+                                                    'cache_creation_input_tokens', 'output_tokens'):
+                            cur[k] = max(v, cur.get(k, 0))
+                    cur['tool_ids'] |= {b.get('id') for b in m.get('content') or [] if b.get('type') == 'tool_use'}
+                    cur['tool_uses'] = len(cur['tool_ids'])
+                check()
+
+    def poll():
+        while not st['done']:
+            check()
+            time.sleep(POLL_S)
 
     threads = [threading.Thread(target=feed), threading.Thread(target=read_out),
-               threading.Thread(target=lambda: err.append(proc.stderr.read()))]
+               threading.Thread(target=lambda: err.append(proc.stderr.read())), threading.Thread(target=poll)]
     started = time.monotonic()
     for t in threads:
         t.start()
     try:
         proc.wait(timeout=timeout)
     except subprocess.TimeoutExpired:
-        state['stop'] = state['stop'] or 'timeout'
+        st['stop'] = st['stop'] or 'timeout'
+        (Path(state) / 'STOP').write_text('timeout', encoding='utf-8')
         kill_tree(proc)
         proc.wait()
+    st['done'] = True
     for t in threads:
         t.join(timeout=60)
     for pipe in (proc.stdout, proc.stderr):
         pipe.close()
-    meta = {'exit_code': proc.returncode, 'wall_s': round(time.monotonic() - started, 2), 'stop_reason': state['stop'],
-            'peak_running_tokens': state['peak'], 'cap': cap, 'max_turns': MAX_TURNS, 'timeout_s': timeout}
+    meta = {'exit_code': proc.returncode, 'wall_s': round(time.monotonic() - started, 2), 'stop_reason': st['stop'],
+            'peak_running_tokens': st['peak'], 'cap': RUN_CAP, 'max_turns': MAX_TURNS, 'timeout_s': timeout}
     return b''.join(out), b''.join(err), meta
 
 
-def run_one(spec, run_dir, claude=None, delegate=None, timeout=TIMEOUT, cap=RUN_CAP, extra_env=None, root=FIX,
-            fixes=None) -> dict:
-    """Run one spec end to end in a fresh workspace, keep every raw artifact under run_dir, then build the record from
+# ---- one run ----
+
+def run_one(spec, run_dir, claude=None, delegate=None, timeout=TIMEOUT, extra_env=None, root=FIX, fixes=None,
+            pins=None) -> dict:
+    """Run one spec end to end in a fresh run root, keep every raw artifact under run_dir, then build the record from
     those raw files only (build_record, the same function rejudge uses)."""
     run_dir = Path(run_dir)
     run_dir.mkdir(parents=True, exist_ok=False)
     (run_dir / 'prompt.txt').write_bytes(spec['prompt'].encode('utf-8'))
     (run_dir / 'spec.json').write_text(json.dumps({k: v for k, v in spec.items() if k not in ('files', 'prompt')},
                                                   ensure_ascii=False, indent=1), encoding='utf-8')
-    tmp = Path(tempfile.mkdtemp(prefix='cr-'))
+    run_root = Path(tempfile.mkdtemp(prefix='cr-'))
     try:
-        ws, archive, env = setup(tmp, spec, delegate, extra_env)
+        ws, run_root, env = setup(run_root, spec, delegate, extra_env, pins)
+        shutil.copyfile(run_root / 'code' / 'SNAPSHOT.json', run_dir / 'SNAPSHOT.json')
         (run_dir / 'ws_start.json').write_text(json.dumps(tree_digest(ws), indent=1), encoding='utf-8')
         started = time.time()
-        out, err, meta = launch(caller_argv(claude or L.CLAUDE), spec['prompt'].encode('utf-8'), ws, env, timeout, cap)
-        meta.update(started=started, workspace=str(ws))
+        out, err, meta = launch(caller_argv(claude or L.CLAUDE), spec['prompt'].encode('utf-8'), ws,
+                                run_root / 'state', env, timeout)
+        meta.update(started=started, run_root=str(run_root))
         (run_dir / 'transcript.jsonl').write_bytes(out)
         (run_dir / 'stderr.txt').write_bytes(err)
         final = [e for e in _events(out.decode('utf-8', 'replace')) if e.get('type') == 'result']
@@ -409,15 +634,22 @@ def run_one(spec, run_dir, claude=None, delegate=None, timeout=TIMEOUT, cap=RUN_
             shutil.copyfile(ws / 'results.json', run_dir / 'results.json')
         if (ws / 'do').is_dir():
             shutil.copytree(ws / 'do', run_dir / 'do')
-        shutil.copytree(archive, run_dir / 'archive')
+        shutil.copytree(run_root / 'arc', run_dir / 'archive')
         (run_dir / 'ws_files.json').write_text(json.dumps(tree_digest(ws), indent=1), encoding='utf-8')
         (run_dir / 'meta.json').write_text(json.dumps(meta, indent=1), encoding='utf-8')
         (run_dir / 'raw_complete').write_text('raw data kept\n', encoding='utf-8')
     finally:
-        shutil.rmtree(tmp, ignore_errors=True)
+        _remove(run_root)
     rec = build_record(spec, run_dir, root=root, fixes=fixes)
     (run_dir / 'record.json').write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding='utf-8')
     return rec
+
+
+def _remove(path: Path) -> None:
+    def unlock(func, p, _exc):
+        os.chmod(p, stat.S_IWRITE)
+        func(p)
+    shutil.rmtree(path, onerror=unlock)
 
 
 def _events(text: str) -> list:
@@ -462,28 +694,32 @@ def shows_modules(spec, text: str) -> bool:
     return False
 
 
-def _repo_forms() -> list:
-    r = str(ROOT).lower()
-    posix = r.replace('\\', '/')
-    forms = [r, posix]
-    if re.match(r'^[a-z]:/', posix):
-        forms.append('/' + posix[0] + posix[2:])
-    return forms
+HOME_MARKS = ('~/', '~\\', '$home', '${home}', '%userprofile%', '$userprofile', '$env:userprofile', '.claude',
+              'akor', 'answer_key', 'codereview', 'eval_worker', 'oracle.py')
+RESULT_MARKS = ('"classification": "evaluator-only"', '"hidden_witness":', '"reference_fix":', '"reference_file":',
+                '"start_line":', '\\"hidden_witness\\":', '\\"reference_fix\\":', '\\"start_line\\":',
+                '\\"reference_file\\":')
 
 
-def breaches_in(inputs, results) -> list:
-    """The isolation tripwire (evaluator-only storage is reachable on disk, so reaching for it is recorded): a tool
-    input naming the repository or the evaluator storage, or a tool result holding evaluator-only text."""
+def breaches_in(inputs, results, run_root=None) -> list:
+    """The isolation tripwire, a second layer behind the run-root layout: a tool input that, after the run root's own
+    paths are removed, still names an absolute drive path, the home directory, Claude's session stores, the
+    repository or evaluator files; or a tool result holding evaluator-only text or answer-key structure."""
     out = []
+    own = sorted(_forms(run_root), key=len, reverse=True) if run_root else []
+    home = _forms(Path(os.path.expanduser('~')))
     for text in inputs:
         low = text.lower()
-        for form in _repo_forms() + ['answer_key', 'codereview', 'eval_worker', 'oracle.py']:
+        for form in own:
+            low = low.replace(form, '<run>')
+        for form in _repo_forms() + home + list(HOME_MARKS):
             if form in low:
                 out.append('tool input names ' + form)
+        if re.search(r'(?<![a-z0-9_])[a-z]:[\\/]', low) or re.search(r'(^|[\s\'"(=,])/[a-z]/', low):
+            out.append('tool input names an absolute path outside the run root')
     key = O.load_key()
-    marks = ['"classification": "evaluator-only"', '"hidden_witness": {', '"reference_fix":',
-             (HERE / 'oracle.py').read_text(encoding='utf-8').split('\n')[0],
-             (HERE / 'eval_worker.py').read_text(encoding='utf-8').split('\n')[0]]
+    marks = list(RESULT_MARKS) + [(HERE / 'oracle.py').read_text(encoding='utf-8').split('\n')[0],
+                                  (HERE / 'eval_worker.py').read_text(encoding='utf-8').split('\n')[0]]
     marks += [s['reference_fix'] for m in key['modules'] for s in m['seeds']]
     for text in results:
         for mark in marks:
@@ -544,15 +780,68 @@ def protocol(spec, run_dir: Path, inputs, results, worker_calls: int) -> list:
     return sorted(set(v))
 
 
+COUNTERS = (('inputTokens', 'in_uncached'), ('cacheReadInputTokens', 'cache_read'),
+            ('cacheCreationInputTokens', 'cache_write'), ('outputTokens', 'out'))
+
+
+def strict_model_usage(mu):
+    """Summed counters of a modelUsage object, or None when it is missing, empty, or any entry lacks a counter or
+    holds a non-integer, negative or boolean value (never read as zero)."""
+    if not isinstance(mu, dict) or not mu:
+        return None
+    sums = dict.fromkeys((name for _, name in COUNTERS), 0)
+    for entry in mu.values():
+        if not isinstance(entry, dict):
+            return None
+        for key, name in COUNTERS:
+            value = entry.get(key)
+            if type(value) is not int or value < 0:
+                return None
+            sums[name] += value
+    return sums
+
+
+def caller_usage(text: str) -> dict:
+    """Caller accounting from the transcript: per-message usage (the largest value seen per message ID, any missing
+    counter contributing nothing) gives a lower bound; the final envelope's modelUsage gives the total only when every
+    counter is present and the total is not below that lower bound."""
+    msgs = {}
+    final = None
+    for ev in _events(text):
+        if ev.get('type') == 'result':
+            final = ev
+        elif ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
+            m = ev.get('message') or {}
+            cur = msgs.setdefault(m.get('id') or 'anon%d' % len(msgs), {})
+            for k, v in (m.get('usage') or {}).items():
+                if type(v) is int and v >= 0:
+                    cur[k] = max(v, cur.get(k, 0))
+    lower = sum(billed(m) for m in msgs.values())
+    sums = strict_model_usage((final or {}).get('modelUsage'))
+    total = None if sums is None else sum(sums.values())
+    complete = total is not None and total >= lower
+    return {'complete': complete, 'total': total if complete else None, 'lower_bound': lower,
+            'envelope_total': total, 'counters': sums, 'model_calls': len(msgs),
+            'models': sorted((final or {}).get('modelUsage') or {}) if isinstance((final or {}).get('modelUsage'),
+                                                                                  dict) else []}
+
+
 def envelope_usage(run_dir: Path) -> dict:
     calls = inn = out = 0
+    complete = True
+    refused = 0
     for path in sorted((run_dir / 'archive' / 'worker' / 'envelopes').glob('*.json')):
-        mu = json.loads(path.read_text(encoding='utf-8')).get('modelUsage') or {}
+        data = json.loads(path.read_text(encoding='utf-8'))
         calls += 1
-        for m in mu.values():
-            inn += m.get('inputTokens', 0) + m.get('cacheReadInputTokens', 0) + m.get('cacheCreationInputTokens', 0)
-            out += m.get('outputTokens', 0)
-    return {'envelopes': calls, 'envelope_in': inn, 'envelope_out': out}
+        refused += bool(data.get('refused_by_guard'))
+        sums = strict_model_usage(data.get('modelUsage'))
+        if sums is None:
+            complete = False
+            continue
+        inn += sums['in_uncached'] + sums['cache_read'] + sums['cache_write']
+        out += sums['out']
+    return {'envelopes': calls, 'envelopes_complete': complete, 'envelope_in': inn, 'envelope_out': out,
+            'refused_by_guard': refused}
 
 
 def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
@@ -562,18 +851,17 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
     text = (run_dir / 'transcript.jsonl').read_bytes().decode('utf-8', 'replace')
     meta = json.loads((run_dir / 'meta.json').read_text(encoding='utf-8'))
     parsed = K.parse_stream(text)
+    cu = caller_usage(text)
     final = next((e for e in reversed(_events(text)) if e.get('type') == 'result'), None)
     inputs, results = tool_texts(text)
     wu = K.worker_usage(run_dir)
     ev = envelope_usage(run_dir)
-    agree = (ev['envelopes'] == wu['worker_calls'] and ev['envelope_in'] == wu['worker_in']
-             and ev['envelope_out'] == wu['worker_out'])
-    complete = parsed['usage_reported'] and wu['worker_calls'] == wu['worker_calls_with_usage'] and agree
-    caller_msgs = sum(sum(v for k, v in m.items() if k in ('input_tokens', 'cache_read_input_tokens',
-                                                            'cache_creation_input_tokens', 'output_tokens'))
-                      for m in parsed['messages'])
-    total = (parsed['caller_in'] + parsed['caller_out'] + wu['worker_in'] + wu['worker_out']) if complete else None
-    lower = max(caller_msgs, parsed['caller_in'] + parsed['caller_out']) + wu['worker_in'] + wu['worker_out']
+    agree = (ev['envelopes_complete'] and ev['envelopes'] == wu['worker_calls']
+             and ev['envelope_in'] == wu['worker_in'] and ev['envelope_out'] == wu['worker_out'])
+    worker_ok = wu['worker_calls'] == wu['worker_calls_with_usage'] and agree
+    complete = cu['complete'] and worker_ok
+    total = cu['total'] + wu['worker_in'] + wu['worker_out'] if complete else None
+    lower = cu['lower_bound'] + wu['worker_in'] + wu['worker_out']
     truncation = []
     if (final or {}).get('subtype') == 'error_max_turns':
         truncation.append('max_turns')
@@ -584,27 +872,34 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
     elif final.get('is_error') and 'max_turns' not in truncation:
         truncation.append('caller_error')
     violations = protocol(spec, run_dir, inputs, results, wu['worker_calls'])
-    breaches = breaches_in(inputs, results)
+    breaches = breaches_in(inputs, results, meta.get('run_root'))
     score = O.score(parsed['text'], spec['pack'], root=root, fixes=fixes)
     status = ('isolation_breach' if breaches else 'protocol_violation' if violations else
               'truncated' if truncation else 'inconclusive_accounting' if not complete else 'valid')
+    c = cu['counters'] or {}
     return {
         'tag': spec['tag'], 'pack': spec['pack'], 'arm': spec['arm'], 'input_sha256': spec['input_sha256'],
-        'oracle_version': ORACLE_VERSION, 'status': status, 'scored_as_arm': not violations and not breaches,
-        'truncated': bool(truncation), 'truncation': truncation, 'violations': violations, 'breaches': breaches,
-        'caller': {'turns': parsed['turns'], 'model_calls': len(parsed['messages']), 'in_total': parsed['caller_in'],
-                   'in_uncached': parsed['caller_in_uncached'], 'cache_read': parsed['caller_cache_read'],
-                   'cache_write': parsed['caller_cache_write'], 'out': parsed['caller_out'],
-                   'models': parsed['caller_models'], 'usage_reported': parsed['usage_reported'],
-                   'envelope': final is not None, 'subtype': (final or {}).get('subtype'),
-                   'bash_calls': parsed['bash_calls'], 'oz_do_calls': parsed['oz_do_calls'],
-                   'per_message_tokens': caller_msgs},
+        'oracle_version': ORACLE_VERSION, 'domain_status': O.DOMAIN_STATUS, 'status': status,
+        'scored_as_arm': not violations and not breaches, 'truncated': bool(truncation), 'truncation': truncation,
+        'violations': violations, 'breaches': breaches,
+        'snapshot_sha256': sha((run_dir / 'SNAPSHOT.json').read_bytes()) if (run_dir / 'SNAPSHOT.json').is_file()
+        else None,
+        'caller': {'turns': parsed['turns'], 'model_calls': cu['model_calls'],
+                   'in_total': (c.get('in_uncached', 0) + c.get('cache_read', 0) + c.get('cache_write', 0))
+                   if cu['counters'] else None,
+                   'in_uncached': c.get('in_uncached'), 'cache_read': c.get('cache_read'),
+                   'cache_write': c.get('cache_write'), 'out': c.get('out'), 'models': cu['models'],
+                   'usage_complete': cu['complete'], 'envelope_total': cu['envelope_total'],
+                   'per_message_lower_bound': cu['lower_bound'], 'envelope': final is not None,
+                   'subtype': (final or {}).get('subtype'), 'bash_calls': parsed['bash_calls'],
+                   'oz_do_calls': parsed['oz_do_calls']},
         'worker': {'calls': wu['worker_calls'], 'calls_with_usage': wu['worker_calls_with_usage'],
                    'in': wu['worker_in'], 'cached_in': wu['worker_cached_in'], 'out': wu['worker_out'], **ev,
                    'sources_agree': agree, 'oz_invocations': len(oz_invocations(run_dir))},
         'accounting_complete': complete, 'total_tokens': total, 'lower_bound_tokens': lower,
-        'charged_tokens': total if complete else max(RUN_CAP, lower), 'prep_tokens': 0,
+        'charged_tokens': charge(total, lower), 'prep_tokens': 0,
         'wall_s': meta['wall_s'], 'exit_code': meta['exit_code'], 'stop_reason': meta.get('stop_reason'),
+        'peak_running_tokens': meta.get('peak_running_tokens'),
         'score': score, 'messages': parsed['messages'],
         'tool_calls': [{k: t[k] for k in ('name', 'msg', 'input_bytes', 'result_bytes')} for t in parsed['tools']],
         'text': parsed['text']}
@@ -632,12 +927,12 @@ def _percent(text):
 
 
 def admission(st: dict, quota_before) -> dict:
-    """Admission before launch (02 section 6 as amended): the weekly figure must be read just now; every earlier
-    admitted run must be settled (its after-figure recorded); spent tokens (runs at their charged tokens, an attempt
-    without a record at the full run cap, plus paid preparation) plus this run's whole cap must stay within the total
-    cap; the projection before + factor * RUN_CAP + ROUNDING must stay below ADMIT_BELOW. factor starts at 2 points
-    per 55,000 tokens and rises to the largest observed (after - before) / tokens of a settled run with complete
-    accounting; it never falls."""
+    """Admission before launch (02 section 6 as amended, review fix 1). Exact rule: every earlier admitted run must
+    be settled (its after-figure recorded); spent tokens (each run at its charged tokens, an admitted attempt without
+    a record at RUN_RESERVE, plus paid preparation) plus this run's whole RUN_RESERVE (RUN_CAP plus the race
+    allowance RACE) must not exceed TOTAL_CAP; and before + factor * RUN_RESERVE + ROUNDING must stay below
+    ADMIT_BELOW. factor starts at 2 points per 55,000 tokens and rises to the largest observed (after - before) /
+    tokens of a settled run with complete accounting; it never falls."""
     reasons = []
     before = _percent(quota_before)
     if before is None:
@@ -646,15 +941,16 @@ def admission(st: dict, quota_before) -> dict:
     unsettled = [a['attempt'] for a in admitted if a['attempt'] not in st['quota']]
     if unsettled:
         reasons.append('unsettled: record the weekly figure after ' + ', '.join(unsettled) + ' (quota-after)')
-    spent = PREP_TOKENS + sum(st['records'].get(a['attempt'], {}).get('charged_tokens', RUN_CAP) for a in admitted)
-    if spent + RUN_CAP > TOTAL_CAP:
-        reasons.append(f'total cap: {spent} spent + {RUN_CAP} reserved > {TOTAL_CAP}')
+    spent = PREP_TOKENS + sum(st['records'].get(a['attempt'], {}).get('charged_tokens', RUN_RESERVE)
+                              for a in admitted)
+    if spent + RUN_RESERVE > TOTAL_CAP:
+        reasons.append(f'total cap: {spent} spent + {RUN_RESERVE} reserved > {TOTAL_CAP}')
     factor = FACTOR0
     for a in admitted:
         rec, after = st['records'].get(a['attempt']), st['quota'].get(a['attempt'])
         if rec and after is not None and rec.get('accounting_complete') and rec.get('total_tokens'):
             factor = max(factor, (after - a['quota_before']) / rec['total_tokens'])
-    projection = None if before is None else before + factor * RUN_CAP + ROUNDING
+    projection = None if before is None else before + factor * RUN_RESERVE + ROUNDING
     if projection is not None and projection >= ADMIT_BELOW:
         reasons.append(f'projection {projection:.2f}% reaches {ADMIT_BELOW:g}%')
     return {'admitted': not reasons, 'reasons': reasons, 'quota_before': before, 'projection': projection,
@@ -664,7 +960,7 @@ def admission(st: dict, quota_before) -> dict:
 def environment(claude=None) -> dict:
     head = list(claude) if isinstance(claude, (list, tuple)) else [claude or L.CLAUDE]
     cli = subprocess.run([*head, '--version'], capture_output=True, text=True).stdout.strip()
-    return {'cli_version': cli, 'core_sha256': {p: O.norm_sha(ROOT / p) for p in CORE}}
+    return {'cli_version': cli, 'base_python': sys.version.split()[0]}
 
 
 def load_fixes(out: Path) -> dict:
@@ -685,8 +981,8 @@ def append_record(out: Path, rec: dict) -> None:
 
 def recover(out: Path, digest: str) -> None:
     """After a crash: an admitted attempt with kept raw data but no record line is rebuilt from its raw data (never
-    re-run); one without kept raw data is recorded as aborted (charged the full run cap) and its directory moved
-    aside, so the run is repeated only after its quota reading is settled."""
+    re-run); one without kept raw data is recorded as aborted (charged RUN_RESERVE) and its directory moved aside,
+    so the run is repeated only after its quota reading is settled."""
     st = state(out)
     aborted = {a['attempt'] for a in st['attempts'] if a.get('event') == 'aborted'}
     for a in st['attempts']:
@@ -704,31 +1000,37 @@ def recover(out: Path, digest: str) -> None:
             if run_dir.exists():
                 run_dir.rename(run_dir.with_name(a['tag'] + time.strftime('.aborted-%Y%m%dT%H%M%S')))
             append_jsonl(Path(out) / 'attempts.jsonl', {'attempt': a['attempt'], 'tag': a['tag'], 'event': 'aborted',
-                                                        'charged_tokens': RUN_CAP, 'time': time.time()})
-            print(a['attempt'], 'aborted without raw data: charged the run cap; settle its quota, then rerun',
+                                                        'charged_tokens': RUN_RESERVE, 'time': time.time()})
+            print(a['attempt'], 'aborted without raw data: charged the run reserve; settle its quota, then rerun',
                   flush=True)
 
 
 def counted(expect, quota_before, out=DATA, claude=None, delegate=None, extra_env=None) -> int:
-    """The next run of SCHEDULE, admitted before launch. 0: ran (or nothing left), 2: digest, freeze or environment
-    drift, 3: refused by admission (recorded in attempts.jsonl, nothing launched)."""
+    """The next run of SCHEDULE, admitted before launch. 0: ran (or nothing left), 2: digest, domain specification,
+    freeze or environment drift (nothing recorded), 3: refused by admission (recorded in attempts.jsonl, nothing
+    launched). A live run (no test caller) uses the frozen runtime pins and needs a frozen domain specification."""
     out = Path(out)
-    digest, _ = manifest()
+    live = claude is None
+    digest, payload = manifest()
     if digest != expect:
         print(f'digest {digest} differs from --expect {expect}; refreeze plan-frozen.md first', flush=True)
         return 2
+    if live and O.DOMAIN_STATUS != 'frozen':
+        print('the witness domain specification is provisional (oracle.DOMAIN_QUESTIONS); live runs are blocked',
+              flush=True)
+        return 2
     out.mkdir(parents=True, exist_ok=True)
     env = environment(claude)
-    if claude is None:   # live caller: the environment must be the frozen one
+    if live:
         frozen = json.loads(FREEZE_FILE.read_text(encoding='utf-8'))
-        if frozen['digest'] != digest or frozen['environment'] != env:
-            print('freeze.json does not hold for this digest and environment (CLI version or core code)', flush=True)
+        if frozen['digest'] != digest or frozen['environment'] != env or frozen['runtime'] != payload['runtime']:
+            print('freeze.json does not hold for this digest, runtime and environment', flush=True)
             return 2
     man_path = out / 'manifest.json'
     if man_path.exists():
         man = json.loads(man_path.read_text(encoding='utf-8'))
         if man['digest'] != digest or man['environment'] != env:
-            print('drift since the first counted run (digest, CLI version or core code); nothing launched', flush=True)
+            print('drift since the first counted run (digest or CLI version); nothing launched', flush=True)
             return 2
     else:
         man_path.write_text(json.dumps({'digest': digest, 'environment': env, 'schedule': SCHEDULE,
@@ -755,8 +1057,8 @@ def counted(expect, quota_before, out=DATA, claude=None, delegate=None, extra_en
     print(attempt, f"admitted: projection {adm['projection']:.2f}% (factor {adm['factor']:.3e}/token)", flush=True)
     pack, arm = tag.split('-')
     rec = run_one(build_spec(pack, arm), out / tag, claude=claude, delegate=delegate, extra_env=extra_env,
-                  fixes=load_fixes(out))
-    rec.update(attempt=attempt, manifest=digest)
+                  fixes=load_fixes(out), pins=payload['runtime'])
+    rec.update(attempt=attempt, manifest=digest, code_drift_after_run=manifest()[0] != digest)
     (out / tag / 'record.json').write_text(json.dumps(rec, ensure_ascii=False, indent=1), encoding='utf-8')
     append_record(out, rec)
     show(rec)
@@ -769,8 +1071,6 @@ def quota_after(percent, out=DATA) -> int:
     st = state(out)
     pending = [a for a in st['attempts'] if a.get('admitted') is True and 'event' not in a
                and a['attempt'] not in st['quota']]
-    pending += [a for a in st['attempts'] if a.get('event') == 'aborted' and a['attempt'] not in st['quota']
-                and a not in pending]
     if after is None or not pending:
         print('quota-after needs a weekly figure and an admitted run without one', flush=True)
         return 2
@@ -799,16 +1099,21 @@ def manifest() -> tuple:
         runs.append([s['tag'], s['input_sha256'], s['files_sha256']])
     payload = {
         'model': MODEL, 'effort': 'default', 'caller_argv': caller_argv('claude'), 'timeout_s': TIMEOUT,
-        'max_turns': MAX_TURNS, 'run_cap': RUN_CAP, 'total_cap': TOTAL_CAP, 'prep_cap': PREP_CAP,
-        'prep_tokens': PREP_TOKENS, 'admission': {'below': ADMIT_BELOW, 'ceiling': CEILING, 'factor0': FACTOR0,
-                                                  'rounding': ROUNDING, 'supplied_reading': SUPPLIED_READING},
+        'max_turns': MAX_TURNS, 'run_cap': RUN_CAP, 'race': RACE, 'run_reserve': RUN_RESERVE, 'total_cap': TOTAL_CAP,
+        'prep_cap': PREP_CAP, 'prep_tokens': PREP_TOKENS,
+        'guard': {'tool_allow': TOOL_ALLOW, 'out_allow': OUT_ALLOW, 'worker_out_allow': WORKER_OUT_ALLOW,
+                  'poll_s': POLL_S},
+        'admission': {'below': ADMIT_BELOW, 'ceiling': CEILING, 'factor0': FACTOR0, 'rounding': ROUNDING,
+                      'supplied_reading': SUPPLIED_READING},
         'ws_max_tokens': WS_MAX_TOKENS, 'schedule': SCHEDULE, 'packs': PACKS, 'oracle': ORACLE_VERSION,
+        'domain': {'status': O.DOMAIN_STATUS, 'questions': O.DOMAIN_QUESTIONS},
         'texts': {'fill_head': FILL_HEAD, 'fill_tail': FILL_TAIL, 'requirement': REQUIREMENT, 'oz_snippet': OZ_SNIPPET,
                   'task_A_I': task_text('A', 'I')},
         'fill': {'sha256': FILL_SHA256, 'sources': FILL_SOURCES, 'o200k': fill_tokens()},
         'fixtures': {rel: sha(data) for rel, data in sorted(
             (p.relative_to(FIX).as_posix(), p.read_bytes()) for p in FIX.rglob('*') if p.is_file()
             and '__pycache__' not in p.parts)},
+        'frozen_commit': FROZEN_COMMIT, 'runtime': current_pins(),
         'code': {rel: O.norm_sha(ROOT / rel) for rel in CODE},
         'design': {p.name: O.norm_sha(p) for p in sorted(DESIGN.glob('0*.md'))
                    + [DESIGN / 'fixtures-as-authored-by-astra.txt']},
@@ -819,7 +1124,8 @@ def manifest() -> tuple:
 def freeze(write=False) -> int:
     digest, payload = manifest()
     env = environment()
-    record = {'digest': digest, 'environment': env, 'fill_sha256': FILL_SHA256, 'fill_o200k': payload['fill']['o200k'],
+    record = {'digest': digest, 'environment': env, 'frozen_commit': FROZEN_COMMIT, 'runtime': payload['runtime'],
+              'domain_status': O.DOMAIN_STATUS, 'fill_sha256': FILL_SHA256, 'fill_o200k': payload['fill']['o200k'],
               'sha256sums_sha256': payload['fixtures']['SHA256SUMS'], 'sandbox_pin': O.SANDBOX_SHA256,
               'runs': payload['runs']}
     if write:
@@ -828,7 +1134,7 @@ def freeze(write=False) -> int:
         print('frozen', digest)
         return 0
     old = json.loads(FREEZE_FILE.read_text(encoding='utf-8')) if FREEZE_FILE.exists() else {}
-    ok = old.get('digest') == digest and old.get('environment') == env
+    ok = old.get('digest') == digest and old.get('environment') == env and old.get('runtime') == payload['runtime']
     print('freeze holds' if ok else 'FREEZE BROKEN', digest)
     return 0 if ok else 1
 
@@ -839,14 +1145,15 @@ def report(out=DATA) -> None:
     rows = _jsonl(Path(out) / 'runs.jsonl')
     f0 = fill_tokens()
     print('tag | arm | status | caller turns | model calls | caller in | cache read | cache write | caller out | '
-          'worker calls | worker in | worker out | total | time s | correct | recall | FP | unproven')
+          'worker calls | worker in | worker out | total | lower bound | charged | time s | correct | recall | FP | '
+          'unproven')
     for r in rows:
         c, w, s = r['caller'], r['worker'], r['score']
         print(' | '.join(str(x) for x in (r['tag'], r['arm'], r['status'], c['turns'], c['model_calls'],
                                            c['in_total'], c['cache_read'], c['cache_write'], c['out'], w['calls'],
-                                           w['in'], w['out'], r['total_tokens'], r['wall_s'],
-                                           f"{s['correct_files']}/3", s['recall'], s['false_positives'],
-                                           s['unproven'])))
+                                           w['in'], w['out'], r['total_tokens'], r['lower_bound_tokens'],
+                                           r['charged_tokens'], r['wall_s'], f"{s['correct_files']}/3", s['recall'],
+                                           s['false_positives'], s['unproven'])))
     print(f'\nfill-slope sizing: measured fill {f0} o200k tokens; each caller model call rereads the fill; estimate '
           f'= measured total + model calls x slope x (fill - {f0}), slope {SLOPES[0]} to {SLOPES[1]} billed tokens '
           'per o200k token')
@@ -862,9 +1169,18 @@ def report(out=DATA) -> None:
     print(f'\ncharged tokens {spent} of the {TOTAL_CAP} total cap; paid preparation {PREP_TOKENS}')
 
 
+REJUDGE_IGNORE = ('attempt', 'manifest', 'recovered', 'code_drift_after_run')
+
+
 def rejudge(out=DATA, root_for=None, fixes_for=None) -> int:
-    """Rebuild every stored record from its own raw data and its own pack and compare; returns the mismatch count."""
+    """Rebuild every stored record from its own raw data and its own pack and compare; returns the mismatch count.
+    A dry directory carries judging.json (each scenario's fixture root and registered fixes), read when given none."""
     bad = 0
+    judging = Path(out) / 'judging.json'
+    if root_for is None and fixes_for is None and judging.is_file():
+        ctx = json.loads(judging.read_text(encoding='utf-8'))
+        root_for = {tag: Path(v['root']) for tag, v in ctx.items()}
+        fixes_for = {tag: v['fixes'] for tag, v in ctx.items()}
     for r in _jsonl(Path(out) / 'runs.jsonl'):
         root = (root_for or {}).get(r['tag'], FIX)
         fixes = (fixes_for or {}).get(r['tag'], load_fixes(out))
@@ -874,7 +1190,7 @@ def rejudge(out=DATA, root_for=None, fixes_for=None) -> int:
             bad += 1
             continue
         rebuilt = build_record(spec, Path(out) / r['tag'], root=root, fixes=fixes)
-        stored = {k: v for k, v in r.items() if k not in ('attempt', 'manifest', 'recovered')}
+        stored = {k: v for k, v in r.items() if k not in REJUDGE_IGNORE}
         if J(rebuilt) != J(stored):
             diff = sorted(k for k in set(rebuilt) | set(stored) if J(rebuilt.get(k)) != J(stored.get(k)))
             print(r['tag'], 'MISMATCH in', ', '.join(diff))
@@ -886,7 +1202,7 @@ def rejudge(out=DATA, root_for=None, fixes_for=None) -> int:
 # ---- the dry gate (fixture caller and fixture worker; zero tokens) ----
 
 def dry_caller(base: Path, name: str, log=None, scenario=None, worker=None, root=FIX) -> dict:
-    """claude/delegate/extra_env for a fixture run. scenario 'perfect' answers each pack's seeds."""
+    """claude/delegate/extra_env for a fixture run (the fixture worker runs from the run root's snapshot)."""
     base = Path(base)
     base.mkdir(parents=True, exist_ok=True)
     py = Path(sys.executable).resolve().as_posix()
@@ -899,7 +1215,7 @@ def dry_caller(base: Path, name: str, log=None, scenario=None, worker=None, root
     wk_path = base / f'{name}.worker.json'
     wk_path.write_text(json.dumps(worker or {'values': {}, 'texts': {}}), encoding='utf-8')
     return {'claude': [py, (HERE / 'fixture_caller.py').as_posix()],
-            'delegate': [py, (HERE / 'fixture_worker.py').as_posix(), wk_path.as_posix()],
+            'delegate': ['{py}', '-s', '{code}/fixture_worker.py', wk_path.as_posix()],
             'extra_env': {'CR_FIXTURE_CALLER': str(sc_path)}}
 
 
@@ -948,6 +1264,7 @@ def dry(base=None) -> dict:
     out = base / 'out'
     out.mkdir(parents=True, exist_ok=True)
     scen = base / 'scenarios'
+    pins = current_pins()
     variant, variant_fix = _variant_root(base)
     a_text = {rel: sha(O.source(rel)) for rel in PACKS['A']}
     b_text = {rel: sha(O.source(rel)) for rel in PACKS['B']}
@@ -964,6 +1281,8 @@ def dry(base=None) -> dict:
     unseeded = dict(_perfect('B', variant), **{'packB/settings.py': [
         {'file': 'packB/settings.py', 'line': sel_line, 'class': 'missing_guard',
          'witness': _w('select_prefix', [{'a': '1'}, ''], {'return': {'a': '1'}})}]})
+    out_of_domain = dict(_perfect('B'), **{'packB/rotation.py': [
+        _finding('packB/rotation.py', witness=_w('rotate_left', [[], True], {'return': []}))]})
     big = {'input_tokens': 20000, 'cache_read_input_tokens': 5000, 'cache_creation_input_tokens': 0,
            'output_tokens': 500}
     plan = {
@@ -981,7 +1300,7 @@ def dry(base=None) -> dict:
                         {'values': _perfect('B'), 'texts': b_text},
                         {'status': 'protocol_violation', 'violations': ['module content reached the caller'],
                          'scored_as_arm': False, 'correct': 3, 'worker_calls': 1}),
-        'I-truncated': ('B', 'I', FIX, None, {'steps': [{'cat': [rel]} for rel in PACKS['B']] + [{'cat': [FORMAT]}] * 2,
+        'I-truncated': ('B', 'I', FIX, None, {'steps': [{'cat': [rel]} for rel in PACKS['B']] + [{'cat': [FORMAT]}],
                                               'answer': None, 'final': 'max_turns'}, None,
                         {'status': 'truncated', 'truncation': ['max_turns'], 'correct': 0, 'complete': True}),
         'I-malformed': ('B', 'I', FIX, None, {'steps': [{'cat': list(PACKS['B'])}],
@@ -998,31 +1317,46 @@ def dry(base=None) -> dict:
                            {'status': 'protocol_violation', 'violations': ['arm I ran oz do'], 'scored_as_arm': False,
                             'correct': 3}),
         'I-cap': ('A', 'I', FIX, None, {'steps': [{'cat': [FORMAT]}] * 4, 'answer': J(_perfect('A')), 'usage': big,
-                                        'sleep': 0.3}, None,
-                  {'status': 'truncated', 'stop_reason': 'cap', 'complete': False, 'charged_min': RUN_CAP}),
+                                        'sleep': 0.5}, None,
+                  {'status': 'truncated', 'stop_reason': 'cap', 'complete': False, 'model_calls': 1,
+                   'charged': RUN_RESERVE}),
+        'D-worker-cap': ('A', 'D', FIX, None, {'steps': [{'oz': _oz_request('A')}, {'cat': [FORMAT]},
+                                                         {'cat': [FORMAT]}],
+                                               'answer': {'from_oz': jobs('A')}, 'sleep': 1.5},
+                         {'values': _perfect('A'), 'texts': a_text, 'usage': {'input': 70000, 'output': 900}},
+                         {'status': 'truncated', 'stop_reason': 'cap', 'model_calls': 1, 'worker_calls': 1}),
+        'I-missing-counter': ('A', 'I', FIX, None, {'steps': [{'cat': [FORMAT]}], 'answer': J(_perfect('A')),
+                                                    'drop_counter': 'cacheReadInputTokens'}, None,
+                              {'status': 'inconclusive_accounting', 'complete': False, 'correct': 3,
+                               'charged': RUN_RESERVE, 'lower_bound': 15600}),
+        'I-out-of-domain': ('B', 'I', FIX, None, {'steps': [{'cat': list(PACKS['B'])}],
+                                                  'answer': J(out_of_domain)}, None,
+                            {'status': 'valid', 'correct': 2, 'out_of_domain': 1, 'recall': 0.5, 'fp': 1}),
     }
     res = {'ok': True, 'scenarios': {}, 'out': out, 'roots': {}, 'fixes': {}}
     for name, (pack, arm, root, fixes, caller_sc, worker_sc, want) in plan.items():
         spec = build_spec(pack, arm, root=root, tag=name)
         kw = dry_caller(scen, name, scenario=caller_sc, worker=worker_sc, root=root)
-        rec = run_one(spec, out / name, root=root, fixes=fixes, **kw)
+        rec = run_one(spec, out / name, root=root, fixes=fixes, pins=pins, **kw)
         append_record(out, rec)
         s = rec['score']
         got = {'status': rec['status'], 'correct': s['correct_files'], 'recall': s['recall'],
                'fp': s['false_positives'], 'unproven': s['unproven'], 'mislocated': s['mislocated'],
                'unseeded': s['unseeded'], 'review_both_fail': s['review_both_fail'], 'answer_ok': s['answer_ok'],
-               'violations': rec['violations'], 'scored_as_arm': rec['scored_as_arm'],
-               'worker_calls': rec['worker']['calls'], 'complete': rec['accounting_complete'],
-               'truncation': rec['truncation'], 'stop_reason': rec['stop_reason']}
-        problems = [f'{k}: got {got[k]!r}, want {v!r}' for k, v in want.items() if k != 'charged_min' and got[k] != v]
-        if 'charged_min' in want and rec['charged_tokens'] < want['charged_min']:
-            problems.append(f"charged {rec['charged_tokens']} below {want['charged_min']}")
+               'out_of_domain': s['out_of_domain'], 'violations': rec['violations'],
+               'scored_as_arm': rec['scored_as_arm'], 'worker_calls': rec['worker']['calls'],
+               'complete': rec['accounting_complete'], 'truncation': rec['truncation'],
+               'stop_reason': rec['stop_reason'], 'model_calls': rec['caller']['model_calls'],
+               'charged': rec['charged_tokens'], 'lower_bound': rec['lower_bound_tokens']}
+        problems = [f'{k}: got {got[k]!r}, want {v!r}' for k, v in want.items() if got[k] != v]
         if rec['breaches']:
             problems.append('isolation breach: ' + '; '.join(rec['breaches']))
         if rec['accounting_complete'] and rec['total_tokens'] != rec['charged_tokens']:
             problems.append('charged tokens differ from the total of a complete run')
         if rec['worker']['calls'] and not rec['worker']['sources_agree']:
             problems.append('worker ledger and envelopes disagree')
+        if rec['charged_tokens'] > TOTAL_CAP or (rec['total_tokens'] or 0) > RUN_RESERVE and name != 'D-worker-cap':
+            problems.append('a run exceeded its reserve')
         res['scenarios'][name] = {'record': rec, 'problems': problems, 'run_dir': str(out / name), 'root': str(root)}
         res['roots'][name] = root
         res['fixes'][name] = fixes
@@ -1030,7 +1364,9 @@ def dry(base=None) -> dict:
         print(name, 'PASS' if not problems else 'FAIL ' + '; '.join(problems), '|', rec['status'],
               f"correct {s['correct_files']}/3 FP {s['false_positives']} unproven {s['unproven']} charged "
               f"{rec['charged_tokens']}", flush=True)
-    mismatches = rejudge(out, root_for=res['roots'], fixes_for=res['fixes'])
+    (out / 'judging.json').write_text(json.dumps({tag: {'root': str(res['roots'][tag]), 'fixes': res['fixes'][tag]}
+                                                  for tag in res['roots']}, indent=1), encoding='utf-8')
+    mismatches = rejudge(out)
     res['rejudge_mismatches'] = mismatches
     res['ok'] = res['ok'] and mismatches == 0
     print('DRY GATE', 'PASS' if res['ok'] else 'FAIL', flush=True)
@@ -1041,9 +1377,10 @@ def main(argv) -> int:
     cmd = argv[0] if argv else 'plan'
     if cmd == 'plan':
         digest, payload = manifest()
-        for (pack, arm), run in zip(SCHEDULE, payload['runs']):
+        for run in payload['runs']:
             print(run[0], 'input', run[1])
         print('fill o200k', payload['fill']['o200k'], 'sizing', json.dumps(payload['sizing']))
+        print('domain status', O.DOMAIN_STATUS)
         print('digest', digest)
         return 0
     if cmd == 'freeze':

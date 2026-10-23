@@ -1,21 +1,51 @@
 {
- "digest": "dee0f6ce3efc68091fe9b74bada03dbf820b15d12ce4a0cac360fc107ece2293",
+ "digest": "a62bd3910ff90408861a555bc0e378f16b7ba0d36c57322a5e873a1c9f1d46f5",
  "environment": {
   "cli_version": "2.1.306 (Claude Code)",
-  "core_sha256": {
+  "base_python": "3.12.10"
+ },
+ "frozen_commit": "47992b4867b49b053eb868ad51d3d020fae19653",
+ "runtime": {
+  "files": {
    "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
+   "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
    "oz_batch.py": "50ecdd28f5dda7c4479a0160b8860b6cad87727dbb448f7eddc0f15553d622cb",
+   "oz_cli.py": "1ba80a31dacc0e07431da840a5aeb79a079e3b709ed62e9ca298ac92eb51bfb0",
+   "oz_do.py": "04234e50ed41d037d4668d9c6c5eae1837b832b31034a16392f245374dfa67af",
+   "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
+   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
    "oz_reply.py": "dc58230288900c0eee17a2f230b30feaf993e15e90fda12d488b644505633ab4",
+   "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
    "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
    "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
    "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
-   "oz_do.py": "04234e50ed41d037d4668d9c6c5eae1837b832b31034a16392f245374dfa67af",
-   "oz_cli.py": "b821917930f130cf85a87e47a4495825e2fbda89c252bfd6a500cf9bd25a0401",
-   "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
-   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
-   "oz_flow.py": "98ba8901356e0079a4b2c56a4082eff7000c2ddc96dec1888d6df40a07c14cf8"
+   "bench/live/k2_wrap.py": "67e586aadce6e5a3aa8c300edf2dacd54e5714e271a046e29497e6bced434e89",
+   "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
+   "bench/codereview/cr_adapter.py": "dd54cb85cb109abf96a1a1f7aab60fda6d975c788a05bda97ba3bed236972581",
+   "bench/codereview/fixture_worker.py": "fbe96c095a147e7e8590783665fdc58a1bd513890d02a250a25ccb7071fe1406"
+  },
+  "site": {
+   "tiktoken/__init__.py": "40b2a86380c85866a7f9b655d23cf70af8b8f2a9ce76c2a4902bc5a0f1541140",
+   "tiktoken/_educational.py": "e265a2b3d661e9dd351466c9f2da7e855aa78f87e674eb3eaa397ac87eb3369f",
+   "tiktoken/_tiktoken.cp312-win_amd64.pyd": "4819f4517aa091644f574d607a8d2308b9700dcccd1708397951fa94abbe8697",
+   "tiktoken/core.py": "fd279aa5d510e937a0e1ed48e9a2a346756aacae5d3533cbd27ce6261d728d18",
+   "tiktoken/load.py": "03f32d08811ae1ce9eec1141e7eb89e66a1ae264ab348906cdd5576b948322ea",
+   "tiktoken/model.py": "855caa8d58ba8e694d20a1bf1e9aba8e9ed4f11bbefec68dfb93e7ef677b15f9",
+   "tiktoken/py.typed": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "tiktoken/registry.py": "7b941fceffd6c3a76b54a93e7bcf8a37a7181e8d6f1bf6f9420e77821ff5a60d",
+   "tiktoken_ext/openai_public.py": "c1e4c453c2fcf8102342c2fc3771aa647f22012ce05cb9751d2bc55830738088",
+   "regex/__init__.py": "2b40f3a1696a161e74dfd3ee8eb926d4d67fadcdb18517a76df06d841d3a5b8f",
+   "regex/_main.py": "4c1d431b261f9d9e360023f8b597a098f6ebe0cd48e59454c1133e16fa62cbac",
+   "regex/_regex.cp312-win_amd64.pyd": "4beee916c5d638552d1a71c6fd25e45d83ae8369ac9cb38009060e8bedcdc5dc",
+   "regex/_regex_core.py": "baf7b83f394d41b4b5e93ef645b49bcf211140757928cfe283e8dff1bb8e7866",
+   "regex/tests/test_regex.py": "e9e4d35c1601d7608d5489250cbb383e9621833955ffb1f2b01802070aac6ada"
+  },
+  "tok": {
+   "9b5ad71b2ce5302211f9c61530b329a4922fc6a4": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+   "fb374d419588a4632f3f557e76b4b70aebbca790": "446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d"
   }
  },
+ "domain_status": "provisional",
  "fill_sha256": "1458027af83c200d6219b160db201e672e1a469c80780cbe0f6e541eb41ed22a",
  "fill_o200k": 5865,
  "sha256sums_sha256": "0cdd88aa206d1feb5db0e0a34ad91cf73df9ba42dd833b50ab1a3d21fe7e87a8",
@@ -62,5 +92,5 @@
    }
   ]
  ],
- "frozen_at": "2026-10-24T01:21:37"
+ "frozen_at": "2026-10-24T02:12:19"
 }

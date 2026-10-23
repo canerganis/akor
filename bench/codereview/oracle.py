@@ -13,6 +13,8 @@ evaluator-only storage, and runs witnesses in its own worker (eval_worker.py) un
 
 Categories of one finding (frozen):
   invalid     the record or its witness breaks the codereview-witness-v1 schema
+  out_of_domain  the witness's call leaves its function's documented input domain (DOMAINS) without exercising a
+              documented rejection rule through an exception expectation; never executed
   seeded      proven (the reference expectation matches; the shipped call completes, by return or target-call
               exception, without matching), the class is a seed's class and the line lies in that seed's span
   mislocated  proven, but no seed of the file has that class and a span holding that line
@@ -30,6 +32,7 @@ module paths makes every file of the run incorrect.
 """
 from __future__ import annotations
 
+import ast
 import difflib
 import hashlib
 import json
@@ -190,6 +193,149 @@ def validate_finding(obj, file: str, lines: int) -> list:
     return problems + validate_witness(obj['witness'])
 
 
+# ---- documented input domains (WITNESS_FORMAT.md: inputs must meet each module's documented domain, except when
+# exercising an explicitly documented rejection rule) ----
+#
+# DOMAIN_STATUS is 'provisional' until Astra answers the open questions in plan-frozen.md (fix 3 of the review): the
+# rules below are the strict reading of each module's docstrings. A parameter rule is (type, precondition); a
+# precondition marked 'reject' is an explicitly documented rejection rule and may be violated only by a witness that
+# expects an exception (sample_stats states ValueError; page_label's "reject" states no exception type).
+DOMAIN_STATUS = 'provisional'
+DOMAIN_QUESTIONS = (
+    'Q1 Value preconditions written as "must be positive/nonnegative", "invalid", "distinct" or "start <= end" '
+    '(paging sizes, counts and page numbers; sample_stats.latest limit; ranges shape and order; rotation_order round; '
+    'assign_tasks workers; chunk_tasks size; render_settings keys and values): domain limits that a witness must '
+    'satisfy, or documented rejection rules a witness may violate with an exception expectation, and which exception?',
+    'Q2 paging.page_label "reject pages absent from the result set": which exception?',
+    'Q3 labels.make_header "one allowed delimiter": the allowed set is written only in code (",", ";", "\\t", "|"); '
+    'is it the documented domain?',
+    'Q4 ranges.contains: the type of value is not stated (integer excluding booleans?).',
+    'Q5 sample_stats: "finite numbers": are integers allowed and booleans excluded?',
+    'Q6 Element domains not stated: paging items, rotation items and tasks ("JSON-compatible"), settings keys in '
+    'overlay and select_prefix, parse_settings text (any string?).')
+
+
+def _int(v):
+    return type(v) is int
+
+
+def _num(v):
+    return type(v) in (int, float) and math.isfinite(v)
+
+
+def _strs(v):
+    return type(v) is list and all(type(x) is str for x in v)
+
+
+def _ranges(v):
+    return type(v) is list and all(type(p) is list and len(p) == 2 and all(_int(x) for x in p) for p in v)
+
+
+def _str_map(v):
+    return type(v) is dict and all(type(x) is str for x in v.values())
+
+
+def _ident(key):
+    return (type(key) is str and bool(key) and key[0].isascii() and (key[0].isalpha() or key[0] == '_')
+            and all(c.isascii() and (c.isalnum() or c == '_') for c in key[1:]))
+
+
+def _clean_value(value):
+    return value == value.strip() and (not value or value.splitlines() == [value])
+
+
+T = {'int': (_int, 'an integer (not a boolean)'), 'str': (lambda v: type(v) is str, 'a string'),
+     'list': (lambda v: type(v) is list, 'a list'), 'strs': (_strs, 'a list of strings'),
+     'numbers': (lambda v: type(v) is list and all(_num(x) for x in v), 'a list of finite numbers (no booleans)'),
+     'ranges': (_ranges, 'a list of [start, end] integer pairs'), 'str_map': (_str_map, 'an object of strings')}
+P_SIZE = ('int', lambda v: v > 0, 'must be positive', None)
+P_NONNEG = ('int', lambda v: v >= 0, 'must be nonnegative', None)
+SAMPLES = ('numbers', lambda v: all(abs(x) <= 1000000 for x in v), 'outside [-1000000, 1000000]', 'ValueError')
+DOMAINS = {
+    'packA/paging.py': {
+        'page_count': {'item_count': P_NONNEG, 'page_size': P_SIZE},
+        'get_page': {'items': ('list', None, '', None), 'page_number': P_NONNEG, 'page_size': P_SIZE},
+        'page_for_index': {'item_index': P_NONNEG, 'page_size': P_SIZE},
+        'page_sizes': {'item_count': P_NONNEG, 'page_size': P_SIZE},
+        'page_label': {'page_number': P_NONNEG, 'item_count': P_NONNEG, 'page_size': P_SIZE,
+                       '*': (lambda a: a['page_number'] < -(-a['item_count'] // a['page_size']),
+                             'page absent from the result set', 'any')}},
+    'packA/sample_stats.py': {
+        'mean': {'values': SAMPLES}, 'spread': {'values': SAMPLES}, 'describe': {'values': SAMPLES},
+        'centered': {'values': SAMPLES}, 'latest': {'values': SAMPLES, 'limit': P_NONNEG}},
+    'packA/labels.py': {
+        'slug': {'label': ('str', None, '', None)}, 'unique_labels': {'labels': ('strs', None, '', None)},
+        'make_header': {'labels': ('strs', None, '', None),
+                        'delimiter': ('str', lambda v: v in (',', ';', '\t', '|'), 'not an allowed delimiter', None)},
+        'label_map': {'labels': ('strs', None, '', None)}, 'is_slug': {'value': ('str', None, '', None)}},
+    'packB/ranges.py': {
+        **{f: {'ranges': ('ranges', lambda v: all(a <= b for a, b in v), 'start must not exceed end', None)}
+           for f in ('compact_ranges', 'covered_count', 'bounding_range')},
+        'contains': {'ranges': ('ranges', lambda v: all(a <= b for a, b in v), 'start must not exceed end', None),
+                     'value': ('int', None, '', None)},
+        'shift_ranges': {'ranges': ('ranges', lambda v: all(a <= b for a, b in v), 'start must not exceed end', None),
+                         'offset': ('int', None, '', None)}},
+    'packB/rotation.py': {
+        'rotate_left': {'items': ('list', None, '', None), 'offset': ('int', None, '', None)},
+        'rotation_order': {'workers': ('strs', lambda v: len(set(v)) == len(v), 'workers must be distinct', None),
+                           'round_number': P_NONNEG},
+        'assign_tasks': {'tasks': ('list', None, '', None),
+                         'workers': ('strs', lambda v: bool(v) and len(set(v)) == len(v),
+                                     'workers must be distinct and nonempty', None)},
+        'chunk_tasks': {'tasks': ('list', None, '', None), 'size': P_SIZE},
+        'interleave': {'left': ('list', None, '', None), 'right': ('list', None, '', None)}},
+    'packB/settings.py': {
+        'parse_settings': {'text': ('str', None, '', None)},
+        'render_settings': {'settings': ('str_map', lambda v: all(_ident(k) and _clean_value(x) for k, x in v.items()),
+                                         'keys must be identifiers and values clean', None)},
+        'overlay': {'base': ('str_map', None, '', None), 'updates': ('str_map', None, '', None)},
+        'select_prefix': {'settings': ('str_map', None, '', None), 'prefix': ('str', None, '', None)}}}
+
+
+def _signature(file: str, function: str, root=FIX):
+    """(parameter names, names with defaults) of a module-level function, read from the shipped source's AST."""
+    tree = ast.parse(source(file, root))
+    fn = next((n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == function), None)
+    if fn is None:
+        return None
+    names = [a.arg for a in fn.args.args]
+    return names, set(names[len(names) - len(fn.args.defaults):])
+
+
+def domain_problems(file: str, witness: dict, root=FIX) -> list:
+    """[] when the witness's call lies inside the documented domain of its function (or exercises a documented
+    rejection rule with an exception expectation), else the reasons. Schema validity is checked first elsewhere."""
+    rules = DOMAINS.get(file, {}).get(witness.get('function'))
+    sig = _signature(file, witness.get('function'), root) if rules is not None else None
+    if rules is None or sig is None:
+        return ['no documented domain for function %s in %s' % (witness.get('function'), file)]
+    names, defaulted = sig
+    args, kwargs = witness['args'], witness['kwargs']
+    if len(args) > len(names) or set(kwargs) - set(names) or set(kwargs) & set(names[:len(args)]):
+        return ['arguments do not bind to %s(%s)' % (witness['function'], ', '.join(names))]
+    bound = dict(zip(names, args), **kwargs)
+    if set(names) - set(bound) - defaulted:
+        return ['missing arguments for %s' % witness['function']]
+    expects_exception = 'exception' in witness['expected']
+    problems, rejected = [], []
+    for name, value in bound.items():
+        kind, pre, why, reject = rules[name]
+        check, label = T[kind]
+        if not check(value):
+            problems.append(f'{name} must be {label}')
+        elif pre is not None and not pre(value):
+            (rejected if reject else problems).append((name, why, reject) if reject else f'{name} {why}')
+    if not problems and '*' in rules:
+        pre, why, reject = rules['*']
+        if not pre(bound):
+            rejected.append(('call', why, reject))
+    for name, why, reject in rejected:
+        if not expects_exception or (reject != 'any' and witness['expected']['exception'] != reject):
+            problems.append(f'{name}: {why} (a documented rejection; only a {reject} expectation may use it)'
+                            if reject != 'any' else f'{name}: {why} (only an exception expectation may use it)')
+    return problems
+
+
 # ---- execution and matching ----
 
 def run_call(src: str, witness: dict) -> dict:
@@ -291,7 +437,9 @@ def score(answer_text, pack: str, root=FIX, fixes=None) -> dict:
     out.update({'correct_files': sum(f['correct'] for f in files), 'file_count': len(paths), 'seeds': seeds,
                 'seeds_hit': hit, 'recall': hit / seeds if seeds else None,
                 **{k: sum(f[k] for f in files) for k in ('findings_total', 'false_positives', 'unproven', 'unseeded',
-                                                         'review_both_fail', 'invalid', 'mislocated')}})
+                                                         'review_both_fail', 'invalid', 'out_of_domain',
+                                                         'mislocated')},
+                'domain_status': DOMAIN_STATUS})
     return out
 
 
@@ -301,7 +449,7 @@ def score_file(module: dict, value, answer_ok: bool, root=FIX, fix: str | None =
     reference = source(module['reference_file'], root)
     res = {'seeds': [s['id'] for s in seeds], 'clean': not seeds, 'response': 'list', 'findings': [],
            'seeds_hit': [], 'findings_total': 0, 'false_positives': 0, 'unproven': 0, 'unseeded': 0,
-           'review_both_fail': 0, 'invalid': 0, 'mislocated': 0, 'correct': False}
+           'review_both_fail': 0, 'invalid': 0, 'out_of_domain': 0, 'mislocated': 0, 'correct': False}
     if value is MISSING or value is None or type(value) is not list:
         res['response'] = 'missing' if value is MISSING else 'null' if value is None else 'invalid'
         return res
@@ -314,6 +462,13 @@ def score_file(module: dict, value, answer_ok: bool, root=FIX, fix: str | None =
         if problems:
             entry.update(category='invalid', problems=problems)
             for k in ('invalid', 'unproven', 'false_positives'):
+                res[k] += 1
+            res['findings'].append(entry)
+            continue
+        outside = domain_problems(module['file'], finding['witness'], root)
+        if outside:
+            entry.update(category='out_of_domain', problems=outside)
+            for k in ('out_of_domain', 'unproven', 'false_positives'):
                 res[k] += 1
             res['findings'].append(entry)
             continue

@@ -12,5 +12,7 @@ pass on the reference fix, run in the O1 sandbox; a file is right only if its pr
 clean controls must be empty; no model scores anything. Caps: 60k tokens per run, 250k total; admission projected at
 2 points per 55k tokens from actual quota readings, refused if it could reach 58%; 60% ceiling.
 Status: signed; fixtures authored (Astra revision 1 after verification found the A2 span outside the reference edit)
-and verified; harness built, dry gate passed on fixture adapters, frozen at digest `dee0f6ce...` and not run. Run plan
-and exact commands: [plan-frozen.md](plan-frozen.md).
+and verified; harness built and revised for Astra's five review findings (isolated run root with an immutable runtime
+snapshot, pre-call cap guard with a 100,000-token per-run reserve, strict accounting, witness domain validators), dry
+gate 11/11 on fixture adapters, frozen at digest `a62bd391...`, not run. Live runs stay blocked until Astra specifies
+the witness domains (six questions). Run plan and exact commands: [plan-frozen.md](plan-frozen.md).

@@ -75,9 +75,10 @@ if final == 'success':
     n += 1
 if final != 'none':
     total = lambda k: usage[k] * n
+    counters = {'inputTokens': total('input_tokens'), 'cacheReadInputTokens': total('cache_read_input_tokens'),
+                'cacheCreationInputTokens': total('cache_creation_input_tokens'),
+                'outputTokens': total('output_tokens')}
+    counters.pop(sc.get('drop_counter'), None)
     emit({'type': 'result', 'subtype': 'success' if final == 'success' else 'error_max_turns',
           'is_error': final != 'success', 'num_turns': n, 'result': (answer or '') if final == 'success' else '',
-          'modelUsage': {'claude-sonnet-5-5': {'inputTokens': total('input_tokens'),
-                                               'cacheReadInputTokens': total('cache_read_input_tokens'),
-                                               'cacheCreationInputTokens': total('cache_creation_input_tokens'),
-                                               'outputTokens': total('output_tokens')}}})
+          'modelUsage': {'claude-sonnet-5-5': counters}})

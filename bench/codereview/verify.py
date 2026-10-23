@@ -164,7 +164,7 @@ def check_witnesses(rows: list) -> None:
     for m in O.load_key()['modules']:
         for seed in m['seeds']:
             w = seed['hidden_witness']
-            problems = O.validate_witness(w)
+            problems = O.validate_witness(w) or O.domain_problems(m['file'], w)
             if seed['class'] not in O.CLASSES:
                 problems.append('class outside the frozen list')
             if problems:

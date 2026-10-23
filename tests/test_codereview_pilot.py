@@ -11,6 +11,8 @@ import hashlib
 import io
 import json
 import os
+import re
+import subprocess
 from pathlib import Path
 import shutil
 import sys
@@ -135,7 +137,7 @@ class SpanAndSchemaTests(unittest.TestCase):
         self.assertFalse(O.in_span(27, {'start_line': 25, 'end_line': 26}))
 
     def test_evaluator_imports_no_executor_code(self):
-        allowed = {'__future__', 'builtins', 'difflib', 'hashlib', 'inspect', 'json', 'keyword', 'math', 'os',
+        allowed = {'__future__', 'ast', 'builtins', 'difflib', 'hashlib', 'inspect', 'json', 'keyword', 'math', 'os',
                    'pathlib', 'sys', 're', 'subprocess'}
         for name in ('oracle.py', 'eval_worker.py', 'verify.py'):
             tree = ast.parse((CR / name).read_text(encoding='utf-8'))
@@ -313,11 +315,12 @@ class AdmissionTests(unittest.TestCase):
     def test_first_run_projection(self):
         a = P.admission(self.state(), '46')
         self.assertTrue(a['admitted'], a)
-        self.assertAlmostEqual(a['projection'], 46 + 2 * 60000 / 55000 + 1)
+        self.assertAlmostEqual(a['projection'], 46 + 2 * P.RUN_RESERVE / 55000 + 1)
 
     def test_refusals(self):
-        self.assertFalse(P.admission(self.state(), '54.9')['admitted'])
-        self.assertTrue(P.admission(self.state(), '54.8')['admitted'])
+        edge = 58 - 1 - 2 * P.RUN_RESERVE / 55000             # 53.36: the full run reserve must fit
+        self.assertFalse(P.admission(self.state(), str(round(edge + 0.01, 2)))['admitted'])
+        self.assertTrue(P.admission(self.state(), str(round(edge - 0.01, 2)))['admitted'])
         self.assertFalse(P.admission(self.state(), None)['admitted'])
         self.assertFalse(P.admission(self.state(), 'about 46')['admitted'])
         run = {'attempt': 'A-I#1', 'tag': 'A-I', 'admitted': True, 'quota_before': 46.0}
@@ -339,7 +342,8 @@ class AdmissionTests(unittest.TestCase):
         fast = self.state([run], [rec], [{'attempt': 'A-I#1', 'after_percent': 49.0}])
         a = P.admission(fast, '49')
         self.assertAlmostEqual(a['factor'], 3 / 30000)
-        self.assertAlmostEqual(a['projection'], 49 + 6 + 1)
+        self.assertAlmostEqual(a['projection'], 49 + 3 / 30000 * P.RUN_RESERVE + 1)
+        self.assertFalse(a['admitted'])
         flat = self.state([run], [rec], [{'attempt': 'A-I#1', 'after_percent': 46.0}])
         self.assertAlmostEqual(P.admission(flat, '46')['factor'], 2 / 55000)
 
@@ -360,6 +364,241 @@ class ProtocolTests(unittest.TestCase):
         self.assertTrue(P.breaches_in([], ['Replace stop = start + page_size - 1 with stop = start + page_size.']))
         self.assertFalse(P.breaches_in(['cat WITNESS_FORMAT.md'], [(O.FIX / 'WITNESS_FORMAT.md').read_text(
             encoding='utf-8')]))
+
+    def test_tripwire_covers_home_and_session_stores(self):
+        """Second layer for routes outside the run root: the home directory (Claude's own session transcripts and
+        project list live there) and any extracted answer-key structure in a tool result."""
+        home = Path(os.path.expanduser('~'))
+        run_root = Path(tempfile.gettempdir()) / 'cr-x'
+        for text in ('cat ~/.claude.json', 'ls $HOME', 'cat "%s"' % (home / '.claude' / 'projects'),
+                     'grep -r witness /c/Users', 'python -c "import glob; print(glob.glob(\'C:/**/*.json\'))"'):
+            self.assertTrue(P.breaches_in([text], [], run_root), text)
+        for text in ('cat %s' % (run_root / 'ws' / 'WITNESS_FORMAT.md'), 'cat packA/paging.py', 'ls -la'):
+            self.assertFalse(P.breaches_in([text], [], run_root), text)
+        leaked = json.dumps({'span': {'start_line': 36, 'end_line': 36}})
+        self.assertTrue(P.breaches_in([], [leaked], run_root))
+        self.assertTrue(P.breaches_in([], [leaked.replace('"', '\\"')], run_root))
+
+
+class DomainTests(unittest.TestCase):
+    """Fix 3: witnesses must stay inside each function's documented domain (WITNESS_FORMAT.md)."""
+
+    def test_hidden_witnesses_are_in_domain(self):
+        for m in KEY['modules']:
+            for s in m['seeds']:
+                self.assertEqual(O.domain_problems(m['file'], s['hidden_witness']), [], s['id'])
+
+    def test_out_of_domain_inputs_are_rejected(self):
+        cases = [('packB/rotation.py', W('rotate_left', [[], True], {'return': []})),
+                 ('packB/rotation.py', W('chunk_tasks', [[1], 0], {'return': []})),
+                 ('packA/paging.py', W('get_page', [['a'], False, 2], {'return': ['a']})),
+                 ('packA/paging.py', W('page_count', [3, 0], {'return': 0})),
+                 ('packA/sample_stats.py', W('mean', [[True]], {'return': 1.0})),
+                 ('packA/sample_stats.py', W('latest', [[1], -1], {'return': []})),
+                 ('packB/ranges.py', W('compact_ranges', [[[2, 1]]], {'return': []})),
+                 ('packB/ranges.py', W('contains', [[[1, 2]], True], {'return': True})),
+                 ('packB/settings.py', W('render_settings', [{'a': ' x'}], {'return': 'a= x\n'})),
+                 ('packA/labels.py', W('slug', [3], {'return': '3'})),
+                 ('packA/labels.py', W('nope', [], {'return': None}))]
+        for file, w in cases:
+            self.assertTrue(O.domain_problems(file, w), (file, w))
+
+    def test_documented_rejections_stay_allowed(self):
+        self.assertEqual(O.domain_problems('packA/sample_stats.py',
+                                           W('mean', [[2000000]], {'exception': 'ValueError'})), [])
+        self.assertTrue(O.domain_problems('packA/sample_stats.py', W('mean', [[2000000]], {'return': None})))
+        self.assertEqual(O.domain_problems('packA/paging.py', W('page_label', [3, 7, 3],
+                                                                {'exception': 'ValueError'})), [])
+
+    def test_live_runs_refuse_while_the_domain_spec_is_provisional(self):
+        if O.DOMAIN_STATUS == 'frozen':
+            self.skipTest('the domain specification is frozen')
+        out = Path(tempfile.mkdtemp(prefix='crd-'))
+        self.addCleanup(shutil.rmtree, out, ignore_errors=True)
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(P.counted(P.manifest()[0], '46', out=out), 2)
+        self.assertFalse((out / 'attempts.jsonl').exists())
+
+
+class GuardTests(unittest.TestCase):
+    """Fix 1: no further paid call once it could cross the run cap; admission reserves the overshoot."""
+
+    def msg(self, ctx, out, tools=1):
+        return {'input_tokens': ctx, 'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0,
+                'output_tokens': out, 'tool_uses': tools}
+
+    def test_next_call_bound(self):
+        self.assertEqual(P.next_call_bound(self.msg(12000, 500, 1)), 12000 + 500 + 8000 + 8000)
+        self.assertEqual(P.next_call_bound(self.msg(12000, 500, 2)), 12000 + 500 + 16000 + 8000)
+        self.assertEqual(P.next_call_bound(self.msg(12000, 500, 0)), 0)   # final message: no next call
+
+    def test_guard_decision(self):
+        ok = P.guard_decision([self.msg(12000, 500)], worker_tokens=0)
+        self.assertIsNone(ok)
+        self.assertEqual(P.guard_decision([self.msg(20000, 500), self.msg(22000, 500)], worker_tokens=0), 'cap')
+        self.assertEqual(P.guard_decision([self.msg(5000, 100)], worker_tokens=40000), 'cap')
+        five = [self.msg(1000, 10)] * 5
+        self.assertEqual(P.guard_decision(five, worker_tokens=0), 'turns')
+        self.assertIsNone(P.guard_decision([self.msg(1000, 10)] * 4 + [self.msg(1000, 10, 0)], worker_tokens=0))
+
+    def test_admission_reserves_the_race(self):
+        self.assertEqual(P.RUN_RESERVE, P.RUN_CAP + P.RACE)
+        run = {'attempt': 'X#1', 'tag': 'A-I', 'admitted': True, 'quota_before': 46.0}
+        st = lambda spent: {'attempts': [run], 'records': {'X#1': {'charged_tokens': spent}},
+                            'quota': {'X#1': 46.0}}
+        self.assertTrue(P.admission(st(P.TOTAL_CAP - P.RUN_RESERVE), '46')['admitted'])
+        self.assertFalse(P.admission(st(P.TOTAL_CAP - P.RUN_RESERVE + 1), '46')['admitted'])
+
+    def test_incomplete_runs_are_charged_the_hard_bound(self):
+        self.assertEqual(P.charge(None, 30000), P.RUN_RESERVE)
+        self.assertEqual(P.charge(None, 150000), 150000)
+        self.assertEqual(P.charge(41000, 41000), 41000)
+
+    @unittest.skipUnless(os.name == 'nt', WINDOWS)
+    def test_worker_call_refused_before_launch(self):
+        tmp = Path(tempfile.mkdtemp(prefix='crg-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        marker = tmp / 'launched'
+        delegate = tmp / 'delegate.py'
+        delegate.write_text('open(%r, "w").write("x")\nprint("{}")\n' % str(marker), encoding='utf-8')
+        state = tmp / 'state'
+        state.mkdir()
+        request = json.dumps({'system': 's' * 100, 'prompt': 'p' * 4000, 'ids': ['a']}).encode()
+        cases = [({'caller_tokens': 50000}, False, True), ({'caller_tokens': 1000}, True, True),
+                 ({'caller_tokens': 1000}, False, False)]
+        for n, (st, stop, refused) in enumerate(cases):
+            (state / 'run.json').write_text(json.dumps(dict(st, cap=P.RUN_CAP, worker_out=P.WORKER_OUT_ALLOW)))
+            (state / 'STOP').unlink(missing_ok=True)
+            if stop:
+                (state / 'STOP').write_text('stop')
+            marker.unlink(missing_ok=True)
+            arc = tmp / f'arc{n}'
+            proc = subprocess.run([sys.executable, str(CR / 'cr_adapter.py'), '--archive', str(arc), '--state',
+                                   str(state), '--', sys.executable, str(delegate)], input=request,
+                                  capture_output=True)
+            self.assertEqual(marker.exists(), not refused, (st, stop))
+            if refused:
+                out = json.loads(proc.stdout)
+                self.assertEqual(out['usage'], {'input_tokens': 0, 'cached_input_tokens': 0,
+                                                'cache_creation_input_tokens': 0, 'output_tokens': 0})
+                row = json.loads((arc / 'packets.jsonl').read_text(encoding='utf-8').splitlines()[0])
+                self.assertTrue(row['refused_by_guard'])
+
+
+class AccountingTests(unittest.TestCase):
+    """Fix 4: a missing modelUsage counter is never read as zero; per-message usage is a reported lower bound."""
+
+    def stream(self, model_usage, per_message=(1000, 0, 0, 200)):
+        events = [{'type': 'assistant', 'message': {'id': 'm1', 'content': [{'type': 'text', 'text': '{}'}],
+                                                    'usage': dict(zip(('input_tokens', 'cache_read_input_tokens',
+                                                                       'cache_creation_input_tokens',
+                                                                       'output_tokens'), per_message))}},
+                  {'type': 'result', 'subtype': 'success', 'is_error': False, 'num_turns': 1, 'result': '{}',
+                   'modelUsage': model_usage}]
+        return ''.join(json.dumps(e) + '\n' for e in events)
+
+    def test_complete_counters(self):
+        u = P.caller_usage(self.stream({'m': {'inputTokens': 1000, 'cacheReadInputTokens': 0,
+                                              'cacheCreationInputTokens': 0, 'outputTokens': 200}}))
+        self.assertEqual((u['complete'], u['total'], u['lower_bound']), (True, 1200, 1200))
+
+    def test_missing_or_bad_counter_is_incomplete(self):
+        for mu in ({'m': {'inputTokens': 1000, 'outputTokens': 200}},
+                   {'m': {'inputTokens': 1000, 'cacheReadInputTokens': None, 'cacheCreationInputTokens': 0,
+                          'outputTokens': 200}},
+                   {'m': {'inputTokens': True, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0,
+                          'outputTokens': 200}}, {}, None):
+            u = P.caller_usage(self.stream(mu))
+            self.assertFalse(u['complete'], mu)
+            self.assertIsNone(u['total'])
+            self.assertEqual(u['lower_bound'], 1200)
+
+    def test_envelope_below_the_per_message_bound_is_incomplete(self):
+        u = P.caller_usage(self.stream({'m': {'inputTokens': 100, 'cacheReadInputTokens': 0,
+                                              'cacheCreationInputTokens': 0, 'outputTokens': 20}}))
+        self.assertFalse(u['complete'])
+        self.assertEqual(u['lower_bound'], 1200)
+
+
+class SnapshotTests(unittest.TestCase):
+    """Fix 5 and fix 2: a run imports only an immutable snapshot inside its own run root, and nothing it can name
+    leads back to the repository."""
+
+    def test_runtime_pins_come_from_the_frozen_commit(self):
+        for rel in P.RUNTIME_FROM_COMMIT:
+            blob = subprocess.run(['git', 'show', f'{P.FROZEN_COMMIT}:{rel}'], cwd=ROOT, capture_output=True,
+                                  check=True).stdout
+            self.assertEqual(P.sha(blob), P.runtime_pins()[rel], rel)
+
+    def test_snapshot_refuses_drifted_bytes(self):
+        tmp = Path(tempfile.mkdtemp(prefix='crs-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        real = P.runtime_source
+        with mock.patch.object(P, 'runtime_source', side_effect=lambda rel: real(rel) + b'# drift\n'):
+            with self.assertRaises(P.SnapshotError):
+                P.snapshot(tmp / 'code')
+
+    @unittest.skipUnless(os.name == 'nt', WINDOWS)
+    def test_every_runtime_import_resolves_inside_the_run_root(self):
+        tmp = Path(tempfile.mkdtemp(prefix='crs-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        ws, run_root, env = P.setup(tmp, P.build_spec('A', 'D'))
+        probe = ('import json, sys, oz_cli, oz_do, oz_batch, oz_workspace, tiktoken, regex\n'
+                 'tiktoken.get_encoding("o200k_base")\n'
+                 'print(json.dumps(sorted({m.__file__ for m in list(sys.modules.values()) '
+                 'if getattr(m, "__file__", None)})))\n')
+        shim = P.shim_command(run_root)
+        proc = subprocess.run([*shim['argv'][:2], '-c', probe], cwd=ws, env=dict(env, **shim['env']),
+                              capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr[-800:])
+        files = json.loads(proc.stdout)
+        ours = [f for f in files if Path(f).name.startswith('oz') or 'tiktoken' in Path(f).parts
+                or 'regex' in Path(f).parts]
+        self.assertTrue(ours)
+        for f in ours:
+            self.assertTrue(Path(f).resolve().is_relative_to(run_root.resolve()), f)
+        for f in files:
+            self.assertFalse(Path(f).resolve().is_relative_to(ROOT), f)
+
+    @unittest.skipUnless(os.name == 'nt', WINDOWS)
+    def test_no_route_to_the_repository_from_inside_the_workspace(self):
+        """Attempt the derivation a caller could make: cwd and its parents, the environment, every file in the run
+        root (adapter.json, the shim, the snapshot) and every existing file or directory those texts name."""
+        tmp = Path(tempfile.mkdtemp(prefix='crs-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        ws, run_root, env = P.setup(tmp, P.build_spec('B', 'D'))
+        forms = P._repo_forms()
+        seen_text = []
+        for key, value in env.items():
+            seen_text.append(f'{key}={value}')
+        queue = [p for p in run_root.rglob('*') if p.is_file()]
+        visited = set()
+        path_re = re.compile(r'(?:[A-Za-z]:[\\/]|/[a-z]/)[^\s"\'<>|*?]+')
+        while queue:
+            p = queue.pop()
+            if p in visited or len(visited) > 4000:
+                continue
+            visited.add(p)
+            try:
+                text = p.read_bytes().decode('utf-8', 'replace')
+            except OSError:
+                continue
+            seen_text.append(str(p))
+            if p.suffix in ('.pyd', '.tiktoken') or p.stat().st_size > 2_000_000:
+                continue
+            seen_text.append(text)
+            for found in path_re.findall(text):
+                q = Path(re.sub(r'^/([a-z])/', r'\1:/', found).rstrip('.,;:)'))
+                if q.is_file() and q.stat().st_size < 2_000_000 and not q.is_relative_to(Path(sys.base_prefix)):
+                    queue.append(q)
+        for part in [str(ws)] + [str(x) for x in ws.parents]:
+            seen_text.append(part)
+        blob = '\n'.join(seen_text).lower()
+        for form in forms:
+            self.assertNotIn(form, blob)
+        for p in run_root.rglob('*'):
+            if p.is_file() and p.suffix not in ('.pyd', '.tiktoken', '.sqlite'):
+                assert_clean(self, p.read_bytes().decode('utf-8', 'replace'), where=str(p))
 
 
 @unittest.skipUnless(os.name == 'nt', WINDOWS)
@@ -382,7 +621,7 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(self.res['ok'])
         names = set(self.res['scenarios'])
         for need in ('I-clean', 'D-mixed', 'D-violation', 'I-truncated', 'I-malformed', 'D-unseeded',
-                     'I-oz-violation', 'I-cap'):
+                     'I-oz-violation', 'I-cap', 'D-worker-cap', 'I-missing-counter', 'I-out-of-domain'):
             self.assertIn(need, names)
 
     def test_rejudge_gives_zero_mismatches(self):
@@ -415,13 +654,15 @@ class EndToEndTests(unittest.TestCase):
 
     def test_workspace_and_packets_hold_no_key_or_witness_bytes(self):
         tmp = Path(tempfile.mkdtemp(prefix='crw-', dir=self.base))
-        ws, _, env = P.setup(tmp, P.build_spec('A', 'D'))
-        for path in ws.rglob('*'):
-            if path.is_file() and path.suffix != '.sqlite':
-                assert_clean(self, path.read_bytes().decode('utf-8'), where=str(path))
-        for key in ('PYTHONPATH', 'TIKTOKEN_CACHE_DIR', 'OZ_MODEL'):
+        ws, run_root, env = P.setup(tmp, P.build_spec('A', 'D'))
+        for path in run_root.rglob('*'):
+            if path.is_file() and path.suffix not in ('.sqlite', '.pyd', '.tiktoken'):
+                assert_clean(self, path.read_bytes().decode('utf-8', 'replace'), where=str(path))
+        for key in ('PYTHONPATH', 'TIKTOKEN_CACHE_DIR', 'OZ_MODEL', 'VIRTUAL_ENV'):
             self.assertNotIn(key, env)
-        self.assertFalse(any(str(O.FIX).lower() in str(v).lower() for v in env.values()))
+        for value in env.values():
+            for form in P._repo_forms():
+                self.assertNotIn(form, value.lower())
         checked = 0
         for tag, sc in self.res['scenarios'].items():
             for line in Path(sc['run_dir']).glob('archive/worker/packets.jsonl'):
