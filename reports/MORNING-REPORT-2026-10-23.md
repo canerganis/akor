@@ -1,6 +1,6 @@
 # Morning report, 2026-10-23
 
-Branch `oz-0.9`, nothing pushed, nothing posted. Tests: 449 passing. Claude weekly quota at 33% when this was written
+Branch `oz-0.9`, nothing pushed, nothing posted. Tests: 491 passing. Claude weekly quota at 33% when this was written
 (stop line 49%).
 
 ## The three overnight goals
@@ -43,4 +43,10 @@ Branch `oz-0.9`, nothing pushed, nothing posted. Tests: 449 passing. Claude week
    conformance gate: the host could do every model job in it exactly, so it does not by itself meet your criterion
    "judged against a recorded 20-step real workflow". Your call: accept it as the step 4 gate, or also require a
    workflow that needs the model (their candidate: the live2 code-repair domain, recorded after step 4 passes).
-   The executor build through the dry gate was started tonight; live runs wait for review.
+   Built tonight, independently reviewed (seven defects fixed, tests first), dry gate passed, then run live
+   ([results](../docs/design/step4-2026-10-23/results.md)): **G3 failed as preregistered**, G4 baseline passed.
+   Every scenario delivered a verified package, both hard kills resumed without re-paying the captured call, and the
+   stale input recomputed only A. The failure: Sonnet 5.5 misclassified three inclusive-boundary intervals
+   (12.50 ± 0.02 against [12.48, 12.52] answered "outside"), the host checks rejected all three and the resent jobs came
+   back right, which cost extra launches the frozen gate did not allow. Without the checks those wrong values would
+   have been delivered. Re-running needs a new preregistration and allocation; Astra and Opus are asked to propose it.
