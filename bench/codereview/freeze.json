@@ -1,0 +1,66 @@
+{
+ "digest": "dee0f6ce3efc68091fe9b74bada03dbf820b15d12ce4a0cac360fc107ece2293",
+ "environment": {
+  "cli_version": "2.1.306 (Claude Code)",
+  "core_sha256": {
+   "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
+   "oz_batch.py": "50ecdd28f5dda7c4479a0160b8860b6cad87727dbb448f7eddc0f15553d622cb",
+   "oz_reply.py": "dc58230288900c0eee17a2f230b30feaf993e15e90fda12d488b644505633ab4",
+   "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
+   "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
+   "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
+   "oz_do.py": "04234e50ed41d037d4668d9c6c5eae1837b832b31034a16392f245374dfa67af",
+   "oz_cli.py": "b821917930f130cf85a87e47a4495825e2fbda89c252bfd6a500cf9bd25a0401",
+   "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
+   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
+   "oz_flow.py": "98ba8901356e0079a4b2c56a4082eff7000c2ddc96dec1888d6df40a07c14cf8"
+  }
+ },
+ "fill_sha256": "1458027af83c200d6219b160db201e672e1a469c80780cbe0f6e541eb41ed22a",
+ "fill_o200k": 5865,
+ "sha256sums_sha256": "0cdd88aa206d1feb5db0e0a34ad91cf73df9ba42dd833b50ab1a3d21fe7e87a8",
+ "sandbox_pin": "579417ae66558f87f08a41fde0d3deb0f65fffe92a3767e37a31265c2138ce86",
+ "runs": [
+  [
+   "A-I",
+   "ac52803bb1520986fc3e8ba68f64e12a15ced290f93c522e43014d4a4da18844",
+   {
+    "WITNESS_FORMAT.md": "5f23b00b96fa02ba142bacc680af1123b45bd82cea01635c632d4b799ce7e1e0",
+    "packA/labels.py": "007d0aea38171edcb1515c7420cd0350238f5820a337d995bcbd4a8614b5c676",
+    "packA/paging.py": "3ce17c9294f13490062689048f50e99ec05d91362e941d71666778faf2a028a4",
+    "packA/sample_stats.py": "a21180d13728122c5cbf350f5684efa7d3b0778a255dbadca254788017f71301"
+   }
+  ],
+  [
+   "A-D",
+   "9233fdfaea94d77db785db3dfaf2a2018cd3cf35ebffa2ffb336eb44809b34f9",
+   {
+    "WITNESS_FORMAT.md": "5f23b00b96fa02ba142bacc680af1123b45bd82cea01635c632d4b799ce7e1e0",
+    "packA/labels.py": "007d0aea38171edcb1515c7420cd0350238f5820a337d995bcbd4a8614b5c676",
+    "packA/paging.py": "3ce17c9294f13490062689048f50e99ec05d91362e941d71666778faf2a028a4",
+    "packA/sample_stats.py": "a21180d13728122c5cbf350f5684efa7d3b0778a255dbadca254788017f71301"
+   }
+  ],
+  [
+   "B-D",
+   "7a0f9c420703238d366c0e5d5064a84842dc251c6e3a342a23a35409ee242335",
+   {
+    "WITNESS_FORMAT.md": "5f23b00b96fa02ba142bacc680af1123b45bd82cea01635c632d4b799ce7e1e0",
+    "packB/ranges.py": "1d70b0cccb628354057a376806177c203aaa9134f97b41e3173ef6a30ff0ee95",
+    "packB/rotation.py": "841e33a12f8fd287db068faa5cb68971391d691487c199f8d56687b1ad784743",
+    "packB/settings.py": "e56f98600f1a5a634afd823a15e6fefd43102fdda101a3c379347a154f833f40"
+   }
+  ],
+  [
+   "B-I",
+   "f587ed6545d972577b436e32d4ef1a255c4cffe141825bbc078acc6154816eaf",
+   {
+    "WITNESS_FORMAT.md": "5f23b00b96fa02ba142bacc680af1123b45bd82cea01635c632d4b799ce7e1e0",
+    "packB/ranges.py": "1d70b0cccb628354057a376806177c203aaa9134f97b41e3173ef6a30ff0ee95",
+    "packB/rotation.py": "841e33a12f8fd287db068faa5cb68971391d691487c199f8d56687b1ad784743",
+    "packB/settings.py": "e56f98600f1a5a634afd823a15e6fefd43102fdda101a3c379347a154f833f40"
+   }
+  ]
+ ],
+ "frozen_at": "2026-10-24T01:21:37"
+}

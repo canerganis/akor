@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "fixture_id": "codereview-v1",
+  "classification": "evaluator-only",
+  "witness_format": "codereview-witness-v1",
+  "modules": [
+    {
+      "file": "packA/paging.py",
+      "reference_file": "ref/packA/paging.py",
+      "test_file": "tests/test_packA_paging.py",
+      "seeds": [
+        {
+          "id": "A1",
+          "class": "off_by_one",
+          "span": {
+            "start_line": 36,
+            "end_line": 36
+          },
+          "hidden_witness": {
+            "function": "get_page",
+            "args": [
+              [
+                "a",
+                "b",
+                "c",
+                "d"
+              ],
+              1,
+              2
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": [
+                "c",
+                "d"
+              ]
+            }
+          },
+          "reference_fix": "Replace stop = start + page_size - 1 with stop = start + page_size."
+        }
+      ]
+    },
+    {
+      "file": "packA/sample_stats.py",
+      "reference_file": "ref/packA/sample_stats.py",
+      "test_file": "tests/test_packA_sample_stats.py",
+      "seeds": [
+        {
+          "id": "A2",
+          "class": "missing_guard",
+          "span": {
+            "start_line": 25,
+            "end_line": 26
+          },
+          "hidden_witness": {
+            "function": "mean",
+            "args": [
+              []
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": null
+            }
+          },
+          "reference_fix": "Before computing total, return None when checked is empty."
+        }
+      ]
+    },
+    {
+      "file": "packA/labels.py",
+      "reference_file": "packA/labels.py",
+      "test_file": "tests/test_packA_labels.py",
+      "seeds": []
+    },
+    {
+      "file": "packB/ranges.py",
+      "reference_file": "ref/packB/ranges.py",
+      "test_file": "tests/test_packB_ranges.py",
+      "seeds": [
+        {
+          "id": "B1",
+          "class": "off_by_one",
+          "span": {
+            "start_line": 30,
+            "end_line": 30
+          },
+          "hidden_witness": {
+            "function": "compact_ranges",
+            "args": [
+              [
+                [
+                  1,
+                  2
+                ],
+                [
+                  3,
+                  5
+                ]
+              ]
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": [
+                [
+                  1,
+                  5
+                ]
+              ]
+            }
+          },
+          "reference_fix": "Replace start <= previous[1] with start <= previous[1] + 1."
+        }
+      ]
+    },
+    {
+      "file": "packB/rotation.py",
+      "reference_file": "ref/packB/rotation.py",
+      "test_file": "tests/test_packB_rotation.py",
+      "seeds": [
+        {
+          "id": "B2",
+          "class": "missing_guard",
+          "span": {
+            "start_line": 15,
+            "end_line": 15
+          },
+          "hidden_witness": {
+            "function": "rotate_left",
+            "args": [
+              [],
+              7
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": []
+            }
+          },
+          "reference_fix": "Before computing pivot, return [] when items is empty."
+        }
+      ]
+    },
+    {
+      "file": "packB/settings.py",
+      "reference_file": "packB/settings.py",
+      "test_file": "tests/test_packB_settings.py",
+      "seeds": []
+    }
+  ]
+}

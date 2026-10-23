@@ -1,0 +1,488 @@
+"""Code-review sizing pilot (docs/design/codereview-pilot-2026-10-24): offline checks of the fixtures, the oracle and
+the harness (bench/codereview). No model is called: the caller and the worker are local fixture programs.
+
+    python -m unittest tests.test_codereview_pilot
+
+Witnesses run in the Windows Job Object sandbox of bench/o1, so the oracle and end-to-end classes are Windows-only.
+"""
+import ast
+import contextlib
+import hashlib
+import io
+import json
+import os
+from pathlib import Path
+import shutil
+import sys
+import tempfile
+import unittest
+from unittest import mock
+
+ROOT = Path(__file__).resolve().parent.parent
+CR = ROOT / 'bench' / 'codereview'
+for p in (str(CR), str(ROOT / 'bench' / 'live'), str(ROOT)):
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+import oracle as O  # noqa: E402
+import pilot as P  # noqa: E402
+import verify as V  # noqa: E402
+
+WINDOWS = ('witnesses run in the Windows Job Object sandbox of bench/o1 (bench/o1/sandbox.py refuses when '
+           'os.name != "nt")')
+KEY = O.load_key()
+
+
+def seed_finding(file, line=None, cls=None, witness=None):
+    m = next(m for m in KEY['modules'] if m['file'] == file)
+    s = m['seeds'][0]
+    return {'file': file, 'line': s['span']['start_line'] if line is None else line, 'class': cls or s['class'],
+            'witness': witness or s['hidden_witness']}
+
+
+def perfect(pack):
+    return {m['file']: [seed_finding(m['file'])] if m['seeds'] else [] for m in O.modules(pack)}
+
+
+def W(function, args, expected, kwargs=None):
+    return {'function': function, 'args': args, 'kwargs': kwargs or {}, 'expected': expected}
+
+
+def secrets(root=O.FIX):
+    """(substrings, whole lines) that must never reach a caller or a worker: the answer key, the reference fixes,
+    every hidden witness, the reference files, the oracle's own sources; and every reference-only line."""
+    subs = [(root / 'answer_key.json').read_text(encoding='utf-8'), '"classification": "evaluator-only"',
+            'reference_fix"', 'hidden_witness"']
+    lines = set()
+    shipped = {x for m in O.load_key(root)['modules'] for x in O.source(m['file'], root).split('\n')}
+    for m in O.load_key(root)['modules']:
+        if not m['seeds']:
+            continue
+        ref = O.source(m['reference_file'], root)
+        subs.append(ref)
+        lines |= {line for line in ref.split('\n') if line.strip() and line not in shipped}
+        for s in m['seeds']:
+            subs += [s['reference_fix'], json.dumps(s['hidden_witness'], separators=(',', ':')),
+                     json.dumps(s['hidden_witness'])]
+    for src in (CR / 'oracle.py', CR / 'eval_worker.py'):
+        subs.append(src.read_text(encoding='utf-8').split('\n')[0])
+    return subs, lines
+
+
+def assert_clean(case, text, root=O.FIX, where=''):
+    subs, lines = secrets(root)
+    for s in subs:
+        case.assertNotIn(s, text, where)
+    present = set(text.split('\n'))
+    case.assertEqual(lines & present, set(), where)
+
+
+def strings(value):
+    if isinstance(value, str):
+        yield value
+    elif isinstance(value, dict):
+        for v in value.values():
+            yield from strings(v)
+    elif isinstance(value, list):
+        for v in value:
+            yield from strings(v)
+
+
+class SpanAndSchemaTests(unittest.TestCase):
+    def test_strict_json(self):
+        for bad in ('{"a":1,"a":2}', '[NaN]', '[Infinity]', '[-Infinity]', '[1e400]'):
+            with self.assertRaises(ValueError, msg=bad):
+                O.strict_json(bad)
+        self.assertEqual(O.strict_json(' [1, 2.5, {"a": null}] '), [1, 2.5, {'a': None}])
+
+    def test_finding_schema(self):
+        good = seed_finding('packA/paging.py')
+        self.assertEqual(O.validate_finding(good, 'packA/paging.py', 65), [])
+        cases = [dict(good, extra=1), dict(good, line=True), dict(good, line=0), dict(good, line=66),
+                 dict(good, line=36.0), dict(good, **{'class': 'wrong_comparison'}), dict(good, file='packA/x.py'),
+                 dict(good, witness=dict(good['witness'], function='_checked')),
+                 dict(good, witness=dict(good['witness'], function='m.get_page')),
+                 dict(good, witness=dict(good['witness'], kwargs={'_x': 1})),
+                 dict(good, witness=dict(good['witness'], expected={'return': 1, 'exception': 'ValueError'})),
+                 dict(good, witness=dict(good['witness'], expected={'exception': 'RuntimeError'})),
+                 dict(good, witness=dict(good['witness'], args={}))]
+        for case in cases:
+            self.assertTrue(O.validate_finding(case, 'packA/paging.py', 65), case)
+
+    def test_exact_type_equality(self):
+        self.assertTrue(O.equal(1, ['i', '1']))
+        self.assertFalse(O.equal(1, ['f', '1.0']))
+        self.assertFalse(O.equal(1.0, ['i', '1']))
+        self.assertFalse(O.equal(True, ['i', '1']))
+        self.assertFalse(O.equal(1, ['b', True]))
+        self.assertFalse(O.equal([1], ['t', [['i', '1']]]))
+        self.assertTrue(O.equal(0.0, ['f', '-0.0']))
+        self.assertTrue(O.equal({'b': [1], 'a': None}, ['d', [['a', ['n']], ['b', ['l', [['i', '1']]]]]]))
+        self.assertFalse(O.equal({'a': None}, ['d', [['a', ['n']], ['b', ['n']]]]))
+        self.assertFalse(O.equal(1.0, ['f', 'nan']))
+
+    def test_seed_span_rule_as_written(self):
+        shipped = 'a\nb\nc\nd\ne\n'
+        ins = lambda k: '\n'.join(shipped.split('\n')[:k] + ['X'] + shipped.split('\n')[k:])
+        # span 3-4: insertions after k lines are inside exactly when 2 <= k <= 4
+        self.assertEqual([O.edits_inside_span(shipped, ins(k), 3, 4)[0] for k in range(6)],
+                         [False, False, True, True, True, False])
+        self.assertTrue(O.edits_inside_span(shipped, 'a\nb\nC\nd\ne\n', 3, 4)[0])
+        self.assertFalse(O.edits_inside_span(shipped, 'a\nB\nc\nd\ne\n', 3, 4)[0])
+        self.assertFalse(O.edits_inside_span(shipped, 'a\nb\nd\ne\n', 4, 4)[0])   # deletes line 3
+        self.assertFalse(O.edits_inside_span(shipped, shipped, 3, 4)[0])         # no edit at all
+        self.assertTrue(O.in_span(25, {'start_line': 25, 'end_line': 26}))
+        self.assertFalse(O.in_span(27, {'start_line': 25, 'end_line': 26}))
+
+    def test_evaluator_imports_no_executor_code(self):
+        allowed = {'__future__', 'builtins', 'difflib', 'hashlib', 'inspect', 'json', 'keyword', 'math', 'os',
+                   'pathlib', 'sys', 're', 'subprocess'}
+        for name in ('oracle.py', 'eval_worker.py', 'verify.py'):
+            tree = ast.parse((CR / name).read_text(encoding='utf-8'))
+            found = set()
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    found |= {a.name.split('.')[0] for a in node.names}
+                elif isinstance(node, ast.ImportFrom):
+                    found.add(node.module.split('.')[0])
+            self.assertEqual(found - allowed - {'sandbox', 'oracle'}, set(), name)
+        self.assertEqual(O.norm_sha(O.SANDBOX_FILE), O.SANDBOX_SHA256)
+
+    def test_authored_record_resolves_latest_revision(self):
+        files = V.authored(with_source=True)
+        self.assertEqual(files['answer_key.json'][1], 'Astra revision 1 (2026-10-24)')
+        self.assertEqual(files['SHA256SUMS'][1], 'Claude regeneration for Astra revision 1 (2026-10-24)')
+        self.assertEqual(files['packA/paging.py'][1], 'original')
+        span = next(m for m in KEY['modules'] if m['file'] == 'packA/sample_stats.py')['seeds'][0]['span']
+        self.assertEqual(span, {'start_line': 25, 'end_line': 26})
+
+
+@unittest.skipUnless(os.name == 'nt', WINDOWS)
+class OracleTests(unittest.TestCase):
+    def score(self, answer, pack, **kw):
+        return O.score(answer if isinstance(answer, str) else json.dumps(answer), pack, **kw)
+
+    def test_fixture_verification_passes(self):
+        res = V.verify()
+        self.assertTrue(res['ok'], [r for r in res['rows'] if not r[2]])
+        self.assertEqual(res['reference_tests'], 24)
+
+    def test_perfect_answers(self):
+        for pack in 'AB':
+            s = self.score(perfect(pack), pack)
+            self.assertEqual((s['answer_ok'], s['correct_files'], s['recall'], s['false_positives'], s['unproven']),
+                             (True, 3, 1.0, 0, 0), s)
+
+    def test_each_category_scores_as_the_rules_say(self):
+        a = perfect('A')
+        a['packA/paging.py'] = [seed_finding('packA/paging.py', line=35)]                       # mislocated
+        a['packA/sample_stats.py'] = [seed_finding('packA/sample_stats.py', line=26),           # seeded (span end)
+                                      seed_finding('packA/sample_stats.py', line=25,
+                                                   witness=W('describe', [[]], {'return': {
+                                                       'count': 0, 'mean': None, 'spread': None}})),  # same seed
+                                      seed_finding('packA/sample_stats.py', line=30,
+                                                   witness=W('spread', [[1, 2, 6]], {'return': 5.0}))]  # unproven
+        a['packA/labels.py'] = [{'file': 'packA/labels.py', 'line': 10, 'class': 'missing_guard',
+                                 'witness': W('slug', [''], {'return': ''})}]                   # clean FP (both fail)
+        s = self.score(a, 'A')
+        f = s['files']
+        self.assertEqual([x['category'] for x in f['packA/paging.py']['findings']], ['mislocated'])
+        self.assertFalse(f['packA/paging.py']['correct'])
+        self.assertEqual([x['category'] for x in f['packA/sample_stats.py']['findings']],
+                         ['seeded', 'seeded', 'unproven'])
+        self.assertTrue(f['packA/sample_stats.py']['correct'])   # proven findings equal the seed set (02 section 4)
+        self.assertEqual(f['packA/labels.py']['findings'][0]['category'], 'unproven')
+        self.assertEqual(f['packA/labels.py']['review_both_fail'], 1)
+        self.assertFalse(f['packA/labels.py']['correct'])
+        self.assertEqual((s['correct_files'], s['seeds_hit'], s['false_positives'], s['unproven'], s['mislocated']),
+                         (1, 1, 3, 2, 1))
+
+    def test_wrong_class_and_line_outside_span(self):
+        b = perfect('B')
+        b['packB/ranges.py'] = [seed_finding('packB/ranges.py', cls='missing_guard')]
+        b['packB/rotation.py'] = [seed_finding('packB/rotation.py', line=14)]   # borders the insertion boundary
+        s = self.score(b, 'B')
+        self.assertEqual(s['mislocated'], 2)
+        self.assertEqual(s['correct_files'], 1)
+
+    def test_unseeded_needs_a_registered_fix(self):
+        b = perfect('B')
+        b['packB/settings.py'] = [{'file': 'packB/settings.py', 'line': 60, 'class': 'missing_guard',
+                                   'witness': W('select_prefix', [{'a': '1'}, ''], {'return': {}})}]
+        s = self.score(b, 'B')
+        self.assertEqual((s['files']['packB/settings.py']['correct'], s['false_positives'], s['review_both_fail']),
+                         (False, 1, 1))
+        fix = O.source('packB/settings.py').replace('return {key: value', 'if not prefix:\n        return {}\n'
+                                                     '    return {key: value')
+        s = self.score(b, 'B', fixes={'packB/settings.py': fix})
+        self.assertEqual((s['files']['packB/settings.py']['correct'], s['false_positives'], s['unseeded']),
+                         (True, 0, 1))
+
+    def test_answer_shapes(self):
+        good = json.dumps(perfect('A'))
+        for text in ('```json\n' + good + '\n```', 'Here: ' + good, '', '[]', json.dumps(dict(perfect('A'), x=[]))):
+            s = O.score(text, 'A')
+            self.assertFalse(s['answer_ok'], text[:30])
+            self.assertEqual(s['correct_files'], 0)
+        nulls = dict(perfect('A'), **{'packA/labels.py': None, 'packA/paging.py': [{'file': 'packA/paging.py'}]})
+        s = self.score(nulls, 'A')
+        self.assertEqual((s['files']['packA/labels.py']['response'], s['invalid'], s['correct_files']), ('null', 1, 1))
+
+    def test_judgment_is_bound_to_its_own_pack(self):
+        """The pilot_k cross-seed bug: an answer judged against another workload. Here the pack is an explicit
+        argument, the answer keys are that pack's module paths, and nothing is read from module state."""
+        s = self.score(perfect('A'), 'B')
+        self.assertFalse(s['answer_ok'])
+        self.assertEqual(s['correct_files'], 0)
+        self.score(perfect('B'), 'B')
+        self.assertEqual(self.score(perfect('A'), 'A')['correct_files'], 3)
+        with self.assertRaises(ValueError):
+            O.modules('C')
+
+    def test_timeouts_and_errors_never_prove(self):
+        loop = 'def spin(n):\n    while True:\n        n += 1\n'
+        out = O.run_call(loop, W('spin', [1], {'return': 1}))
+        self.assertEqual(out['outcome'], 'error')
+        io_src = 'def peek(p):\n    return open(p).read()\n'
+        self.assertEqual(O.run_call(io_src, W('peek', ['x'], {'return': ''}))['outcome'], 'error')
+        unbound = O.run_call('def f(a):\n    return a\n', W('f', [1, 2], {'exception': 'TypeError'}))
+        self.assertEqual(unbound['outcome'], 'error')
+        v = O.judge_witness(W('spin', [1], {'return': 1}), loop, 'def spin(n):\n    return n\n')
+        self.assertFalse(v['proven'])
+
+
+class FillAndPromptTests(unittest.TestCase):
+    def test_fill_is_pinned_rebuildable_and_sized(self):
+        data = P.FILL_FILE.read_bytes()
+        self.assertEqual(hashlib.sha256(data).hexdigest(), P.FILL_SHA256)
+        self.assertEqual(P.build_fill(), data)
+        self.assertTrue(5500 <= P.fill_tokens() <= 6500, P.fill_tokens())
+
+    def test_fill_screen(self):
+        self.assertEqual(P.screen(P.fill_text()), [])
+        planted = ['x = get_page(items, 1, 2)', 'off_by_one', '    stop = start + page_size - 1',
+                   'the answer_key.json file', 'compact_ranges([[1, 2]])']
+        for text in planted:
+            self.assertTrue(P.screen('harmless prose\n' + text + '\n'), text)
+
+    def test_arms_differ_by_exactly_the_requirement_line(self):
+        for pack in 'AB':
+            i, d = P.prompt(pack, 'I').encode('utf-8'), P.prompt(pack, 'D').encode('utf-8')
+            li, ld = i.split(b'\n'), d.split(b'\n')
+            self.assertEqual(len(li), len(ld))
+            diff = [n for n, (x, y) in enumerate(zip(li, ld)) if x != y]
+            self.assertEqual(len(diff), 1)
+            self.assertEqual(li[diff[0]], P.REQUIREMENT['I'].encode('utf-8'))
+            self.assertEqual(ld[diff[0]], P.REQUIREMENT['D'].encode('utf-8'))
+            prefix = (P.FILL_HEAD + P.fill_text() + P.FILL_TAIL).encode('utf-8')
+            self.assertTrue(i.startswith(prefix) and d.startswith(prefix))
+            self.assertEqual(i.count(P.OZ_SNIPPET.encode('utf-8')), 1)
+            self.assertEqual(d.count(P.OZ_SNIPPET.encode('utf-8')), 1)
+            for module in P.PACKS[pack]:
+                self.assertIn(module, P.task_text(pack, 'I'))
+
+    def test_prompts_carry_no_answer_and_no_repo_path(self):
+        for pack in 'AB':
+            for arm in 'ID':
+                text = P.prompt(pack, arm)
+                assert_clean(self, text)
+                self.assertNotIn(str(ROOT).lower(), text.lower())
+                self.assertNotIn('codereview', text)
+
+    def test_specs_are_deterministic_and_bound_to_pack(self):
+        a, b = P.build_spec('A', 'I'), P.build_spec('A', 'I')
+        self.assertEqual(a['input_sha256'], b['input_sha256'])
+        self.assertNotEqual(a['input_sha256'], P.build_spec('B', 'I')['input_sha256'])
+        self.assertEqual(sorted(a['files']), sorted(P.PACKS['A'] + ('WITNESS_FORMAT.md',)))
+        for rel, data in a['files'].items():
+            self.assertEqual(data, (O.FIX / rel).read_bytes())
+            self.assertNotIn(b'\r', data)
+
+    def test_findings_sized_against_the_inline_limit(self):
+        s = P.sizing()
+        self.assertLessEqual(s['largest_expected_bytes'], 4096)
+        self.assertGreaterEqual(s['findings_that_fit_inline'], 10)
+        self.assertFalse(s['artifact_read_turn_expected'])
+
+
+class AdmissionTests(unittest.TestCase):
+    def state(self, attempts=(), records=(), quota=()):
+        return {'attempts': list(attempts), 'records': {r['attempt']: r for r in records},
+                'quota': {q['attempt']: q['after_percent'] for q in quota}}
+
+    def test_first_run_projection(self):
+        a = P.admission(self.state(), '46')
+        self.assertTrue(a['admitted'], a)
+        self.assertAlmostEqual(a['projection'], 46 + 2 * 60000 / 55000 + 1)
+
+    def test_refusals(self):
+        self.assertFalse(P.admission(self.state(), '54.9')['admitted'])
+        self.assertTrue(P.admission(self.state(), '54.8')['admitted'])
+        self.assertFalse(P.admission(self.state(), None)['admitted'])
+        self.assertFalse(P.admission(self.state(), 'about 46')['admitted'])
+        run = {'attempt': 'A-I#1', 'tag': 'A-I', 'admitted': True, 'quota_before': 46.0}
+        unsettled = self.state([run])
+        self.assertIn('unsettled', ' '.join(P.admission(unsettled, '47')['reasons']))
+        rec = {'attempt': 'A-I#1', 'charged_tokens': 60000}
+        settled = self.state([run], [rec], [{'attempt': 'A-I#1', 'after_percent': 47.0}])
+        self.assertTrue(P.admission(settled, '47')['admitted'])
+        runs = [dict(run, attempt=f'X#{n}') for n in range(4)]
+        heavy = self.state(runs, [{'attempt': f'X#{n}', 'charged_tokens': 50000} for n in range(4)],
+                           [{'attempt': f'X#{n}', 'after_percent': 46.0} for n in range(4)])
+        a = P.admission(heavy, '46')
+        self.assertFalse(a['admitted'])
+        self.assertIn('total cap', ' '.join(a['reasons']))
+
+    def test_factor_rises_with_observed_movement_and_never_falls(self):
+        run = {'attempt': 'A-I#1', 'tag': 'A-I', 'admitted': True, 'quota_before': 46.0}
+        rec = {'attempt': 'A-I#1', 'charged_tokens': 30000, 'accounting_complete': True, 'total_tokens': 30000}
+        fast = self.state([run], [rec], [{'attempt': 'A-I#1', 'after_percent': 49.0}])
+        a = P.admission(fast, '49')
+        self.assertAlmostEqual(a['factor'], 3 / 30000)
+        self.assertAlmostEqual(a['projection'], 49 + 6 + 1)
+        flat = self.state([run], [rec], [{'attempt': 'A-I#1', 'after_percent': 46.0}])
+        self.assertAlmostEqual(P.admission(flat, '46')['factor'], 2 / 55000)
+
+
+class ProtocolTests(unittest.TestCase):
+    def test_module_content_detector(self):
+        spec = P.build_spec('B', 'D')
+        text = O.source('packB/ranges.py')
+        self.assertTrue(P.shows_modules(spec, text))
+        numbered = ''.join('%6d\t%s\n' % (n + 1, l) for n, l in enumerate(text.split('\n')))
+        self.assertTrue(P.shows_modules(spec, numbered))
+        self.assertFalse(P.shows_modules(spec, json.dumps(perfect('B'))))
+        self.assertFalse(P.shows_modules(spec, (O.FIX / 'WITNESS_FORMAT.md').read_text(encoding='utf-8')))
+
+    def test_isolation_tripwire(self):
+        self.assertTrue(P.breaches_in(['cat ' + str(ROOT / 'bench' / 'codereview' / 'oracle.py')], []))
+        self.assertTrue(P.breaches_in(['find / -name answer_key.json'], []))
+        self.assertTrue(P.breaches_in([], ['Replace stop = start + page_size - 1 with stop = start + page_size.']))
+        self.assertFalse(P.breaches_in(['cat WITNESS_FORMAT.md'], [(O.FIX / 'WITNESS_FORMAT.md').read_text(
+            encoding='utf-8')]))
+
+
+@unittest.skipUnless(os.name == 'nt', WINDOWS)
+class EndToEndTests(unittest.TestCase):
+    """The dry gate itself, plus resume, rejudge, report and the workspace/packet isolation grep."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Path(tempfile.mkdtemp(prefix='crt-'))
+        with contextlib.redirect_stdout(io.StringIO()):
+            cls.res = P.dry(cls.base / 'dry')
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.base, ignore_errors=True)
+
+    def test_dry_gate_passes_every_scenario(self):
+        bad = {k: v['problems'] for k, v in self.res['scenarios'].items() if v['problems']}
+        self.assertEqual(bad, {})
+        self.assertTrue(self.res['ok'])
+        names = set(self.res['scenarios'])
+        for need in ('I-clean', 'D-mixed', 'D-violation', 'I-truncated', 'I-malformed', 'D-unseeded',
+                     'I-oz-violation', 'I-cap'):
+            self.assertIn(need, names)
+
+    def test_rejudge_gives_zero_mismatches(self):
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(P.rejudge(self.res['out'], root_for=self.res['roots'], fixes_for=self.res['fixes']), 0)
+
+    def test_rejudge_detects_tampering(self):
+        out = self.base / 'tamper'
+        shutil.copytree(self.res['out'], out)
+        runs = out / 'runs.jsonl'
+        rows = [json.loads(x) for x in runs.read_text(encoding='utf-8').splitlines()]
+        rows[0]['score']['correct_files'] += 1
+        runs.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertGreater(P.rejudge(out, root_for=self.res['roots'], fixes_for=self.res['fixes']), 0)
+
+    def test_every_run_keeps_its_raw_data(self):
+        for tag, sc in self.res['scenarios'].items():
+            run = Path(sc['run_dir'])
+            for name in ('prompt.txt', 'spec.json', 'meta.json', 'transcript.jsonl', 'stderr.txt', 'record.json',
+                         'ws_files.json', 'raw_complete'):
+                self.assertTrue((run / name).is_file(), (tag, name))
+            if sc['record']['caller']['envelope']:
+                self.assertTrue((run / 'caller_envelope.json').is_file(), tag)
+            if sc['record']['worker']['calls']:
+                self.assertTrue(list(run.glob('archive/oz/*/request.bin')), tag)
+                self.assertTrue((run / 'archive' / 'worker' / 'packets.jsonl').is_file(), tag)
+                self.assertTrue(list(run.glob('archive/worker/envelopes/*.json')), tag)
+                self.assertTrue(list(run.glob('do/*/calls.jsonl')), tag)
+
+    def test_workspace_and_packets_hold_no_key_or_witness_bytes(self):
+        tmp = Path(tempfile.mkdtemp(prefix='crw-', dir=self.base))
+        ws, _, env = P.setup(tmp, P.build_spec('A', 'D'))
+        for path in ws.rglob('*'):
+            if path.is_file() and path.suffix != '.sqlite':
+                assert_clean(self, path.read_bytes().decode('utf-8'), where=str(path))
+        for key in ('PYTHONPATH', 'TIKTOKEN_CACHE_DIR', 'OZ_MODEL'):
+            self.assertNotIn(key, env)
+        self.assertFalse(any(str(O.FIX).lower() in str(v).lower() for v in env.values()))
+        checked = 0
+        for tag, sc in self.res['scenarios'].items():
+            for line in Path(sc['run_dir']).glob('archive/worker/packets.jsonl'):
+                for row in line.read_text(encoding='utf-8').splitlines():
+                    req = json.loads(row)['request']
+                    texts = [req['system'], req['prompt']] + list(strings(json.loads(req['prompt'])))
+                    for text in texts:
+                        assert_clean(self, text, Path(sc['root']), tag)
+                    checked += 1
+        self.assertGreater(checked, 0)
+
+    def test_report_prints_table_and_fill_slope(self):
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            P.report(self.res['out'])
+        text = buf.getvalue()
+        for word in ('caller turns', 'cache read', 'worker', 'correct', 'recall', 'FP', 'unproven', '60k', '120k'):
+            self.assertIn(word, text)
+
+    def test_resume_never_repays_a_finished_run(self):
+        out = self.base / 'resume'
+        calls = self.base / 'calls.log'
+        with mock.patch.object(P, 'SCHEDULE', (('A', 'I'), ('A', 'D'))), \
+                mock.patch.object(P, 'environment', return_value={'cli_version': 'x', 'core_sha256': {}}), \
+                contextlib.redirect_stdout(io.StringIO()):
+            digest = P.manifest()[0]
+            kw = dict(out=out, **P.dry_caller(self.base / 'res', 'perfect', calls))
+            self.assertEqual(P.counted(digest, '46', **kw), 0)
+            self.assertEqual(P.counted(digest, '47', **kw), 3)         # previous run unsettled: refused before launch
+            self.assertEqual(len(calls.read_text().splitlines()), 1)
+            P.quota_after('46', out=out)
+            # a crash after the raw data was kept but before the record line: rebuilt, not re-run
+            with mock.patch.object(P, 'append_record', side_effect=KeyboardInterrupt):
+                with self.assertRaises(KeyboardInterrupt):
+                    P.counted(digest, '46', **kw)
+            self.assertEqual(len(calls.read_text().splitlines()), 2)
+            P.quota_after('46', out=out)
+            self.assertEqual(P.counted(digest, '46', **kw), 0)         # rebuilds A-D, nothing left to run
+            self.assertEqual(len(calls.read_text().splitlines()), 2)
+            tags = [json.loads(x)['tag'] for x in (out / 'runs.jsonl').read_text(encoding='utf-8').splitlines()]
+            self.assertEqual(tags, ['A-I', 'A-D'])
+            attempts = [json.loads(x) for x in (out / 'attempts.jsonl').read_text(encoding='utf-8').splitlines()]
+            self.assertEqual([a['admitted'] for a in attempts], [True, False, True])
+            self.assertEqual(P.counted('0' * 64, '46', **kw), 2)       # wrong digest: nothing runs
+
+
+class FreezeTests(unittest.TestCase):
+    def test_manifest_is_deterministic(self):
+        self.assertEqual(P.manifest()[0], P.manifest()[0])
+
+    def test_the_freeze_holds(self):
+        frozen = json.loads(P.FREEZE_FILE.read_text(encoding='utf-8'))
+        self.assertEqual(frozen['digest'], P.manifest()[0])
+
+    def test_plan_names_the_digest_and_the_four_runs(self):
+        plan = (ROOT / 'docs' / 'design' / 'codereview-pilot-2026-10-24' / 'plan-frozen.md').read_text(
+            encoding='utf-8')
+        digest = P.manifest()[0]
+        self.assertIn(digest, plan)
+        self.assertEqual(plan.count('pilot.py run --expect ' + digest), 4)
+
+
+if __name__ == '__main__':
+    unittest.main()

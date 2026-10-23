@@ -11,4 +11,6 @@ reversed pairs (4 runs). Oracle: each finding carries an executable witness that
 pass on the reference fix, run in the O1 sandbox; a file is right only if its proven findings equal its seeds exactly;
 clean controls must be empty; no model scores anything. Caps: 60k tokens per run, 250k total; admission projected at
 2 points per 55k tokens from actual quota readings, refused if it could reach 58%; 60% ceiling.
-Status: signed; fixtures authored; harness not built.
+Status: signed; fixtures authored (Astra revision 1 after verification found the A2 span outside the reference edit)
+and verified; harness built, dry gate passed on fixture adapters, frozen at digest `dee0f6ce...` and not run. Run plan
+and exact commands: [plan-frozen.md](plan-frozen.md).
