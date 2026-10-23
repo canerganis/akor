@@ -34,7 +34,7 @@ plan allows one rerun of a scenario that failed on a model reply, within the sam
 and a rerun needs at least 3, so none was made.
 
 What this shows beyond the gate: the per-job checks did the job step 3 built them for. Without them, three wrong
-values would have reached a delivered handoff; with them, the cost was three single-job resends (about 4.8k tokens)
+values would have reached a delivered handoff; with them, the cost was three single-job resends (7,341 tokens; an earlier version of this file said about 4.8k, which counted only the interrupted run)
 and every delivered value is checked.
 
 ## G4, no-orchestration baseline (caps 20k tokens and 5 launches): pass

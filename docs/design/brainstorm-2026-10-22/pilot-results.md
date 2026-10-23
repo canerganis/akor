@@ -122,3 +122,14 @@ What it adds:
    failure was not seen in 100+ batched OZ/1g replies at 16 to 64 jobs. One-job OZ/1g is not qualified, and this is
    evidence for qualifying each batch size separately, as the foundation record requires.
 Data: `bench/live/data/pilot2q_{sonnet,opus,haiku}.jsonl`.
+
+## Coverage note added 2026-10-23 (found by Opus 5.5 after step 4)
+
+The classification operation's labels are unevenly covered by the workload generator. Recounted from the oracles:
+the 64-job Sonnet pilot (seeds 3105 to 3107) has 0 "inside" cases among its 48 classification jobs (35 outside,
+13 unknown), so an answer of "outside" every time would have scored 100% on that operation. The 16-job pilot has
+2 inside cases out of 12; the published stage 1g Sonnet run (seeds 1005 to 1024) has 15 out of 320, all answered
+correctly. Step 4's records are half inclusive-boundary cases, and there Sonnet answered three of them wrongly in
+packets where it used no hidden reasoning (see docs/design/step4-2026-10-23/results.md). Correctness figures for
+the classification operation in this pilot therefore say little about boundary cases; the other three operations
+are unaffected.
