@@ -72,17 +72,34 @@ class HostOp:
 
 @dataclass(frozen=True)
 class ModelOp:
+    """A model operation. By default it binds one text input, record. inputs given as a tuple are ordered: each job
+    sends them as its refs in that order (one row, the shipped first-use packer lays them out). values names the
+    inputs sent in the opt-in JSON value form of `oz do` refs ({"value": ...}); the others must be nonblank text. An
+    ordered or value-form operation hashes its input order and value forms into its identity as well."""
     name: str
     version: int
     goal: str
     instruction: str
     checks: tuple = ()
     memo: bool = True
-    inputs: frozenset = frozenset({'record'})
+    inputs: frozenset | tuple = frozenset({'record'})
+    values: frozenset = frozenset()
+
+    @property
+    def ref_order(self) -> tuple:
+        return tuple(self.inputs) if isinstance(self.inputs, tuple) else tuple(sorted(self.inputs))
+
+    @property
+    def single(self) -> bool:
+        """The shipped form: one text input, sent as the job's one ref."""
+        return len(self.ref_order) == 1 and not self.values
 
     @property
     def identity(self):
-        return f'{self.name}@{self.version}:sha256:' + _sha(J([self.goal, self.instruction]))
+        parts = [self.goal, self.instruction]
+        if not self.single:
+            parts += [list(self.ref_order), sorted(self.values)]
+        return f'{self.name}@{self.version}:sha256:' + _sha(J(parts))
 
 
 def _sha(text) -> str:
@@ -145,6 +162,8 @@ def admit(graph: dict, registry: dict, *, effects=()) -> list:
         if isinstance(op, ModelOp):
             descriptor = {'kind': 'model', 'op': node['op'], 'identity': op.identity, 'checks': list(op.checks),
                           'memo': op.memo, 'goal_sha256': _sha(op.goal), 'instruction_sha256': _sha(op.instruction)}
+            if not op.single:
+                descriptor.update(refs=list(op.ref_order), values=sorted(op.values))
         else:
             descriptor = {'kind': 'host', 'op': node['op'], 'identity': op.identity, 'effect': op.effect}
         out[where] = dict(descriptor, id=where, bindings=node['in'], deps=sorted(set(deps)),
@@ -517,9 +536,20 @@ def _admission(flow: Flow, settings: Settings, request_id: str, call_timeout: fl
 
 
 def _stage_request(flow_rid, op, nodes, texts, generations, deadline, call_timeout, model, max_input_tokens):
+    """The `oz do` request of one stage. A one-input operation sends ref n (the node's text) for job n, as shipped. An
+    ordered operation sends refs n-<input> in its declared order (value-form inputs as {"value": ...}) for job n."""
     digest = _sha(J([op.identity, nodes, [texts[n] for n in nodes], [generations[n] for n in nodes]]))
+    if op.single:
+        refs, jobs = {n: texts[n] for n in nodes}, [[n, op.name, n] for n in nodes]
+    else:
+        refs, jobs = {}, []
+        for n in nodes:
+            names = [f'{n}-{k}' for k in op.ref_order]
+            for k, name, value in zip(op.ref_order, names, texts[n]):
+                refs[name] = {'value': value} if k in op.values else value
+            jobs.append([n, op.name, *names])
     return {'request_id': f'{flow_rid}-{op.name}-{digest[:12]}', 'goal': op.goal, 'ops': {op.name: op.instruction},
-            'refs': {n: texts[n] for n in nodes}, 'jobs': [[n, op.name, n] for n in nodes], 'model': model,
+            'refs': refs, 'jobs': jobs, 'model': model,
             'allow_experimental': True, 'profile': SELECTIVE, 'checks': {op.name: list(op.checks)} if op.checks else {},
             'max_attempts': 2, 'max_jobs_per_call': 4, 'max_input_tokens': max_input_tokens,
             'max_inline_bytes': 65536, 'deadline_seconds': deadline, 'call_timeout_seconds': call_timeout}
@@ -527,6 +557,26 @@ def _stage_request(flow_rid, op, nodes, texts, generations, deadline, call_timeo
 
 def _value_text(value) -> str:
     return value.text if isinstance(value, RawJSON) else J(value)
+
+
+def _model_input(op, bindings: dict, values: dict, ctx):
+    """The resolved model-visible input of one job: the record text of a one-input operation, else the list of its
+    inputs in declared order. Text inputs must be nonblank text; value-form inputs a nonblank JSON value. Raises
+    HostError (the stage is blocked with binding_failed, nothing is dispatched)."""
+    out = []
+    for name in op.ref_order:
+        value = _resolve(bindings[name], values, ctx)
+        if name in op.values:
+            if value is None or isinstance(value, str) and not value.strip():
+                raise HostError('a model value input must be a nonblank JSON value')
+            try:
+                J(value)
+            except (TypeError, ValueError, Error):
+                raise HostError('a model value input must be a nonblank JSON value') from None
+        elif not isinstance(value, str) or not value.strip():
+            raise HostError('a model input must be nonblank text')
+        out.append(value)
+    return out[0] if op.single else out
 
 
 def run_flow(request: dict, settings: Settings, *, plan_only=False) -> dict:
@@ -744,11 +794,9 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
         d = descriptors[node]
         ctx = HostContext(flow, node, 0)  # one read-set per node: sources it reads itself are its own citations
         try:
-            text = _resolve(d['bindings']['record'], values, ctx)
+            text = _model_input(op, d['bindings'], values, ctx)
         except HostError as exc:
             return {'reason': 'binding_failed', 'node': node, 'detail': str(exc)}
-        if not isinstance(text, str) or not text.strip():
-            return {'reason': 'binding_failed', 'node': node, 'detail': 'a model input must be nonblank text'}
         texts[node] = text
         inputs_acc[node] = {dep: current[dep]['seq'] for dep in d['deps']}
         cites[node] = {}
@@ -864,7 +912,7 @@ def _plan(flow: Flow, request: dict, settings: Settings, descriptors: list) -> d
             op = settings.registry[d['op']]
             group = [x['id'] for x in descriptors if x['op'] == d['op']]
             ctx = HostContext(flow, group[0], 0)
-            texts = {n: _resolve(next(x for x in descriptors if x['id'] == n)['bindings']['record'], values, ctx)
+            texts = {n: _model_input(op, next(x for x in descriptors if x['id'] == n)['bindings'], values, ctx)
                      for n in group}
             req = _stage_request(request['request_id'], op, group, texts, {n: 0 for n in group}, 3600, 300,
                                  settings.model, settings.max_input_tokens)

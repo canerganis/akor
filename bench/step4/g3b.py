@@ -36,7 +36,8 @@ from pathlib import Path
 import sys
 
 HERE = Path(__file__).resolve().parent
-FROZEN = HERE / 'inspection-handoff-20-v1'
+PACK = globals().get('PACK', 'inspection-handoff-20-v1')  # packs.load sets another pack before this module runs
+FROZEN = HERE / PACK
 LABEL = 'pass_g3b'
 # The executor's recorded verdicts: a stored candidate's status mapped, or, when the reply produced no candidate for the
 # member, call_failed (the call left no completed envelope) or no_candidate (the executor cannot say why from its own
@@ -383,16 +384,27 @@ def annotate(scenario: str, trace, cfg=None) -> list:
 
 # ---- the trace oracle ----
 
-def expected_text(scenario: str, stage: int, job: str, cfg=None) -> str:
-    """The input text a model job must carry at this stage: the frozen source of its record, at the revision in force."""
+def expected_text(scenario: str, stage: int, job: str, cfg=None):
+    """The input a model job must carry at this stage: the frozen source of its record, at the revision in force. An
+    operation listed in the pack's model_refs as ["record", "interval"] (v2 classify) carries two ordered refs: that
+    record text and its checked interval at the same revision, read from expected.json alone."""
     cfg = cfg or config()
     entry = cfg['scenarios'][scenario]
     name = job.rsplit('_', 1)[1]
     rel = f'sources/{name}.txt'
-    if (entry.get('revised_from_stage') is not None and stage >= entry['revised_from_stage']
-            and name == entry['revised_source']):
+    revised = (entry.get('revised_from_stage') is not None and stage >= entry['revised_from_stage']
+               and name == entry['revised_source'])
+    if revised:
         rel = entry['revised_file']
-    return (FROZEN / rel).read_bytes().decode('utf-8')
+    text = (FROZEN / rel).read_bytes().decode('utf-8')
+    refs = cfg.get('model_refs', {}).get(job.split('_', 1)[0])
+    if refs is None:
+        return text
+    if refs != ['record', 'interval']:
+        raise ValueError(f'unknown model_refs {refs}')
+    expected = expected_json()
+    row = (expected['rev2'].get(name) if revised else None) or expected['rev1'][name]
+    return [text, row['interval']]
 
 
 def plan_sizes(count: int, sizes) -> list:
@@ -593,7 +605,8 @@ def suite_verdict(report: dict, cfg=None) -> dict:
                                          and all(c['caught'] for c in report['g3b_sabotage'].values()))
         checks['allocation_feasibility'] = (bool(report.get('feasibility'))
                                             and all(c['pass'] for c in report['feasibility'].values()))
-        checks['baseline_smoke'] = bool(report.get('baseline_smoke', {}).get('pass'))
+        if cfg.get('baseline', True):  # a pack without a baseline arm (v2) states it in g3b.json
+            checks['baseline_smoke'] = bool(report.get('baseline_smoke', {}).get('pass'))
     return {'label': LABEL, 'gate': cfg['gate'], 'pass': all(checks.values()), 'checks': checks}
 
 

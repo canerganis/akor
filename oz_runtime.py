@@ -23,7 +23,7 @@ import uuid
 from oz import Channel, Error, TokenMeter, _dump
 from oz_accept import HEADER, PROFILES, SELECTIVE, accept_key, compute_key, job_inputs, pin
 from oz_batch import PREVIEW_RECEIPT, Batch, BudgetError, render, valid_id
-from oz_reply import RawJSON, slot_ids
+from oz_reply import RawJSON, loads, slot_ids
 
 
 class Fenced(Error):
@@ -444,16 +444,30 @@ class Inbox:
             raise Error('stale, expired or mismatched delivery; no acknowledgement applied')
         return rows
 
-    def complete(self, delivery: Delivery, results: dict[str, str]) -> None:
-        """Atomically record each result and ACK. Result text is a host record, not proof."""
+    def complete(self, delivery: Delivery, results: dict[str, str], values: dict[str, str] | None = None) -> None:
+        """Atomically record each result and ACK. Result text is a host record, not proof.
+
+        values (opt-in, default none) maps some of the jobs to the compact JSON text of a value to keep as their
+        accepted JSON value (result_json), so a successor's packet carries that value instead of the result string
+        (the `oz do` {"value": ...} reference form)."""
+        values = {} if values is None else values
         if (not isinstance(delivery, Delivery) or not isinstance(results, dict)
                 or set(results) != {j.id for j in delivery.jobs}
                 or any(not isinstance(v, str) or len(v.encode('utf-8')) > 65536 for v in results.values())):
             raise Error('one bounded result string per job is required')
+        if not isinstance(values, dict) or set(values) - set(results) or any(not isinstance(v, str)
+                                                                             for v in values.values()):
+            raise Error('values maps some of the jobs to JSON text')
+        for text in values.values():
+            try:
+                loads(text)
+            except (Error, ValueError, RecursionError):
+                raise Error('values must be JSON text') from None
         with self._transaction():
             self._check(delivery)
-            self.db.executemany('''UPDATE jobs SET state='done',result=?,result_json=NULL,lease=NULL,owner=NULL,
-                deadline=NULL,error='' WHERE id=?''', [(results[j.id], j.id) for j in delivery.jobs])
+            self.db.executemany('''UPDATE jobs SET state='done',result=?,result_json=?,lease=NULL,owner=NULL,
+                deadline=NULL,error='' WHERE id=?''', [(results[j.id], values.get(j.id), j.id)
+                                                        for j in delivery.jobs])
             for job in delivery.jobs:
                 self._event(job.id, 'done')
 

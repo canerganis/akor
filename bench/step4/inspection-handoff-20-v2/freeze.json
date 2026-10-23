@@ -1,0 +1,934 @@
+{
+ "files": {
+  "pack": {
+   "bench/step4/inspection-handoff-20-v2/expected.json": "b812d776c2ab92ea444214353b3edfc3aa414c63753b5505e29b308e3cb756f8",
+   "bench/step4/inspection-handoff-20-v2/g3b.json": "203f1e6a1ec66ef405dec8636fcb0a138f5433e3b9b6c83ce93eba96d4be3ecc",
+   "bench/step4/inspection-handoff-20-v2/graph.json": "d41fce5d33a98cdfd9c7fc3dfba63570199c8602b4ac9cbbd092d9e4464fd6c5",
+   "bench/step4/inspection-handoff-20-v2/qual.json": "1c8c82c1f7d628e3519508e9d197f746052f643a0cc9b1ca36c131d014741763",
+   "bench/step4/inspection-handoff-20-v2/sources/A.rev2.txt": "f8eeb7b4cbc3747f3593a530070f1d06f12ee6dff64237035cb123a4da54b170",
+   "bench/step4/inspection-handoff-20-v2/sources/A.txt": "9b8956aadcaf18a51947ba10c90572ef41b6787418b3545c35279cf76e257614",
+   "bench/step4/inspection-handoff-20-v2/sources/B.txt": "b5e2dcad0a904f8c6df5f446e6ebf6d29f1fd0e4b89797d7fd89b08da3d66911",
+   "bench/step4/inspection-handoff-20-v2/sources/C.txt": "9667c65ca36d12d82b71a299c11406f799b3d3d3f29d64080a6e220cd6b2d2f5",
+   "bench/step4/inspection-handoff-20-v2/sources/D.txt": "f70e35ba2e6138925afb243c8d78f4f880d25ae11ede1cbd242deffab64277c0",
+   "bench/step4/inspection-handoff-20-v2/workflow.json": "c46213f5efd1bc47e88e5c9756363582e597bec5940e35fff1ac31eee4635da3"
+  },
+  "code": {
+   "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
+   "oz_batch.py": "50ecdd28f5dda7c4479a0160b8860b6cad87727dbb448f7eddc0f15553d622cb",
+   "oz_reply.py": "dc58230288900c0eee17a2f230b30feaf993e15e90fda12d488b644505633ab4",
+   "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
+   "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
+   "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
+   "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
+   "oz_do.py": "1e7c40f2e53736b22631ade663ff321c92955d644b60dc2d689756b7e30b6518",
+   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
+   "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
+   "oz_flow.py": "1a6e5483fda0a5aa6d411a96cb3ac4eeda2580bb1b95db91ee5bad827f7213b5",
+   "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
+   "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
+   "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
+   "bench/step4/workflow.py": "e2c2fa067285c6c55815c722787f5a50af437bfb9aa5e4923542b45d18afc62a",
+   "bench/step4/evaluator.py": "139a201ef44b83e7977aaf85b24788d56044519de0b578acde48bed451ac84f1",
+   "bench/step4/fixture_adapter.py": "3caead7723d9082717965dc0d22de28348882f2f8c84de36b763db0ac892508f",
+   "bench/step4/g3b.py": "1917bee0ceed99940d283f248baab3612e7d3f80d7e7c2245d782cea6433e3fc",
+   "bench/step4/step4.py": "afd4b26e9b47a3cca415939b3c808815356298611e35d902abc51b59b8290878",
+   "bench/step4/packs.py": "e46ef42d6cdf7021d4fe57d1ba1d53d899f06fc26a6fad48026ccd44bc03867b",
+   "bench/step4/adopt.py": "747a32cd596a44002d919d4c9f778ca9884d075c581e74aaffea23c01767e5e0",
+   "bench/probe/boundary.py": "078f49a8e09a21f8cc9d675595aa245b95c4976b094b41aa70f3863851166652"
+  },
+  "design": {
+   "docs/design/boundary-adoption-2026-10-23/01-astra-r1.md": "cd2302436728d0e6136b0d70155eefd80855af35ccf0231860f86d207b3963a5",
+   "docs/design/boundary-adoption-2026-10-23/02-opus-r1.md": "90174e8a4cdfaa1dc7da63d8025246632a63e54793447779cf14434ecc0c5987",
+   "docs/design/boundary-adoption-2026-10-23/03-astra-r2-signed.md": "9cabeb32f59648c71bbdc22d0e47b7ccf7541dea8ac6b754416d41add85a5f33",
+   "docs/design/boundary-adoption-2026-10-23/04-opus-r2-sign.md": "f2418033917bedd24427635b54a51404d8aa0bd2e07f76bae7143d819d5798cc"
+  }
+ },
+ "qualification": {
+  "plan": "boundary-adoption-2026-10-23",
+  "route": {
+   "model": "claude-sonnet-5-5",
+   "effort": "default",
+   "cli_version": "2.1.306",
+   "argv": [
+    "claude",
+    "-p",
+    "--model",
+    "claude-sonnet-5-5",
+    "--system-prompt",
+    "<H>",
+    "--tools",
+    "",
+    "--setting-sources",
+    "",
+    "--strict-mcp-config",
+    "--no-session-persistence",
+    "--output-format",
+    "json"
+   ],
+   "prompt_via": "stdin, utf-8 bytes",
+   "forbidden_env": [
+    "ANTHROPIC_MODEL",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+    "ANTHROPIC_SMALL_FAST_MODEL",
+    "CLAUDE_CODE_SUBAGENT_MODEL",
+    "CLAUDE_CODE_EFFORT_LEVEL",
+    "CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING",
+    "MAX_THINKING_TOKENS",
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS",
+    "ANTHROPIC_BASE_URL",
+    "CLAUDE_CODE_USE_BEDROCK",
+    "CLAUDE_CODE_USE_VERTEX"
+   ],
+   "parser": "oz1g-header strict (boundary.py parse_reply)",
+   "usage": "modelUsage only"
+  },
+  "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+  "operation": {
+   "name": "classify",
+   "version": 2,
+   "instruction": "The first ref is the measurement record. The second ref is its host-checked interval: [lower,upper], or unknown. If the interval is unknown, return unknown. Otherwise use its endpoints directly. Let L and U be the lower and upper limits of the goal's acceptance interval, in mm. Return inside if lower >= L AND upper <= U; outside otherwise. Equality at either limit is inside.",
+   "inputs": [
+    "record",
+    "interval"
+   ],
+   "value_inputs": [
+    "interval"
+   ],
+   "checks": [
+    {
+     "check": "mat_classify_interval"
+    }
+   ],
+   "memo": true
+  },
+  "limits": {
+   "lower": "12.48",
+   "upper": "12.52",
+   "unit": "mm",
+   "inclusive": true
+  },
+  "goal_template": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [{lower},{upper}] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+  "goals": {
+   "1": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+   "2": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [10.00,10.08] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+   "3": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.46,12.54] mm, inclusive. Interval inclusion is arithmetic only, not physical validation."
+  },
+  "cases": [
+   {
+    "id": "g1c1",
+    "record": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "12.48 mm",
+     "12.52 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g1c2",
+    "record": "length=12.49 mm; uncertainty=0.01 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+    "interval": [
+     "12.48 mm",
+     "12.50 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g1c3",
+    "record": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+    "interval": [
+     "12.50 mm",
+     "12.52 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g1c4",
+    "record": "length=12.50 mm; uncertainty=0.01 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+    "interval": [
+     "12.49 mm",
+     "12.51 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g1c5",
+    "record": "length=12.48 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+    "interval": [
+     "12.47 mm",
+     "12.49 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g1c6",
+    "record": "length=12.52 mm; uncertainty=0.01 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "12.51 mm",
+     "12.53 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g1c7",
+    "record": "length=12.55 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "12.53 mm",
+     "12.57 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g1c8",
+    "record": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed",
+    "interval": "unknown",
+    "label": "unknown"
+   },
+   {
+    "id": "g2c1",
+    "record": "length=10.04 mm; uncertainty=0.04 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "10.00 mm",
+     "10.08 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g2c2",
+    "record": "length=10.03 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+    "interval": [
+     "10.00 mm",
+     "10.06 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g2c3",
+    "record": "length=10.05 mm; uncertainty=0.03 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+    "interval": [
+     "10.02 mm",
+     "10.08 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g2c4",
+    "record": "length=10.04 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+    "interval": [
+     "10.01 mm",
+     "10.07 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g2c5",
+    "record": "length=10.00 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+    "interval": [
+     "9.99 mm",
+     "10.01 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g2c6",
+    "record": "length=10.08 mm; uncertainty=0.01 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "10.07 mm",
+     "10.09 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g2c7",
+    "record": "length=10.11 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "10.09 mm",
+     "10.13 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g2c8",
+    "record": "length=10.04 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed",
+    "interval": "unknown",
+    "label": "unknown"
+   },
+   {
+    "id": "g3c1",
+    "record": "length=12.50 mm; uncertainty=0.04 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "12.46 mm",
+     "12.54 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g3c2",
+    "record": "length=12.49 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+    "interval": [
+     "12.46 mm",
+     "12.52 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g3c3",
+    "record": "length=12.51 mm; uncertainty=0.03 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+    "interval": [
+     "12.48 mm",
+     "12.54 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g3c4",
+    "record": "length=12.50 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+    "interval": [
+     "12.47 mm",
+     "12.53 mm"
+    ],
+    "label": "inside"
+   },
+   {
+    "id": "g3c5",
+    "record": "length=12.46 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+    "interval": [
+     "12.45 mm",
+     "12.47 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g3c6",
+    "record": "length=12.54 mm; uncertainty=0.01 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "12.53 mm",
+     "12.55 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g3c7",
+    "record": "length=12.57 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+    "interval": [
+     "12.55 mm",
+     "12.59 mm"
+    ],
+    "label": "outside"
+   },
+   {
+    "id": "g3c8",
+    "record": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed",
+    "interval": "unknown",
+    "label": "unknown"
+   }
+  ],
+  "slots": [
+   {
+    "slot": 1,
+    "cell": "size4",
+    "goal": 1,
+    "cases": [
+     1,
+     5,
+     3,
+     8
+    ],
+    "direction": "forward",
+    "expected": {
+     "classify_A": "inside",
+     "classify_B": "outside",
+     "classify_C": "inside",
+     "classify_D": "unknown"
+    },
+    "prompt_sha256": "24531e9f02c81bc92c6e924c42c7b20a72d774316982b3b0e525cde4b018539e",
+    "prompt_bytes": 1206
+   },
+   {
+    "slot": 2,
+    "cell": "size4",
+    "goal": 1,
+    "cases": [
+     8,
+     3,
+     5,
+     1
+    ],
+    "direction": "reversed",
+    "expected": {
+     "classify_A": "unknown",
+     "classify_B": "inside",
+     "classify_C": "outside",
+     "classify_D": "inside"
+    },
+    "prompt_sha256": "b69a3698d8a48df1ace5da0ff0f9cd4276e0c9bd1caad101bd785e647d6b3f07",
+    "prompt_bytes": 1206
+   },
+   {
+    "slot": 3,
+    "cell": "size4",
+    "goal": 1,
+    "cases": [
+     2,
+     6,
+     4,
+     7
+    ],
+    "direction": "forward",
+    "expected": {
+     "classify_A": "inside",
+     "classify_B": "outside",
+     "classify_C": "inside",
+     "classify_D": "outside"
+    },
+    "prompt_sha256": "8fb9da3f4f8fea82d2fc791c3307179bc1b6cdfb54881816c5d8a32e85ffa41e",
+    "prompt_bytes": 1219
+   },
+   {
+    "slot": 4,
+    "cell": "size4",
+    "goal": 1,
+    "cases": [
+     7,
+     4,
+     6,
+     2
+    ],
+    "direction": "reversed",
+    "expected": {
+     "classify_A": "outside",
+     "classify_B": "inside",
+     "classify_C": "outside",
+     "classify_D": "inside"
+    },
+    "prompt_sha256": "b079d95e10e11a4f6f8f7f27ae5cd6fa6b9be6998e7f7d1e6bd1c57d597985de",
+    "prompt_bytes": 1219
+   },
+   {
+    "slot": 5,
+    "cell": "size4",
+    "goal": 2,
+    "cases": [
+     1,
+     5,
+     3,
+     8
+    ],
+    "direction": "forward",
+    "expected": {
+     "classify_A": "inside",
+     "classify_B": "outside",
+     "classify_C": "inside",
+     "classify_D": "unknown"
+    },
+    "prompt_sha256": "f18558cc598853b9faee7d8d068745ca560795eb5026ced89387028ad5000d87",
+    "prompt_bytes": 1205
+   },
+   {
+    "slot": 6,
+    "cell": "size4",
+    "goal": 2,
+    "cases": [
+     8,
+     3,
+     5,
+     1
+    ],
+    "direction": "reversed",
+    "expected": {
+     "classify_A": "unknown",
+     "classify_B": "inside",
+     "classify_C": "outside",
+     "classify_D": "inside"
+    },
+    "prompt_sha256": "4f401f24c0a94e859cbb07a1acee21848e20ed3143798309bef91db44960cc6e",
+    "prompt_bytes": 1205
+   },
+   {
+    "slot": 7,
+    "cell": "size4",
+    "goal": 2,
+    "cases": [
+     2,
+     6,
+     4,
+     7
+    ],
+    "direction": "forward",
+    "expected": {
+     "classify_A": "inside",
+     "classify_B": "outside",
+     "classify_C": "inside",
+     "classify_D": "outside"
+    },
+    "prompt_sha256": "08a60086051ba4ea1830af591a5382f4d779bf0cf9333daa38ed0725e311e469",
+    "prompt_bytes": 1219
+   },
+   {
+    "slot": 8,
+    "cell": "size4",
+    "goal": 2,
+    "cases": [
+     7,
+     4,
+     6,
+     2
+    ],
+    "direction": "reversed",
+    "expected": {
+     "classify_A": "outside",
+     "classify_B": "inside",
+     "classify_C": "outside",
+     "classify_D": "inside"
+    },
+    "prompt_sha256": "2cc69bb81d91b3e4a0e558ab481b7a6cda8ad0eb4a9a052c870c3a0786258eec",
+    "prompt_bytes": 1219
+   },
+   {
+    "slot": 9,
+    "cell": "size4",
+    "goal": 3,
+    "cases": [
+     1,
+     5,
+     3,
+     8
+    ],
+    "direction": "forward",
+    "expected": {
+     "classify_A": "inside",
+     "classify_B": "outside",
+     "classify_C": "inside",
+     "classify_D": "unknown"
+    },
+    "prompt_sha256": "201cea6eb2bfa0fa8f93f65d38ccce51349620bb2780a6babdf1f0cc9f9f315c",
+    "prompt_bytes": 1206
+   },
+   {
+    "slot": 10,
+    "cell": "size4",
+    "goal": 3,
+    "cases": [
+     8,
+     3,
+     5,
+     1
+    ],
+    "direction": "reversed",
+    "expected": {
+     "classify_A": "unknown",
+     "classify_B": "inside",
+     "classify_C": "outside",
+     "classify_D": "inside"
+    },
+    "prompt_sha256": "cc728f336a6f2310bb389ec06e05098ae5ba038d2e8fe0ba155f1f7976235aed",
+    "prompt_bytes": 1206
+   },
+   {
+    "slot": 11,
+    "cell": "size4",
+    "goal": 3,
+    "cases": [
+     2,
+     6,
+     4,
+     7
+    ],
+    "direction": "forward",
+    "expected": {
+     "classify_A": "inside",
+     "classify_B": "outside",
+     "classify_C": "inside",
+     "classify_D": "outside"
+    },
+    "prompt_sha256": "38c968f12b66e3d35a19a3f1afcea7a14c3b4c512e82de55d090cbc16960cdf0",
+    "prompt_bytes": 1219
+   },
+   {
+    "slot": 12,
+    "cell": "size4",
+    "goal": 3,
+    "cases": [
+     7,
+     4,
+     6,
+     2
+    ],
+    "direction": "reversed",
+    "expected": {
+     "classify_A": "outside",
+     "classify_B": "inside",
+     "classify_C": "outside",
+     "classify_D": "inside"
+    },
+    "prompt_sha256": "d7fbf495f74075f4f80515ae74eeb1bbd78064eb94be1e347a755157fa4fa4b6",
+    "prompt_bytes": 1219
+   },
+   {
+    "slot": 13,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     1
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "249fd097c858c27a61237f18cc6728fce86eecf6ec79cdb52cc2aa5ee6482a4a",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 14,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     1
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "cf34ffa51c4253a3a33678b4d59204c3f92304fedcd8ee03195148ecec7b5e3d",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 15,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     1
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "84f5bac1544d4ea3f83decc7ff1830cc6d3ad8a196c4741866a3ce02be09c2d3",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 16,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     5
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "124afdff5c58875c756a55b1f89fb6890d7d4ab23b2ab59a15728ac5d88d3a25",
+    "prompt_bytes": 761
+   },
+   {
+    "slot": 17,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     5
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "affc3a0e447f7d54fe2d51d19aecb66074c5cdfdc1af0bce7969d6db8ed81092",
+    "prompt_bytes": 760
+   },
+   {
+    "slot": 18,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     5
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "c5de12768fc9bda88d55c9898e9866a0d8c7d5f4923e54b17777747bc4379e2c",
+    "prompt_bytes": 761
+   },
+   {
+    "slot": 19,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     3
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "a30e4bad162aa28561b924a7db7c1a8c293e96ef2702d4953f3face9103fb445",
+    "prompt_bytes": 761
+   },
+   {
+    "slot": 20,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     3
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "01a7773d3ede2dbbbbf8825e62dd49b50341d783891fd3ae9710c372992834c1",
+    "prompt_bytes": 761
+   },
+   {
+    "slot": 21,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     3
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "f97f766100569f7a6b51fcc215f362c62c0fd8d86419515a25bf04f422298696",
+    "prompt_bytes": 761
+   },
+   {
+    "slot": 22,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     8
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "unknown"
+    },
+    "prompt_sha256": "ab86a7570711e7dcc4bd81d63827a1bb4586f8ad43f3cba3520edc1059a50f15",
+    "prompt_bytes": 747
+   },
+   {
+    "slot": 23,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     8
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "unknown"
+    },
+    "prompt_sha256": "2d597e7387feaaf39f75b7f055b8780fc748f39836a37b71d8626eeaad91f0ac",
+    "prompt_bytes": 747
+   },
+   {
+    "slot": 24,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     8
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "unknown"
+    },
+    "prompt_sha256": "46d410644c53d223ffc7f7e3e0249f257054617e701d6c7185928391ef0aef25",
+    "prompt_bytes": 747
+   },
+   {
+    "slot": 25,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     2
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "e3a9a3d5648dd7f2a405a2cb253bfed6c2b4227ed7578ddfef30cb1306d9c195",
+    "prompt_bytes": 762
+   },
+   {
+    "slot": 26,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     2
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "f23dffe167989c966a9c308c48ea32e5e16d2dd4cbaa958ac27f371a25a3c61d",
+    "prompt_bytes": 762
+   },
+   {
+    "slot": 27,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     2
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "9300452d41097bfca5e7c54e3ca5db2314fc870f5b93d4b9640f008252d6ea77",
+    "prompt_bytes": 762
+   },
+   {
+    "slot": 28,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     6
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "831d87565a33568b42f9e9872a152cc593e9f2eb73a78bd3ede3c03061db1889",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 29,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     6
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "fd277cc291851e4539df2903fa6e3382338b88f783407773c23fc5d3d08c3cfb",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 30,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     6
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "b601f24d2652c3d792f305d8111ed0d85ce68ebddd48e8b0d9e234e6af674fce",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 31,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     4
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "ba5f398e2264380462097f69e32dbb3d55f1993c6ca12aca2750dec429ef21e8",
+    "prompt_bytes": 762
+   },
+   {
+    "slot": 32,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     4
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "f278169e292b84a28a95fb08800da41438e9a94dbbc708ee5d1a1a199c10f589",
+    "prompt_bytes": 762
+   },
+   {
+    "slot": 33,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     4
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "inside"
+    },
+    "prompt_sha256": "fe1148ac76b82e0f733d2ee21db4c20796703294efffa8e0e1bda56a64a70e8e",
+    "prompt_bytes": 762
+   },
+   {
+    "slot": 34,
+    "cell": "size1",
+    "goal": 1,
+    "cases": [
+     7
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "cdb747712b06dd6d2d0019a8b3c5fc87f98bcf7a59fdb22194be52abab976564",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 35,
+    "cell": "size1",
+    "goal": 2,
+    "cases": [
+     7
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "5a04f067f7f38a400590acb3aed6de82d5d10a7a34a8d201d983cea209fb5d22",
+    "prompt_bytes": 758
+   },
+   {
+    "slot": 36,
+    "cell": "size1",
+    "goal": 3,
+    "cases": [
+     7
+    ],
+    "direction": "single",
+    "expected": {
+     "classify_A": "outside"
+    },
+    "prompt_sha256": "247f6b685507babdd176aa90cbcedc0dd6104b03109b62635b19acc208d7b786",
+    "prompt_bytes": 758
+   }
+  ],
+  "caps": {
+   "qualification": {
+    "max_tokens": 120000,
+    "max_launches": 36,
+    "reserve_tokens": 5000,
+    "call_seconds": 300,
+    "overall_seconds": 14400
+   },
+   "suite": {
+    "max_tokens": 64000,
+    "max_launches": 24,
+    "max_launches_per_flow": 10,
+    "reserve_per_launch": 5000,
+    "estimate_tokens": 30000
+   }
+  },
+  "rules": {
+   "order": "goals in the listed order; per goal quartet one forward then reversed, then quartet two forward then reversed (12 size-4 calls); then singletons case-major in singleton_order, each across the three goals in listed order (24 calls)",
+   "call": "sequential fresh processes; no memo reuse, retries, replacement calls or extension",
+   "pass": "every scheduled call wire-valid, entirely correct (every member exactly its label), within 300 s, route ok and accounting complete",
+   "stop": "the first call that is not entirely correct ends the attempt; unrun slots stay untested"
+  },
+  "samples": {
+   "size4": "{\"v\":\"1g\",\"goal\":\"Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.\",\"ops\":[\"The first ref is the measurement record. The second ref is its host-checked interval: [lower,upper], or unknown. If the interval is unknown, return unknown. Otherwise use its endpoints directly. Let L and U be the lower and upper limits of the goal's acceptance interval, in mm. Return inside if lower >= L AND upper <= U; outside otherwise. Equality at either limit is inside.\"],\"refs\":[\"length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed\",[\"12.48 mm\",\"12.52 mm\"],\"length=12.48 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed\",[\"12.47 mm\",\"12.49 mm\"],\"length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed\",[\"12.50 mm\",\"12.52 mm\"],\"length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed\",\"unknown\"],\"jobs\":[[0,[\"classify_A\",0,1],[\"classify_B\",2,3],[\"classify_C\",4,5],[\"classify_D\",6,7]]]}",
+   "size1": "{\"v\":\"1g\",\"goal\":\"Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.\",\"ops\":[\"The first ref is the measurement record. The second ref is its host-checked interval: [lower,upper], or unknown. If the interval is unknown, return unknown. Otherwise use its endpoints directly. Let L and U be the lower and upper limits of the goal's acceptance interval, in mm. Return inside if lower >= L AND upper <= U; outside otherwise. Equality at either limit is inside.\"],\"refs\":[\"length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed\",[\"12.48 mm\",\"12.52 mm\"]],\"jobs\":[[0,[\"classify_A\",0,1]]]}",
+   "clean_classify": "{\"v\":\"1g\",\"goal\":\"Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.\",\"ops\":[\"The first ref is the measurement record. The second ref is its host-checked interval: [lower,upper], or unknown. If the interval is unknown, return unknown. Otherwise use its endpoints directly. Let L and U be the lower and upper limits of the goal's acceptance interval, in mm. Return inside if lower >= L AND upper <= U; outside otherwise. Equality at either limit is inside.\"],\"refs\":[\"length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed\",[\"12.48 mm\",\"12.52 mm\"],\"length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed\",[\"12.44 mm\",\"12.50 mm\"],\"length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed\",[\"12.50 mm\",\"12.52 mm\"],\"length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed\",\"unknown\"],\"jobs\":[[0,[\"classify_A\",0,1],[\"classify_B\",2,3],[\"classify_C\",4,5],[\"classify_D\",6,7]]]}"
+  }
+ },
+ "digest": "ed082d4da16d4e045f0c2e9d34c8c01fb2fb82289fdb0e71c49a48c6b4ddf0f7"
+}

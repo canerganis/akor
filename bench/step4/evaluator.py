@@ -13,12 +13,16 @@ from pathlib import Path
 import re
 import sys
 
-FROZEN = Path(__file__).resolve().parent / 'inspection-handoff-20-v1'
+PACK = globals().get('PACK', 'inspection-handoff-20-v1')  # bench/step4/packs.py loads a copy for another pack
+FROZEN = Path(__file__).resolve().parent / PACK
 NAMES = ['A', 'B', 'C', 'D']
 KEYS = ['length', 'uncertainty', 'n', 'method', 'basis', 'physical_validation']
 WORDING = 'does not authorize physical release'
 SCHEMA = 'akor.inspection-handoff/1'
-WORKFLOW = 'inspection-handoff-20/v1'
+WORKFLOW = {'inspection-handoff-20-v1': 'inspection-handoff-20/v1',
+            'inspection-handoff-20-v2': 'inspection-handoff-20/v2'}[PACK]
+# The evaluator's own copy of the acceptance interval (both packs); a test checks it against the v2 structured limits.
+ACCEPTANCE_INTERVAL = {'lower': '12.48 mm', 'upper': '12.52 mm', 'inclusive': True}
 EVIDENCE = ('Numerical status is interval arithmetic on the recorded values only. It is not physical validation and '
             'does not authorize physical release.')
 TOP_KEYS = {'schema', 'workflow', 'acceptance_interval', 'physical_validation', 'evidence', 'records'}
@@ -63,7 +67,7 @@ def evaluate_document(doc, variant, revisions):
     if doc.get('physical_validation') != 'not_claimed':
         errors.append('physical_validation must be not_claimed')
     interval = doc.get('acceptance_interval')
-    if interval != {'lower': '12.48 mm', 'upper': '12.52 mm', 'inclusive': True}:
+    if interval != ACCEPTANCE_INTERVAL:
         errors.append('acceptance interval differs')
     records = doc.get('records')
     if not isinstance(records, list) or [r.get('record') if isinstance(r, dict) else None for r in records] != NAMES:

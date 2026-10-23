@@ -13,6 +13,10 @@ is already settled. The same request_id with different work is refused before an
 "profile": "oz1g-selective-v1" (opt-in; the default stays oz1g-header) pins the selective host acceptance profile and
 optional per-operation "checks" on every job (oz_accept), runs the adapter under the durable runner (captures in
 <run_dir>/captures), and makes each foreground call a new coordinator epoch that first recovers earlier dispatches.
+
+A reference may also be {"value": <JSON value>} (opt-in; strings and {"path"} keep their meaning): the packet then
+carries that JSON value itself in refs (an array as an array, "unknown" as a JSON string), its compact JSON is the
+reference text for checks and memo identity, and its source label is "value".
 """
 from __future__ import annotations
 
@@ -59,6 +63,7 @@ MAX_MESSAGE = 300
 OPTIONS = {'v', 'request_id', 'goal', 'ops', 'refs', 'jobs', 'max_attempts', 'model', 'allow_experimental',
            'deadline_seconds', 'call_timeout_seconds', 'max_jobs_per_call', 'max_input_tokens', 'max_inline_bytes',
            'profile', 'checks'}
+_NO_VALUE = object()  # a text reference (string or file): no JSON value form
 FAILURE = re.compile(r'(' + '|'.join(ERROR_CODES) + r'): (.*)', re.S)
 
 
@@ -98,6 +103,7 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
         raise Error('refs maps names ([A-Za-z0-9_-], at most 60 characters) to text or {"path": ...}')
     texts = {}
     for name, value in refs.items():
+        data = _NO_VALUE
         if isinstance(value, str):
             text, source = value, 'inline'
         elif isinstance(value, dict) and set(value) == {'path'} and isinstance(value['path'], str) and value['path']:
@@ -107,11 +113,25 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
             except (OSError, UnicodeError):
                 raise Error(f'reference {name}: cannot read UTF-8 file {value["path"]}') from None
             source = path.relative_to(allow).as_posix()
+        elif isinstance(value, dict) and set(value) == {'value'}:
+            # Opt-in JSON value form: the packet carries this value itself (for example ["12.48 mm","12.52 mm"]),
+            # not a string holding its JSON text. Its compact JSON is the text, the source label says "value".
+            data = value['value']
+            try:
+                text = J(data)
+                loads(text)
+            except (Error, TypeError, ValueError, RecursionError):
+                raise Error(f'reference {name}: value must be one finite JSON value') from None
+            if data is None or isinstance(data, str) and not data.strip():
+                raise Error(f'reference {name}: value must not be null or blank')
+            source = 'value'
         else:
-            raise Error(f'reference {name} must be a string or {{"path": "..."}}')
+            raise Error(f'reference {name} must be a string, {{"path": "..."}} or {{"value": <JSON value>}}')
         if not text.strip() or len(text.encode('utf-8')) > MAX_REF_BYTES:
             raise Error(f'reference {name} must be nonblank and at most {MAX_REF_BYTES} UTF-8 bytes')
         texts[name] = {'text': text, 'source': source + '@sha256:' + hashlib.sha256(text.encode('utf-8')).hexdigest()}
+        if data is not _NO_VALUE:
+            texts[name]['value'] = data
     if not isinstance(jobs, list) or not 1 <= len(jobs) <= MAX_JOBS:
         raise Error(f'jobs must be a list of 1..{MAX_JOBS} jobs')
     rows = []
@@ -209,12 +229,14 @@ def _create_run(root: Path, req: dict, config: dict, registry=None) -> Path:
 
 
 def _read_refs(box: Inbox, channel: Channel, texts: dict):
-    """Host read: the accepted result of ref-<name> is the reference text itself (no model, no adapter)."""
+    """Host read: the accepted result of ref-<name> is the reference text itself (no model, no adapter); a
+    {"value": ...} reference also keeps its JSON value, which the packet then carries as that value."""
     while True:
         delivery = box.claim(channel, owner='host', kind='work', limit=64, lease_seconds=30)
         if delivery is None:
             return
-        box.complete(delivery, {j.id: texts[j.id[4:]]['text'] for j in delivery.jobs})
+        box.complete(delivery, {j.id: texts[j.id[4:]]['text'] for j in delivery.jobs},
+                     values={j.id: texts[j.id[4:]]['text'] for j in delivery.jobs if 'value' in texts[j.id[4:]]})
 
 
 def _accounting(run: Path, journal=()) -> dict:
@@ -313,7 +335,8 @@ def _render_inputs(channel: Channel, req: dict, mid: str):
     cut from the rendered body bytes). Packet siblings do not enter them (the declared independence contract)."""
     row = next(r for r in req['work']['jobs'] if r[0] == mid)
     packet = render(channel, [(mid, ':' + req['work']['ops'][row[1]])], counters=[len],
-                    handoffs=[(mid, 'ref-' + n, req['texts'][n]['text']) for n in row[2:]])
+                    handoffs=[(mid, 'ref-' + n, req['texts'][n].get('value', req['texts'][n]['text']))
+                              for n in row[2:]])
     return job_inputs(packet.text, packet.job_map)[mid]
 
 

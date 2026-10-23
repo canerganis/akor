@@ -1,0 +1,1 @@
+length=12.55 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed

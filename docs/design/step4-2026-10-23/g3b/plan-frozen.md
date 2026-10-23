@@ -205,3 +205,16 @@ workspace `.oz-runtime/step4-live3`, prefix `live3`, one suite, no reruns, predi
 (64,000 tokens, 24 launches, 10 per scenario). Command:
 `STEP4_LIVE_CONFIRM=1 .venv/Scripts/python.exe bench/step4/step4.py live --workspace .oz-runtime/step4-live3 --prefix live3`.
 A pass here is the evidence for patched-executor conformance; live2 stays as recorded for its own freeze.
+
+
+## Addendum 2026-10-23: boundary adoption build (new freeze digest `97943a557df63f1fceb355e3586644a87c8c74ca31ba8b6a269e17e7c7aeae0a`, short 97943a55)
+
+The boundary adoption (`docs/design/boundary-adoption-2026-10-23/plan-frozen.md`) extends the executor with opt-in
+ordered model inputs and `oz do` JSON value refs (`oz_flow.py`, `oz_do.py`, `oz_runtime.py`) and makes the step 4
+harness pack-aware so a v2 pack can run beside v1 (`workflow.py`, `g3b.py`, `evaluator.py`, `fixture_adapter.py`,
+`step4.py`). The default paths are unchanged: a one-input operation, a string or file ref, the v1 pack, its packets,
+identities, predicate and expectations. `freeze-g3b.json` is rewritten at the digest above (the 040cfd41 record is kept
+in git). Re-run at this digest, zero tokens: the full unit suite, `step4.py dry` in a fresh workspace (`"pass": true`;
+clean 3, repeat 0, interrupt 3, stale 5, bump 0, 11 launches as before; recovery 11 of 11, executor sabotage 6 of 6,
+G3b sabotage 21 of 21, C5 4 of 4, baseline smoke), and `replay-live1` and `replay-live2` (all traces match, all
+independent verdicts agree). The live2 and live3 records stand for their own freezes (02119a17 and 040cfd41).

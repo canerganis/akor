@@ -1,9 +1,15 @@
-"""inspection-handoff-20/v1: registered host operations, input-bound model checks and the frozen-file loader.
+"""inspection-handoff-20/v1 (and v2): registered host operations, input-bound model checks and the frozen-file loader.
 
 This is the runtime side of the step 4 executor conformance gate (docs/design/step4-2026-10-23/). Host operations are
 explicitly registered implementations; model operations are the standard materials instructions (live2 MAT_D e, b, v
 as the OZ/1g arm H sends them) with job-bound checks computed from each job's own model-visible record. The final
 evaluator (evaluator.py) is a separate implementation and never reads these checks or the executor's flags.
+
+The module reads the v1 pack. bench/step4/packs.py loads a separate copy of it with PACK set to another pack directory
+(inspection-handoff-20-v2, the boundary adoption): that pack stores its acceptance limits once, as structured data in
+workflow.json ("limits"), and LOWER, UPPER, the goal sentence, the checks, the handoff document and the Markdown are
+all derived from or tested against them. Its classify operation (model.classify v2) takes two ordered refs, the
+record and node 11's host-checked interval in JSON value form, checked by mat_classify_interval@1.
 """
 from __future__ import annotations
 
@@ -22,11 +28,24 @@ from oz_accept import REGISTRY, Check  # noqa: E402
 from oz_flow import HostError, HostOp, ModelOp  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
-FROZEN = HERE / 'inspection-handoff-20-v1'
-WORKFLOW_ID = 'inspection-handoff-20/v1'
+PACK = globals().get('PACK', 'inspection-handoff-20-v1')  # packs.load sets another pack before this module runs
+FROZEN = HERE / PACK
+WORKFLOW_ID = json.loads((FROZEN / 'workflow.json').read_text(encoding='utf-8'))['workflow']
 FIELDS = ('length', 'uncertainty', 'n', 'method', 'basis', 'physical_validation')
 MISSING_ORDER = ('uncertainty', 'method', 'basis')
-LOWER, UPPER = Decimal('12.48'), Decimal('12.52')
+LIMIT_RE = re.compile(r'[0-9]+\.[0-9]{2}')
+
+
+def _limits():
+    """(LOWER, UPPER): the pack's structured limits when it stores them (v2), else the v1 constants."""
+    limits = json.loads((FROZEN / 'workflow.json').read_text(encoding='utf-8')).get('limits')
+    if limits is None:
+        return Decimal('12.48'), Decimal('12.52')
+    return Decimal(limits['lower']), Decimal(limits['upper'])
+
+
+LOWER, UPPER = _limits()
+LIMIT_TEXT = (f'{LOWER} mm', f'{UPPER} mm')
 EVIDENCE = ('Numerical status is interval arithmetic on the recorded values only. It is not physical validation and '
             'does not authorize physical release.')
 
@@ -109,12 +128,38 @@ def _no_params(spec):
         raise Error(f'check {spec["check"]} takes no parameters')
 
 
+def _record_and_interval(inputs):
+    """(record fields, interval) of a two-ref classification: exactly one slot with exactly two refs, the record as
+    a JSON string and the interval as the JSON value the packet carried."""
+    slots = inputs.slots
+    if len(slots) != 1 or len(slots[0]['refs']) != 2:
+        raise HostError('a two-ref classification has exactly a record and an interval')
+    record, interval = (json.loads(raw) for raw in slots[0]['refs'])
+    if not isinstance(record, str):
+        raise HostError('the first ref is not a record text')
+    return parse_record(record), interval
+
+
+def _classify_interval(value, spec, inputs):
+    """mat_classify_interval@1: the interval is exactly the one recomputed (Decimal) from the record in the same row
+    (a missing, mismatched, other-record or stale interval fails), and the label is the one the frozen goal limits give
+    for that interval (inclusive at both limits)."""
+    try:
+        fields, interval = _record_and_interval(inputs)
+        if interval != bounds_of(fields):
+            return False
+        return value == status_of(interval)
+    except (HostError, ValueError, TypeError, IndexError):
+        return False
+
+
 CHECKS = dict(REGISTRY)
 CHECKS.update({c.name: c for c in (
     Check('mat_fields', 1, True, _no_params,
           _guard(lambda v, r: isinstance(v, list) and v == [r[f] for f in FIELDS])),
     Check('mat_bounds', 1, True, _no_params, _guard(lambda v, r: v == bounds_of(r))),
     Check('mat_classify', 1, True, _no_params, _guard(lambda v, r: v == status_of(bounds_of(r)))),
+    Check('mat_classify_interval', 1, True, _no_params, _classify_interval),
 )})
 
 
@@ -178,7 +223,7 @@ def op_handoff_rows(inputs, ctx):
 
 def handoff_document(rows) -> dict:
     return {'schema': 'akor.inspection-handoff/1', 'workflow': WORKFLOW_ID,
-            'acceptance_interval': {'lower': '12.48 mm', 'upper': '12.52 mm', 'inclusive': True},
+            'acceptance_interval': {'lower': LIMIT_TEXT[0], 'upper': LIMIT_TEXT[1], 'inclusive': True},
             'physical_validation': 'not_claimed', 'evidence': EVIDENCE, 'records': rows}
 
 
@@ -204,7 +249,7 @@ KEYS = ('record', 'length', 'uncertainty', 'n', 'method', 'basis', 'interval', '
 def op_render_markdown(inputs, ctx):
     rows = inputs['rows']['rows']
     lines = [f'# Inspection handoff ({WORKFLOW_ID})', '',
-             'Acceptance interval: [12.48 mm, 12.52 mm], inclusive.', '',
+             f'Acceptance interval: [{LIMIT_TEXT[0]}, {LIMIT_TEXT[1]}], inclusive.', '',
              'physical_validation=not_claimed. ' + EVIDENCE, '',
              '| ' + ' | '.join(COLUMNS) + ' |', '|' + '---|' * len(COLUMNS)]
     for row in rows:
@@ -278,14 +323,69 @@ HOST_OPS = (
 )
 
 
+def limits_problems(spec=None) -> list:
+    """Where the structured limits and their consumers disagree (empty when they agree, and for a pack without
+    structured limits). The limits are two-decimal mm strings, inclusive, lower below upper; the goal sentence is the
+    template with exactly these two numbers; LOWER and UPPER of this module are the same numbers."""
+    spec = spec or load('workflow.json')
+    limits = spec.get('limits')
+    if limits is None:
+        return []
+    problems = []
+    if set(limits) != {'lower', 'upper', 'unit', 'inclusive'} or limits.get('unit') != 'mm' \
+            or limits.get('inclusive') is not True:
+        problems.append('limits must be exactly {lower, upper, unit: mm, inclusive: true}')
+    if not all(isinstance(limits.get(k), str) and LIMIT_RE.fullmatch(limits[k]) for k in ('lower', 'upper')):
+        return problems + ['limits must be two-decimal numbers as strings']
+    if Decimal(limits['lower']) >= Decimal(limits['upper']):
+        problems.append('lower limit must be below the upper limit')
+    template = spec.get('goal_template', '')
+    if template.count('{lower}') != 1 or template.count('{upper}') != 1:
+        problems.append('goal_template must name {lower} and {upper} once each')
+    elif spec.get('goal') != template.format(lower=limits['lower'], upper=limits['upper']):
+        problems.append('the goal sentence disagrees with the structured limits')
+    if (LOWER, UPPER) != (Decimal(limits['lower']), Decimal(limits['upper'])):
+        problems.append('LOWER and UPPER disagree with the structured limits')
+    return problems
+
+
+def graph_problems(graph_value=None, spec=None) -> list:
+    """An ordered classify operation must bind record = /records/X and interval = /bounds/X of the same node 11
+    (checked_intervals) for its own record X; anything else is refused for this workflow."""
+    spec, graph_value = spec or load('workflow.json'), graph_value or graph()
+    op = spec['model_ops'].get('model.classify', {})
+    if 'inputs' not in op:
+        return []
+    problems = [] if list(op['inputs']) == ['record', 'interval'] else ['classify inputs must be record, interval']
+    for node in graph_value['nodes']:
+        if node['op'] != 'model.classify':
+            continue
+        name = node['id'].rsplit('_', 1)[-1]
+        want = {'record': {'node': 'checked_intervals', 'path': f'/records/{name}'},
+                'interval': {'node': 'checked_intervals', 'path': f'/bounds/{name}'}}
+        if node['in'] != want:
+            problems.append(f"{node['id']}: must bind record and interval of its own record from checked_intervals")
+    return problems
+
+
 def registry(*, overrides=None, extra_checks=None) -> dict:
     """The pinned operation registry. overrides replace host implementations (sabotage fixtures only); extra_checks
-    adds checks to one model operation (the C5 strengthened-check variant, acceptance-only)."""
+    adds checks to one model operation (the C5 strengthened-check variant, acceptance-only). A model operation with
+    "inputs" is ordered (its refs in that order) and sends "value_inputs" in the JSON value form. A pack whose
+    structured limits disagree with its goal or constants has no registry."""
     spec = load('workflow.json')
+    problems = limits_problems(spec)
+    if problems:
+        from oz import Error
+        raise Error('limits: ' + '; '.join(problems))
     ops = {op.name: op for op in HOST_OPS}
     for name, m in spec['model_ops'].items():
         checks = list(m['checks']) + list((extra_checks or {}).get(name, []))
-        ops[name] = ModelOp(m['name'], m['version'], spec['goal'], m['instruction'], tuple(checks), m['memo'])
+        shape = {}
+        if 'inputs' in m:
+            shape = {'inputs': tuple(m['inputs']), 'values': frozenset(m.get('value_inputs', ()))}
+        ops[name] = ModelOp(m['name'], m['version'], spec['goal'], m['instruction'], tuple(checks), m['memo'],
+                            **shape)
     ops.update(overrides or {})
     return ops
 

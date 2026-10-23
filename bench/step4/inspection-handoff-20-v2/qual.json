@@ -1,0 +1,390 @@
+{
+ "plan": "boundary-adoption-2026-10-23 composition qualification",
+ "model": "claude-sonnet-5-5",
+ "cli_version": "2.1.306",
+ "effort": "default",
+ "operation": "model.classify v2 (workflow.json), check mat_classify_interval@1",
+ "goals": [
+  {
+   "goal": 1,
+   "lower": "12.48",
+   "upper": "12.52"
+  },
+  {
+   "goal": 2,
+   "lower": "10.00",
+   "upper": "10.08"
+  },
+  {
+   "goal": 3,
+   "lower": "12.46",
+   "upper": "12.54"
+  }
+ ],
+ "case_table": [
+  {
+   "case": 1,
+   "name": "both limits equal",
+   "label": "inside"
+  },
+  {
+   "case": 2,
+   "name": "lower equality",
+   "label": "inside"
+  },
+  {
+   "case": 3,
+   "name": "upper equality",
+   "label": "inside"
+  },
+  {
+   "case": 4,
+   "name": "strict interior",
+   "label": "inside"
+  },
+  {
+   "case": 5,
+   "name": "lower breach",
+   "label": "outside"
+  },
+  {
+   "case": 6,
+   "name": "upper breach",
+   "label": "outside"
+  },
+  {
+   "case": 7,
+   "name": "disjoint above",
+   "label": "outside"
+  },
+  {
+   "case": 8,
+   "name": "unknown",
+   "label": "unknown"
+  }
+ ],
+ "quartets": [
+  [
+   1,
+   5,
+   3,
+   8
+  ],
+  [
+   2,
+   6,
+   4,
+   7
+  ]
+ ],
+ "singleton_order": [
+  1,
+  5,
+  3,
+  8,
+  2,
+  6,
+  4,
+  7
+ ],
+ "job_ids": [
+  "classify_A",
+  "classify_B",
+  "classify_C",
+  "classify_D"
+ ],
+ "cases": [
+  {
+   "id": "g1c1",
+   "goal": 1,
+   "case": 1,
+   "name": "both limits equal",
+   "record": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "12.48 mm",
+    "12.52 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g1c2",
+   "goal": 1,
+   "case": 2,
+   "name": "lower equality",
+   "record": "length=12.49 mm; uncertainty=0.01 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+   "interval": [
+    "12.48 mm",
+    "12.50 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g1c3",
+   "goal": 1,
+   "case": 3,
+   "name": "upper equality",
+   "record": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+   "interval": [
+    "12.50 mm",
+    "12.52 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g1c4",
+   "goal": 1,
+   "case": 4,
+   "name": "strict interior",
+   "record": "length=12.50 mm; uncertainty=0.01 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+   "interval": [
+    "12.49 mm",
+    "12.51 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g1c5",
+   "goal": 1,
+   "case": 5,
+   "name": "lower breach",
+   "record": "length=12.48 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+   "interval": [
+    "12.47 mm",
+    "12.49 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g1c6",
+   "goal": 1,
+   "case": 6,
+   "name": "upper breach",
+   "record": "length=12.52 mm; uncertainty=0.01 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "12.51 mm",
+    "12.53 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g1c7",
+   "goal": 1,
+   "case": 7,
+   "name": "disjoint above",
+   "record": "length=12.55 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "12.53 mm",
+    "12.57 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g1c8",
+   "goal": 1,
+   "case": 8,
+   "name": "unknown",
+   "record": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed",
+   "interval": "unknown",
+   "label": "unknown"
+  },
+  {
+   "id": "g2c1",
+   "goal": 2,
+   "case": 1,
+   "name": "both limits equal",
+   "record": "length=10.04 mm; uncertainty=0.04 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "10.00 mm",
+    "10.08 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g2c2",
+   "goal": 2,
+   "case": 2,
+   "name": "lower equality",
+   "record": "length=10.03 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+   "interval": [
+    "10.00 mm",
+    "10.06 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g2c3",
+   "goal": 2,
+   "case": 3,
+   "name": "upper equality",
+   "record": "length=10.05 mm; uncertainty=0.03 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+   "interval": [
+    "10.02 mm",
+    "10.08 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g2c4",
+   "goal": 2,
+   "case": 4,
+   "name": "strict interior",
+   "record": "length=10.04 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+   "interval": [
+    "10.01 mm",
+    "10.07 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g2c5",
+   "goal": 2,
+   "case": 5,
+   "name": "lower breach",
+   "record": "length=10.00 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+   "interval": [
+    "9.99 mm",
+    "10.01 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g2c6",
+   "goal": 2,
+   "case": 6,
+   "name": "upper breach",
+   "record": "length=10.08 mm; uncertainty=0.01 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "10.07 mm",
+    "10.09 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g2c7",
+   "goal": 2,
+   "case": 7,
+   "name": "disjoint above",
+   "record": "length=10.11 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "10.09 mm",
+    "10.13 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g2c8",
+   "goal": 2,
+   "case": 8,
+   "name": "unknown",
+   "record": "length=10.04 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed",
+   "interval": "unknown",
+   "label": "unknown"
+  },
+  {
+   "id": "g3c1",
+   "goal": 3,
+   "case": 1,
+   "name": "both limits equal",
+   "record": "length=12.50 mm; uncertainty=0.04 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "12.46 mm",
+    "12.54 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g3c2",
+   "goal": 3,
+   "case": 2,
+   "name": "lower equality",
+   "record": "length=12.49 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+   "interval": [
+    "12.46 mm",
+    "12.52 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g3c3",
+   "goal": 3,
+   "case": 3,
+   "name": "upper equality",
+   "record": "length=12.51 mm; uncertainty=0.03 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+   "interval": [
+    "12.48 mm",
+    "12.54 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g3c4",
+   "goal": 3,
+   "case": 4,
+   "name": "strict interior",
+   "record": "length=12.50 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+   "interval": [
+    "12.47 mm",
+    "12.53 mm"
+   ],
+   "label": "inside"
+  },
+  {
+   "id": "g3c5",
+   "goal": 3,
+   "case": 5,
+   "name": "lower breach",
+   "record": "length=12.46 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+   "interval": [
+    "12.45 mm",
+    "12.47 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g3c6",
+   "goal": 3,
+   "case": 6,
+   "name": "upper breach",
+   "record": "length=12.54 mm; uncertainty=0.01 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "12.53 mm",
+    "12.55 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g3c7",
+   "goal": 3,
+   "case": 7,
+   "name": "disjoint above",
+   "record": "length=12.57 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+   "interval": [
+    "12.55 mm",
+    "12.59 mm"
+   ],
+   "label": "outside"
+  },
+  {
+   "id": "g3c8",
+   "goal": 3,
+   "case": 8,
+   "name": "unknown",
+   "record": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed",
+   "interval": "unknown",
+   "label": "unknown"
+  }
+ ],
+ "caps": {
+  "max_tokens": 120000,
+  "max_launches": 36,
+  "reserve_tokens": 5000,
+  "call_seconds": 300,
+  "overall_seconds": 14400
+ },
+ "rules": {
+  "order": "goals in the listed order; per goal quartet one forward then reversed, then quartet two forward then reversed (12 size-4 calls); then singletons case-major in singleton_order, each across the three goals in listed order (24 calls)",
+  "call": "sequential fresh processes; no memo reuse, retries, replacement calls or extension",
+  "pass": "every scheduled call wire-valid, entirely correct (every member exactly its label), within 300 s, route ok and accounting complete",
+  "stop": "the first call that is not entirely correct ends the attempt; unrun slots stay untested"
+ }
+}

@@ -1,0 +1,1 @@
+length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed

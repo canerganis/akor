@@ -326,3 +326,16 @@ derived files. The fix review (50e8ef5) was approved by Astra. Both precondition
 Notes from the same review: `run-flow --kind live` exists as the subprocess entry for the interrupted scenario, behind
 `O1_LIVE_CONFIRM`, the freeze and the CLI check; any use outside the suite must be reported. Reserves and expected spend
 use o200k_base counts; the live report should compare `modelUsage` input with the o200k estimate per packet.
+
+
+## Addendum 2026-10-23: refreeze after the boundary adoption build (new freeze digest `0aa5ecf6cb453c195654679c8b7902768a0aff1a909263968100abfae386c933`, short 0aa5ecf6)
+
+O1's live G3c result (pass; `results.md`, `bench/o1/live1/`) was made at freeze 32333561 and stands for it; nothing
+under `bench/o1/live1/` changed and nothing is rerun. The boundary adoption
+(`docs/design/boundary-adoption-2026-10-23/plan-frozen.md`) then edited files this freeze pins: `oz_flow.py`,
+`oz_do.py` and `oz_runtime.py` (opt-in ordered model inputs and `oz do` JSON value refs; the default paths O1 uses are
+unchanged) and `bench/step4/g3b.py` (a pack-aware copy for v2; v1 behavior unchanged). `o1.py dry` passed every block
+on the new code before the refreeze (clean 2, repeat 0, interrupt 2, stale 4, bump 0; recovery, sabotage, gate
+sabotage, escape, seeds, oracle, feasibility, measured; only the freeze check failed, as expected), then
+`o1.py freeze --write` gave the digest above (the 32333561 record is kept in git), and `dry` passed again with the
+freeze held. This refreeze is a record of the code state, not a new O1 gate.

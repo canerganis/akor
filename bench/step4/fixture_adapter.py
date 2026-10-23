@@ -5,6 +5,7 @@ envelope with modelUsage to OZ_ENVELOPE_PATH when the runner sets it, and reduce
 function as examples/claude_cli_adapter.py. Every invocation is appended to invocations.jsonl in OZ_FIXTURE_DIR (default: beside this file): that
 log is the ground truth of physical launches in the dry gate. mode.json there selects sabotage behavior:
   {"stale_classify_A": true}  classify answers for a record with length 12.55 mm come from the old record (12.50 mm)
+                              (v2 two-ref classify: from the old interval [12.48 mm, 12.52 mm])
   {"model": "other-model"}     the envelope reports another model
   {"wire_reject": ["job"]}     the reply omits that job (wire-invalid reply), on every call
   {"wire_reject_first": [...]} the reply omits that job on the first call of a dispatch binding that carries it only
@@ -51,7 +52,30 @@ def classify(f):
     return 'inside' if Decimal(b[0][:-3]) >= Decimal('12.48') and Decimal(b[1][:-3]) <= Decimal('12.52') else 'outside'
 
 
-def answer(instruction, record, mode):
+TWO_REF = 'The first ref is the measurement record. The second ref is its host-checked interval'
+
+
+def goal_limits(goal):
+    """The acceptance limits stated in the goal sentence ([L,U] mm), as the fixture reads them."""
+    import re
+    m = re.search(r'\[([0-9]+\.[0-9]{2}),([0-9]+\.[0-9]{2})\] mm', goal)
+    return Decimal(m.group(1)), Decimal(m.group(2))
+
+
+def classify_interval(interval, goal):
+    """v2 classify: the label of the given interval against the goal's limits, inclusive."""
+    if interval == 'unknown':
+        return 'unknown'
+    low, high = goal_limits(goal)
+    return 'inside' if Decimal(interval[0][:-3]) >= low and Decimal(interval[1][:-3]) <= high else 'outside'
+
+
+def answer(instruction, record, mode, refs=None, goal=''):
+    if instruction.startswith(TWO_REF):
+        interval = refs[1]
+        if mode.get('stale_classify_A') and fields(refs[0])['length'] == '12.55 mm':
+            interval = ['12.48 mm', '12.52 mm']
+        return classify_interval(interval, goal)
     f = fields(record)
     if instruction.startswith('Return a compact JSON array of strings'):
         return [f[k] for k in FIELDS]
@@ -119,7 +143,7 @@ def main():
             if row[0] in mode.get('wire_reject', []) or (first and row[0] in mode.get('wire_reject_first', [])):
                 continue
             record = body['refs'][row[1]]
-            value = answer(instruction, record, mode)
+            value = answer(instruction, record, mode, [body['refs'][i] for i in row[1:]], body['goal'])
             if row[0] in mode.get('wrong_always', []) or (first and row[0] in mode.get('wrong_first', [])):
                 value = wrong(instruction, value)
             lines.append(json.dumps({row[0]: value}, ensure_ascii=False, separators=(',', ':')))

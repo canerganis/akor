@@ -1,0 +1,213 @@
+{
+ "workflow": "inspection-handoff-20/v2",
+ "label": "boundary adoption (docs/design/boundary-adoption-2026-10-23): v1 with model.classify v2, which takes node 11's host-checked interval as a second ordered ref in JSON value form; the acceptance limits are stored once here",
+ "target": {
+  "name": "inspection_handoff",
+  "weight": 1
+ },
+ "limits": {
+  "lower": "12.48",
+  "upper": "12.52",
+  "unit": "mm",
+  "inclusive": true
+ },
+ "goal_template": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [{lower},{upper}] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+ "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+ "instruction_source": "extract and bounds: v1 unchanged; classify: Opus round 1 section 3 text as signed by Astra in round 2 (probe arm C with the goal limits as L and U, no recomputation clause)",
+ "model_ops": {
+  "model.extract": {
+   "name": "extract",
+   "version": 1,
+   "instruction": "Return a compact JSON array of strings containing the ref's length, uncertainty, n, method, basis, physical_validation, in that order, preserving field values exactly.",
+   "checks": [
+    {
+     "check": "mat_fields"
+    }
+   ],
+   "memo": true
+  },
+  "model.bounds": {
+   "name": "bounds",
+   "version": 1,
+   "instruction": "Return a compact JSON array [length-uncertainty,length+uncertainty], each formatted as a string with two decimal places and unit mm. If uncertainty is unknown, return unknown.",
+   "checks": [
+    {
+     "check": "mat_bounds"
+    }
+   ],
+   "memo": true
+  },
+  "model.classify": {
+   "name": "classify",
+   "version": 2,
+   "instruction": "The first ref is the measurement record. The second ref is its host-checked interval: [lower,upper], or unknown. If the interval is unknown, return unknown. Otherwise use its endpoints directly. Let L and U be the lower and upper limits of the goal's acceptance interval, in mm. Return inside if lower >= L AND upper <= U; outside otherwise. Equality at either limit is inside.",
+   "inputs": [
+    "record",
+    "interval"
+   ],
+   "value_inputs": [
+    "interval"
+   ],
+   "checks": [
+    {
+     "check": "mat_classify_interval"
+    }
+   ],
+   "memo": true
+  }
+ },
+ "host_ops": [
+  "host.snapshot@1",
+  "host.normalize@1",
+  "host.check_intervals@1",
+  "host.handoff_rows@1",
+  "host.render_json@1",
+  "host.render_markdown@1",
+  "host.verify_package@1",
+  "host.publish@1"
+ ],
+ "effects": [
+  "local_publish"
+ ],
+ "sources": {
+  "A": "sources/A.txt",
+  "B": "sources/B.txt",
+  "C": "sources/C.txt",
+  "D": "sources/D.txt"
+ },
+ "mutations": {
+  "stale": {
+   "source": "A",
+   "file": "sources/A.rev2.txt",
+   "hook": "flow.committed:checked_intervals",
+   "note": "after node 11 commits and before classification dispatch: A length 12.50 mm -> 12.55 mm"
+  },
+  "bump": {
+   "source": "A",
+   "file": "sources/A.txt",
+   "hook": "flow.committed:checked_intervals",
+   "note": "same hook; identical bytes, new authoritative revision"
+  }
+ },
+ "route": {
+  "model": "claude-sonnet-5-5",
+  "effort": "default",
+  "cli_version": "2.1.306",
+  "transport": "claude -p, no tools",
+  "adapter_script": "examples/claude_cli_adapter.py",
+  "parser": "oz1g-header/1",
+  "profile": "oz1g-selective-v1",
+  "durable": true,
+  "alias_map": {
+   "claude-sonnet-5-5": "claude-sonnet-5-5"
+  }
+ },
+ "fixture_route": {
+  "model": "fixture-oracle-1",
+  "effort": "fixture",
+  "cli_version": "fixture",
+  "adapter_script": "bench/step4/fixture_adapter.py",
+  "parser": "oz1g-header/1"
+ },
+ "packets": {
+  "sizes": [
+   4,
+   1
+  ],
+  "experimental_sizes": [
+   4
+  ],
+  "max_attempts": 2,
+  "cross_run_batching": false,
+  "note": "size-4 stages are an experimental composition with oracle proof; the two-ref classify cells at sizes 4 and 1 are qualified separately (qual.json) before the suite runs"
+ },
+ "deadlines": {
+  "scenario_seconds": 3600,
+  "call_timeout_seconds": 300,
+  "suite_envelope_seconds": 14400
+ },
+ "budgets": {
+  "qualification": {
+   "max_tokens": 120000,
+   "max_launches": 36,
+   "reserve_per_launch": 5000,
+   "call_seconds": 300,
+   "overall_seconds": 14400
+  },
+  "suite": {
+   "max_tokens": 64000,
+   "max_launches": 24,
+   "max_launches_per_flow": 10,
+   "reserve_per_launch": 5000,
+   "estimate_tokens": 30000
+  }
+ },
+ "scenarios": [
+  {
+   "name": "clean",
+   "namespace": "own",
+   "mutation": null,
+   "faults": [],
+   "expected_launches": 3,
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "expected_memo_hits": 0
+  },
+  {
+   "name": "repeat",
+   "namespace": "clean",
+   "mutation": null,
+   "faults": [],
+   "expected_launches": 0,
+   "expected_packets": [],
+   "expected_memo_hits": 12
+  },
+  {
+   "name": "interrupt",
+   "namespace": "own",
+   "mutation": null,
+   "faults": [
+    "worker.after_capture",
+    "flow.publish.after_manifest"
+   ],
+   "expected_launches": 3,
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "expected_memo_hits": 0
+  },
+  {
+   "name": "stale",
+   "namespace": "own",
+   "mutation": "stale",
+   "faults": [],
+   "expected_launches": 5,
+   "expected_packets": [
+    4,
+    4,
+    1,
+    1,
+    4
+   ],
+   "expected_memo_hits": 6
+  },
+  {
+   "name": "bump",
+   "namespace": "clean",
+   "mutation": "bump",
+   "faults": [],
+   "expected_launches": 0,
+   "expected_packets": [],
+   "expected_memo_hits": 20
+  }
+ ],
+ "reruns": {
+  "model_reply_failure": 0,
+  "note": "no reruns: a failure ends this adoption attempt"
+ }
+}

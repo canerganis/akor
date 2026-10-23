@@ -12,4 +12,10 @@ and all five scenarios to pass with every classification right on its first atte
 launches for qualification, 64,000 and 24 for the suite (184,000 in all; 334,000 including O1).
 
 Sequencing: nothing that O1's freeze pins (including `oz_flow.py`) is edited until O1's live gate results are
-committed. Status: signed, not built.
+committed. O1's live result is committed (pass at freeze 32333561), so the hold is lifted.
+
+Status: built through the zero-token gates at freeze ed082d4d ([plan-frozen.md](plan-frozen.md): what was built, the
+24 cases, the 36 frozen packets, sample packets, gates, allocations, exact commands, dry results, deviations). G0
+holds, G1 is green, G2 passes. No model call has been made; qualification and suite wait for the owner. The executor
+change refroze G3b (040cfd41 to 97943a55) and O1 (32333561 to 0aa5ecf6); their dry gates pass unchanged and their
+live verdicts stand for the freezes they were made under.

@@ -18,21 +18,21 @@
   "oz_batch.py": "50ecdd28f5dda7c4479a0160b8860b6cad87727dbb448f7eddc0f15553d622cb",
   "oz_reply.py": "dc58230288900c0eee17a2f230b30feaf993e15e90fda12d488b644505633ab4",
   "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
-  "oz_runtime.py": "05e9a39e1f53a099d2def9a6761f5e9b2977ba449b73a48a59c8a45a499b3938",
+  "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
   "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
   "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
-  "oz_do.py": "cc15afd780b827b684996d3672e7f62881fed36d8d6085611bae03a9d98f7b0c",
+  "oz_do.py": "1e7c40f2e53736b22631ade663ff321c92955d644b60dc2d689756b7e30b6518",
   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
   "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
-  "oz_flow.py": "534ea8cc8ec7e64080b7309c53effcee6d5e237963bc894d6bc63bb512cc5443",
+  "oz_flow.py": "1a6e5483fda0a5aa6d411a96cb3ac4eeda2580bb1b95db91ee5bad827f7213b5",
   "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
   "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
   "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
-  "bench/step4/workflow.py": "cdaa26c184bd1c3e4ed3bf969d2db691b9818254bd3db3a37cb9ea15bcf2bdeb",
-  "bench/step4/evaluator.py": "5da73cd70d668b6aa62c0c5c1f12b2bbd1dc9903e059de399f5ba434d4c62390",
-  "bench/step4/fixture_adapter.py": "05f1629c62e8bfc3b886dab27468dcd70ef61cbe76007e4680d78ce586d89317",
-  "bench/step4/g3b.py": "cf402bd285f27f01790b166fcd61f598cec9cd18eb930801a86bde3629a6d7b0",
-  "bench/step4/step4.py": "54488e9c8e2b30577fa769f612c76180d87c9318554772b3920204eab85a20d6"
+  "bench/step4/workflow.py": "e2c2fa067285c6c55815c722787f5a50af437bfb9aa5e4923542b45d18afc62a",
+  "bench/step4/evaluator.py": "139a201ef44b83e7977aaf85b24788d56044519de0b578acde48bed451ac84f1",
+  "bench/step4/fixture_adapter.py": "3caead7723d9082717965dc0d22de28348882f2f8c84de36b763db0ac892508f",
+  "bench/step4/g3b.py": "1917bee0ceed99940d283f248baab3612e7d3f80d7e7c2245d782cea6433e3fc",
+  "bench/step4/step4.py": "afd4b26e9b47a3cca415939b3c808815356298611e35d902abc51b59b8290878"
  },
- "digest": "040cfd4198d31eb2fb281fc1169f4fd6dc567112d16a224a757486838cad3eb3"
+ "digest": "97943a557df63f1fceb355e3586644a87c8c74ca31ba8b6a269e17e7c7aeae0a"
 }

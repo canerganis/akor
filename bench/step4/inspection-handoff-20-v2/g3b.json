@@ -1,0 +1,150 @@
+{
+ "gate": "G3b",
+ "label": "pass_g3b",
+ "identity": {
+  "workflow": "inspection-handoff-20/v2",
+  "plan_revision": "boundary adoption, signed 2026-10-23 (docs/design/boundary-adoption-2026-10-23/02-opus-r1.md section 7, 03-astra-r2-signed.md, 04-opus-r2-sign.md)",
+  "preregistration": "docs/design/boundary-adoption-2026-10-23/plan-frozen.md",
+  "prefix": "ad1",
+  "workspace": ".oz-runtime/ad1"
+ },
+ "allocation": {
+  "max_tokens": 64000,
+  "max_launches": 24,
+  "max_launches_per_flow": 10,
+  "reserve_per_launch": 5000,
+  "estimate_tokens": 30000
+ },
+ "recovery": {
+  "packet_sizes": [
+   4,
+   1
+  ],
+  "max_attempts": 2,
+  "rule": "After a packet whose rejected set is R (a failed per-job check or a wire rejection), the stage resends exactly R at attempt 2, in job order, before the next stage, in packets of the largest allowed size that fits, repeatedly (sizes 4 and 1: one singleton per rejected member while |R| < 4, one size-4 packet when all four members were rejected). Accepted members are never resent, a member is never sent a third time, a held member (verifier outage) is never resent, and a member rejected at attempt 2 leaves the stage unresolved."
+ },
+ "scenarios": {
+  "clean": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ],
+    [
+     "classify",
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ]
+    ]
+   ]
+  },
+  "repeat": {
+   "stages": []
+  },
+  "interrupt": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ],
+    [
+     "classify",
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ]
+    ]
+   ]
+  },
+  "stale": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ],
+    [
+     "extract",
+     [
+      "extract_A"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A"
+     ]
+    ],
+    [
+     "classify",
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ]
+    ]
+   ],
+   "revised_from_stage": 2,
+   "revised_source": "A",
+   "revised_file": "sources/A.rev2.txt"
+  },
+  "bump": {
+   "stages": []
+  }
+ },
+ "model_refs": {
+  "classify": [
+   "record",
+   "interval"
+  ]
+ },
+ "baseline": false,
+ "baseline_note": "G4 (no-orchestration baseline) is not part of the adoption plan; v2 has no baseline arm"
+}

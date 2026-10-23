@@ -55,6 +55,7 @@ SCENARIOS = ('clean', 'repeat', 'interrupt', 'stale', 'bump')
 RERUN: dict = {}  # scenario -> rerun number (dry gate tests only: G3b allows no scenario reruns)
 FREEZE_RECORDS = ('freeze.json', 'freeze-g3b.json')  # freeze.json is the live1 record, kept intact; G3b writes its own
 FREEZE_FILE = W.FROZEN / 'freeze-g3b.json'
+ENTRY = Path(__file__).resolve()  # the command the interrupted scenario's hard-killed invocations run (adopt.py for v2)
 
 
 def rid(prefix: str, scenario: str) -> str:
@@ -387,7 +388,9 @@ def trace_of(ws: Path, request_id: str) -> list:
         for d in sorted(rows, key=lambda r: (r['created_at'], len(r['receipt']), r['receipt'])):
             members = json.loads(d['members'])
             body = json.loads(d['packet'])
-            refs = {row[0]: body['refs'][row[1]] for block in body['jobs'] for row in block[1:]}
+            # One ref per job is its input text, as shipped; an ordered two-ref job carries its refs as a list.
+            refs = {row[0]: body['refs'][row[1]] if len(row) == 2 else [body['refs'][i] for i in row[1:]]
+                    for block in body['jobs'] for row in block[1:]}
             outcome = json.loads(d['outcome']) if d['outcome'] else {}
             stored = {m['id']: candidates[(m['id'], d['receipt'])] for m in members
                       if (m['id'], d['receipt']) in candidates}
@@ -834,7 +837,7 @@ def sabotage(ws: Path, prefix: str, clean_copy: Path, interrupt_ws: Path) -> dic
 
 def run_interrupt(ws: Path, kind: str, prefix: str) -> list:
     """Hard kills at the preregistered boundaries; each resume is the same command with the same request identity."""
-    cmd = [sys.executable, str(Path(__file__).resolve()), 'run-flow', '--workspace', str(ws), '--kind', kind,
+    cmd = [sys.executable, str(ENTRY), 'run-flow', '--workspace', str(ws), '--kind', kind,
            '--prefix', prefix, '--scenario', 'interrupt']
     if 'interrupt' in RERUN:
         cmd += ['--rerun', str(RERUN['interrupt'])]
@@ -942,7 +945,8 @@ def fixture_case(base: Path, name: str, mode: dict, scenarios, prefix: str, *, o
 
         def unavailable(value, spec_, inputs):
             raise Unavailable('verifier down')
-        checks['mat_classify'] = replace(W.CHECKS['mat_classify'], run=unavailable)
+        name = spec()['model_ops']['model.classify']['checks'][0]['check']  # the classify op's own check
+        checks[name] = replace(W.CHECKS[name], run=unavailable)
     with patch.object(W, 'CHECKS', checks):
         for scenario in scenarios:
             outs[scenario] = scenario_report(ws, 'fixture', prefix, scenario)
