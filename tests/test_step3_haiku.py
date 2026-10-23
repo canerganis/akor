@@ -255,7 +255,7 @@ class LiveGuardTests(unittest.TestCase):
             self.assertEqual(S.main(['live', '--workspace', never, '--quota-before', '40']), 2)
             os.environ[O.LIVE_ENV] = '1'
             self.assertEqual(S.main(['live', '--workspace', never]), 2)
-            for bad in ('45', '45.0', '46', '49', 'abc', '-1', 'nan'):
+            for bad in ('55', '55.0', '56', '59', 'abc', '-1', 'nan'):
                 self.assertEqual(S.main(['live', '--workspace', never, '--quota-before', bad]), 2, bad)
         self.assertEqual(calls, [])
         self.assertFalse(Path(never).exists())
@@ -289,7 +289,7 @@ class LiveGuardTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             ws = Path(tmp)
             (ws / 'quota-hk1.json').write_text(json.dumps({'before_percent': 40.0}), encoding='utf-8')
-            for after, status in ((43, 'ok'), (46, 'stop_reached_46'), (48.9, 'stop_reached_46'), (49, 'hard_stop_49')):
+            for after, status in ((53, 'ok'), (56, 'stop_reached_56'), (58.9, 'stop_reached_56'), (59, 'hard_stop_59')):
                 code = S.main(['quota-after', '--workspace', str(ws), '--prefix', 'hk1', '--percent', str(after)])
                 self.assertEqual(code, 0)
                 record = json.loads((ws / 'quota-hk1.json').read_text(encoding='utf-8'))

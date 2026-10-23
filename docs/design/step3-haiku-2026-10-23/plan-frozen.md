@@ -174,3 +174,11 @@ The owner approved the paid run. Before launch the Claude weekly figure read **4
 only below 45%, so the suite was **not started**. Nothing was spent on model calls. It starts unchanged at this freeze
 (8ec891e7) once the weekly figure reads below 45% (the weekly window resets 2026-10-27 09:00 UTC), after re-running
 `freeze`, the control-match check and `claude --version`.
+
+## Owner amendment before launch, 2026-10-23 (budget only)
+
+The owner granted 10 more points of weekly quota for this work. The quota thresholds move by 10 points: start only
+below **55%**, a reading of **56%** after launch means the suite is incomplete, hard stop **59%**. Nothing else changes:
+route, workload, gate, allocation (150,000 tokens, 18 launches, 8 per scenario) and evaluator are as frozen. The driver
+constants changed accordingly, so the derived freeze was rewritten: **dd6bf974** (was 8ec891e7); step 3 tests pass
+(37). Recorded before the first counted call.

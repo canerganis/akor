@@ -21,7 +21,7 @@
   "workflow_sha256": "5145efe959af71adc878df451f5063a5dae65c3ed66aa4ce50cd9cca1fcb4d87"
  },
  "code": {
-  "bench/o1/step3_haiku.py": "a6b7c3682c097c513251b8605075c64a874fd7f9b1635ce83719a5598bac2374",
+  "bench/o1/step3_haiku.py": "18eeb480ecf7c37e494e5a63e96d9d87a374cdbff933f2ebbf77f8139a87aa7c",
   "bench/o1/step3_checks.py": "44d2f8f6aac660f8a4d8df899e78bbaade166c9ee3a0b474a78c0a72e63e3eae",
   "bench/o1/step3_replay_adapter.py": "ab805acb1edc021b0c7faaebf9b1b90359ae6456565b64b7bfd8553ccff527ae"
  },
@@ -30,5 +30,5 @@
   "docs/design/step3-haiku-2026-10-23/02-opus-changes.md": "27a4cd5934b19c038bb2dfabc4eff50169182657e57b62711d8b1def7db94113",
   "docs/design/step3-haiku-2026-10-23/03-astra-accept.md": "61164e4570e18a9dd311a91e9d09db84f5f556c753a9aa35b60e2031bb0067db"
  },
- "digest": "8ec891e79e1e012b33a2f4d1ea3da4c0a3454f1db5bde3a13268c631fd1e29b6"
+ "digest": "dd6bf97406199b79ddcf3d57047cca566d8297c973533b9546b34a0d756883e4"
 }

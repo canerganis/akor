@@ -53,9 +53,9 @@ CODE = ('bench/o1/step3_haiku.py', 'bench/o1/step3_checks.py', 'bench/o1/step3_r
 DESIGN_DIR = 'docs/design/step3-haiku-2026-10-23'
 GROUPS = ('base', 'overlay', 'derived', 'code', 'design')
 ALLOWED = ('route.model', 'route.alias_map')
-START_BELOW = 45.0
-STOP_AT = 46.0
-HARD_STOP = 49.0
+START_BELOW = 55.0
+STOP_AT = 56.0
+HARD_STOP = 59.0
 _ORIGINAL_FREEZE = O.freeze
 
 
@@ -262,7 +262,7 @@ def quota_after(argv: list) -> int:
         return 2
     record = json.loads(path.read_text(encoding='utf-8'))
     record['after_percent'] = after
-    record['status'] = 'hard_stop_49' if after >= HARD_STOP else 'stop_reached_46' if after >= STOP_AT else 'ok'
+    record['status'] = 'hard_stop_59' if after >= HARD_STOP else 'stop_reached_56' if after >= STOP_AT else 'ok'
     record['after_recorded_at'] = time.time()
     path.write_text(json.dumps(record, indent=1), encoding='utf-8')
     print(json.dumps(record, indent=1))
