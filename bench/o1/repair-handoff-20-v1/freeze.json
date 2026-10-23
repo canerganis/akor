@@ -27,12 +27,12 @@
   "bench/o1/repair-handoff-20-v1/policy.json": "abae7e7ca04ca25e205dcd235c7db51b370bf724677fa45fb90b4f8157813ca7",
   "bench/o1/repair-handoff-20-v1/tickets/A.rev1.json": "4d06aabd3dffa1d749d25a7996b3d4a91394f39bf3352c6f427bcfbef8985e40",
   "bench/o1/repair-handoff-20-v1/tickets/A.rev2.json": "1654b9c546a45c0a570ce01016c656d82e0db9a710358c4083dc412ebf439666",
-  "bench/o1/repair-handoff-20-v1/tickets/B.rev1.json": "6af72b158b85667306a8c912fbc9d715e7a0981f3c5b6ebb2f248617ff17c2e5",
+  "bench/o1/repair-handoff-20-v1/tickets/B.rev1.json": "3507a8341f6fd22f9796370d20fe2001562a886c7b2e59ccc78f9fde63ef2fd8",
   "bench/o1/repair-handoff-20-v1/tickets/C.rev1.json": "3cdc1e9a1ca6dd4b896f71d10eb32a4a2665f5c7bf6079864d89a4a00c9a039b",
   "bench/o1/repair-handoff-20-v1/tickets/D.rev1.json": "69dfdea7d4d6c3e8b9834c9e254cdcc5984a07f039050402e0cd2a4999d537f0",
   "bench/o1/repair-handoff-20-v1/tier_a.json": "dcc755292b37341259142c76d8ec5722d075f1984c585308dbcff3a3042861ab",
   "bench/o1/repair-handoff-20-v1/tier_i.json": "d83c9c461518fa152883c8f73c655bc5545b98f9fac1bc3688e3585e8c4f9936",
-  "bench/o1/repair-handoff-20-v1/workflow.json": "dc0e39621cf5d5be075dcd395def55a44c4ebdd805ed306e9726c8b6662b47b4"
+  "bench/o1/repair-handoff-20-v1/workflow.json": "0a9f58bb9ec808b39f8c06b772ef527e5d3e1f41124a65b9a5638fc1b552f8bf"
  },
  "code": {
   "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
@@ -60,7 +60,7 @@
   "bench/o1/evaluator/evaluator.py": "5f8829f6b9549d5e4638c763ac7cf95b9bbeba1efde0ec28efea13ea4ec630db",
   "bench/o1/evaluator/eval_worker.py": "75cadfa534c4e2e49c89e06b5a5ed00f6545a10967969fea9e3fefdf7bb0245b",
   "bench/o1/evaluator/heldout.py": "0174cbf7a1b3d0e118c80ac3bfef1c3bf714162e6508fc47368cdeef093c2e9c",
-  "bench/o1/evaluator/build.py": "fcc57d82608f94c40ef428ed815d6e7b2e49f8f7727feadf43ef1ae0557720f3"
+  "bench/o1/evaluator/build.py": "6148c9be1f52fa72c473727b4a42c0bb69cfd0ab12b352dedd5876697ddbdd68"
  },
  "design": {
   "docs/design/o1-real-workflow-2026-10-23/01-astra-r1.md": "303a83bce8494f71fa849e308a50e615cac0e2440aedc50613d976af6425e478",
@@ -68,5 +68,5 @@
   "docs/design/o1-real-workflow-2026-10-23/03-astra-r2-signed.md": "7d6ccea60e8e4b6408864a3178957b9932c4353d47ac533f35ed6dc72209f55d",
   "docs/design/o1-real-workflow-2026-10-23/04-opus-r2-sign.md": "a464b0eebd755866e3fc87381386210de31446a0ea9d6a174324a79b2c62b607"
  },
- "digest": "53609b830ff66dc88da579130c2b2850ee9fa2734ad7b5432862c32d602e9012"
+ "digest": "32333561a3472b1030d4222b2b19bcf5b0968451d9f0a4959a6f75b05dff309e"
 }

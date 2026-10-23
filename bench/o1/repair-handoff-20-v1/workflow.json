@@ -143,12 +143,12 @@
   "max_tokens": 150000,
   "max_launches": 18,
   "max_launches_per_flow": 8,
-  "reserve_per_launch": 17334,
-  "reserve_rule": "measured at G2 (o1.py measure, o200k_base): the largest frozen packet is the size-4 adapter packet; with each accepted core at the 4,096-byte source limit it is 7,334 input tokens (3,378 with the fixture cores); reserve = 7,334 + 2,000 overhead + 8,000 output headroom = 17,334, applied to every launch; a call with unknown usage is charged at it",
+  "reserve_per_launch": 17358,
+  "reserve_rule": "measured at G2 (o1.py measure, o200k_base): the largest frozen packet is the size-4 adapter packet; with each accepted core at the 4,096-byte source limit it is 7,358 input tokens (3,402 with the fixture cores); reserve = 7,358 + 2,000 overhead + 8,000 output headroom = 17,358, applied to every launch; a call with unknown usage is charged at it",
   "expected_failure_free_tokens": {
-   "T=0": 40788,
-   "T=2000": 56788,
-   "T=5000": 80788,
+   "T=0": 40860,
+   "T=2000": 56860,
+   "T=5000": 80860,
    "note": "eight launches (clean 2, interrupt 2, stale 4); per call measured input + 2,000 overhead + fixture-sized output + T hidden reasoning; estimates, not predictions"
   }
  },

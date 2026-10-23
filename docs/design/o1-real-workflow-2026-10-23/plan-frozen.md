@@ -13,7 +13,7 @@ discovered bug reports, and a pass is not evidence of repairing a production inc
 | Gate | G3c-O1, one binding label `pass_g3c` |
 | Workflow | `repair-handoff-20/v1`, target `repair_package`, weight 1 |
 | Freeze record | `bench/o1/repair-handoff-20-v1/freeze.json` |
-| Freeze digest | `53609b830ff66dc88da579130c2b2850ee9fa2734ad7b5432862c32d602e9012` (short: 53609b83; replaces c6ee1c4b after the executor fix, see the resolved finding) |
+| Freeze digest | `32333561a3472b1030d4222b2b19bcf5b0968451d9f0a4959a6f75b05dff309e` (short: 32333561; replaces 53609b83 after the ticket B wording fix required for G0, which replaced c6ee1c4b after the executor fix) |
 | Route | Sonnet 5.5 (`claude-sonnet-5-5`), default effort, `claude -p` with no tools through `examples/claude_cli_adapter.py`, CLI 2.1.306, OZ/1g text H and parser unchanged, `oz1g-selective-v1`, durable runner |
 | Sizes | packets of 4 and 1, both labeled experimental (`experimental_sizes=(4, 1)`, M9); a pass qualifies no cell |
 | Workspace | fresh `.oz-runtime/o1-live1`, request prefix `live1`, memo namespaces `live-live1-*` |
@@ -135,7 +135,7 @@ option to run one scenario or to rerun one. Report: `report-live-live1.json` in 
 `claude-cli`, 300 s per call, 3,600 s per scenario deadline that resume never resets, four-hour suite envelope. No
 planner, filler jobs, cross-run batching, model switching or effort change.
 
-Reserve per launch: 17,334 tokens, measured at G2 with the workspace tokenizer (o200k_base; Claude's own counts
+Reserve per launch: 17,358 tokens (17,334 before the ticket B fix), measured at G2 with the workspace tokenizer (o200k_base; Claude's own counts
 differ and the live run records `modelUsage`). The largest frozen packet is the size-4 adapter packet: 3,378 input
 tokens with the fixture cores, 7,334 with each accepted core at the 4,096-byte limit; reserve = 7,334
 + 2,000 overhead + 8,000 output headroom. The executor's admission takes one reserve for every launch, so singletons
@@ -153,11 +153,11 @@ overhead + fixture-sized output + T hidden reasoning (unmeasured on this workloa
 
 | T per call | Expected suite tokens |
 |---:|---:|
-| 0 | 40,788 |
-| 2,000 | 56,788 |
-| 5,000 | 80,788 |
+| 0 | 40,860 |
+| 2,000 | 56,860 |
+| 5,000 | 80,860 |
 
-**Expected 56,788 to 80,788 tokens for a failure-free suite, cap 150,000.** These are estimates, not predictions; the
+**Expected 56,860 to 80,860 tokens for a failure-free suite, cap 150,000.** These are estimates, not predictions; the
 cap bounds loss. The failure-free estimate at T = 5,000 is under the 100,000 shrink threshold (M8.3), so the tickets
 were not shrunk. The ceilings do not guarantee that every possible recovery fits: with recovery in every cold scenario
 at T = 5,000 the token cap can bind before the launch cap, and exhaustion means no pass.
@@ -307,6 +307,22 @@ then this O1 G3c suite; Opus agrees. Neither live run has been made.
 8. Record format: each model record is frozen text in the ticket (core) or a frozen prefix plus the accepted core
    (adapter), so the check and the evaluator verify records by string equality, not by re-rendering.
 
-Status: built through G2 at freeze 53609b83. The G0 freeze holds; G0 also needs Opus to agree to this executable
+Status: built through G2 at freeze 32333561; G0 granted by Opus; ready for the single G3c live run.
 contract, which has not happened yet. G1 is green. G2 passes after the executor fix. Before G3c: review of the fix
 and a newly preregistered G3b live suite on the patched executor. No model call has been made.
+
+## Addendum 2026-10-23: G0 granted by Opus after the ticket B wording fix (freeze 32333561)
+
+Opus's G0 review of the built contract (record `o1_g0_opus.md` in the session scratchpad; summary here) agreed to
+everything except one defect: ticket B's adapter requirement said "an interval [ws, we] under the same rule" without
+stating the rule, which only the core record (not shown to the adapter job) contained, while frozen A rows demand
+ValueError for malformed windows. The requirement now states the rule in full ("a two-element list [start, end] of ints
+(a bool is not an int here) with start <= end"); no row changed. `build.py` regenerated ticket B, `measure` gave a
+reserve of 17,358 (adapter x4 upper bound 7,358 input tokens), `workflow.json` was updated to it, `freeze --write` gave
+32333561, and `dry` passed every block again (five scenarios, recovery, sabotage, gate sabotage, escape, seeds, oracle,
+feasibility, measured). Opus counts this as its G0 agreement since the diff touches only that ticket text and its
+derived files. The fix review (50e8ef5) was approved by Astra. Both preconditions for the paid G3c run are met.
+
+Notes from the same review: `run-flow --kind live` exists as the subprocess entry for the interrupted scenario, behind
+`O1_LIVE_CONFIRM`, the freeze and the CLI check; any use outside the suite must be reported. Reserves and expected spend
+use o200k_base counts; the live report should compare `modelUsage` input with the o200k estimate per packet.

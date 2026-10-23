@@ -84,8 +84,9 @@ def requirements(ticket, rev):
             'Return a new list of new [start, end] lists sorted by start, pairwise disjoint and not touching. Never '
             'modify the input.'],
             'adapter': [
-            'window is an interval [ws, we] under the same rule and busy is a list of intervals; if the window or any '
-            'busy interval is invalid, raise ValueError before calling union_intervals.',
+            'window is an interval [ws, we] and busy is a list of intervals; an interval is a two-element list '
+            '[start, end] of ints (a bool is not an int here) with start <= end. If the window or any busy interval is '
+            'invalid, raise ValueError before calling union_intervals.',
             'Call union_intervals exactly once, with a new list holding, in busy order, [max(start, ws), min(end, we)] '
             'for every busy interval where max(start, ws) < min(end, we).',
             'Return the parts of the window not covered by the intervals union_intervals returned, as [start, end] '
