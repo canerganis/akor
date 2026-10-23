@@ -167,3 +167,10 @@ automatic promotion of the experimental size-4 and size-1 cells.
 2. `python bench/o1/step3_haiku.py control-match` exits 0 (all MATCH) and `labels` exits 0.
 3. Full test suite green.
 4. Weekly figure read and below 45%.
+
+## Launch record, 2026-10-23
+
+The owner approved the paid run. Before launch the Claude weekly figure read **45%**. The preregistered rule says start
+only below 45%, so the suite was **not started**. Nothing was spent on model calls. It starts unchanged at this freeze
+(8ec891e7) once the weekly figure reads below 45% (the weekly window resets 2026-10-27 09:00 UTC), after re-running
+`freeze`, the control-match check and `claude --version`.

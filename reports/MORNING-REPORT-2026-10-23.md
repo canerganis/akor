@@ -102,3 +102,10 @@ weekly quota at about 35%, well under the 49% line, because every remaining step
   `repair-handoff-20` and testing what the caller-cost study left open (a cheaper worker model, references too large for
   the caller, or a full caller context). It needs your confirmation of the use case and an allocation.
 - Weekly quota about 41%.
+
+## Step 3 status (evening)
+
+Step 3 (Haiku 5.5 as a cheaper worker on repair-handoff-20) is preregistered, signed by Astra and Opus, prepared and
+dry-gated (derived freeze 8ec891e7; the archived Sonnet control matches on all 12 zero-call checks; 846 tests). You
+approved the paid run, but the weekly quota read exactly 45% and the preregistered start rule is "below 45%", so the
+suite was not started. It runs unchanged when the weekly figure drops below 45% (window resets 2026-10-27 09:00 UTC).
