@@ -6,7 +6,7 @@
 
 Your agents keep repeating themselves on every call. AKOR stops you paying for it.
 
-<img src="docs/assets/hero.svg" alt="Minus 42 percent tokens per verified job on Claude Opus 5.5, 64 jobs per call, every reply accepted on the first try." width="100%">
+<img src="docs/assets/hero.svg" alt="31 times fewer tokens per verified job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,834 tokens per verified job as 64 plain JSON calls and 91.6 as one AKOR call. Most of the gap is batching; the format alone is 39 percent under batched JSON." width="100%">
 
 <img src="docs/social/x_language.gif" alt="Two agents exchange the same 64 jobs: plain JSON takes 3,268 tokens, the AKOR request takes 1,471 and comes back as a short checked reply." width="100%">
 
@@ -16,7 +16,9 @@ Your agents keep repeating themselves on every call. AKOR stops you paying for i
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. Faster replies on all four. 91 of 91 replies accepted on the first try.**
+**31 times fewer tokens per verified job than sending one call per job (64 jobs on Claude Sonnet 5.5), and 24 times faster. Against the same jobs already batched as plain JSON, the format alone saves 41% to 43% on Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. 91 of 91 replies accepted on the first try.**
+
+<sub>Attribution: most of the 31x gap comes from batching, not from the language. Sending 64 jobs in one call instead of 64 calls removes the repeated prompt, CLI overhead and reference material, whatever the reply format. Counted per requested job instead of per verified job, so failed per-job calls do not shrink the denominator, the gap is 22x. [Pilot results](docs/design/brainstorm-2026-10-22/pilot-results.md).</sub>
 
 ```bash
 pip install git+https://github.com/canerganis/akor
@@ -42,8 +44,9 @@ once, and jobs point at them by index. Reads, tests and status events never touc
 short record per job, and the host checks the whole reply before it delivers anything.
 
 **The proof.** Live, preregistered tests on billed tokens, with hidden reasoning and failed calls counted, against
-a plain JSON format carrying the same 64 jobs in one call. Nothing in the reply is repaired, so every correct job is
-really correct.
+two baselines: one plain JSON call per job, the way most pipelines send work, and a plain JSON format carrying the
+same 64 jobs in one call, which isolates what the format itself adds. Nothing in the reply is repaired, so every
+correct job is really correct.
 
 <img src="docs/assets/packet.svg" alt="The same 64-job packet: 3,268 tokens as plain JSON, 1,471 tokens in AKOR, because shared parts are written once and jobs are referenced by index." width="100%">
 
