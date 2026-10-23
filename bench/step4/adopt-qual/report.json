@@ -1,0 +1,211 @@
+{
+ "digest": "e4da3c71b6fb02be8469e99b468a66577b7cbde662d40e4623458178493a44f2",
+ "rows": [
+  {
+   "slot": 1,
+   "cell": "size4",
+   "goal": 1,
+   "cases": [
+    1,
+    5,
+    3,
+    8
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2857,
+   "thinking": 114,
+   "seconds": 6.5,
+   "route": "ok"
+  },
+  {
+   "slot": 2,
+   "cell": "size4",
+   "goal": 1,
+   "cases": [
+    8,
+    3,
+    5,
+    1
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2869,
+   "thinking": 126,
+   "seconds": 7.0,
+   "route": "ok"
+  },
+  {
+   "slot": 3,
+   "cell": "size4",
+   "goal": 1,
+   "cases": [
+    2,
+    6,
+    4,
+    7
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2900,
+   "thinking": 143,
+   "seconds": 7.4,
+   "route": "ok"
+  },
+  {
+   "slot": 4,
+   "cell": "size4",
+   "goal": 1,
+   "cases": [
+    7,
+    4,
+    6,
+    2
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2882,
+   "thinking": 128,
+   "seconds": 7.4,
+   "route": "ok"
+  },
+  {
+   "slot": 5,
+   "cell": "size4",
+   "goal": 2,
+   "cases": [
+    1,
+    5,
+    3,
+    8
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2861,
+   "thinking": 121,
+   "seconds": 12.4,
+   "route": "ok"
+  },
+  {
+   "slot": 6,
+   "cell": "size4",
+   "goal": 2,
+   "cases": [
+    8,
+    3,
+    5,
+    1
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2741,
+   "thinking": 0,
+   "seconds": 9.9,
+   "route": "ok"
+  },
+  {
+   "slot": 7,
+   "cell": "size4",
+   "goal": 2,
+   "cases": [
+    2,
+    6,
+    4,
+    7
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2896,
+   "thinking": 136,
+   "seconds": 8.6,
+   "route": "ok"
+  },
+  {
+   "slot": 8,
+   "cell": "size4",
+   "goal": 2,
+   "cases": [
+    7,
+    4,
+    6,
+    2
+   ],
+   "outcome": "correct",
+   "passed": true,
+   "correct_members": 4,
+   "members": 4,
+   "tokens": 2758,
+   "thinking": 0,
+   "seconds": 6.1,
+   "route": "ok"
+  },
+  {
+   "slot": 9,
+   "cell": "size4",
+   "goal": 3,
+   "cases": [
+    1,
+    5,
+    3,
+    8
+   ],
+   "outcome": "semantic",
+   "passed": false,
+   "correct_members": 3,
+   "members": 4,
+   "tokens": 2742,
+   "thinking": 0,
+   "seconds": 9.0,
+   "route": "ok"
+  }
+ ],
+ "cells": {
+  "size4": {
+   "verdict": "fail",
+   "calls": 9,
+   "scheduled": 12,
+   "passed_calls": 8,
+   "tokens": 25506,
+   "calls_without_usage": 0,
+   "thinking_per_call": [
+    114,
+    126,
+    143,
+    128,
+    121,
+    0,
+    136,
+    0,
+    0
+   ]
+  },
+  "size1": {
+   "verdict": "untested",
+   "calls": 0,
+   "scheduled": 24,
+   "passed_calls": 0,
+   "tokens": 0,
+   "calls_without_usage": 0,
+   "thinking_per_call": []
+  }
+ },
+ "problems": [],
+ "orphans": [],
+ "tokens": 25506,
+ "launches": 9,
+ "pass": false
+}

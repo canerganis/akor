@@ -1,0 +1,96 @@
+{
+ "launch": {
+  "event": "launch",
+  "slot": 7,
+  "arm": "q4",
+  "cell": "size4",
+  "goal": 2,
+  "cases": [
+   2,
+   6,
+   4,
+   7
+  ],
+  "call_id": "500f155dd0af4f1cb44204b49108e698",
+  "ts": 1792754783.1831694,
+  "at": "2026-10-23T11:26:23.183Z",
+  "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+  "prompt_sha256": "08a60086051ba4ea1830af591a5382f4d779bf0cf9333daa38ed0725e311e469",
+  "argv_flags": [
+   "-p",
+   "--model",
+   "claude-sonnet-5-5",
+   "--system-prompt",
+   "<H>",
+   "--tools",
+   "",
+   "--setting-sources",
+   "",
+   "--strict-mcp-config",
+   "--no-session-persistence",
+   "--output-format",
+   "json"
+  ]
+ },
+ "end": {
+  "event": "end",
+  "slot": 7,
+  "call_id": "500f155dd0af4f1cb44204b49108e698",
+  "ts": 1792754791.8086812,
+  "at": "2026-10-23T11:26:31.808Z",
+  "stdout_sha256": "0f1afbf06a120885b2884bf925221a70f808cddd83004f204c02ab0e779a9453",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluation": {
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 8623,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 603,
+    "cache_creation": 2095,
+    "output": 196,
+    "total": 2896,
+    "thinking": 136
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "passed": true,
+   "outcome": "correct"
+  }
+ }
+}
