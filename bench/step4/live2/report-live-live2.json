@@ -1,0 +1,1946 @@
+{
+ "gate": "G3b live",
+ "kind": "live",
+ "prefix": "live2",
+ "freeze": {
+  "frozen": true,
+  "digest": "02119a179eba62777d41f1358366e258ddf48cdfd96d080307d34c12c5328019",
+  "current_digest": "02119a179eba62777d41f1358366e258ddf48cdfd96d080307d34c12c5328019",
+  "problems": []
+ },
+ "started_at": 1792719073.1399608,
+ "scenarios": {
+  "clean": {
+   "scenario": "clean",
+   "request_id": "live2-clean",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 3,
+   "expected_launches": 3,
+   "packets": [
+    4,
+    4,
+    4
+   ],
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "memo_hits": 0,
+   "expected_memo_hits": 0,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 3,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 8046,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 0,
+   "pass": true,
+   "trace": [
+    {
+     "stage": 0,
+     "op": "extract",
+     "receipt": "1",
+     "run_dir": "do/live2-clean-extract-5c8f8123fe4f",
+     "created_at": 1792719073.2957728,
+     "state": "captured",
+     "members": [
+      {
+       "id": "extract_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "5e14c6a41b36690ffde8d53dfcbdc17506d23497e486c0bf1795e5febd01babb"
+      },
+      {
+       "id": "extract_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "1982281d720b4b758ffb48e009f34227edc9e2cb0f02febb28eccb170f3d2d43"
+      },
+      {
+       "id": "extract_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "c816509e93322ee89c53be613fd45222a393f0a10a67d234b6e8d96f866e7584"
+      },
+      {
+       "id": "extract_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "82b5c840ff5ea987c2637612a5d96ccabe6b694802ab86437487a052c4c58f6e"
+      }
+     ],
+     "refs": {
+      "extract_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "extract_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "extract_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "extract_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "extract_A": "accepted",
+      "extract_B": "accepted",
+      "extract_C": "accepted",
+      "extract_D": "accepted"
+     }
+    },
+    {
+     "stage": 1,
+     "op": "bounds",
+     "receipt": "1",
+     "run_dir": "do/live2-clean-bounds-483cadf03a6e",
+     "created_at": 1792719080.150282,
+     "state": "captured",
+     "members": [
+      {
+       "id": "bounds_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "5a8f2758763480af22e381f47fb877147ff4e711fe7d430757fb5558c47c66e9"
+      },
+      {
+       "id": "bounds_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "e2dc97cdde4180c77e194a2cd695b6c4c61c7e68b8c0ba7c4ece5a8bd1982a45"
+      },
+      {
+       "id": "bounds_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "6f3280ce8717894e47eabb5428706875652213d6687be2f3061e32bc3ee50a5c"
+      },
+      {
+       "id": "bounds_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "0d2f9ffd8f8b6eae4aea30137fd0a36095c44ef9e1cfc6c91dfd2514fe169344"
+      }
+     ],
+     "refs": {
+      "bounds_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "bounds_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "bounds_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "bounds_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "bounds_A": "accepted",
+      "bounds_B": "accepted",
+      "bounds_C": "accepted",
+      "bounds_D": "accepted"
+     }
+    },
+    {
+     "stage": 2,
+     "op": "classify",
+     "receipt": "1",
+     "run_dir": "do/live2-clean-classify-dcdace0917e7",
+     "created_at": 1792719086.4697444,
+     "state": "captured",
+     "members": [
+      {
+       "id": "classify_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "4c8d7c84cdeb2548756c9b83eaa341209a8d861d39e343f3602314090616205f"
+      },
+      {
+       "id": "classify_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "746820b1063a3b918254b026e9c73821608855e540d1b7a44dc84a3ea4068789"
+      },
+      {
+       "id": "classify_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "cbb3da46f92190ba63b12c4bee0905bf92dc289fc638595ce9705ed494852d30"
+      },
+      {
+       "id": "classify_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "26c5f09257f164abb186b40f804cdfaa108dc65a7b92c7abc063a37d391bc2cd"
+      }
+     ],
+     "refs": {
+      "classify_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "classify_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "classify_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "classify_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "classify_A": "accepted",
+      "classify_B": "accepted",
+      "classify_C": "accepted",
+      "classify_D": "accepted"
+     }
+    }
+   ],
+   "recovery": {
+    "first_attempt": [
+     {
+      "stage": 0,
+      "job": "extract_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_D",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_D",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_D",
+      "verdict": "accepted"
+     }
+    ],
+    "first_attempt_correct": 12,
+    "first_attempt_total": 12,
+    "rejected_jobs": [],
+    "rejected_packets": 0,
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "extract_A": "accepted",
+       "extract_B": "accepted",
+       "extract_C": "accepted",
+       "extract_D": "accepted"
+      },
+      "input_tokens": 2540,
+      "output_tokens": 171,
+      "tokens": 2711,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "bounds_A": "accepted",
+       "bounds_B": "accepted",
+       "bounds_C": "accepted",
+       "bounds_D": "accepted"
+      },
+      "input_tokens": 2551,
+      "output_tokens": 101,
+      "tokens": 2652,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 2,
+      "receipt": "1",
+      "members": [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "classify_A": "accepted",
+       "classify_B": "accepted",
+       "classify_C": "accepted",
+       "classify_D": "accepted"
+      },
+      "input_tokens": 2543,
+      "output_tokens": 140,
+      "tokens": 2683,
+      "thinking_tokens": 79,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     }
+    ]
+   },
+   "g3b": {
+    "label": "pass_g3b",
+    "pass_g3b": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified": true,
+     "primary_sequence_and_memo_hits": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      1
+     ]
+    ],
+    "blocked": null
+   },
+   "pass_g3b": true,
+   "recovered": false
+  },
+  "repeat": {
+   "scenario": "repeat",
+   "request_id": "live2-repeat",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "expected_launches": 0,
+   "packets": [],
+   "expected_packets": [],
+   "memo_hits": 12,
+   "expected_memo_hits": 12,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 0,
+   "pass": true,
+   "trace": [],
+   "recovery": {
+    "first_attempt": [],
+    "first_attempt_correct": 0,
+    "first_attempt_total": 0,
+    "rejected_jobs": [],
+    "rejected_packets": 0,
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "calls": []
+   },
+   "g3b": {
+    "label": "pass_g3b",
+    "pass_g3b": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified": true,
+     "primary_sequence_and_memo_hits": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true
+    },
+    "errors": [],
+    "derived": [],
+    "actual": [],
+    "blocked": null
+   },
+   "pass_g3b": true,
+   "recovered": false
+  },
+  "interrupt": {
+   "scenario": "interrupt",
+   "request_id": "live2-interrupt",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 3,
+   "expected_launches": 3,
+   "packets": [
+    4,
+    4,
+    4
+   ],
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "memo_hits": 0,
+   "expected_memo_hits": 0,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 3,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 8059,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 0,
+   "pass": true,
+   "trace": [
+    {
+     "stage": 0,
+     "op": "extract",
+     "receipt": "1",
+     "run_dir": "do/live2-interrupt-extract-5c8f8123fe4f",
+     "created_at": 1792719094.3790686,
+     "state": "captured",
+     "members": [
+      {
+       "id": "extract_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "5e14c6a41b36690ffde8d53dfcbdc17506d23497e486c0bf1795e5febd01babb"
+      },
+      {
+       "id": "extract_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "1982281d720b4b758ffb48e009f34227edc9e2cb0f02febb28eccb170f3d2d43"
+      },
+      {
+       "id": "extract_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "c816509e93322ee89c53be613fd45222a393f0a10a67d234b6e8d96f866e7584"
+      },
+      {
+       "id": "extract_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "82b5c840ff5ea987c2637612a5d96ccabe6b694802ab86437487a052c4c58f6e"
+      }
+     ],
+     "refs": {
+      "extract_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "extract_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "extract_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "extract_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "extract_A": "accepted",
+      "extract_B": "accepted",
+      "extract_C": "accepted",
+      "extract_D": "accepted"
+     }
+    },
+    {
+     "stage": 1,
+     "op": "bounds",
+     "receipt": "1",
+     "run_dir": "do/live2-interrupt-bounds-483cadf03a6e",
+     "created_at": 1792719101.8132234,
+     "state": "captured",
+     "members": [
+      {
+       "id": "bounds_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "5a8f2758763480af22e381f47fb877147ff4e711fe7d430757fb5558c47c66e9"
+      },
+      {
+       "id": "bounds_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "e2dc97cdde4180c77e194a2cd695b6c4c61c7e68b8c0ba7c4ece5a8bd1982a45"
+      },
+      {
+       "id": "bounds_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "6f3280ce8717894e47eabb5428706875652213d6687be2f3061e32bc3ee50a5c"
+      },
+      {
+       "id": "bounds_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "0d2f9ffd8f8b6eae4aea30137fd0a36095c44ef9e1cfc6c91dfd2514fe169344"
+      }
+     ],
+     "refs": {
+      "bounds_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "bounds_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "bounds_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "bounds_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "bounds_A": "accepted",
+      "bounds_B": "accepted",
+      "bounds_C": "accepted",
+      "bounds_D": "accepted"
+     }
+    },
+    {
+     "stage": 2,
+     "op": "classify",
+     "receipt": "1",
+     "run_dir": "do/live2-interrupt-classify-dcdace0917e7",
+     "created_at": 1792719108.9037006,
+     "state": "captured",
+     "members": [
+      {
+       "id": "classify_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "4c8d7c84cdeb2548756c9b83eaa341209a8d861d39e343f3602314090616205f"
+      },
+      {
+       "id": "classify_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "746820b1063a3b918254b026e9c73821608855e540d1b7a44dc84a3ea4068789"
+      },
+      {
+       "id": "classify_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "cbb3da46f92190ba63b12c4bee0905bf92dc289fc638595ce9705ed494852d30"
+      },
+      {
+       "id": "classify_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "26c5f09257f164abb186b40f804cdfaa108dc65a7b92c7abc063a37d391bc2cd"
+      }
+     ],
+     "refs": {
+      "classify_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "classify_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "classify_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "classify_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "classify_A": "accepted",
+      "classify_B": "accepted",
+      "classify_C": "accepted",
+      "classify_D": "accepted"
+     }
+    }
+   ],
+   "recovery": {
+    "first_attempt": [
+     {
+      "stage": 0,
+      "job": "extract_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_D",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_D",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "classify_D",
+      "verdict": "accepted"
+     }
+    ],
+    "first_attempt_correct": 12,
+    "first_attempt_total": 12,
+    "rejected_jobs": [],
+    "rejected_packets": 0,
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "extract_A": "accepted",
+       "extract_B": "accepted",
+       "extract_C": "accepted",
+       "extract_D": "accepted"
+      },
+      "input_tokens": 2543,
+      "output_tokens": 171,
+      "tokens": 2714,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "bounds_A": "accepted",
+       "bounds_B": "accepted",
+       "bounds_C": "accepted",
+       "bounds_D": "accepted"
+      },
+      "input_tokens": 2559,
+      "output_tokens": 101,
+      "tokens": 2660,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 2,
+      "receipt": "1",
+      "members": [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "classify_A": "accepted",
+       "classify_B": "accepted",
+       "classify_C": "accepted",
+       "classify_D": "accepted"
+      },
+      "input_tokens": 2545,
+      "output_tokens": 140,
+      "tokens": 2685,
+      "thinking_tokens": 79,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     }
+    ]
+   },
+   "observables": {
+    "pass": true,
+    "checks": {
+     "kills_at_boundaries": true,
+     "first_capture_recovered_without_new_call": true,
+     "manifest_reconciled_on_resume": true
+    },
+    "exits": [
+     {
+      "faults": [
+       "worker.after_capture"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [
+       "flow.publish.after_manifest"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [],
+      "exit": 0,
+      "expected_exit": 0,
+      "stderr_tail": ""
+     }
+    ]
+   },
+   "g3b": {
+    "label": "pass_g3b",
+    "pass_g3b": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified": true,
+     "primary_sequence_and_memo_hits": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "interrupt_observables": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      1
+     ]
+    ],
+    "blocked": null
+   },
+   "pass_g3b": true,
+   "recovered": false
+  },
+  "stale": {
+   "scenario": "stale",
+   "request_id": "live2-stale",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 6,
+   "expected_launches": 5,
+   "packets": [
+    4,
+    4,
+    1,
+    1,
+    4,
+    1
+   ],
+   "expected_packets": [
+    4,
+    4,
+    1,
+    1,
+    4
+   ],
+   "memo_hits": 6,
+   "expected_memo_hits": 6,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 6,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 15241,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 1,
+   "pass": false,
+   "trace": [
+    {
+     "stage": 0,
+     "op": "extract",
+     "receipt": "1",
+     "run_dir": "do/live2-stale-extract-5c8f8123fe4f",
+     "created_at": 1792719116.2924898,
+     "state": "captured",
+     "members": [
+      {
+       "id": "extract_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "5e14c6a41b36690ffde8d53dfcbdc17506d23497e486c0bf1795e5febd01babb"
+      },
+      {
+       "id": "extract_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "1982281d720b4b758ffb48e009f34227edc9e2cb0f02febb28eccb170f3d2d43"
+      },
+      {
+       "id": "extract_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "c816509e93322ee89c53be613fd45222a393f0a10a67d234b6e8d96f866e7584"
+      },
+      {
+       "id": "extract_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "82b5c840ff5ea987c2637612a5d96ccabe6b694802ab86437487a052c4c58f6e"
+      }
+     ],
+     "refs": {
+      "extract_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "extract_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "extract_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "extract_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "extract_A": "accepted",
+      "extract_B": "accepted",
+      "extract_C": "accepted",
+      "extract_D": "accepted"
+     }
+    },
+    {
+     "stage": 1,
+     "op": "bounds",
+     "receipt": "1",
+     "run_dir": "do/live2-stale-bounds-483cadf03a6e",
+     "created_at": 1792719123.8470154,
+     "state": "captured",
+     "members": [
+      {
+       "id": "bounds_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "5a8f2758763480af22e381f47fb877147ff4e711fe7d430757fb5558c47c66e9"
+      },
+      {
+       "id": "bounds_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "e2dc97cdde4180c77e194a2cd695b6c4c61c7e68b8c0ba7c4ece5a8bd1982a45"
+      },
+      {
+       "id": "bounds_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "6f3280ce8717894e47eabb5428706875652213d6687be2f3061e32bc3ee50a5c"
+      },
+      {
+       "id": "bounds_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "0d2f9ffd8f8b6eae4aea30137fd0a36095c44ef9e1cfc6c91dfd2514fe169344"
+      }
+     ],
+     "refs": {
+      "bounds_A": "length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "bounds_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "bounds_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "bounds_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "bounds_A": "accepted",
+      "bounds_B": "accepted",
+      "bounds_C": "accepted",
+      "bounds_D": "accepted"
+     }
+    },
+    {
+     "stage": 2,
+     "op": "extract",
+     "receipt": "1",
+     "run_dir": "do/live2-stale-extract-5cb7ec8788f8",
+     "created_at": 1792719130.3575683,
+     "state": "captured",
+     "members": [
+      {
+       "id": "extract_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "2c0fc71d0c78b58f562e3d3987e8adee472c8fffbb9f1c4164dc45c428b30655"
+      }
+     ],
+     "refs": {
+      "extract_A": "length=12.55 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "extract_A": "accepted"
+     }
+    },
+    {
+     "stage": 3,
+     "op": "bounds",
+     "receipt": "1",
+     "run_dir": "do/live2-stale-bounds-5aebf77f0821",
+     "created_at": 1792719137.3290005,
+     "state": "captured",
+     "members": [
+      {
+       "id": "bounds_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "413401d9f1dc2a93b9c90b8b59bbe62779315748063c9ed9407dd6d8936dca40"
+      }
+     ],
+     "refs": {
+      "bounds_A": "length=12.55 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "bounds_A": "accepted"
+     }
+    },
+    {
+     "stage": 4,
+     "op": "classify",
+     "receipt": "1",
+     "run_dir": "do/live2-stale-classify-bee726232b6b",
+     "created_at": 1792719144.799951,
+     "state": "captured",
+     "members": [
+      {
+       "id": "classify_A",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "c67d86e5993a9acb235f880922efbc033e71f67e3c04126a31e301fcc6489d57"
+      },
+      {
+       "id": "classify_B",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "746820b1063a3b918254b026e9c73821608855e540d1b7a44dc84a3ea4068789"
+      },
+      {
+       "id": "classify_C",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "cbb3da46f92190ba63b12c4bee0905bf92dc289fc638595ce9705ed494852d30"
+      },
+      {
+       "id": "classify_D",
+       "generation": 1,
+       "attempt": 1,
+       "compute_key": "26c5f09257f164abb186b40f804cdfaa108dc65a7b92c7abc063a37d391bc2cd"
+      }
+     ],
+     "refs": {
+      "classify_A": "length=12.55 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed",
+      "classify_B": "length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed",
+      "classify_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed",
+      "classify_D": "length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "classify_A": "accepted",
+      "classify_B": "accepted",
+      "classify_C": "check_rejected",
+      "classify_D": "accepted"
+     }
+    },
+    {
+     "stage": 4,
+     "op": "classify",
+     "receipt": "2",
+     "run_dir": "do/live2-stale-classify-bee726232b6b",
+     "created_at": 1792719151.935991,
+     "state": "captured",
+     "members": [
+      {
+       "id": "classify_C",
+       "generation": 1,
+       "attempt": 2,
+       "compute_key": "cbb3da46f92190ba63b12c4bee0905bf92dc289fc638595ce9705ed494852d30"
+      }
+     ],
+     "refs": {
+      "classify_C": "length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed"
+     },
+     "verdicts": {
+      "classify_C": "accepted"
+     }
+    }
+   ],
+   "recovery": {
+    "first_attempt": [
+     {
+      "stage": 0,
+      "job": "extract_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 0,
+      "job": "extract_D",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_C",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 1,
+      "job": "bounds_D",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 2,
+      "job": "extract_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 3,
+      "job": "bounds_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 4,
+      "job": "classify_A",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 4,
+      "job": "classify_B",
+      "verdict": "accepted"
+     },
+     {
+      "stage": 4,
+      "job": "classify_C",
+      "verdict": "check_rejected"
+     },
+     {
+      "stage": 4,
+      "job": "classify_D",
+      "verdict": "accepted"
+     }
+    ],
+    "first_attempt_correct": 13,
+    "first_attempt_total": 14,
+    "rejected_jobs": [
+     "4:classify_C"
+    ],
+    "rejected_packets": 1,
+    "recovery_launches": 1,
+    "recovery_tokens": 2452,
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "extract_A": "accepted",
+       "extract_B": "accepted",
+       "extract_C": "accepted",
+       "extract_D": "accepted"
+      },
+      "input_tokens": 2540,
+      "output_tokens": 171,
+      "tokens": 2711,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "bounds_A": "accepted",
+       "bounds_B": "accepted",
+       "bounds_C": "accepted",
+       "bounds_D": "accepted"
+      },
+      "input_tokens": 2553,
+      "output_tokens": 101,
+      "tokens": 2654,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 2,
+      "receipt": "1",
+      "members": [
+       "extract_A"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "extract_A": "accepted"
+      },
+      "input_tokens": 2360,
+      "output_tokens": 49,
+      "tokens": 2409,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 3,
+      "receipt": "1",
+      "members": [
+       "bounds_A"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "bounds_A": "accepted"
+      },
+      "input_tokens": 2377,
+      "output_tokens": 34,
+      "tokens": 2411,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 4,
+      "receipt": "1",
+      "members": [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      "attempt": 1,
+      "verdicts": {
+       "classify_A": "accepted",
+       "classify_B": "accepted",
+       "classify_C": "check_rejected",
+       "classify_D": "accepted"
+      },
+      "input_tokens": 2543,
+      "output_tokens": 61,
+      "tokens": 2604,
+      "thinking_tokens": 0,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 4,
+      "receipt": "2",
+      "members": [
+       "classify_C"
+      ],
+      "attempt": 2,
+      "verdicts": {
+       "classify_C": "accepted"
+      },
+      "input_tokens": 2367,
+      "output_tokens": 85,
+      "tokens": 2452,
+      "thinking_tokens": 64,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     }
+    ]
+   },
+   "observables": {
+    "pass": true,
+    "checks": {
+     "no_old_A_after_mutation": true,
+     "order_after_mutation_is_derived": true,
+     "bcd_reused_by_recorded_identical_input_decision": true,
+     "old_A_history_kept_delivery_cites_rev2": true
+    },
+    "dispatches_after_mutation": [
+     [
+      "extract_A"
+     ],
+     [
+      "bounds_A"
+     ],
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ],
+     [
+      "classify_C"
+     ]
+    ],
+    "leaked_receipts": [],
+    "reused": {
+     "extract_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "extract_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "extract_D": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "bounds_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "bounds_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "bounds_D": {
+      "decision": "hit",
+      "same_inputs": true
+     }
+    }
+   },
+   "g3b": {
+    "label": "pass_g3b",
+    "pass_g3b": true,
+    "strict_pass": false,
+    "recovered": true,
+    "checks": {
+     "delivered_once_on_time_verified": true,
+     "primary_sequence_and_memo_hits": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "stale_observables": true,
+     "stale_order_after_mutation": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "extract_A"
+      ],
+      1
+     ],
+     [
+      3,
+      [
+       "bounds_A"
+      ],
+      1
+     ],
+     [
+      4,
+      [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      1
+     ],
+     [
+      4,
+      [
+       "classify_C"
+      ],
+      2
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "extract_A",
+       "extract_B",
+       "extract_C",
+       "extract_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "bounds_A",
+       "bounds_B",
+       "bounds_C",
+       "bounds_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "extract_A"
+      ],
+      1
+     ],
+     [
+      3,
+      [
+       "bounds_A"
+      ],
+      1
+     ],
+     [
+      4,
+      [
+       "classify_A",
+       "classify_B",
+       "classify_C",
+       "classify_D"
+      ],
+      1
+     ],
+     [
+      4,
+      [
+       "classify_C"
+      ],
+      2
+     ]
+    ],
+    "blocked": null
+   },
+   "pass_g3b": true,
+   "recovered": true
+  },
+  "bump": {
+   "scenario": "bump",
+   "request_id": "live2-bump",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "expected_launches": 0,
+   "packets": [],
+   "expected_packets": [],
+   "memo_hits": 20,
+   "expected_memo_hits": 20,
+   "deliveries": 1,
+   "on_time": true,
+   "evaluator": {
+    "verified": true,
+    "errors": []
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "reply_rejections": 0,
+   "pass": true,
+   "trace": [],
+   "recovery": {
+    "first_attempt": [],
+    "first_attempt_correct": 0,
+    "first_attempt_total": 0,
+    "rejected_jobs": [],
+    "rejected_packets": 0,
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "calls": []
+   },
+   "g3b": {
+    "label": "pass_g3b",
+    "pass_g3b": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified": true,
+     "primary_sequence_and_memo_hits": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true
+    },
+    "errors": [],
+    "derived": [],
+    "actual": [],
+    "blocked": null
+   },
+   "pass_g3b": true,
+   "recovered": false
+  }
+ },
+ "cli_version": "2.1.306",
+ "c5": {
+  "byte_identity": {
+   "pass": true,
+   "clean_repeat_interrupt_identical": true,
+   "bump_differs_only_in_revision": true
+  },
+  "route_change": {
+   "pass": true,
+   "misses": 12,
+   "packets": [
+    4,
+    4,
+    4
+   ]
+  },
+  "strengthened_check": {
+   "pass": true,
+   "launches": 0,
+   "bounds_checks": {
+    "bounds_A": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ],
+    "bounds_B": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ],
+    "bounds_C": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ],
+    "bounds_D": [
+     "mat_bounds@1:pass",
+     "max_bytes@1:pass"
+    ]
+   },
+   "evaluator_errors": []
+  },
+  "revocation": {
+   "pass": true,
+   "revoked_entries": [
+    6
+   ],
+   "missed": [
+    "bounds_B"
+   ],
+   "packets": [
+    1
+   ]
+  }
+ },
+ "totals": {
+  "launches": 12,
+  "tokens_known": 31346,
+  "calls_without_usage": 0,
+  "caps": {
+   "max_tokens": 64000,
+   "max_launches": 24,
+   "max_launches_per_flow": 10,
+   "reserve_per_launch": 5000,
+   "estimate_tokens": 36000
+  },
+  "accounting": "complete"
+ },
+ "thinking_tokens_per_call": [
+  {
+   "scenario": "clean",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "extract_A",
+    "extract_B",
+    "extract_C",
+    "extract_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "extract_A": "accepted",
+    "extract_B": "accepted",
+    "extract_C": "accepted",
+    "extract_D": "accepted"
+   },
+   "input_tokens": 2540,
+   "output_tokens": 171,
+   "tokens": 2711,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "clean",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "bounds_A",
+    "bounds_B",
+    "bounds_C",
+    "bounds_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "bounds_A": "accepted",
+    "bounds_B": "accepted",
+    "bounds_C": "accepted",
+    "bounds_D": "accepted"
+   },
+   "input_tokens": 2551,
+   "output_tokens": 101,
+   "tokens": 2652,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "clean",
+   "stage": 2,
+   "receipt": "1",
+   "members": [
+    "classify_A",
+    "classify_B",
+    "classify_C",
+    "classify_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "classify_A": "accepted",
+    "classify_B": "accepted",
+    "classify_C": "accepted",
+    "classify_D": "accepted"
+   },
+   "input_tokens": 2543,
+   "output_tokens": 140,
+   "tokens": 2683,
+   "thinking_tokens": 79
+  },
+  {
+   "scenario": "interrupt",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "extract_A",
+    "extract_B",
+    "extract_C",
+    "extract_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "extract_A": "accepted",
+    "extract_B": "accepted",
+    "extract_C": "accepted",
+    "extract_D": "accepted"
+   },
+   "input_tokens": 2543,
+   "output_tokens": 171,
+   "tokens": 2714,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "interrupt",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "bounds_A",
+    "bounds_B",
+    "bounds_C",
+    "bounds_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "bounds_A": "accepted",
+    "bounds_B": "accepted",
+    "bounds_C": "accepted",
+    "bounds_D": "accepted"
+   },
+   "input_tokens": 2559,
+   "output_tokens": 101,
+   "tokens": 2660,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "interrupt",
+   "stage": 2,
+   "receipt": "1",
+   "members": [
+    "classify_A",
+    "classify_B",
+    "classify_C",
+    "classify_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "classify_A": "accepted",
+    "classify_B": "accepted",
+    "classify_C": "accepted",
+    "classify_D": "accepted"
+   },
+   "input_tokens": 2545,
+   "output_tokens": 140,
+   "tokens": 2685,
+   "thinking_tokens": 79
+  },
+  {
+   "scenario": "stale",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "extract_A",
+    "extract_B",
+    "extract_C",
+    "extract_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "extract_A": "accepted",
+    "extract_B": "accepted",
+    "extract_C": "accepted",
+    "extract_D": "accepted"
+   },
+   "input_tokens": 2540,
+   "output_tokens": 171,
+   "tokens": 2711,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "stale",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "bounds_A",
+    "bounds_B",
+    "bounds_C",
+    "bounds_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "bounds_A": "accepted",
+    "bounds_B": "accepted",
+    "bounds_C": "accepted",
+    "bounds_D": "accepted"
+   },
+   "input_tokens": 2553,
+   "output_tokens": 101,
+   "tokens": 2654,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "stale",
+   "stage": 2,
+   "receipt": "1",
+   "members": [
+    "extract_A"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "extract_A": "accepted"
+   },
+   "input_tokens": 2360,
+   "output_tokens": 49,
+   "tokens": 2409,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "stale",
+   "stage": 3,
+   "receipt": "1",
+   "members": [
+    "bounds_A"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "bounds_A": "accepted"
+   },
+   "input_tokens": 2377,
+   "output_tokens": 34,
+   "tokens": 2411,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "stale",
+   "stage": 4,
+   "receipt": "1",
+   "members": [
+    "classify_A",
+    "classify_B",
+    "classify_C",
+    "classify_D"
+   ],
+   "attempt": 1,
+   "verdicts": {
+    "classify_A": "accepted",
+    "classify_B": "accepted",
+    "classify_C": "check_rejected",
+    "classify_D": "accepted"
+   },
+   "input_tokens": 2543,
+   "output_tokens": 61,
+   "tokens": 2604,
+   "thinking_tokens": 0
+  },
+  {
+   "scenario": "stale",
+   "stage": 4,
+   "receipt": "2",
+   "members": [
+    "classify_C"
+   ],
+   "attempt": 2,
+   "verdicts": {
+    "classify_C": "accepted"
+   },
+   "input_tokens": 2367,
+   "output_tokens": 85,
+   "tokens": 2452,
+   "thinking_tokens": 64
+  }
+ ],
+ "g3b": {
+  "label": "pass_g3b",
+  "gate": "G3b",
+  "pass": true,
+  "checks": {
+   "freeze": true,
+   "five_scenarios_pass_g3b": true,
+   "c5": true,
+   "within_allocation": true
+  }
+ },
+ "pass": true,
+ "finished_at": 1792719159.1284754
+}
