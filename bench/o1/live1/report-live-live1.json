@@ -1,0 +1,2243 @@
+{
+ "gate": "G3c-O1 live",
+ "kind": "live",
+ "prefix": "live1",
+ "freeze": {
+  "frozen": true,
+  "digest": "32333561a3472b1030d4222b2b19bcf5b0968451d9f0a4959a6f75b05dff309e",
+  "current_digest": "32333561a3472b1030d4222b2b19bcf5b0968451d9f0a4959a6f75b05dff309e",
+  "problems": []
+ },
+ "started_at": 1792748791.4463985,
+ "scenarios": {
+  "clean": {
+   "scenario": "clean",
+   "request_id": "live1-clean",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 2,
+   "packets": [
+    4,
+    4
+   ],
+   "expected": {
+    "expected_launches": 2,
+    "expected_packets": [
+     4,
+     4
+    ],
+    "expected_memo_hits": 0
+   },
+   "memo_hits": 0,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "miss"
+    ]
+   ],
+   "labels": [
+    "experimental",
+    "experimental"
+   ],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 15647,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 2,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": null,
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.0896
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.0735
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1658
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1549
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1824
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1862
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2188,
+         "max_wall_seconds": 0.2367
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.2374
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0469,
+        "max_wall_seconds": 0.0741
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.125,
+        "max_wall_seconds": 0.1568
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.1562,
+        "max_wall_seconds": 0.1831
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1875,
+        "max_wall_seconds": 0.2277
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "e64b4732704ad03caa9caccf801e22a1d916c8cb4f9ac37efe9908fa340458e4",
+     "adapter_B": "ff9cf09a8981baf2277c00848e8d2ef8b6d53bc4d959e79ead83601c45183055",
+     "adapter_C": "c4f92063782d8b18d11774c33951f1d0743ad2a86a311987e579779ea88269af",
+     "adapter_D": "568d77946ee62cc2bc27ccffc508bbdc830c127feb89456448e79ed09b4a9693",
+     "core_A": "a6afc5e3a2b784153ca82757b97ca93fa63a3442e3f8d9e07fd479f94c95b030",
+     "core_B": "808b39013196e45e737de6f7d2f721380b09c48582a3ab32a874879ab1c9941d",
+     "core_C": "dc0ad063d9242fe03d5df9dd10d5988cbbfe938c5bcabc5cbe5f9293368b1187",
+     "core_D": "969e707dc21111923e911fd783873f62c9b3e3399c02dda1617b65ac783e971d"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {
+     "core": {
+      "accepted": 4,
+      "total": 4
+     },
+     "adapter": {
+      "accepted": 4,
+      "total": 4
+     }
+    },
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_D",
+      "verdict": "accepted",
+      "h_pass": true
+     }
+    ],
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "core_A": "accepted",
+       "core_B": "accepted",
+       "core_C": "accepted",
+       "core_D": "accepted"
+      },
+      "input_tokens": 5311,
+      "output_tokens": 1801,
+      "tokens": 7112,
+      "thinking_tokens": 673,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted",
+       "adapter_B": "accepted",
+       "adapter_C": "accepted",
+       "adapter_D": "accepted"
+      },
+      "input_tokens": 6665,
+      "output_tokens": 1870,
+      "tokens": 8535,
+      "thinking_tokens": 904,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     }
+    ]
+   }
+  },
+  "repeat": {
+   "scenario": "repeat",
+   "request_id": "live1-repeat",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "packets": [],
+   "expected": {
+    "expected_launches": 0,
+    "expected_packets": [],
+    "expected_memo_hits": 8
+   },
+   "memo_hits": 8,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ]
+   ],
+   "labels": [],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": null,
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true
+    },
+    "errors": [],
+    "derived": [],
+    "actual": [],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.0896
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.0735
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1658
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1549
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1824
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1862
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2188,
+         "max_wall_seconds": 0.2367
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.2374
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0469,
+        "max_wall_seconds": 0.0741
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.125,
+        "max_wall_seconds": 0.1568
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.1562,
+        "max_wall_seconds": 0.1831
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1875,
+        "max_wall_seconds": 0.2277
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "e64b4732704ad03caa9caccf801e22a1d916c8cb4f9ac37efe9908fa340458e4",
+     "adapter_B": "ff9cf09a8981baf2277c00848e8d2ef8b6d53bc4d959e79ead83601c45183055",
+     "adapter_C": "c4f92063782d8b18d11774c33951f1d0743ad2a86a311987e579779ea88269af",
+     "adapter_D": "568d77946ee62cc2bc27ccffc508bbdc830c127feb89456448e79ed09b4a9693",
+     "core_A": "a6afc5e3a2b784153ca82757b97ca93fa63a3442e3f8d9e07fd479f94c95b030",
+     "core_B": "808b39013196e45e737de6f7d2f721380b09c48582a3ab32a874879ab1c9941d",
+     "core_C": "dc0ad063d9242fe03d5df9dd10d5988cbbfe938c5bcabc5cbe5f9293368b1187",
+     "core_D": "969e707dc21111923e911fd783873f62c9b3e3399c02dda1617b65ac783e971d"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {},
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [],
+    "calls": []
+   }
+  },
+  "interrupt": {
+   "scenario": "interrupt",
+   "request_id": "live1-interrupt",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 2,
+   "packets": [
+    4,
+    4
+   ],
+   "expected": {
+    "expected_launches": 2,
+    "expected_packets": [
+     4,
+     4
+    ],
+    "expected_memo_hits": 0
+   },
+   "memo_hits": 0,
+   "memo_trace": [
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "miss"
+    ]
+   ],
+   "labels": [
+    "unrecorded",
+    "experimental"
+   ],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 16048,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 2,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": {
+    "pass": true,
+    "checks": {
+     "kills_at_boundaries": true,
+     "first_capture_recovered_without_new_call": true,
+     "manifest_reconciled_on_resume": true,
+     "request_identity_and_deadline_kept": true
+    },
+    "exits": [
+     {
+      "faults": [
+       "worker.after_capture"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [
+       "flow.publish.after_manifest"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [],
+      "exit": 0,
+      "expected_exit": 0,
+      "stderr_tail": ""
+     }
+    ]
+   },
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true,
+     "interrupt_observables": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.1041
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.0858
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1546
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1648
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.1094,
+         "max_wall_seconds": 0.1667
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1824
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.2357
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1719,
+         "max_wall_seconds": 0.2261
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0469,
+        "max_wall_seconds": 0.0741
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.125,
+        "max_wall_seconds": 0.1604
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.125,
+        "max_wall_seconds": 0.1821
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1875,
+        "max_wall_seconds": 0.2349
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "e64b4732704ad03caa9caccf801e22a1d916c8cb4f9ac37efe9908fa340458e4",
+     "adapter_B": "956e5ea783ee1d2f4b69cd5c14f4dfba76c2391050ed069bf19d9b9b13a961f2",
+     "adapter_C": "6e3e7edbdcb010dd644fbae1f52734647389f7bf8f9be8c6c7e28fd87beededa",
+     "adapter_D": "6aba64bc3893a643c2c1e1f71b689eb68c5e6cd940284b89e55f3d30561f23a6",
+     "core_A": "87ba00f199f098f8dce707f314f2911cec24cd3518ad6869fdc167f2677e7f70",
+     "core_B": "4ae4dd26107bddde63f05200f37e8587ba4ffd25f0954217eb6fd5d258105ea4",
+     "core_C": "7ef2563d16bb8e4269648e4957cc76b6483e750f985aa0322f02b408daece0ca",
+     "core_D": "b35c7e39c967dd4d0aba0d12a127e897cff691e947441c3b850262e413e9183d"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {
+     "core": {
+      "accepted": 4,
+      "total": 4
+     },
+     "adapter": {
+      "accepted": 4,
+      "total": 4
+     }
+    },
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_D",
+      "verdict": "accepted",
+      "h_pass": true
+     }
+    ],
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      "attempt": 1,
+      "label": "unrecorded",
+      "verdicts": {
+       "core_A": "accepted",
+       "core_B": "accepted",
+       "core_C": "accepted",
+       "core_D": "accepted"
+      },
+      "input_tokens": 5311,
+      "output_tokens": 2258,
+      "tokens": 7569,
+      "thinking_tokens": 1172,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted",
+       "adapter_B": "accepted",
+       "adapter_C": "accepted",
+       "adapter_D": "accepted"
+      },
+      "input_tokens": 6619,
+      "output_tokens": 1860,
+      "tokens": 8479,
+      "thinking_tokens": 858,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     }
+    ]
+   }
+  },
+  "stale": {
+   "scenario": "stale",
+   "request_id": "live1-stale",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 4,
+   "packets": [
+    4,
+    4,
+    1,
+    1
+   ],
+   "expected": {
+    "expected_launches": 4,
+    "expected_packets": [
+     4,
+     4,
+     1,
+     1
+    ],
+    "expected_memo_hits": 6
+   },
+   "memo_hits": 6,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_A",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ]
+   ],
+   "labels": [
+    "experimental",
+    "experimental",
+    "experimental",
+    "experimental"
+   ],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 23718,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 4,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": {
+    "pass": true,
+    "checks": {
+     "no_old_A_after_mutation": true,
+     "old_verification_invalidated_and_not_delivered": true,
+     "bcd_reused_by_memo_on_identical_inputs": true,
+     "old_A_history_kept": true
+    },
+    "leaked_receipts": [],
+    "reused": {
+     "core_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "core_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "core_D": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "adapter_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "adapter_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "adapter_D": {
+      "decision": "hit",
+      "same_inputs": true
+     }
+    }
+   },
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true,
+     "stale_observables": true,
+     "stale_order_after_mutation": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "core_A"
+      ],
+      1
+     ],
+     [
+      3,
+      [
+       "adapter_A"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "core_A"
+      ],
+      1
+     ],
+     [
+      3,
+      [
+       "adapter_A"
+      ],
+      1
+     ]
+    ],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0625,
+         "max_wall_seconds": 0.0883
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0312,
+         "max_wall_seconds": 0.0763
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1554
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1527
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.1094,
+         "max_wall_seconds": 0.1667
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.1562,
+         "max_wall_seconds": 0.1875
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.2394
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1719,
+         "max_wall_seconds": 0.2297
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0156,
+        "max_wall_seconds": 0.0823
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1094,
+        "max_wall_seconds": 0.1633
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.1094,
+        "max_wall_seconds": 0.1858
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1875,
+        "max_wall_seconds": 0.2277
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "f8bca79ac5361d124558e2e2ad097ebd19e21bf58e57756a1220aa532d1f4e61",
+     "adapter_B": "7c4509af9063507ab327047a95bf5f4937951dfd12c4729cddf5a18b969c9231",
+     "adapter_C": "bd1adb67c7ca4604884a3eac16ab41c6803cbf9e412679a48e4e2c5d1010ee16",
+     "adapter_D": "568d77946ee62cc2bc27ccffc508bbdc830c127feb89456448e79ed09b4a9693",
+     "core_A": "0b9e6a3beb336f968506b2dba6d049baa645bb1275a9b5fbbae18e990970441f",
+     "core_B": "bd0e87ded581fada71fd691b2cc8df0611f113d894e3e2df9ea720e6cf73781a",
+     "core_C": "7ef2563d16bb8e4269648e4957cc76b6483e750f985aa0322f02b408daece0ca",
+     "core_D": "15e2052af2ea73b6db0fb3091fb3c56f93985c3b463920535b40cf7fb927c567"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {
+     "core": {
+      "accepted": 5,
+      "total": 5
+     },
+     "adapter": {
+      "accepted": 5,
+      "total": 5
+     }
+    },
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     }
+    ],
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "core_A": "accepted",
+       "core_B": "accepted",
+       "core_C": "accepted",
+       "core_D": "accepted"
+      },
+      "input_tokens": 5309,
+      "output_tokens": 2265,
+      "tokens": 7574,
+      "thinking_tokens": 1186,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted",
+       "adapter_B": "accepted",
+       "adapter_C": "accepted",
+       "adapter_D": "accepted"
+      },
+      "input_tokens": 6614,
+      "output_tokens": 1579,
+      "tokens": 8193,
+      "thinking_tokens": 584,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 2,
+      "receipt": "1",
+      "members": [
+       "core_A"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "core_A": "accepted"
+      },
+      "input_tokens": 3265,
+      "output_tokens": 773,
+      "tokens": 4038,
+      "thinking_tokens": 446,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     },
+     {
+      "stage": 3,
+      "receipt": "1",
+      "members": [
+       "adapter_A"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted"
+      },
+      "input_tokens": 3649,
+      "output_tokens": 264,
+      "tokens": 3913,
+      "thinking_tokens": 133,
+      "model": [
+       "claude-sonnet-5-5"
+      ]
+     }
+    ]
+   }
+  },
+  "bump": {
+   "scenario": "bump",
+   "request_id": "live1-bump",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "packets": [],
+   "expected": {
+    "expected_launches": 0,
+    "expected_packets": [],
+    "expected_memo_hits": 16
+   },
+   "memo_hits": 16,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ]
+   ],
+   "labels": [],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": null,
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true,
+     "memo_lookup_trace": true,
+     "acceptance_trace": true
+    },
+    "errors": [],
+    "derived": [],
+    "actual": [],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.0896
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0469,
+         "max_wall_seconds": 0.0735
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1658
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1549
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1824
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.125,
+         "max_wall_seconds": 0.1862
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2188,
+         "max_wall_seconds": 0.2367
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.2374
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0469,
+        "max_wall_seconds": 0.0741
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.125,
+        "max_wall_seconds": 0.1568
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.1562,
+        "max_wall_seconds": 0.1831
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1875,
+        "max_wall_seconds": 0.2277
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "e64b4732704ad03caa9caccf801e22a1d916c8cb4f9ac37efe9908fa340458e4",
+     "adapter_B": "ff9cf09a8981baf2277c00848e8d2ef8b6d53bc4d959e79ead83601c45183055",
+     "adapter_C": "c4f92063782d8b18d11774c33951f1d0743ad2a86a311987e579779ea88269af",
+     "adapter_D": "568d77946ee62cc2bc27ccffc508bbdc830c127feb89456448e79ed09b4a9693",
+     "core_A": "a6afc5e3a2b784153ca82757b97ca93fa63a3442e3f8d9e07fd479f94c95b030",
+     "core_B": "808b39013196e45e737de6f7d2f721380b09c48582a3ab32a874879ab1c9941d",
+     "core_C": "dc0ad063d9242fe03d5df9dd10d5988cbbfe938c5bcabc5cbe5f9293368b1187",
+     "core_D": "969e707dc21111923e911fd783873f62c9b3e3399c02dda1617b65ac783e971d"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {},
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [],
+    "calls": []
+   }
+  }
+ },
+ "cli_version": "2.1.306",
+ "totals": {
+  "launches": 8,
+  "tokens_known": 55413,
+  "calls_without_usage": 0,
+  "caps": {
+   "max_tokens": 150000,
+   "max_launches": 18,
+   "max_launches_per_flow": 8,
+   "reserve_per_launch": 17358,
+   "reserve_rule": "measured at G2 (o1.py measure, o200k_base): the largest frozen packet is the size-4 adapter packet; with each accepted core at the 4,096-byte source limit it is 7,358 input tokens (3,402 with the fixture cores); reserve = 7,358 + 2,000 overhead + 8,000 output headroom = 17,358, applied to every launch; a call with unknown usage is charged at it",
+   "expected_failure_free_tokens": {
+    "T=0": 40860,
+    "T=2000": 56860,
+    "T=5000": 80860,
+    "note": "eight launches (clean 2, interrupt 2, stale 4); per call measured input + 2,000 overhead + fixture-sized output + T hidden reasoning; estimates, not predictions"
+   }
+  },
+  "elapsed_seconds": 190.3,
+  "accounting": "complete",
+  "suite_over_envelope": false
+ },
+ "thinking_tokens_per_call": [
+  {
+   "scenario": "clean",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "core_A",
+    "core_B",
+    "core_C",
+    "core_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "core_A": "accepted",
+    "core_B": "accepted",
+    "core_C": "accepted",
+    "core_D": "accepted"
+   },
+   "input_tokens": 5311,
+   "output_tokens": 1801,
+   "tokens": 7112,
+   "thinking_tokens": 673
+  },
+  {
+   "scenario": "clean",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "adapter_A",
+    "adapter_B",
+    "adapter_C",
+    "adapter_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted",
+    "adapter_B": "accepted",
+    "adapter_C": "accepted",
+    "adapter_D": "accepted"
+   },
+   "input_tokens": 6665,
+   "output_tokens": 1870,
+   "tokens": 8535,
+   "thinking_tokens": 904
+  },
+  {
+   "scenario": "interrupt",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "core_A",
+    "core_B",
+    "core_C",
+    "core_D"
+   ],
+   "attempt": 1,
+   "label": "unrecorded",
+   "verdicts": {
+    "core_A": "accepted",
+    "core_B": "accepted",
+    "core_C": "accepted",
+    "core_D": "accepted"
+   },
+   "input_tokens": 5311,
+   "output_tokens": 2258,
+   "tokens": 7569,
+   "thinking_tokens": 1172
+  },
+  {
+   "scenario": "interrupt",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "adapter_A",
+    "adapter_B",
+    "adapter_C",
+    "adapter_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted",
+    "adapter_B": "accepted",
+    "adapter_C": "accepted",
+    "adapter_D": "accepted"
+   },
+   "input_tokens": 6619,
+   "output_tokens": 1860,
+   "tokens": 8479,
+   "thinking_tokens": 858
+  },
+  {
+   "scenario": "stale",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "core_A",
+    "core_B",
+    "core_C",
+    "core_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "core_A": "accepted",
+    "core_B": "accepted",
+    "core_C": "accepted",
+    "core_D": "accepted"
+   },
+   "input_tokens": 5309,
+   "output_tokens": 2265,
+   "tokens": 7574,
+   "thinking_tokens": 1186
+  },
+  {
+   "scenario": "stale",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "adapter_A",
+    "adapter_B",
+    "adapter_C",
+    "adapter_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted",
+    "adapter_B": "accepted",
+    "adapter_C": "accepted",
+    "adapter_D": "accepted"
+   },
+   "input_tokens": 6614,
+   "output_tokens": 1579,
+   "tokens": 8193,
+   "thinking_tokens": 584
+  },
+  {
+   "scenario": "stale",
+   "stage": 2,
+   "receipt": "1",
+   "members": [
+    "core_A"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "core_A": "accepted"
+   },
+   "input_tokens": 3265,
+   "output_tokens": 773,
+   "tokens": 4038,
+   "thinking_tokens": 446
+  },
+  {
+   "scenario": "stale",
+   "stage": 3,
+   "receipt": "1",
+   "members": [
+    "adapter_A"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted"
+   },
+   "input_tokens": 3649,
+   "output_tokens": 264,
+   "tokens": 3913,
+   "thinking_tokens": 133
+  }
+ ],
+ "g3c": {
+  "label": "pass_g3c",
+  "gate": "G3c-O1",
+  "pass": true,
+  "checks": {
+   "freeze": true,
+   "five_scenarios_pass_g3c": true,
+   "within_allocation": true
+  }
+ },
+ "pass": true,
+ "finished_at": 1792748981.7068236
+}
