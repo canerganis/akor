@@ -287,6 +287,18 @@ class FacadeTests(Base):
         self.assertGreater(done['flow']['deadline_remaining_seconds'], 3000)
         self.assertEqual(done['accounting']['unreconciled_dispatches'], 0)
 
+    def test_status_deadline_remaining_uses_the_injected_clock(self):
+        oz_manual.install(self.req, self.settings)
+        deadline = oz_manual.status('h1', self.settings)['flow']['deadline_at']
+        for offset in (100.0, 0.0, -5.5):
+            seen = oz_manual.status('h1', self.settings, clock=lambda: deadline - offset)
+            self.assertEqual(seen['flow']['deadline_remaining_seconds'], offset)
+
+    def test_facade_does_not_import_the_private_oz_do_accounting(self):
+        source = (Path(oz_manual.__file__)).read_text(encoding='utf-8')
+        self.assertNotIn('oz_do', source.replace('oz_do.py', ''))
+        self.assertFalse(hasattr(oz_manual, '_accounting') and oz_manual._accounting.__module__ == 'oz_do')
+
     def test_status_never_extends_the_deadline_or_repairs_anything(self):
         killed = helper(self.ws, self.src, 'run', faults='flow.publish.after_manifest')
         self.assertEqual(killed.returncode, KILL)

@@ -39,9 +39,8 @@ import sys
 import time
 
 from oz import Error
-from oz_do import _accounting
 from oz_flow import Flow, REQUEST_ID, admit, flow_dir, run_flow
-from oz_reply import loads
+from oz_reply import USAGE_FIELDS, loads
 
 try:  # exclusive file locks: POSIX flock, Windows byte-range locking
     import fcntl
@@ -221,6 +220,52 @@ def _stage_launches(run: Path) -> list:
     return rows
 
 
+def _accounting(run: Path, journal=()) -> dict:
+    """The request accounting for one run directory, recomputed here from the same two files (calls.jsonl and
+    do.jsonl) plus the dispatch journal. Files are only read; the parity test pins it to oz_flow.flow_usage."""
+    starts, ends = {}, {}
+    ledger = run / 'calls.jsonl'
+    for line in (ledger.read_text(encoding='utf-8').splitlines() if ledger.exists() else ()):
+        try:
+            record = json.loads(line)
+        except ValueError:
+            continue
+        (starts if record.get('event') == 'call_start' else ends)[record.get('call_id')] = record
+    profiles = {}
+    log = run / 'do.jsonl'
+    for line in (log.read_text(encoding='utf-8').splitlines() if log.exists() else ()):
+        try:
+            record = json.loads(line)
+            profiles[record['call_id']] = record['profile']
+        except (ValueError, KeyError, TypeError):
+            continue
+    calls = list(dict.fromkeys([*starts, *ends, *(d['call_id'] for d in journal if d['call_id'])]))
+    raw = {c: ends[c]['usage']['raw'] for c in calls if c in ends
+           and isinstance((ends[c].get('usage') or {}).get('raw'), dict)}
+    for d in journal:
+        usage = (d['response'] or {}).get('usage') if isinstance(d['response'], dict) else None
+        if d['call_id'] and d['call_id'] not in raw and d['state'] == 'captured' and isinstance(usage, dict):
+            raw[d['call_id']] = usage
+    with_usage = [c for c in calls if c in raw and {'input_tokens', 'output_tokens'} <= set(raw[c])]
+    tokens = {k: sum(raw[c].get(k, 0) for c in with_usage) for k in USAGE_FIELDS}
+    coverage = 'complete' if len(with_usage) == len(calls) else 'none' if not with_usage else 'partial'
+    count = lambda name: sum(1 for c in calls if profiles.get(c, 'unrecorded') == name)
+    extra = {}
+    if journal:
+        states = {}
+        for d in journal:
+            states[d['state']] = states.get(d['state'], 0) + 1
+        extra = {'dispatches': states, 'unreconciled_dispatches': states.get('uncertain', 0) + states.get('intent', 0)
+                 + states.get('launched', 0)}
+    return dict({'calls': len(calls),
+            'failed_calls': sum(1 for c in calls if c not in ends or ends[c].get('outcome') not in ('ok', 'job_error')),
+            'unfinished_calls': sum(1 for c in calls if c not in ends),
+            'experimental_calls': count('experimental'), 'qualified_cell_calls': count('qualified_cell'),
+            'usage_coverage': coverage, 'calls_with_usage': len(with_usage),
+            'tokens': tokens, 'tokens_scope': 'all calls' if coverage == 'complete' else 'calls with reported usage only'},
+                **extra)
+
+
 def _usage_of(workspace, runs) -> dict:
     launches, tokens, unknown, unreconciled, calls = 0, 0, 0, 0, []
     for rel in sorted(runs):
@@ -335,10 +380,10 @@ def _blocker(events: list):
     return None
 
 
-def status(request_id: str, settings) -> dict:
+def status(request_id: str, settings, clock=time.time) -> dict:
     """The persisted state of one flow, read-only: current targets, the latest invocation's blocker, source
     revisions, node generations, launches and accounting coverage. Never launches, repairs, extends a deadline or
-    creates a flow."""
+    creates a flow. The remaining deadline is read from clock, the flow's own injectable clock (time.time by default)."""
     _announce()
     path = _flow_file(settings, request_id)
 
@@ -364,7 +409,7 @@ def status(request_id: str, settings) -> dict:
                            'unreconciled_dispatches': usage['unreconciled_dispatches']},
             'flow': {'request_id': request_id, 'request_sha256': info['request_sha256'],
                      'created_at': info['created_at'], 'deadline_at': info['deadline_at'],
-                     'deadline_remaining_seconds': round(info['deadline_at'] - time.time(), 3),
+                     'deadline_remaining_seconds': round(info['deadline_at'] - clock(), 3),
                      'generations': {d['id']: d['generation'] for d in seen['descriptors']},
                      'revisions': seen['revisions'],
                      'nodes': {'total': len(seen['descriptors']), 'current': len(seen['current'])}}}
