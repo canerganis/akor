@@ -433,6 +433,60 @@ class ScenarioTests(unittest.TestCase):
         self.assertTrue(any('byte for byte' in e for e in verdict['package']['errors']))
 
 
+class ResumeTests(unittest.TestCase):
+    """The G2 finding of 2026-10-23 through the real executor and the gate: rejections inside a killed captured call,
+    a failure record inside it, and a re-invoked flow after exhaustion (fixture adapter, nothing paid)."""
+
+    CASES = {
+        'iwr': ('interrupt', {'wrong_first': ['core_B', 'core_C']}, ['interrupt']),
+        'iwire': ('interrupt', {'wire_reject_first': ['core_C']}, ['interrupt']),
+        'ierr': ('interrupt', {'model_error': ['core_C']}, ['interrupt']),
+        'again': ('clean', {'wrong_always': ['adapter_B']}, ['clean', 'clean']),
+    }
+
+    @classmethod
+    def setUpClass(cls):
+        cls.base = Path(tempfile.mkdtemp(prefix='o1r-'))
+        cls.rows = {}
+        with D.fixture_env():
+            for name, (scenario, mode, runs) in cls.CASES.items():
+                cls.rows[name] = D.case_run(cls.base, name, mode, runs)[1][scenario]
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.base, ignore_errors=True)
+
+    def failed(self, row):
+        return sorted(k for k, v in row['gate']['checks'].items() if not v)
+
+    def test_rejected_members_of_a_killed_call_go_back_once_at_attempt_two(self):
+        row = self.rows['iwr']
+        self.assertEqual(row['packets'], [4, 1, 1, 4])
+        self.assertTrue(row[GT.LABEL], self.failed(row))
+        self.assertEqual([e['exit'] for e in row['observables']['exits']], [86, 86, 0])
+
+    def test_a_wire_invalid_killed_call_is_resent_whole(self):
+        row = self.rows['iwire']
+        self.assertEqual(row['packets'], [4, 4, 4])
+        self.assertTrue(row[GT.LABEL], self.failed(row))
+
+    def test_a_failure_record_inside_a_killed_call_is_terminal(self):
+        row = self.rows['ierr']
+        self.assertEqual(row['packets'], [4])
+        self.assertFalse(row[GT.LABEL])
+        checks = row['gate']['checks']
+        self.assertTrue(checks['exact_trace'] and checks['recovery_eligibility'] and checks['independent_verdicts'],
+                        self.failed(row))
+
+    def test_a_reinvoked_flow_never_sends_an_exhausted_adapter_a_third_time(self):
+        row = self.rows['again']
+        self.assertEqual(row['packets'], [4, 4, 1])
+        self.assertFalse(row[GT.LABEL])
+        checks = row['gate']['checks']
+        self.assertTrue(checks['exact_trace'] and checks['recovery_eligibility'] and checks['independent_verdicts'],
+                        self.failed(row))
+
+
 class LiveGuardTests(unittest.TestCase):
     def test_live_needs_the_confirmation_variable(self):
         with patch.dict(os.environ, {}, clear=False):

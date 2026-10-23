@@ -402,6 +402,165 @@ class LateReplyTests(Base):
         self.assertEqual((self.events('a', 'adopted'), len(fake.calls)), (1, 1))
 
 
+class ResumeInsideTheLeaseTests(Base):
+    """A newer coordinator (every oz do call takes a new epoch) settles the completed capture of a call whose
+    coordinator died, while that call's lease is still running: the O1 G2 finding of 2026-10-23. The captured reply is
+    the outcome of the job's current attempt, so every decision takes its in-lease effect; the originating epoch stays
+    provenance. The clock never passes the lease here, unlike the late-reply tests above."""
+
+    crash_once = LateReplyTests.crash_once
+
+    def resume(self, response, *, registry=None, **post):
+        first = self.crash_once(**({'registry': registry} if registry else {}))
+        self.box.dispatch_captured(first, response=response)
+        fake = Fake()
+        coordinator = self.worker(fake, epoch=self.box.take_over(), **({'registry': registry} if registry else {}))
+        summary = coordinator.recover()
+        self.assertEqual(summary['settled'], [first])
+        self.assertEqual(fake.calls, [])  # recovery itself never calls the model
+        return first, coordinator, fake
+
+    def attempts(self, mid):
+        return self.box.records([mid])[mid]['attempts']
+
+    def members(self, receipt):
+        return [(m['id'], m['attempt']) for m in self.box.dispatch(receipt)['members']]
+
+    def test_a_rejected_member_goes_back_to_pending_at_attempt_two_and_its_sibling_is_adopted(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        self.post('b', '=2', [{'check': 'expect', 'value': '12.47 mm'}])
+        first, coordinator, fake = self.resume(reply_for(['a', 'b'], dict(RIGHT, b='12.40 mm')))
+        self.assertEqual((self.state('a'), self.state('b')), ('done', 'pending'))
+        self.assertEqual((self.attempts('a'), self.attempts('b')), (1, 1))
+        self.assertEqual((self.events('a', 'adopted'), self.events('b', 'candidate_rejected')), (1, 1))
+        # Recovering again changes nothing and spends nothing.
+        self.assertEqual(coordinator.recover(), {'captured': [], 'uncertain': [], 'settled': [], 'rechecked': []})
+        self.assertEqual(coordinator.run_once()['outcomes'], {'b': 'ok'})
+        self.assertEqual(fake.calls, [['b']])
+        self.assertEqual(self.members(self.box.dispatches()[-1]['receipt']), [('b', 2)])
+        self.assertEqual((self.state('b'), self.attempts('b')), ('done', 2))
+        self.assertEqual([c['status'] for c in self.box.candidates(job='a')], ['accepted'])
+
+    def test_a_member_rejected_again_at_attempt_two_is_exhausted_and_never_sent_a_third_time(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        self.post('b', '=2', [{'check': 'expect', 'value': '12.47 mm'}])
+        _, coordinator, fake = self.resume(reply_for(['a', 'b'], dict(RIGHT, b='12.40 mm')))
+        fake.values['b'] = '12.40 mm'
+        coordinator.run_once()
+        row = self.box.db.execute("SELECT state,failure_kind,attempts FROM jobs WHERE id='b'").fetchone()
+        self.assertEqual(tuple(row), ('failed', 'exhausted', 2))
+        self.now[0] += 1000
+        self.assertEqual(coordinator.run_once()['status'], 'idle')
+        self.assertEqual(fake.calls, [['b']])
+
+    def test_a_wire_invalid_capture_returns_every_member_and_they_are_resent_together(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        self.post('b', '=2', [{'check': 'quoted_span'}])
+        bad = reply_for(['a', 'b'], RIGHT)
+        bad['reply'] = bad['reply'][:-3]
+        _, coordinator, fake = self.resume(bad)
+        self.assertEqual((self.state('a'), self.state('b'), self.box.candidates()), ('pending', 'pending', []))
+        self.assertEqual(coordinator.run_once()['outcomes'], {'a': 'ok', 'b': 'ok'})
+        self.assertEqual(fake.calls, [['a', 'b']])
+        self.assertEqual(self.members(self.box.dispatches()[-1]['receipt']), [('a', 2), ('b', 2)])
+
+    def test_a_valid_failure_record_is_terminal_and_never_resent(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        self.post('b', '=2', [{'check': 'quoted_span'}])
+        _, coordinator, fake = self.resume(reply_for(['a', 'b'], dict(RIGHT, b=Failure('missing_data', 'no length'))))
+        row = self.box.db.execute("SELECT state,failure_kind,error FROM jobs WHERE id='b'").fetchone()
+        self.assertEqual(tuple(row), ('failed', 'model_failure', 'missing_data: no length'))
+        self.assertEqual(self.state('a'), 'done')
+        self.now[0] += 1000  # even after the old lease would have expired
+        self.assertEqual(coordinator.run_once()['status'], 'idle')
+        self.assertEqual(fake.calls, [])
+
+    def test_a_verifier_outage_holds_the_candidate_and_spends_no_attempt(self):
+        down = ['down']
+
+        def run(value, spec, inputs):
+            if down[0] == 'down':
+                raise Unavailable('lab database offline')
+            return value == spec['expected']
+        registry = dict(REGISTRY, flaky=Check('flaky', 1, True, lambda spec: None, run))
+        self.post('a', '=1', [{'check': 'flaky', 'expected': '12.50 mm'}], registry=registry)
+        _, coordinator, fake = self.resume(reply_for(['a'], RIGHT), registry=registry)
+        self.assertEqual(self.state('a'), 'checking')
+        self.now[0] += 1000
+        self.assertEqual(coordinator.run_once()['status'], 'idle')
+        down[0] = 'up'
+        coordinator.recover()
+        self.assertEqual((self.state('a'), self.attempts('a'), fake.calls), ('done', 1, []))
+        self.assertEqual(self.events('a', 'released'), 1)
+
+    def test_a_quarantined_member_with_allowance_left_is_redispatched_without_caller_action(self):
+        self.post('a', '=1', [{'check': 'expect', 'value': '12.50 mm'}])
+        self.post('b', '=2', [{'check': 'expect', 'value': '12.47 mm'}])
+        self.post('c', '=3', [{'check': 'json_type', 'types': ['string']}])
+        _, coordinator, fake = self.resume(reply_for(['a', 'b', 'c'], dict(RIGHT, b='9.00 mm')))
+        self.assertEqual([self.state(m) for m in 'abc'], ['done', 'pending', 'pending'])
+        self.assertEqual(self.box.candidates(job='c')[0]['status'], 'quarantined')
+        self.assertEqual(coordinator.run_once()['outcomes'], {'b': 'ok', 'c': 'ok'})
+        self.assertEqual(fake.calls, [['b', 'c']])
+
+    def test_a_crash_between_capture_and_settlement_resumes_inside_the_lease(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        self.post('b', '=2', [{'check': 'expect', 'value': 'nope'}])
+        fake = Fake()
+        with patch.object(self.box, 'settle_dispatch', side_effect=Crash()), self.assertRaises(Crash):
+            self.worker(fake).run_once()
+        coordinator = self.worker(Fake(), epoch=self.box.take_over())
+        self.assertEqual(len(coordinator.recover()['settled']), 1)
+        self.assertEqual((self.state('a'), self.state('b'), self.attempts('b')), ('done', 'pending', 1))
+
+    def test_the_fenced_original_worker_cannot_settle_and_the_coordinator_recovers_its_rejection(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        self.post('b', '=2', [{'check': 'expect', 'value': '12.47 mm'}])
+        old = Fake(dict(RIGHT, b='12.40 mm'), hook=lambda request: self.box.take_over())
+        old_worker = self.worker(old)
+        self.assertEqual(old_worker.run_once()['settlement'], 'fenced')
+        self.assertEqual(self.state('b'), 'leased')
+        coordinator = self.worker(Fake())
+        coordinator.recover()
+        self.assertEqual((self.state('a'), self.state('b')), ('done', 'pending'))
+        self.assertEqual(old_worker.run_once()['status'], 'fenced')
+        self.assertEqual(coordinator.run_once()['outcomes'], {'b': 'ok'})
+
+    def test_a_capture_never_releases_a_newer_attempt(self):
+        self.post('a', '=1', [{'check': 'expect', 'value': '12.50 mm'}])
+        first = self.crash_once()
+        self.now[0] += 1000
+        second = self.crash_once()
+        self.box.dispatch_captured(first, response=reply_for(['a'], {'a': '9.00 mm'}))
+        self.worker(Fake(), epoch=self.box.take_over()).recover()
+        row = self.box.db.execute("SELECT state,lease,attempts FROM jobs WHERE id='a'").fetchone()
+        self.assertEqual((row['state'], row['lease'], row['attempts']),
+                         ('leased', self.box.dispatch(second)['lease'], 2))
+        self.assertEqual(self.box.candidates(job='a')[0]['status'], 'rejected')
+
+    def test_a_cancelled_member_is_not_revived_by_its_captured_rejection(self):
+        self.post('a', '=1', [{'check': 'quoted_span'}])
+        self.post('b', '=2', [{'check': 'expect', 'value': '12.47 mm'}])
+        first = self.crash_once()
+        self.box.cancel('b', 'caller withdrew it')
+        self.box.dispatch_captured(first, response=reply_for(['a', 'b'], dict(RIGHT, b='12.40 mm')))
+        self.worker(Fake(), epoch=self.box.take_over()).recover()
+        row = self.box.db.execute("SELECT state,failure_kind FROM jobs WHERE id='b'").fetchone()
+        self.assertEqual(tuple(row), ('failed', 'cancelled'))
+        self.assertEqual(self.box.candidates(job='b')[0]['status'], 'superseded')
+        self.assertEqual(self.state('a'), 'done')
+
+    def test_a_header_member_of_a_mixed_packet_keeps_the_shipped_rule(self):
+        self.post('a', '=1', profile='oz1g-header')
+        self.post('b', '=2', [{'check': 'quoted_span'}])
+        first = self.crash_once()
+        self.assertEqual(self.members(first), [('a', 1), ('b', 1)])
+        self.box.dispatch_captured(first, response=reply_for(['a', 'b'], RIGHT))
+        self.worker(Fake(), epoch=self.box.take_over()).recover()
+        self.assertEqual((self.state('a'), self.state('b')), ('leased', 'done'))
+        self.assertEqual(self.events('a', 'late_reply_ignored'), 1)
+
+
 class IdentityTests(Base):
     def key(self, ch, rows, mid, route=None):
         packet = render(ch, rows, counters=[len])

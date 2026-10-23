@@ -800,10 +800,15 @@ class Inbox:
         (text, value, verdicts, inputs, reason, suspect; seq for a stored candidate when recheck is true).
 
         Nothing commits unless epoch is the current coordinator epoch. A job whose lease is still this dispatch's
-        (same epoch, unexpired) follows the in-lease rules; any other job follows the adoption rules: a success commits
-        only into a live unresolved job of the same generation and computation, an accepted result is never
+        (unexpired) is in the attempt this dispatch made: its selective decisions take their in-lease effect whichever
+        epoch opened the dispatch, so a coordinator that settles the completed capture of a dead coordinator's call
+        returns a rejected member to bounded recovery at once, records a failure record as terminal and holds an
+        awaiting candidate, instead of leaving the lease to run out (the originating epoch stays provenance; header
+        members keep the shipped rule, which needs the same epoch). Any other job follows the adoption rules: a success
+        commits only into a live unresolved job of the same generation and computation, an accepted result is never
         overwritten, a cancelled or model-failed job is never revived, and a late failure decides a job only when no
-        execution is in progress and no attempt remains. Settling a dispatch twice changes nothing."""
+        execution is in progress and no attempt remains. A capture never releases a newer attempt's lease. Settling a
+        dispatch twice changes nothing."""
         if type(retry_delay) not in {int, float} or not 0 <= retry_delay <= 86400:
             raise Error('invalid retry delay')
         report_text = _dump(report or {})
@@ -825,9 +830,12 @@ class Inbox:
                 if decision is None:
                     continue
                 row = self.db.execute('SELECT * FROM jobs WHERE id=?', (member['id'],)).fetchone()
-                inlease = (not recheck and row['state'] == 'leased' and row['lease'] == d['lease']
-                           and row['deadline'] > now and d['epoch'] == epoch)
-                jobs[member['id']] = self._apply(row, member, decision, inlease=inlease, recheck=recheck,
+                # owned: the job's current attempt is this dispatch's (its lease, unexpired); inlease: and the epoch
+                # that opened it is still the current one.
+                owned = (not recheck and row['state'] == 'leased' and row['lease'] == d['lease']
+                         and row['deadline'] > now)
+                inlease = owned and d['epoch'] == epoch
+                jobs[member['id']] = self._apply(row, member, decision, inlease=inlease, owned=owned, recheck=recheck,
                                                  receipt=receipt, retry_delay=retry_delay, now=now)
             if not recheck:
                 self.db.execute('UPDATE dispatches SET settled_at=?,outcome=? WHERE receipt=?',
@@ -836,8 +844,10 @@ class Inbox:
                                 (d['binding'], now, _dump([m['id'] for m in d['members']]), report_text))
         return {'status': 'settled', 'jobs': jobs}
 
-    def _apply(self, row, member, decision, *, inlease, recheck, receipt, retry_delay, now) -> str:
+    def _apply(self, row, member, decision, *, inlease, recheck, receipt, retry_delay, now, owned=False) -> str:
         mid, kind = row['id'], decision['kind']
+        # The outcome of the job's current attempt (settle_dispatch); a header member keeps the shipped in-lease rule.
+        attempt = inlease or (owned and kind != 'header')
 
         def update(**fields):
             self.db.execute('UPDATE jobs SET ' + ','.join(f'{k}=?' for k in fields) + ' WHERE id=?',
@@ -874,14 +884,14 @@ class Inbox:
             self._event(mid, state, outcome=status, receipt=receipt)
             return state
         if kind == 'retry':
-            if inlease:
+            if attempt:
                 state = recover(decision['reason'])
                 self._event(mid, state, outcome='retry', receipt=receipt)
                 return state
             self._event(mid, 'late_reply_ignored', receipt=receipt)
             return 'stale'
         if kind == 'failure':
-            if inlease:
+            if attempt:
                 update(state='failed', error=decision['text'], available_at=0, failure_kind='model_failure', **free)
                 self._event(mid, 'failed', outcome='failed', receipt=receipt)
                 return 'failed'
@@ -902,7 +912,7 @@ class Inbox:
             return 'stale'
         status, key, state = {'accept': 'accepted', 'reject': 'rejected', 'await': 'awaiting',
                               'quarantine': 'quarantined'}[kind], None, row['state']
-        current = inlease or (recheck and row['state'] == 'checking' and self.db.execute(
+        current = attempt or (recheck and row['state'] == 'checking' and self.db.execute(
             "SELECT 1 FROM candidates WHERE job=? AND status='awaiting' AND seq!=?", (mid, seq)).fetchone() is None)
         if not (live and same):
             status, state = 'superseded', 'stale'
@@ -919,7 +929,7 @@ class Inbox:
             if current:
                 state = recover('candidate rejected: ' + reason)
         elif kind == 'await':
-            if inlease or row['state'] in ('pending', 'quarantined', 'failed'):
+            if attempt or row['state'] in ('pending', 'quarantined', 'failed'):
                 # A verifier outage holds the candidate; it never spends another model attempt.
                 update(state='checking', error=reason, available_at=0, failure_kind=None, **free)
                 state = 'checking'

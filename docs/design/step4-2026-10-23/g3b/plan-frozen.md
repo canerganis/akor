@@ -187,3 +187,13 @@ replay of live1 still returns matching traces and the same verdicts for all five
 verdict). The new predicate run read-only on the retained live2 evidence (`step4.py replay-live2`) and, with its preserved
 captures re-parsed, on a copy of the live2 workspace gives no finding in the trace audit for any scenario; labeled not a
 verdict, since the live2 verdict was established under the old predicate plus the recheck.
+
+
+## Addendum 2026-10-23: executor fix after the O1 G2 resume finding (new freeze digest `040cfd4198d31eb2fb281fc1169f4fd6dc567112d16a224a757486838cad3eb3`, short 040cfd41)
+
+The O1 dry gate found two executor defects on the resume path (record: `docs/design/o1-real-workflow-2026-10-23/plan-frozen.md`, section on the resume finding). Astra and Opus decided independently to fix the executor and to change no rule. `oz_runtime.py` and `oz_flow.py` changed, so `freeze-g3b.json` is rewritten at the digest above (the d89ac55c record is kept in git). The workload bytes, the predicate, the evaluator, the caps and every expectation are unchanged.
+
+1. A coordinator that settles the completed capture of a call opened under an older epoch, while the call's lease is still the job's current lease and unexpired, applies the in-lease effect: a rejected or quarantined member returns to bounded recovery at attempt 2, a wire-invalid reply returns every member, a valid failure record is terminal, an awaiting candidate holds. Accepts are adopted as before; a capture never releases a newer attempt's lease; header members keep the shipped rule.
+2. A logical job (flow, node, generation) keeps the stage request it was first submitted in. A resumed or re-invoked flow resubmits that request with its original membership, so attempts, terminal failures and awaiting candidates are never reset. Changed inputs under the same generation open an explicit new generation (event `regenerated`, reason `inputs_changed`); a model commit refused twice with the same value blocks with `commit_refused`.
+
+Re-run at this digest, zero tokens: the full unit suite, then `step4.py dry` (`"pass": true`; clean 3, repeat 0, interrupt 3, stale 5, bump 0 launches, 11 in total as before; recovery fixtures 11 of 11, executor sabotage 6 of 6, G3b sabotage 21 of 21, C5 4 of 4), and `replay-live1` and `replay-live2` (all traces match, all independent verdicts agree). The G3b dry traces did not change. The live2 verdict stays as recorded for its freeze. Astra requires a newly preregistered full G3b live suite on the patched executor before any claim of patched-executor conformance; Opus agrees. That run is not made here.

@@ -188,6 +188,12 @@ RECOVERY_CASES = (
     ('verifier_outage_holds', 'clean', {}, False, [4, 4]),
     ('model_failure_record_is_terminal', 'clean', {'model_error': ['core_C']}, False, [4]),
     ('wrong_revision_rejected', 'stale', {'rev1_core_for_rev2': True}, False, [4, 4, 1, 1]),
+    # Added after the 2026-10-23 resume finding (strengthening only): a wire-invalid reply and a failure record inside
+    # the killed call, and a flow invoked a second time after an exhausted job (the optional sixth field is the
+    # number of invocations of the scenario on one workspace).
+    ('interrupt_wire_rejected', 'interrupt', {'wire_reject_first': ['core_C']}, True, [4, 4, 4]),
+    ('interrupt_model_failure', 'interrupt', {'model_error': ['core_C']}, False, [4]),
+    ('second_attempt_fails_then_reinvoked', 'clean', {'wrong_always': ['adapter_B']}, False, [4, 4, 1], 2),
 )
 
 
@@ -206,8 +212,8 @@ def outage_checks():
 def recovery_fixtures(base: Path) -> tuple:
     report, runs = {}, {}
     with fixture_env():
-        for name, scenario, mode, expect, packets in RECOVERY_CASES:
-            ws, outs = case_run(base, name, mode, [scenario],
+        for name, scenario, mode, expect, packets, *invocations in RECOVERY_CASES:
+            ws, outs = case_run(base, name, mode, [scenario] * (invocations[0] if invocations else 1),
                                 checks=outage_checks() if name == 'verifier_outage_holds' else None)
             out = outs[scenario]
             gate = out['gate']

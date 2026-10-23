@@ -326,6 +326,160 @@ class PublishRaceTests(FlowFixture):
         self.assertEqual(result['blocker']['reason'], 'effect_blocked')
 
 
+class Kill(BaseException):
+    """In-process stand-in for a hard stop of the coordinator at a fault boundary (nothing settles after it)."""
+
+
+class StageIdentityTests(FlowFixture):
+    """One stage request per logical job generation (foundation clauses 1 to 3; the O1 G2 finding of 2026-10-23): a
+    resumed or re-invoked flow resubmits the stage its pending jobs were first submitted in, so their attempt
+    allowance, terminal failures and awaiting candidates are never reset by a new stage request."""
+
+    def stage_runs(self, rid, op):
+        return sorted(p.name for p in (self.ws / 'do').glob(f'{rid}-{op}-*'))
+
+    def dispatched(self, rid, op):
+        out = []
+        for name in self.stage_runs(rid, op):
+            box = Inbox(self.ws / 'do' / name / 'inbox.sqlite')
+            try:
+                out += [[(m['id'], m['attempt']) for m in d['members']] for d in box.dispatches()]
+            finally:
+                box.close()
+        return out
+
+    def kill_after_first_capture(self):
+        fired = []
+
+        def hook(_name):
+            if not fired:
+                fired.append(1)
+                raise Kill()
+        self.addCleanup(oz_fault.on('worker.after_capture', hook))
+
+    def all_four(self, op, attempt):
+        return [(f'{op}_{n}', attempt) for n in 'ABCD']
+
+    def test_a_killed_call_with_rejected_members_resumes_them_at_attempt_two_in_the_same_stage(self):
+        self.mode(wrong_first=['extract_B', 'extract_C'])
+        self.kill_after_first_capture()
+        with self.assertRaises(Kill):
+            self.run_named('r1')
+        result = self.run_named('r1')
+        self.assertEqual(result['status'], 'delivered', result['blocker'])
+        self.assertEqual(len(self.stage_runs('r1', 'extract')), 1)
+        self.assertEqual(self.dispatched('r1', 'extract'),
+                         [self.all_four('extract', 1), [('extract_B', 2)], [('extract_C', 2)]])
+        self.assertEqual((result['launches'], S.fixture_invocations(self.ws, 'r1')), (5, 5))
+        self.assertTrue(S.ledger_audit(self.ws, 'r1')['ok'])
+
+    def test_a_killed_wire_invalid_call_is_resent_whole_at_attempt_two(self):
+        self.mode(wire_reject_first=['extract_C'])
+        self.kill_after_first_capture()
+        with self.assertRaises(Kill):
+            self.run_named('r2')
+        result = self.run_named('r2')
+        self.assertEqual(result['status'], 'delivered', result['blocker'])
+        self.assertEqual(self.dispatched('r2', 'extract'), [self.all_four('extract', 1), self.all_four('extract', 2)])
+        self.assertEqual((result['launches'], S.fixture_invocations(self.ws, 'r2')), (4, 4))
+
+    def test_invoking_the_flow_again_never_resends_an_exhausted_job(self):
+        self.mode(wrong_always=['classify_B'])
+        first = self.run_named('r3')
+        self.assertEqual(first['status'], 'incomplete')
+        self.assertEqual(first['blocker']['jobs']['classify_B']['reason'], 'attempts_exhausted')
+        for _ in range(2):
+            again = self.run_named('r3')
+            self.assertEqual(again['blocker']['jobs']['classify_B']['reason'], 'attempts_exhausted')
+        self.assertEqual((again['launches'], S.fixture_invocations(self.ws, 'r3')), (4, 4))
+        self.assertEqual(len(self.stage_runs('r3', 'classify')), 1)
+        self.assertEqual(self.dispatched('r3', 'classify'), [self.all_four('classify', 1), [('classify_B', 2)]])
+
+    def test_invoking_the_flow_again_during_a_verifier_outage_regenerates_nothing(self):
+        real = W.CHECKS['mat_fields']
+
+        def run(value, spec, inputs):
+            if '12.47' in inputs.texts[0]:
+                raise Unavailable('verifier down for B')
+            return real.run(value, spec, inputs)
+        checks = dict(W.CHECKS, mat_fields=Check('mat_fields', 1, True, real.params, run))
+        with patch.object(W, 'CHECKS', checks):
+            first = self.run_named('r4')
+            again = self.run_named('r4')
+        self.assertEqual(first['blocker']['jobs']['extract_B']['status'], 'unresolved')
+        self.assertEqual((again['launches'], S.fixture_invocations(self.ws, 'r4')), (1, 1))
+        recovered = self.run_named('r4')
+        self.assertEqual(recovered['status'], 'delivered', recovered['blocker'])
+        self.assertEqual(self.dispatched('r4', 'extract'), [self.all_four('extract', 1)])
+        self.assertEqual(recovered['launches'], 3)
+
+    def test_the_stage_request_identity_does_not_depend_on_the_remaining_deadline(self):
+        op = W.registry()['model.extract']
+        texts = {f'extract_{n}': W.source_bytes(n).decode('utf-8') for n in 'AB'}
+        early = _stage_request('p', op, list(texts), texts, dict.fromkeys(texts, 1), 3000, 300, 'm', 100000)
+        late = _stage_request('p', op, list(texts), texts, dict.fromkeys(texts, 1), 20, 300, 'm', 100000)
+        self.assertEqual(early['request_id'], late['request_id'])
+        self.assertEqual({k: v for k, v in early.items() if k != 'deadline_seconds'},
+                         {k: v for k, v in late.items() if k != 'deadline_seconds'})
+
+    def bump_at_second_commit(self, rid, data, fired):
+        """Revise source A just before the first model commit (the snapshot is the first commit)."""
+        seen = []
+
+        def hook(_name):
+            seen.append(1)
+            if len(seen) == 2 and not fired:
+                f = Flow(flow_dir(self.ws, rid) / 'flow.sqlite')
+                try:
+                    fired.append(f.bump_source('A', data, reason='test'))
+                finally:
+                    f.close()
+        self.addCleanup(oz_fault.on('flow.before_commit', hook))
+
+    def test_a_refused_model_commit_with_unchanged_inputs_is_readopted_without_a_call(self):
+        fired = []
+        self.bump_at_second_commit('e1', W.source_bytes('A'), fired)
+        result = self.run_named('e1')
+        self.assertEqual((fired, result['status']), ([2], 'delivered'))
+        self.assertEqual(result['launches'], 3)
+        self.assertEqual(self.dispatched('e1', 'extract'), [self.all_four('extract', 1)])
+
+    def test_changed_inputs_at_the_same_generation_open_an_explicit_new_generation(self):
+        fired = []
+        self.bump_at_second_commit('e2', (W.FROZEN / 'sources/A.rev2.txt').read_bytes(), fired)
+        result = self.run_named('e2')
+        self.assertEqual((fired, result['status']), ([2], 'delivered'), result['blocker'])
+        f = Flow(flow_dir(self.ws, 'e2') / 'flow.sqlite')
+        try:
+            regenerated = [e['details'] for e in f.events() if e['event'] == 'regenerated'
+                           and e['details']['node'] == 'extract_A']
+            current = f.current()
+        finally:
+            f.close()
+        self.assertEqual([(r['generation'], r.get('reason')) for r in regenerated], [(2, 'inputs_changed')])
+        self.assertEqual(current['extract_A']['generation'], 2)
+        self.assertEqual([current[f'extract_{n}']['generation'] for n in 'BCD'], [1, 1, 1])
+        self.assertEqual(self.dispatched('e2', 'extract'), [self.all_four('extract', 1), [('extract_A', 1)]])
+        self.assertEqual(len(self.stage_runs('e2', 'extract')), 2)
+
+    def test_a_model_commit_refused_again_with_the_same_value_blocks_instead_of_looping(self):
+        real = Flow.commit
+        calls = []
+
+        def refuse(flow, node, *a, **k):
+            if node.startswith('extract_'):
+                calls.append(node)
+                if len(calls) > 40:
+                    raise AssertionError('the flow keeps retrying a refused commit')
+                return 'stale source revision: test'
+            return real(flow, node, *a, **k)
+        with patch.object(Flow, 'commit', refuse):
+            result = self.run_named('e3')
+        self.assertEqual(result['blocker']['reason'], 'commit_refused')
+        self.assertEqual(result['blocker']['node'], 'extract_A')
+        self.assertEqual(result['launches'], 1)
+
+
 class DirectSourceReadTests(FlowFixture):
     def test_a_source_read_directly_by_a_model_node_is_in_its_read_set(self):
         graph = {'v': 1, 'base': 0, 'nodes': [

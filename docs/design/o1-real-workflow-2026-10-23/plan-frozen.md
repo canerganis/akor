@@ -13,7 +13,7 @@ discovered bug reports, and a pass is not evidence of repairing a production inc
 | Gate | G3c-O1, one binding label `pass_g3c` |
 | Workflow | `repair-handoff-20/v1`, target `repair_package`, weight 1 |
 | Freeze record | `bench/o1/repair-handoff-20-v1/freeze.json` |
-| Freeze digest | `c6ee1c4be873effdfe4d9c4ba34f6e60831c1fdcfdc56a80b562161e3aec87c4` (short: c6ee1c4b) |
+| Freeze digest | `53609b830ff66dc88da579130c2b2850ee9fa2734ad7b5432862c32d602e9012` (short: 53609b83; replaces c6ee1c4b after the executor fix, see the resolved finding) |
 | Route | Sonnet 5.5 (`claude-sonnet-5-5`), default effort, `claude -p` with no tools through `examples/claude_cli_adapter.py`, CLI 2.1.306, OZ/1g text H and parser unchanged, `oz1g-selective-v1`, durable runner |
 | Sizes | packets of 4 and 1, both labeled experimental (`experimental_sizes=(4, 1)`, M9); a pass qualifies no cell |
 | Workspace | fresh `.oz-runtime/o1-live1`, request prefix `live1`, memo namespaces `live-live1-*` |
@@ -216,18 +216,22 @@ allocation." It does not establish general coding reliability, a new qualificati
 
 ## Zero-token dry gate (G2) at this freeze
 
-Result at freeze c6ee1c4b: **`pass`: false**, on one item only. Everything else passes.
+Result at freeze 53609b83 (after the executor fix): **`pass`: true**, every block. At c6ee1c4b it was false on
+`interrupt_with_recovery` only (see the resolved finding below).
 
 1. Five scenarios, all `pass_g3c` and strict: clean 2 launches (4, 4), repeat 0 with 8 memo hits, interrupted 2 (4, 4)
    with both kills, stale 4 (4, 4, 1, 1) with 6 memo hits, bump 0 with 16 memo hits and the frozen traces. 8 launches,
    23,331 fixture tokens, accounting complete; every delivered package verified on A, I and H with byte provenance; no
    check false accepts or false rejects.
-2. Recovery fixtures, 11 of 12 pass: two cores rejected (4, 1, 1, 4); three adapters rejected (4, 4, 1, 1, 1); four
+2. Recovery fixtures, 15 of 15 pass: two cores rejected (4, 1, 1, 4); three adapters rejected (4, 4, 1, 1, 1); four
    rejected, one size-4 resend; a wire-rejected size-4 reply resent whole; a policy refusal then repair; a CPU-limit
    stop then repair; stale with an adapter rejection on both sides of the mutation; a second-attempt failure (no
    pass, no third attempt); a verifier outage (held, no resend, no pass); a model failure record (terminal, no resend,
-   no pass); a wrong-revision core (rejected twice, no pass).
-   **Fails: `interrupt_with_recovery`** (expected 4, 1, 1, 4; observed 4, 1, 1, 1, 1, 4). See the open finding below.
+   no pass); a wrong-revision core (rejected twice, no pass); `interrupt_with_recovery` (4, 1, 1, 4, kills at both
+   boundaries). Added with the fix, strengthening only: a wire-invalid reply inside the killed call
+   (`interrupt_wire_rejected`, 4, 4, 4, pass), a failure record inside it (`interrupt_model_failure`, 4, terminal,
+   no pass), and a second invocation after an exhausted adapter (`second_attempt_fails_then_reinvoked`, 4, 4, 1, no
+   third attempt, no pass).
 3. Executor sabotage, 7 of 7 caught: corrupted patch refused at node 19; a revision change between export and commit
    refused, recomputed and delivered at A revision 2; a fixture value forged under a live-like key refused by
    provenance; missing usage; a check that falsely rejects a correct adapter (independent verdicts disagree); a check
@@ -252,7 +256,7 @@ Result at freeze c6ee1c4b: **`pass`: false**, on one item only. Everything else 
    tokens, admitted); a scenario that exhausts its 8 launches is refused (no pass); a token reserve refuses the third
    launch (no pass).
 
-## Open finding: rejections inside the recovered capture of an interrupted call
+## Resolved finding: rejections inside the recovered capture of an interrupted call
 
 In `interrupt_with_recovery` the first core call is killed right after its capture, and that capture holds two
 rejected members (core_B, core_C). On resume the executor adopts the capture, accepts core_A and core_D, but leaves
@@ -261,9 +265,30 @@ core_B and core_C leased (`in_flight`, lease still running), so that invocation 
 start again at 1: four singleton launches where the signed policy derives two, in effect a third model call for the
 same job generation. The gate reports `exact_trace` and `primary_sequence` failed, as it should. G3b never exercised
 this path (its rejections were in later stages, not in the killed call). The executor's recovery behavior was not
-changed and the oracle was not bent to accept it. The failure-free interrupted scenario is not affected. Until Astra
-and Opus decide (an executor fix with its own tests, or an amended rule for this path), G2 is not passed and the live
-run must not start.
+changed and the oracle was not bent to accept it. The failure-free interrupted scenario is not affected.
+
+Decision (Astra and Opus, independently): fix the executor, change no rule. Two defects, both fixed:
+
+1. `oz_runtime.py`, `settle_dispatch`: every `oz do` call takes a new coordinator epoch, and the in-lease test also
+   required the epoch that opened the dispatch, so a coordinator settling a dead coordinator's completed capture
+   adopted accepts but left rejected, quarantined, wire-rejected, failed and awaiting members leased until the
+   lease ran out. Now a member still leased under that dispatch's unexpired lease takes the in-lease effect
+   whichever epoch opened it (the originating epoch stays provenance; a capture never releases a newer attempt's
+   lease; header members keep the shipped rule).
+2. `oz_flow.py`, `_run_stage`: the stage request id hashed the pending subset, so a partly committed stage was
+   resubmitted as a new request with a fresh inbox and attempts reset (also reachable without any kill, by invoking
+   a flow again after an exhausted job, a failure record or a verifier outage). Now a logical job (flow, node,
+   generation) keeps the stage request it was first submitted in, and a resumed flow resubmits that request with
+   its original membership and the current deadline. Changed inputs under the same generation open an explicit
+   new generation (`regenerated`, reason `inputs_changed`); a model commit refused twice with the same value blocks
+   with `commit_refused` instead of looping.
+
+Tests added first and failing at ec4f74b: `ResumeInsideTheLeaseTests` (11, `tests/test_oz_selective.py`),
+`StageIdentityTests` (8, `tests/test_oz_flow.py`), `ResumeTests` (4, `tests/test_o1.py`). Re-run after the fix,
+zero tokens: the full suite, `step4.py freeze --write` (G3b record 040cfd41) with `step4.py dry`, `replay-live1` and
+`replay-live2`, then `o1.py freeze --write` (53609b83) and `o1.py dry` (above). Astra requires a newly
+preregistered full G3b live suite on the patched executor before any claim of patched-executor conformance, and
+then this O1 G3c suite; Opus agrees. Neither live run has been made.
 
 ## Choices the signed text left to the build
 
@@ -282,5 +307,6 @@ run must not start.
 8. Record format: each model record is frozen text in the ticket (core) or a frozen prefix plus the accepted core
    (adapter), so the check and the evaluator verify records by string equality, not by re-rendering.
 
-Status: built through G2. The G0 freeze holds; G0 also needs Opus to agree to this executable contract, which has
-not happened yet. G1 is green. G2 fails on the open finding above. No model call has been made.
+Status: built through G2 at freeze 53609b83. The G0 freeze holds; G0 also needs Opus to agree to this executable
+contract, which has not happened yet. G1 is green. G2 passes after the executor fix. Before G3c: review of the fix
+and a newly preregistered G3b live suite on the patched executor. No model call has been made.

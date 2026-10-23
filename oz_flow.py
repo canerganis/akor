@@ -353,11 +353,14 @@ class Flow:
             self.event('accepted', node=node, generation=generation, seq=seq, cites=cites)
         return 'committed'
 
-    def regenerate(self, node: str) -> int:
+    def regenerate(self, node: str, *, reason: str | None = None) -> int:
         with self.tx():
             self.db.execute('UPDATE nodes SET generation=generation+1 WHERE id=?', (node,))
             generation = self.db.execute('SELECT generation FROM nodes WHERE id=?', (node,)).fetchone()[0]
-            self.event('regenerated', node=node, generation=generation)
+            if reason is None:
+                self.event('regenerated', node=node, generation=generation)
+            else:
+                self.event('regenerated', node=node, generation=generation, reason=reason)
         return generation
 
     def deliveries(self) -> list:
@@ -555,6 +558,7 @@ def _execute(flow: Flow, request: dict, settings: Settings, call_timeout: float)
     admit_call = _admission(flow, settings, rid, call_timeout)
     memo_store = MemoStore(settings.memo_store) if settings.memo_store is not None else None
     blocker = None
+    refused = set()  # model commits refused in this invocation: (node, generation, value digest)
     try:
         while True:
             info = flow.info()
@@ -578,7 +582,7 @@ def _execute(flow: Flow, request: dict, settings: Settings, call_timeout: float)
                 op_name = descriptors[ready[0]]['op']
                 group = [n for n in ready if descriptors[n]['op'] == op_name]
                 blocker = _run_stage(flow, request, settings, registry[op_name], group, descriptors, current, values,
-                                     remaining, call_timeout, admit_call, memo_store)
+                                     remaining, call_timeout, admit_call, memo_store, refused)
             if blocker is not None:
                 break
     finally:
@@ -712,9 +716,29 @@ def _publish(flow, request, settings, d, generation, value, current, cites):
     return result, {'intent': intent_id, 'target': target, 'manifest_sha256': record['files']['manifest.json']['sha256']}
 
 
+def _stage_pins(flow: Flow, op_name: str) -> dict:
+    """(node, generation) -> the stage submission that first carried that logical job (its full membership, texts and
+    generations, as recorded at submission). Submissions recorded without texts pin nothing."""
+    pins = {}
+    for e in flow.events():
+        x = e['details']
+        if e['event'] != 'stage_submitted' or x.get('op') != op_name or 'texts' not in x:
+            continue
+        for node in x['members']:
+            pins.setdefault((node, x['generations'][node]), x)
+    return pins
+
+
 def _run_stage(flow, request, settings, op, group, descriptors, current, values, remaining, call_timeout, admit_call,
-               memo_store) -> dict | None:
+               memo_store, refused=None) -> dict | None:
+    """One model stage. A logical job (flow, node, generation) belongs to exactly one stage request for as long as it
+    lives (foundation clauses 1 to 3): a pending job that was already submitted is resubmitted under that same request,
+    with its original membership, so its attempt allowance, terminal failure record, awaiting candidate and any
+    adoptable capture stay where they are; only the stage deadline is the current one. A job whose resolved input
+    changed under the same generation gets an explicit new generation (event regenerated, reason inputs_changed) and a
+    new stage. Pending jobs without a submission form a new stage."""
     rid = request['request_id']
+    refused = set() if refused is None else refused
     texts, inputs_acc, cites, generations = {}, {}, {}, {}
     for node in group:
         d = descriptors[node]
@@ -732,14 +756,36 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
             cites[node].update(current[dep]['cites'])
         cites[node].update(ctx.reads)
         generations[node] = _generation(flow, node, descriptors)
+    pins = _stage_pins(flow, op.name)
+    pinned = {}
+    for node in group:
+        stage = pins.get((node, generations[node]))
+        if stage is not None and stage['texts'][node] != texts[node]:
+            # Clause 1: changed inputs need an explicit new logical job, never a silent reuse or replacement.
+            generations[node] = flow.regenerate(node, reason='inputs_changed')
+            descriptors[node]['generation'] = generations[node]
+            stage = None
+        if stage is not None:
+            pinned[node] = stage
     deadline = max(1, min(3600, int(remaining)))
-    req = _stage_request(rid, op, group, texts, generations, deadline, call_timeout, settings.model,
-                         settings.max_input_tokens)
+    if pinned:
+        stage = pinned[next(n for n in group if n in pinned)]
+        group = [n for n in group if pinned.get(n) is stage]
+        req = _stage_request(rid, op, stage['members'], stage['texts'], stage['generations'], deadline, call_timeout,
+                             settings.model, settings.max_input_tokens)
+        if req['request_id'] != stage['request_id']:
+            return {'reason': 'stage_identity_changed', 'stage': stage['request_id'], 'nodes': group}
+        submission = {'resumed': True}
+    else:
+        req = _stage_request(rid, op, group, texts, generations, deadline, call_timeout, settings.model,
+                             settings.max_input_tokens)
+        submission = {'members': group, 'texts': {n: texts[n] for n in group},
+                      'generations': {n: generations[n] for n in group}}
     run_dir = Path('do') / req['request_id']
     before = {d['receipt'] for d in stage_launches(Path(settings.workspace) / run_dir)}
     with flow.tx():
         flow.event('stage_submitted', op=op.name, nodes=group, request_id=req['request_id'],
-                   run_dir=run_dir.as_posix())
+                   run_dir=run_dir.as_posix(), **submission)
     memo = ({'store': memo_store, 'namespace': settings.namespace, 'ops': [op.name]}
             if op.memo and memo_store is not None and settings.namespace else None)
     quota = {'store': settings.quota, 'group': settings.quota_group} if settings.quota is not None else None
@@ -764,9 +810,18 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
         value = outcome['value']
         evidence = dict(accepted.get(node, {}), request_id=req['request_id'], run_dir=run_dir.as_posix())
         oz_fault.point('flow.before_commit')
-        status = flow.commit(node, generations[node], _value_text(value), inputs_acc[node], cites[node], evidence)
+        text = _value_text(value)
+        status = flow.commit(node, generations[node], text, inputs_acc[node], cites[node], evidence)
         if status == 'committed':
             oz_fault.point('flow.committed:' + node)
+            continue
+        # A refused commit is retried once from the same accepted candidate with freshly resolved inputs (a changed
+        # input opens a new generation above); the same refusal again blocks instead of looping.
+        key = (node, generations[node], _sha(text))
+        if key in refused:
+            return {'reason': 'commit_refused', 'node': node, 'generation': generations[node], 'detail': status,
+                    'stage': req['request_id']}
+        refused.add(key)
     if unresolved:
         return {'reason': 'model_jobs_unresolved', 'stage': req['request_id'], 'jobs': unresolved,
                 'stage_blocker': result['blocker']}
