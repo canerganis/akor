@@ -53,6 +53,10 @@ class HostError(Error):
     """A host operation refused its inputs; the node is blocked with this reason."""
 
 
+class SupersededIntent(Exception):
+    """A publishing node's stored intent was built from source revisions that are no longer the ones it cites now."""
+
+
 @dataclass(frozen=True)
 class HostOp:
     name: str
@@ -456,13 +460,16 @@ def stage_launches(run: Path) -> list:
 
 
 def flow_usage(workspace: Path, request_id: str) -> dict:
-    """Launches and tokens of one flow, from its stage runs' journals and ledgers (durable, resume-safe)."""
+    """Launches and tokens of one flow, from its stage runs' journals and ledgers (durable, resume-safe). A run is
+    known from its stage_submitted event, written before the call starts, so launches made inside a running stage,
+    including in-stage retries and a stage killed mid-call, count at the moment of the next admission."""
     fd = flow_dir(workspace, request_id)
     runs = set()
     if (fd / 'flow.sqlite').exists():
         f = Flow(fd / 'flow.sqlite')
         try:
-            runs = {e['details']['run_dir'] for e in f.events() if e['event'] == 'stage' and e['details'].get('run_dir')}
+            runs = {e['details']['run_dir'] for e in f.events()
+                    if e['event'] in ('stage_submitted', 'stage') and e['details'].get('run_dir')}
         finally:
             f.close()
     launches, tokens, unknown, calls = 0, 0, 0, []
@@ -618,6 +625,9 @@ def _run_host(flow, request, settings, d, current, values) -> dict | None:
     if op.effect is not None:
         try:
             value, delivery = _publish(flow, request, settings, d, generation, value, current, cites)
+        except SupersededIntent as exc:
+            _supersede(flow, settings, d, exc.args[0], 'sources moved since the stored intent was built')
+            return None
         except HostError as exc:
             return {'reason': 'effect_blocked', 'node': node, 'detail': str(exc)}
     text = _value_text(value)
@@ -625,7 +635,26 @@ def _run_host(flow, request, settings, d, current, values) -> dict | None:
     status = flow.commit(node, generation, text, inputs_acc, cites, {'op': d['identity']}, delivery=delivery)
     if status == 'committed':
         oz_fault.point('flow.committed:' + node)
+    elif delivery is not None:
+        # A refused commit leaves exported files that no delivery names. The intent is closed and the node starts a
+        # new generation, so the next attempt builds new artifacts under a new intent identity from current sources.
+        _supersede(flow, settings, d, delivery['intent'], status)
     return None
+
+
+def _supersede(flow: Flow, settings: Settings, d: dict, intent: str, reason: str):
+    """Close an undelivered intent, set its files aside (never at a delivery destination) and regenerate the node."""
+    row = next((e for e in flow.effects() if e['intent'] == intent), None)
+    flow.effect_state(intent, 'superseded', {'reason': reason})
+    if row is not None:
+        target = Path(settings.workspace) / row['destination']
+        aside = target.with_name(target.name + '.superseded')
+        try:
+            if target.exists() and not aside.exists():
+                target.rename(aside)
+        except OSError:
+            pass
+    d['generation'] = flow.regenerate(d['id'])
 
 
 def _publish(flow, request, settings, d, generation, value, current, cites):
@@ -653,6 +682,10 @@ def _publish(flow, request, settings, d, generation, value, current, cites):
     else:
         artifacts = existing['files']
         if any(artifacts.get(k, {}).get('sha256') != _sha(t) for k, t in files.items()):
+            stored = json.loads(artifacts['manifest.json']['text'])['sources']
+            now = {s: {'revision': r, 'sha256': flow.source(s, r)['sha256']} for s, r in sorted(cites.items())}
+            if existing['state'] != 'delivered' and stored != now:
+                raise SupersededIntent(intent_id)  # legitimately different inputs, not a nondeterministic recompute
             flow.effect_state(intent_id, 'conflict', {'reason': 'recomputed artifacts differ from the intent'})
             raise HostError('recomputed artifacts differ from the stable intent')
     record = flow.intent(intent_id, node, generation, destination.as_posix(), artifacts)
@@ -683,9 +716,9 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
                memo_store) -> dict | None:
     rid = request['request_id']
     texts, inputs_acc, cites, generations = {}, {}, {}, {}
-    ctx = HostContext(flow, group[0], 0)
     for node in group:
         d = descriptors[node]
+        ctx = HostContext(flow, node, 0)  # one read-set per node: sources it reads itself are its own citations
         try:
             text = _resolve(d['bindings']['record'], values, ctx)
         except HostError as exc:
@@ -697,6 +730,7 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
         cites[node] = {}
         for dep in d['deps']:
             cites[node].update(current[dep]['cites'])
+        cites[node].update(ctx.reads)
         generations[node] = _generation(flow, node, descriptors)
     deadline = max(1, min(3600, int(remaining)))
     req = _stage_request(rid, op, group, texts, generations, deadline, call_timeout, settings.model,
@@ -781,8 +815,9 @@ def _plan(flow: Flow, request: dict, settings: Settings, descriptors: list) -> d
                                  settings.model, settings.max_input_tokens)
             memo = ({'store': memo_store, 'namespace': settings.namespace, 'ops': [op.name]}
                     if op.memo and memo_store is not None and settings.namespace else None)
-            result = do(req, workspace=settings.workspace, route=settings.route, registry=settings.checks_registry,
-                        memo=memo, packet_sizes=settings.packet_sizes, plan_only=True)
+            result = do(req, workspace=settings.workspace, adapter=settings.adapter, route=settings.route,
+                        registry=settings.checks_registry, memo=memo, packet_sizes=settings.packet_sizes,
+                        plan_only=True)
             stages.append({'op': op.name, 'plan': result['plan']})
             misses += result['plan']['misses']
             packets += result['plan']['packets']

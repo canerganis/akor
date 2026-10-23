@@ -32,7 +32,7 @@ from oz_batch import WIRE, J, render, valid_id
 from oz_memo import MemoStore, sha256 as text_sha256
 from oz_reply import ERROR_CODES, USAGE_FIELDS, RawJSON, loads
 from oz_runtime import Inbox
-from oz_worker import Worker
+from oz_worker import StdioAdapter, Worker, execution_route
 from oz_workspace import Workspace, adapter_from_file
 
 REQUEST_SCHEMA = 'oz.do/1'
@@ -414,7 +414,7 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
         raise Error('packet_sizes must list job counts 1..64')
     route_fields = dict({'model': req['model']}, **(route or {}))
     if plan_only:
-        return _plan_only(req, root, route_fields, registry, memo, packet_sizes, clock() - started)
+        return _plan_only(req, root, route_fields, registry, memo, packet_sizes, clock() - started, adapter)
     run = _create_run(root, req, space.config, registry)
     runspace = Workspace(run)
     refs, work = runspace.channel('refs'), runspace.channel('worker')
@@ -594,12 +594,16 @@ def _memo_publish(box, req, root, run, memo):
                                           'candidate': c['seq'], 'job': c['job']})
 
 
-def _plan_only(req, root, route, registry, memo, packet_sizes, elapsed) -> dict:
-    """Memo decisions and the packet plan for a request, with nothing stored, posted, accepted or called."""
+def _plan_only(req, root, route, registry, memo, packet_sizes, elapsed, adapter=None) -> dict:
+    """Memo decisions and the packet plan for a request, with nothing stored, posted, accepted or called. The route is
+    computed as the worker computes it: a caller-pinned adapter identity, else the adapter's own name (an adapter JSON
+    file runs as a StdioAdapter); with no adapter at all the identity stays unknown."""
     _, work = _channels(req)
-    route = {'adapter': route.get('adapter'), 'model': route.get('model'), 'effort': route.get('effort'),
-             'cli_version': route.get('cli_version'), 'wire': WIRE,
-             **({'parser': route['parser']} if route.get('parser') is not None else {})}
+    named = StdioAdapter if isinstance(adapter, (str, Path)) else adapter
+    route = execution_route(route, named) if named is not None else {
+        'adapter': route.get('adapter'), 'model': route.get('model'), 'effort': route.get('effort'),
+        'cli_version': route.get('cli_version'), 'wire': WIRE,
+        **({'parser': route['parser']} if route.get('parser') is not None else {})}
     checks = req['work'].get('checks', {})
     decisions, misses = {}, 0
     for mid, op, *_ in req['work']['jobs']:

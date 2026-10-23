@@ -132,7 +132,7 @@ def instruction_check() -> list:
     return errors
 
 
-def freeze(write=False) -> dict:
+def freeze(write=False, path=None) -> dict:
     base = W.FROZEN / 'baseline'
     if write:
         base.mkdir(exist_ok=True)
@@ -141,7 +141,7 @@ def freeze(write=False) -> dict:
             (base / f'prompt-{variant}.txt').write_text(baseline_prompt(variant), encoding='utf-8', newline='\n')
     current = digests()
     current['digest'] = hashlib.sha256(J(current).encode('utf-8')).hexdigest()
-    path = W.FROZEN / 'freeze.json'
+    path = Path(path) if path is not None else W.FROZEN / 'freeze.json'
     problems = instruction_check()
     for variant in ('rev1', 'rev2'):
         f = base / f'prompt-{variant}.txt'
@@ -153,6 +153,11 @@ def freeze(write=False) -> dict:
         path.write_text(json.dumps(current, indent=1) + '\n', encoding='utf-8', newline='\n')
         return {'frozen': True, 'digest': current['digest'], 'problems': []}
     stored = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {}
+    # The stored per-file maps must still hash to the stored digest: a map edited together with its file would
+    # otherwise pass the per-file comparison below.
+    again = hashlib.sha256(J({'frozen': stored.get('frozen', {}), 'code': stored.get('code', {})}).encode('utf-8'))
+    if stored.get('digest') != again.hexdigest():
+        problems.append('the stored file maps do not hash to the stored digest')
     for group in ('frozen', 'code'):
         for name, digest in current[group].items():
             if stored.get(group, {}).get(name) != digest:
@@ -214,6 +219,13 @@ def cli_version() -> str | None:
         return None
     out = subprocess.run([claude, '--version'], capture_output=True, text=True, timeout=60).stdout.strip()
     return out.split()[0] if out else None
+
+
+def live_refusal(frozen: dict, version) -> str | None:
+    """Why a paid run must not start (the freeze, the CLI version), or None. Shared by `live` and `run-flow --kind live`."""
+    if not frozen['frozen'] or version != spec()['route']['cli_version']:
+        return 'freeze check failed or CLI version differs; nothing was launched'
+    return None
 
 
 def route_check(kind: str):
@@ -647,6 +659,41 @@ def sabotage(ws: Path, prefix: str, clean_copy: Path, interrupt_ws: Path) -> dic
         f.close()
     out['revision_race'] = {'caught': bool(refused) and res['status'] == 'delivered' and cites.get('A') == 2,
                             'refused': [e['details'] for e in refused][:3], 'delivery_cites': cites}
+    # Race between exporting the files and committing the delivery: the stale commit is refused and the flow must
+    # recompute at a new generation and deliver the current revision; the stale files are never delivered.
+    copy = copy_of(clean_copy, 'race-publish')
+    publish_id = f'{prefix}-racepub'
+    fired = []
+
+    def publish_race(_name):
+        f = Flow(flow_dir(copy, publish_id) / 'flow.sqlite')
+        try:
+            if not fired:
+                fired.append(f.bump_source('A', (W.FROZEN / 'sources/A.rev2.txt').read_bytes(),
+                                           reason='race after export'))
+        finally:
+            f.close()
+    remove = oz_fault.on('flow.publish.after_manifest', publish_race)
+    quota = quota_store(copy, 'fixture')
+    try:
+        res = run_flow(flow_request(prefix, 'racepub'), settings(copy, 'fixture', namespace('fixture', prefix, 'clean'),
+                                                                 quota=quota))
+    finally:
+        quota.close()
+        remove()
+    f = Flow(flow_dir(copy, publish_id) / 'flow.sqlite')
+    try:
+        states = [e['state'] for e in f.effects()]
+        ds = f.deliveries()
+    finally:
+        f.close()
+    target = res['targets']['inspection_handoff']
+    errs = (E.evaluate_package(copy / target['destination'], 'rev2', exp['revisions']['stale'])
+            if target['status'] == 'delivered' else ['not delivered'])
+    out['publish_race'] = {'caught': (bool(fired) and res['status'] == 'delivered' and not errs and len(ds) == 1
+                                      and ds[0]['cites'].get('A') == 2 and states == ['superseded', 'delivered']),
+                           'effect_states': states, 'delivery_cites': ds[0]['cites'] if ds else {},
+                           'evaluator_errors': errs}
     return out
 
 
@@ -703,8 +750,9 @@ def suite(ws: Path, kind: str, prefix: str, only: str | None = None) -> dict:
     if kind == 'live':
         version = cli_version()
         report['cli_version'] = version
-        if not report['freeze']['frozen'] or version != spec()['route']['cli_version']:
-            report['blocker'] = 'freeze check failed or CLI version differs; nothing was launched'
+        refusal = live_refusal(report['freeze'], version)
+        if refusal:
+            report['blocker'] = refusal
             return report
     clean_copy = None
     for scenario in ([only] if only else SCENARIOS):
@@ -723,8 +771,8 @@ def suite(ws: Path, kind: str, prefix: str, only: str | None = None) -> dict:
         print(scenario, 'pass' if report['scenarios'][scenario]['pass'] else 'FAIL',
               report['scenarios'][scenario]['launches'], flush=True)
     if only:
-        report['pass'] = all(s['pass'] and s.get('observables', {}).get('pass', True)
-                             for s in report['scenarios'].values())
+        report['pass'] = (report['freeze']['frozen'] and all(s['pass'] and s.get('observables', {}).get('pass', True)
+                                                             for s in report['scenarios'].values()))
         (ws / f'report-{kind}-{prefix}-{only}-r{RERUN.get(only, 0)}.json').write_text(
             json.dumps(report, indent=1, default=str) + '\n', encoding='utf-8')
         return report
@@ -738,7 +786,8 @@ def suite(ws: Path, kind: str, prefix: str, only: str | None = None) -> dict:
                         'calls_without_usage': sum(u['calls_without_usage'] for u in usage),
                         'caps': spec()['budgets']['executor']}
     report['totals']['accounting'] = 'complete' if report['totals']['calls_without_usage'] == 0 else 'incomplete'
-    report['pass'] = (all(s['pass'] for s in report['scenarios'].values())
+    report['pass'] = (report['freeze']['frozen']
+                      and all(s['pass'] for s in report['scenarios'].values())
                       and all(s.get('observables', {}).get('pass', True) for s in report['scenarios'].values())
                       and all(c['pass'] for c in report['c5'].values())
                       and all(c['caught'] for c in report.get('sabotage', {}).values())
@@ -854,15 +903,21 @@ def main(argv=None):
         result = freeze(write=args.write)
         print(json.dumps(result, indent=1))
         return 0 if result['frozen'] else 1
+    paid_flow = args.command == 'run-flow' and args.kind == 'live'
+    if (args.command in ('live', 'baseline') or paid_flow) and not os.environ.get('STEP4_LIVE_CONFIRM'):
+        print('live and baseline run paid calls: set STEP4_LIVE_CONFIRM=1 to proceed', file=sys.stderr)
+        return 2
+    if paid_flow:
+        refusal = live_refusal(freeze(), cli_version())
+        if refusal:
+            print(refusal, file=sys.stderr)
+            return 2
     if args.command == 'run-flow':
         ws = args.workspace.resolve()
         prepare(ws, args.kind)
         result = run_scenario_flow(ws, args.kind, args.prefix, args.scenario)
         print(J({k: result[k] for k in ('status', 'blocker', 'launches', 'targets')}))
         return 0 if result['status'] == 'delivered' else 3
-    if args.command in ('live', 'baseline') and not os.environ.get('STEP4_LIVE_CONFIRM'):
-        print('live and baseline run paid calls: set STEP4_LIVE_CONFIRM=1 to proceed', file=sys.stderr)
-        return 2
     if args.command == 'baseline':
         result = baseline(args.workspace)
         print(json.dumps(result, indent=1))

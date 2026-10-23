@@ -398,12 +398,7 @@ class Worker:
         """The execution route of this worker (clause 1): adapter identity, model, effort, CLI version and wire. A
         field the caller did not give stays null (unknown), never guessed. A caller-pinned adapter identity (for
         example argv plus script digest) replaces the class name; a pinned parser identity is added when given."""
-        route = {'adapter': self.route.get('adapter') or getattr(self.adapter, '__name__', type(self.adapter).__name__),
-                 'model': self.route.get('model'), 'effort': self.route.get('effort'),
-                 'cli_version': self.route.get('cli_version'), 'wire': WIRE}
-        if self.route.get('parser') is not None:
-            route['parser'] = self.route['parser']
-        return route
+        return execution_route(self.route, self.adapter)
 
     def _refused(self, dispatch: dict) -> str | None:
         """The response check's reason for refusing every candidate of a captured dispatch, or None."""
@@ -599,6 +594,17 @@ class Worker:
             fields['usage'] = dict({'source': 'adapter', 'scope': 'call', 'raw': usage, 'total_tokens': None},
                                    **{key: usage.get(raw) for key, raw in USAGE_MAP if raw})
         return self._record('call_end', call, **fields)
+
+
+def execution_route(route: dict, adapter) -> dict:
+    """The route identity a worker records for dispatches made with this adapter and these caller-given fields. Plan-only
+    memo decisions use this same function, so a planned hit is a hit a real run would take."""
+    out = {'adapter': route.get('adapter') or getattr(adapter, '__name__', type(adapter).__name__),
+           'model': route.get('model'), 'effort': route.get('effort'),
+           'cli_version': route.get('cli_version'), 'wire': WIRE}
+    if route.get('parser') is not None:
+        out['parser'] = route['parser']
+    return out
 
 
 ROUTE_KEYS = ('model', 'effort', 'cli_version', 'adapter', 'parser')

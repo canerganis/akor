@@ -20,7 +20,11 @@ sys.path.insert(0, str(ROOT))
 from oz import Error  # noqa: E402
 from oz_accept import Check, Unavailable  # noqa: E402
 from oz_do import do  # noqa: E402
+from oz_memo import MemoStore  # noqa: E402
 from oz_flow import Flow, _stage_request, admit, flow_dir, flow_usage, run_flow  # noqa: E402
+import evaluator as E  # noqa: E402
+import fixture_adapter as FA  # noqa: E402
+import oz_fault  # noqa: E402
 from oz_quota import Quota  # noqa: E402
 from oz_runner import read_capture  # noqa: E402
 from oz_runtime import Inbox  # noqa: E402
@@ -143,7 +147,7 @@ class FlowFixture(unittest.TestCase):
             s = S.settings(self.ws, 'fixture', namespace, quota=quota, **{k: v for k, v in options.items()
                                                                           if k in ('registry', 'budget',
                                                                                    'route_fields')})
-            for key in ('response_check',):
+            for key in ('response_check', 'packet_sizes', 'experimental_sizes'):
                 if key in options:
                     setattr(s, key, options[key])
             request = S.flow_request('t', 'x', request_id=rid)
@@ -217,6 +221,262 @@ class FlowTests(FlowFixture):
         result = self.run_named('c1', budget={'max_launches': 2, 'reserve_per_launch': 5000})
         self.assertEqual(result['launches'], 2)
         self.assertEqual(result['blocker']['jobs']['classify_A']['reason'], 'launch_cap')
+
+    def test_caps_count_launches_made_inside_the_running_stage(self):
+        # Four singleton calls happen inside one do(); the stage event is written only after it returns.
+        budget = {'max_launches_per_flow': 2, 'max_launches': 2, 'reserve_per_launch': 0}
+        result = self.run_named('c2', budget=budget, packet_sizes=(1,), experimental_sizes=(1,))
+        self.assertEqual(result['launches'], 2)
+        self.assertEqual(len((self.ws / 'fixture' / 'invocations.jsonl').read_text().splitlines()), 2)
+        reasons = {j['reason'] for j in result['blocker']['jobs'].values()}
+        self.assertTrue(reasons & {'launch_cap', 'flow_launch_cap'}, reasons)
+
+    def test_workspace_cap_counts_in_stage_launches_of_another_flow(self):
+        budget = {'max_launches': 3, 'reserve_per_launch': 0}
+        self.run_named('c3', budget=budget, packet_sizes=(1,), experimental_sizes=(1,))
+        second = self.run_named('c4', budget=budget, packet_sizes=(1,), experimental_sizes=(1,))
+        self.assertEqual(flow_usage(self.ws, 'c3')['launches'] + flow_usage(self.ws, 'c4')['launches'], 3)
+        self.assertEqual(second['launches'], 0)
+
+    def test_token_cap_counts_tokens_spent_inside_the_running_stage(self):
+        result = self.run_named('c5', budget={'max_tokens': 1, 'reserve_per_launch': 0}, packet_sizes=(1,),
+                                experimental_sizes=(1,))
+        self.assertEqual(result['launches'], 1)
+        self.assertEqual({j['reason'] for j in result['blocker']['jobs'].values()}, {'token_cap'})
+
+    def test_a_stage_killed_mid_call_still_counts_from_its_journal(self):
+        self.assertEqual(self.run_named('c6', budget={}, packet_sizes=(1,), experimental_sizes=(1,))['launches'], 12)
+        f = Flow(flow_dir(self.ws, 'c6') / 'flow.sqlite')
+        try:
+            f.db.execute("DELETE FROM events WHERE event='stage'")  # what a stage killed inside do() leaves behind
+        finally:
+            f.close()
+        self.assertEqual(flow_usage(self.ws, 'c6')['launches'], 12)
+
+
+class PublishRaceTests(FlowFixture):
+    def bump_a(self, rid, fired):
+        f = Flow(flow_dir(self.ws, rid) / 'flow.sqlite')
+        try:
+            fired.append(f.bump_source('A', (W.FROZEN / 'sources/A.rev2.txt').read_bytes(), reason='race'))
+        finally:
+            f.close()
+
+    def check_recovered(self, rid, result):
+        self.assertEqual(result['status'], 'delivered', result['blocker'])
+        target = result['targets']['inspection_handoff']
+        self.assertEqual(target['cites']['A'], 2)
+        self.assertTrue(target['destination'].endswith('-g2'), target['destination'])
+        self.assertEqual(E.evaluate_package(self.ws / target['destination'], 'rev2',
+                                            {'A': 2, 'B': 1, 'C': 1, 'D': 1}), [])
+        f = Flow(flow_dir(self.ws, rid) / 'flow.sqlite')
+        try:
+            states = {e['intent']: e['state'] for e in f.effects()}
+            deliveries = f.deliveries()
+        finally:
+            f.close()
+        self.assertEqual(list(states.values()), ['superseded', 'delivered'], states)
+        self.assertEqual(len(deliveries), 1)
+        self.assertTrue(deliveries[0]['intent'].endswith(':g2'))
+        # The stale files are not left at a delivery destination.
+        self.assertFalse((self.ws / 'deliveries' / rid / 'publish_handoff-g1').exists())
+
+    def test_a_revision_between_export_and_commit_recomputes_at_a_new_generation(self):
+        fired = []
+        remove = oz_fault.on('flow.publish.after_manifest', lambda _: fired or self.bump_a('pr1', fired))
+        try:
+            result = self.run_named('pr1')
+        finally:
+            remove()
+        self.assertEqual(fired, [2])
+        self.check_recovered('pr1', result)
+
+    def test_a_crash_after_export_then_a_revision_does_not_block_the_resume(self):
+        def crash(_):
+            if not fired:
+                self.bump_a('pr2', fired)
+                raise RuntimeError('simulated crash after the manifest')
+        fired = []
+        remove = oz_fault.on('flow.publish.after_manifest', crash)
+        try:
+            with self.assertRaises(RuntimeError):
+                self.run_named('pr2')
+        finally:
+            remove()
+        self.check_recovered('pr2', self.run_named('pr2'))
+
+    def test_a_nondeterministic_recompute_with_unchanged_sources_still_blocks(self):
+        def crash(_):
+            raise RuntimeError('simulated crash after the manifest')
+        remove = oz_fault.on('flow.publish.after_manifest', crash)
+        try:
+            with self.assertRaises(RuntimeError):
+                self.run_named('pr3')
+        finally:
+            remove()
+        f = Flow(flow_dir(self.ws, 'pr3') / 'flow.sqlite')
+        try:
+            intent = f.effects()[0]
+            files = json.loads(json.dumps(intent['files']))
+            files['handoff.md']['sha256'] = '0' * 64
+            f.db.execute('UPDATE effects SET files=? WHERE intent=?', (json.dumps(files), intent['intent']))
+        finally:
+            f.close()
+        result = self.run_named('pr3')
+        self.assertEqual(result['blocker']['reason'], 'effect_blocked')
+
+
+class DirectSourceReadTests(FlowFixture):
+    def test_a_source_read_directly_by_a_model_node_is_in_its_read_set(self):
+        graph = {'v': 1, 'base': 0, 'nodes': [
+            {'id': 'snapshot', 'op': 'host.snapshot', 'in': {'sources': {'lit': ['A', 'B', 'C', 'D']}}, 'after': []},
+            {'id': 'm', 'op': 'model.extract', 'in': {'record': {'ref': 'A'}}, 'after': []}],
+            'outputs': {'x': 'm'}}
+        self.run_named('rc1', request={'graph': graph})
+        f = Flow(flow_dir(self.ws, 'rc1') / 'flow.sqlite')
+        try:
+            self.assertEqual(f.latest()['m']['cites'], {'A': 1})
+            self.assertIn('m', f.current())
+            f.bump_source('A', (W.FROZEN / 'sources/A.rev2.txt').read_bytes(), reason='edit')
+            self.assertNotIn('m', f.current())
+        finally:
+            f.close()
+        self.run_named('rc1', request={'graph': graph})
+        f = Flow(flow_dir(self.ws, 'rc1') / 'flow.sqlite')
+        try:
+            self.assertEqual(f.current()['m']['cites'], {'A': 2})
+            self.assertIn('12.55 mm', f.current()['m']['value'])
+        finally:
+            f.close()
+
+
+class EvaluatorTests(unittest.TestCase):
+    REVS = {'A': 1, 'B': 1, 'C': 1, 'D': 1}
+
+    def package(self, tmp, *, doc=None, md=None):
+        doc = doc or json.loads(FA.baseline_reply(S.baseline_prompt('rev1')))
+        md = md if md is not None else W.op_render_markdown({'rows': {'rows': doc['records']}}, None)
+        raw = (json.dumps(doc, indent=1) + '\n').encode('utf-8')
+        Path(tmp, 'handoff.json').write_bytes(raw)
+        Path(tmp, 'handoff.md').write_text(md, encoding='utf-8', newline='')
+        manifest = {'artifacts': {'handoff.json': S.hashlib.sha256(raw).hexdigest(),
+                                  'handoff.md': S.hashlib.sha256(md.encode('utf-8')).hexdigest()}}
+        Path(tmp, 'manifest.json').write_text(json.dumps(manifest), encoding='utf-8')
+        return E.evaluate_package(tmp, 'rev1', self.REVS)
+
+    def good_md(self):
+        doc = json.loads(FA.baseline_reply(S.baseline_prompt('rev1')))
+        return W.op_render_markdown({'rows': {'rows': doc['records']}}, None)
+
+    def test_a_correct_package_has_no_errors(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(self.package(tmp), [])
+
+    def test_the_markdown_source_digest_must_equal_the_frozen_digest(self):
+        md = self.good_md()
+        digest = S.hashlib.sha256(W.source_bytes('A')).hexdigest()
+        self.assertIn(digest, md)
+        with tempfile.TemporaryDirectory() as tmp:
+            errors = self.package(tmp, md=md.replace(digest, '0' * 64))
+        self.assertTrue(any('Markdown source cell' in e for e in errors), errors)
+
+    def test_duplicate_markdown_rows_for_a_record_are_rejected(self):
+        md = self.good_md()
+        row = next(line for line in md.splitlines() if line.startswith('| A |'))
+        wrong = row.replace('0.02 mm', '0.99 mm')
+        with tempfile.TemporaryDirectory() as tmp:
+            # The wrong row comes first and the right one last: keeping the last row would pass.
+            errors = self.package(tmp, md=md.replace(row, wrong + '\n' + row))
+        self.assertTrue(any('duplicate' in e for e in errors), errors)
+
+    def test_top_level_schema_workflow_evidence_and_keys_are_checked(self):
+        good = json.loads(FA.baseline_reply(S.baseline_prompt('rev1')))
+        self.assertEqual(E.evaluate_document(good, 'rev1', self.REVS), [])
+        for key, value in (('schema', 'other/1'), ('workflow', 'other/v1'), ('evidence', 'Numerical status is fine.')):
+            errors = E.evaluate_document(dict(good, **{key: value}), 'rev1', self.REVS)
+            self.assertTrue(any(key in e for e in errors), (key, errors))
+        for doc in (dict(good, extra=1), {k: v for k, v in good.items() if k != 'evidence'}):
+            errors = E.evaluate_document(doc, 'rev1', self.REVS)
+            self.assertTrue(any('top-level keys' in e for e in errors), errors)
+
+
+class LiveGateTests(unittest.TestCase):
+    ARGV = ['run-flow', '--workspace', 'ws', '--kind', 'live', '--prefix', 'p', '--scenario', 'clean']
+
+    def run_main(self, *, confirm, frozen=True, version=None):
+        version = version or S.spec()['route']['cli_version']
+        env = {'STEP4_LIVE_CONFIRM': '1'} if confirm else {}
+        stdout = io.StringIO()
+        with patch.dict(os.environ, env), patch.object(S, 'cli_version', return_value=version),                 patch.object(S, 'freeze', return_value={'frozen': frozen, 'digest': 'x', 'problems': []}),                 patch.object(S, 'prepare') as prepare,                 patch.object(S, 'run_scenario_flow', return_value={'status': 'delivered', 'blocker': None,
+                                                                    'launches': 0, 'targets': {}}) as run,                 patch('sys.stderr', io.StringIO()), patch('sys.stdout', stdout):
+            if not confirm:
+                os.environ.pop('STEP4_LIVE_CONFIRM', None)
+            code = S.main(self.ARGV)
+        return code, run.called, prepare.called
+
+    def test_run_flow_live_needs_the_confirmation_the_freeze_and_the_cli_version(self):
+        self.assertEqual(self.run_main(confirm=False), (2, False, False))
+        self.assertEqual(self.run_main(confirm=True, frozen=False), (2, False, False))
+        self.assertEqual(self.run_main(confirm=True, version='0.0.0'), (2, False, False))
+        self.assertEqual(self.run_main(confirm=True), (0, True, True))
+
+    def test_run_flow_fixture_is_not_gated(self):
+        with patch.object(S, 'prepare'), patch.object(S, 'run_scenario_flow', return_value={
+                'status': 'delivered', 'blocker': None, 'launches': 0, 'targets': {}}) as run,                 patch('sys.stdout', io.StringIO()):
+            self.assertEqual(S.main(['run-flow', '--workspace', 'ws', '--kind', 'fixture', '--prefix', 'p',
+                                     '--scenario', 'clean']), 0)
+        self.assertTrue(run.called)
+
+
+class PlanRouteTests(FlowFixture):
+    def test_plan_only_computes_the_route_like_the_worker_when_no_adapter_is_pinned(self):
+        op = W.registry()['model.extract']
+        texts = {f'extract_{n}': W.source_bytes(n).decode('utf-8') for n in 'AB'}
+        fields, model = S.route('fixture')
+        route = {k: v for k, v in fields.items() if k != 'adapter'}  # the caller pins no adapter identity
+        adapter = S.adapter_file(self.ws, 'fixture')
+        store = MemoStore(self.ws / 'memo.sqlite')
+        try:
+            memo = {'store': store, 'namespace': 'plan-route', 'ops': [op.name]}
+            first = _stage_request('pr', op, list(texts), texts, dict.fromkeys(texts, 1), 600, 300, model, 100000)
+            real = do(first, workspace=self.ws, adapter=adapter, route=route, registry=W.CHECKS, memo=memo,
+                      packet_sizes=(4, 1), experimental_sizes=(4,))
+            self.assertEqual(real['counts'], {'accepted': 2})
+            again = _stage_request('pr', op, list(texts), texts, dict.fromkeys(texts, 2), 600, 300, model, 100000)
+            plan = do(again, workspace=self.ws, adapter=adapter, route=route, registry=W.CHECKS, memo=memo,
+                      packet_sizes=(4, 1), plan_only=True)
+            self.assertEqual({m['decision'] for m in plan['plan']['memo'].values()}, {'hit'}, plan['plan']['memo'])
+            self.assertEqual(plan['plan']['misses'], 0)
+            replay = do(again, workspace=self.ws, adapter=adapter, route=route, registry=W.CHECKS, memo=memo,
+                        packet_sizes=(4, 1), experimental_sizes=(4,))
+            for job, m in plan['plan']['memo'].items():
+                self.assertEqual(replay['memo'][job]['compute_key'], m['compute_key'])
+                self.assertEqual(replay['memo'][job]['decision'], 'hit')
+        finally:
+            store.close()
+
+    def test_a_callable_adapter_is_named_by_its_own_name(self):
+        op = W.registry()['model.extract']
+        text = W.source_bytes('A').decode('utf-8')
+        texts = {'extract_A': text}
+        fields, model = S.route('fixture')
+        route = {k: v for k, v in fields.items() if k != 'adapter'}
+
+        def my_adapter(request):
+            raise AssertionError('plan-only never calls')
+        my_adapter.capabilities = None
+        req = _stage_request('pc', op, ['extract_A'], texts, {'extract_A': 1}, 600, 300, model, 100000)
+        store = MemoStore(self.ws / 'memo.sqlite')
+        try:
+            memo = {'store': store, 'namespace': 'plan-callable', 'ops': [op.name]}
+            plan = do(req, workspace=self.ws, adapter=my_adapter, route=route, registry=W.CHECKS, memo=memo,
+                      packet_sizes=(4, 1), plan_only=True)
+            pinned = do(req, workspace=self.ws, adapter=my_adapter, route=dict(route, adapter='my_adapter'),
+                        registry=W.CHECKS, memo=memo, packet_sizes=(4, 1), plan_only=True)
+            self.assertEqual(plan['plan']['memo']['extract_A']['compute_key'],
+                             pinned['plan']['memo']['extract_A']['compute_key'])
+        finally:
+            store.close()
 
 
 class MemoTests(FlowFixture):
@@ -350,6 +610,29 @@ class DryGateTests(unittest.TestCase):
 
     def test_the_frozen_contract_matches_its_digests(self):
         self.assertEqual(S.freeze()['problems'], [])
+
+    def stored_copy(self, tmp, edit):
+        stored = json.loads((W.FROZEN / 'freeze.json').read_text(encoding='utf-8'))
+        edit(stored)
+        path = Path(tmp) / 'freeze.json'
+        path.write_text(json.dumps(stored), encoding='utf-8')
+        return path
+
+    def test_freeze_verifies_that_the_stored_maps_hash_to_the_stored_digest(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertTrue(S.freeze(path=self.stored_copy(tmp, lambda s: None))['frozen'])
+            for edit in (lambda s: s.update(digest='f' * 64),
+                         lambda s: s['code'].update({'oz_flow.py': 'f' * 64})):
+                result = S.freeze(path=self.stored_copy(tmp, edit))
+                self.assertFalse(result['frozen'])
+                self.assertTrue(any('do not hash to the stored digest' in p for p in result['problems']), result)
+
+    def test_the_g2_report_requires_the_freeze_to_hold(self):
+        with tempfile.TemporaryDirectory() as tmp,                 patch.object(S, 'freeze', return_value={'frozen': False, 'digest': 'x', 'current_digest': 'y',
+                                                         'problems': ['forced']}):
+            report = S.suite(Path(tmp) / 'dry', 'fixture', 'g2', 'clean')
+        self.assertFalse(report['pass'])
+        self.assertFalse(report['freeze']['frozen'])
 
 
 if __name__ == '__main__':

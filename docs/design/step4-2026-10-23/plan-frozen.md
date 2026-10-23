@@ -91,3 +91,11 @@ repeat, revision bump and interruption costs for the baseline are counterfactual
 4. A pending memo revalidation (verifier outage) blocks the whole stage request rather than dispatching around it.
 5. The flow request ID names the scenario; a rerun appends `-r<N>` and gets a fresh cold namespace when the scenario's
    namespace is its own.
+
+## Refreeze after independent review (2026-10-23, before any live call)
+
+An independent review of 404f04b found seven defects (in-stage launches not counted toward the caps, a publish race
+that blocked the flow, direct source reads missing from a node's read set, a weak evaluator digest check, a freeze
+check that did not verify its own digest, an ungated live entry point, a plan-only route mismatch). All were fixed
+with failing tests first (491 tests), the dry gate passes again (11 launches, six sabotage cases caught), and the
+freeze digest above was replaced: previously 3ccadb65, now 49115f95. No live call had been made under either digest.

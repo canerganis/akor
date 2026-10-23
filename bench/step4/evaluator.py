@@ -17,6 +17,11 @@ FROZEN = Path(__file__).resolve().parent / 'inspection-handoff-20-v1'
 NAMES = ['A', 'B', 'C', 'D']
 KEYS = ['length', 'uncertainty', 'n', 'method', 'basis', 'physical_validation']
 WORDING = 'does not authorize physical release'
+SCHEMA = 'akor.inspection-handoff/1'
+WORKFLOW = 'inspection-handoff-20/v1'
+EVIDENCE = ('Numerical status is interval arithmetic on the recorded values only. It is not physical validation and '
+            'does not authorize physical release.')
+TOP_KEYS = {'schema', 'workflow', 'acceptance_interval', 'physical_validation', 'evidence', 'records'}
 
 
 def _frozen(name):
@@ -47,6 +52,14 @@ def evaluate_document(doc, variant, revisions):
     errors = []
     if not isinstance(doc, dict):
         return ['document is not a JSON object']
+    if set(doc) != TOP_KEYS:
+        errors.append('top-level keys are ' + ', '.join(sorted(doc)) + ', not exactly ' + ', '.join(sorted(TOP_KEYS)))
+    if doc.get('schema') != SCHEMA:
+        errors.append(f'schema must be {SCHEMA}')
+    if doc.get('workflow') != WORKFLOW:
+        errors.append(f'workflow must be {WORKFLOW}')
+    if doc.get('evidence') != EVIDENCE:
+        errors.append('evidence wording differs')
     if doc.get('physical_validation') != 'not_claimed':
         errors.append('physical_validation must be not_claimed')
     interval = doc.get('acceptance_interval')
@@ -75,12 +88,15 @@ def evaluate_document(doc, variant, revisions):
 
 
 def _md_rows(text):
-    rows = {}
+    """({record: cells}, [records with more than one row]); a duplicate row is never resolved by keeping one."""
+    rows, duplicates = {}, []
     for line in text.splitlines():
         cells = [c.strip() for c in line.strip().strip('|').split('|')]
         if line.startswith('|') and cells and cells[0] in NAMES:
-            rows[cells[0]] = cells
-    return rows
+            if cells[0] in rows and cells[0] not in duplicates:
+                duplicates.append(cells[0])
+            rows.setdefault(cells[0], cells)
+    return rows, duplicates
 
 
 def evaluate_package(directory, variant, revisions):
@@ -100,11 +116,14 @@ def evaluate_package(directory, variant, revisions):
         errors.append('manifest digest of handoff.md differs')
     if 'physical_validation=not_claimed' not in md or WORDING not in md:
         errors.append('handoff.md lacks the evidence wording')
-    rows = _md_rows(md)
+    rows, duplicates = _md_rows(md)
     want = expected_rows(variant)
     for name in NAMES:
         cells = rows.get(name)
         w = want[name]
+        if name in duplicates:
+            errors.append(f'{name}: duplicate Markdown row')
+            continue
         if cells is None or len(cells) != 10:
             errors.append(f'{name}: no Markdown row')
             continue
@@ -113,7 +132,8 @@ def evaluate_package(directory, variant, revisions):
                   ', '.join(w['missing']) or 'none']
         if cells[:9] != expect:
             errors.append(f'{name}: Markdown row disagrees: {cells[:9]} != {expect}')
-        if not re.fullmatch(rf'{name} rev {revisions[name]} sha256:[0-9a-f]{{64}}', cells[9]):
+        frozen = hashlib.sha256(_source(name, variant)).hexdigest()
+        if cells[9] != f'{name} rev {revisions[name]} sha256:{frozen}':
             errors.append(f'{name}: Markdown source cell {cells[9]!r}')
     items = re.findall(r'^[0-9]+\. (.*)$', md, flags=re.M)
     expect_items = [f"{n}: {f['category']}" + (f" ({f['field']})" if 'field' in f else '')
