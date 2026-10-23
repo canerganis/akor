@@ -15,8 +15,9 @@ Totals: 12 launches, 31,346 tokens, accounting complete (caps 24 and 64,000). In
 answered classify_C (12.51 ± 0.01 against [12.48, 12.52]) with "outside"; the host check rejected it and one singleton
 resend at attempt 2 answered "inside". The other four scenarios ran at their primary launch counts.
 
-Hidden reasoning, both live runs together (10 classification calls): the four calls that gave a wrong answer all used
-0 thinking tokens; the six that were all right used 51 to 79. In live2, clean and interrupted classify used 79 each and
+Hidden reasoning, both live runs together (10 classification calls): three calls held the four wrong answers and all
+three used 0 thinking tokens; the seven fully right calls used 51 to 79. (Corrected 2026-10-23: an earlier version said
+"four calls wrong, six right", a count slip found by Opus.) In live2, clean and interrupted classify used 79 each and
 were right; the stale packet used 0 and was wrong; its resend used 64 and was right. An observed association, not an
 established cause.
 
