@@ -1,0 +1,46 @@
+{
+ "label": "step 3 route overlay: Haiku 5.5 worker",
+ "route": {
+  "model": "claude-haiku-5-5",
+  "alias_map": {
+   "claude-haiku-5-5": "claude-haiku-5-5"
+  }
+ },
+ "evidence": {
+  "source": "bench/live/data/*haiku*.jsonl: the `model` field of each record is the comma-joined modelUsage key list of the claude -p --output-format json envelope (bench/live/run_live.py), requested with --model claude-haiku-5-5",
+  "records": 389,
+  "reported_models": [
+   "claude-haiku-5-5"
+  ],
+  "files": {
+   "bench/live/data/effort_haiku_default.jsonl": 5,
+   "bench/live/data/effort_haiku_medium.jsonl": 5,
+   "bench/live/data/gate1_haiku.jsonl": 12,
+   "bench/live/data/gate_haiku_1.jsonl": 10,
+   "bench/live/data/gate_haiku_16.jsonl": 10,
+   "bench/live/data/gate_haiku_4.jsonl": 10,
+   "bench/live/data/live11_haiku55.jsonl": 40,
+   "bench/live/data/live12_effort_haiku_high.jsonl": 10,
+   "bench/live/data/live12_effort_haiku_low.jsonl": 10,
+   "bench/live/data/live12_effort_haiku_medium.jsonl": 10,
+   "bench/live/data/live13_haiku55.jsonl": 15,
+   "bench/live/data/live13b_haiku55.jsonl": 5,
+   "bench/live/data/live14_dense_haiku.jsonl": 10,
+   "bench/live/data/live14_het_haiku.jsonl": 10,
+   "bench/live/data/live15_dense_haiku.jsonl": 20,
+   "bench/live/data/live15_het_haiku.jsonl": 10,
+   "bench/live/data/live16_dense_haiku.jsonl": 20,
+   "bench/live/data/live16_het_haiku.jsonl": 10,
+   "bench/live/data/live17_dense_haiku.jsonl": 20,
+   "bench/live/data/live17_het_haiku.jsonl": 10,
+   "bench/live/data/live24_1g_D_haiku64.jsonl": 10,
+   "bench/live/data/live24_1g_D_haiku_het.jsonl": 5,
+   "bench/live/data/live25_1g_R_haiku.jsonl": 4,
+   "bench/live/data/live26_1g_R3_haiku.jsonl": 3,
+   "bench/live/data/live29_1g_haiku_paired.jsonl": 10,
+   "bench/live/data/pilot2_haiku.jsonl": 57,
+   "bench/live/data/pilot2q_haiku.jsonl": 48
+  },
+  "note": "no raw O1 envelope exists for Haiku yet; the key is read from the size-gate and live records of the same claude -p transport. A wrong key would make response_check refuse every candidate."
+ }
+}

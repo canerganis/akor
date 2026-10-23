@@ -11,4 +11,7 @@ the archived cores or a written diff review, same adapter digest, effort, parser
 whole-suite billed tokens, then lower elapsed time. Sizes 4 and 1 stay experimental (checked with model
 claude-haiku-5-5). Allocation 150,000 tokens, 18 launches, 8 per scenario. Quota read before (start only below 45%)
 and after; 46% mid-suite stops it as incomplete; 49% hard stop. A pass supports this frozen use case only.
-Status: signed, not built.
+[Frozen plan with the derived digest, control-match results, label check, dry result and the live command](plan-frozen.md).
+Status: signed; derived freeze 8ec891e7 built from 088815db (route.model and route.alias_map only, no pinned file
+edited); all twelve control-match items MATCH; sizes 4 and 1 label experimental under claude-haiku-5-5; derived dry
+gate passes; the paid suite has not been run.

@@ -1,0 +1,34 @@
+{
+ "base": {
+  "freeze": "bench/o1/repair-handoff-20-v1/freeze.json",
+  "digest": "088815dbd9d1817af64b5b1d7ed96f4631681193ca1784387084e9421f2b1f36",
+  "file_sha256": "5a3a5ac862b1739f77c071df28003f62bd40003536db74360b394e5d01412a28",
+  "workflow_sha256": "0a9f58bb9ec808b39f8c06b772ef527e5d3e1f41124a65b9a5638fc1b552f8bf"
+ },
+ "overlay": {
+  "bench/o1/repair-handoff-20-haiku/route.json": "915e4b437bbbe5d0195bcb8c74d273edf82113104fdfe4b9a347f1edc06f6462",
+  "bench/o1/repair-handoff-20-haiku/control-freeze-32333561.json": "412f776b4f52eb5d7e8794cb07da25630c8bb7c67acd69787ff76bba73cef01c"
+ },
+ "derived": {
+  "model": "claude-haiku-5-5",
+  "alias_map": {
+   "claude-haiku-5-5": "claude-haiku-5-5"
+  },
+  "changed": [
+   "route.alias_map",
+   "route.model"
+  ],
+  "workflow_sha256": "5145efe959af71adc878df451f5063a5dae65c3ed66aa4ce50cd9cca1fcb4d87"
+ },
+ "code": {
+  "bench/o1/step3_haiku.py": "a6b7c3682c097c513251b8605075c64a874fd7f9b1635ce83719a5598bac2374",
+  "bench/o1/step3_checks.py": "44d2f8f6aac660f8a4d8df899e78bbaade166c9ee3a0b474a78c0a72e63e3eae",
+  "bench/o1/step3_replay_adapter.py": "ab805acb1edc021b0c7faaebf9b1b90359ae6456565b64b7bfd8553ccff527ae"
+ },
+ "design": {
+  "docs/design/step3-haiku-2026-10-23/01-astra-prereg.md": "a2082e35020189e0881d60ebd00fd07cdefb465591e0efdda12ecf8d94779bf4",
+  "docs/design/step3-haiku-2026-10-23/02-opus-changes.md": "27a4cd5934b19c038bb2dfabc4eff50169182657e57b62711d8b1def7db94113",
+  "docs/design/step3-haiku-2026-10-23/03-astra-accept.md": "61164e4570e18a9dd311a91e9d09db84f5f556c753a9aa35b60e2031bb0067db"
+ },
+ "digest": "8ec891e79e1e012b33a2f4d1ea3da4c0a3454f1db5bde3a13268c631fd1e29b6"
+}
