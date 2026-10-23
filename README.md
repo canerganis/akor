@@ -12,7 +12,7 @@ Your agents keep repeating themselves on every call. AKOR stops you paying for i
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
-![Tests](https://img.shields.io/badge/tests-559%20passing-1a7f4b)
+![Tests](https://img.shields.io/badge/tests-749%20passing-1a7f4b)
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
@@ -242,6 +242,8 @@ The full specification is in [`OZ9.md`](OZ9.md).
   pilot), so its correctness figures say little about inclusive-boundary cases. In the step 4 workflow, where half the
   cases are boundaries, Sonnet 5.5 misclassified four of them, each in a call that used no hidden reasoning; per-job host
   checks caught every one before delivery ([step 4 results](docs/design/step4-2026-10-23/g3b/results.md)).
+- Authoring rule that follows from it: a step the host can compute exactly from checked values stays on the host
+  ([decision](docs/design/boundary-adoption-2026-10-23/decision-host-classify.md)).
 
 ## Related work
 
@@ -285,7 +287,10 @@ writes, not how long it thinks.
 ## Roadmap
 
 - More task families in the public benchmark (code review, log triage) next to the current extraction tasks.
-- A comparison against one call per job, the way many pipelines run today.
+- Done: a comparison against one call per job and one subagent per job (see above).
+- Done in the runtime: a resumable executor for dependent multi-step work with per-job checks, judged on a 20-step
+  real workflow where the model writes code and the host verifies it in three tiers
+  ([O1 result](docs/design/o1-real-workflow-2026-10-23/results.md)).
 - More models and runtimes, each added only after its own preregistered qualification.
 
 Issues and pull requests are welcome.

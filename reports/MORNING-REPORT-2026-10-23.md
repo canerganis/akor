@@ -73,3 +73,17 @@ weekly quota at about 35%, well under the 49% line, because every remaining step
   delivery) while every executor-side check held ([record](../docs/design/step4-2026-10-23/g3b/results-live3.md)).
 - Next, running now: building the signed boundary adoption (classify consumes the checked interval), then its
   qualification and suite.
+
+## Afternoon update, 2026-10-23
+
+- Boundary adoption (classify gets the checked interval): built, reviewed by Astra (two rejections, both real defects
+  fixed: ref form missing from request identity, Python equality and lost RawJSON spelling on resume and memo), then
+  qualified live: **failed at call 9 of 36** (upper-limit equality misread at 0 thinking on a new goal). The probe's
+  6 of 6 did not generalize.
+- Astra and Opus then decided independently and agreed: classification becomes a host operation (step 4 v3 pack,
+  `host.classify@1`, zero-token dry gate passes), and USAGE gets an authoring rule: steps the host can compute exactly
+  stay on the host. No further paid model experiment on this question.
+- G3b live3 on the patched executor: failed on the same model error; every executor-side check held.
+- README updated (roadmap, boundary limit and authoring rule, 749 tests). Weekly quota at 40%.
+- Not done: the owner-facing push of `main` (only `oz-0.9` is pushed), and any step 5 work (Astra and Opus advise
+  against an effort study for now).
