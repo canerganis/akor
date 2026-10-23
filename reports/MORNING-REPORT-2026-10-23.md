@@ -34,7 +34,7 @@ Branch `oz-0.9`, nothing pushed, nothing posted. Tests: 542 passing. Claude week
 - The voided size-1 gate (coverage), and an over-strong test name in step 3.
 
 ## Decisions for you
-1. **LinkedIn post:** draft at `docs/social/linkedin_pilot.md`, chart `docs/assets/pilot_subagents.svg`. Post only if you approve.
+1. **LinkedIn post:** draft at `docs/social/linkedin_pilot.md`, chart `docs/assets/pilot_subagents.svg`. Post only if you approve. Owner, 2026-10-23: not now; the draft stays in the repo.
 2. **Push:** many commits since `main`. The new raw transcripts under `bench/live/data/pilot_k2/` contain local Windows
    paths with your user name (118 files). Redact before pushing, or keep as raw evidence?
 3. **Step 4, real workflow (O1):** Astra and Opus signed a step 4 plan ([step4-2026-10-23](../docs/design/step4-2026-10-23/README.md)):
