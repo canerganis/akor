@@ -1,0 +1,13 @@
+{
+ "prefix": "hk1",
+ "before_percent": 46.0,
+ "recorded_at": 1792783130.550905,
+ "rule": {
+  "start_below": 55.0,
+  "incomplete_at": 56.0,
+  "hard_stop_at": 59.0
+ },
+ "after_percent": 46.0,
+ "status": "ok",
+ "after_recorded_at": 1792783463.342837
+}

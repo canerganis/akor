@@ -1,0 +1,103 @@
+{
+ "integration": {
+  "A": {
+   "passed": 8,
+   "rows": 8,
+   "seeds": [
+    0,
+    1
+   ],
+   "sha256": "de631407231ac4c32cbdee41304d5f0ad5be4284618006bcfe206652a00e951f",
+   "ticket_revision": 1
+  },
+  "B": {
+   "passed": 8,
+   "rows": 8,
+   "seeds": [
+    0,
+    1
+   ],
+   "sha256": "196b3f8575dd8f77e222388b48642f3e1c22b216818c0a83fae74febd07ce158",
+   "ticket_revision": 1
+  },
+  "C": {
+   "passed": 8,
+   "rows": 8,
+   "seeds": [
+    0,
+    1
+   ],
+   "sha256": "a45cf83f6232ad5f5ac14a099f7ff46f37aa238f27fdd2d544fe66d7f0905dff",
+   "ticket_revision": 1
+  },
+  "D": {
+   "passed": 8,
+   "rows": 8,
+   "seeds": [
+    0,
+    1
+   ],
+   "sha256": "304b45f8e3226eb365f4d386f02c04e1b17dfc2f4a66aa15cd325a9e71f817f7",
+   "ticket_revision": 1
+  }
+ },
+ "modules": {
+  "A": {
+   "file": "amounts.py",
+   "functions": {
+    "parse_amount": "c9cfe92f4412f7ad7aa618f2c04fb73b6bbbd9dc0fea923c0e4f3eb06ea78170",
+    "total_amount": "14dcf774fde6752aa417f84f634c0f19a3d889945ec817230ae561fdf7f02e34"
+   },
+   "sha256": "de631407231ac4c32cbdee41304d5f0ad5be4284618006bcfe206652a00e951f"
+  },
+  "B": {
+   "file": "intervals.py",
+   "functions": {
+    "free_slots": "0a3e72f644792e1eedd22f75eda321a8cc5d49c8abe5fadc2f992abce6e5811d",
+    "union_intervals": "993219c8591adc092a60553dfe426fd1adc8527f390299246216b423db32afba"
+   },
+   "sha256": "196b3f8575dd8f77e222388b48642f3e1c22b216818c0a83fae74febd07ce158"
+  },
+  "C": {
+   "file": "config_patch.py",
+   "functions": {
+    "apply_revisions": "5e457ca844947466d357a45f52cedbd97d7542b82d97ad0ac696e527c2f84526",
+    "merge_patch": "a1f8561285a013385a774ea5e8de7125f102b71bbc73cb5aae8224b49fdd20d1"
+   },
+   "sha256": "a45cf83f6232ad5f5ac14a099f7ff46f37aa238f27fdd2d544fe66d7f0905dff"
+  },
+  "D": {
+   "file": "jobs.py",
+   "functions": {
+    "execution_batches": "07891af42029004d5251ffea499b37d9eea1b28a10566600bcfbba0df1223c91",
+    "topological_order": "50d59e35d59feed15ef147e14b5e4f120ab3b3861dfb0307b15829c93703e29d"
+   },
+   "sha256": "304b45f8e3226eb365f4d386f02c04e1b17dfc2f4a66aa15cd325a9e71f817f7"
+  }
+ },
+ "note": "The defects were seeded on purpose in a purpose-built utility package; they are not independently discovered bug reports. The patch is delivered unapplied.",
+ "schema": "akor.o1-provenance/1",
+ "tickets": {
+  "A": {
+   "source_revision": 2,
+   "source_sha256": "4d06aabd3dffa1d749d25a7996b3d4a91394f39bf3352c6f427bcfbef8985e40",
+   "ticket_revision": 1
+  },
+  "B": {
+   "source_revision": 1,
+   "source_sha256": "3507a8341f6fd22f9796370d20fe2001562a886c7b2e59ccc78f9fde63ef2fd8",
+   "ticket_revision": 1
+  },
+  "C": {
+   "source_revision": 1,
+   "source_sha256": "3cdc1e9a1ca6dd4b896f71d10eb32a4a2665f5c7bf6079864d89a4a00c9a039b",
+   "ticket_revision": 1
+  },
+  "D": {
+   "source_revision": 1,
+   "source_sha256": "69dfdea7d4d6c3e8b9834c9e254cdcc5984a07f039050402e0cd2a4999d537f0",
+   "ticket_revision": 1
+  }
+ },
+ "workflow": "repair-handoff-20/v1"
+}

@@ -1,0 +1,2244 @@
+{
+ "gate": "G3c-O1 live",
+ "kind": "live",
+ "prefix": "hk1",
+ "freeze": {
+  "frozen": true,
+  "digest": "dd6bf97406199b79ddcf3d57047cca566d8297c973533b9546b34a0d756883e4",
+  "current_digest": "dd6bf97406199b79ddcf3d57047cca566d8297c973533b9546b34a0d756883e4",
+  "base_digest": "088815dbd9d1817af64b5b1d7ed96f4631681193ca1784387084e9421f2b1f36",
+  "problems": []
+ },
+ "started_at": 1792783130.5519032,
+ "scenarios": {
+  "clean": {
+   "scenario": "clean",
+   "request_id": "hk1-clean",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 2,
+   "packets": [
+    4,
+    4
+   ],
+   "expected": {
+    "expected_launches": 2,
+    "expected_packets": [
+     4,
+     4
+    ],
+    "expected_memo_hits": 0
+   },
+   "memo_hits": 0,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "miss"
+    ]
+   ],
+   "labels": [
+    "experimental",
+    "experimental"
+   ],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 28651,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 2,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": null,
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0938,
+         "max_wall_seconds": 0.1086
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0625,
+         "max_wall_seconds": 0.0902
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1719,
+         "max_wall_seconds": 0.1863
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1406,
+         "max_wall_seconds": 0.1839
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.1562,
+         "max_wall_seconds": 0.1954
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2162
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.267
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2667
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0938,
+        "max_wall_seconds": 0.0901
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1406,
+        "max_wall_seconds": 0.1739
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.2031,
+        "max_wall_seconds": 0.2259
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.2344,
+        "max_wall_seconds": 0.2656
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "14dcf774fde6752aa417f84f634c0f19a3d889945ec817230ae561fdf7f02e34",
+     "adapter_B": "0a3e72f644792e1eedd22f75eda321a8cc5d49c8abe5fadc2f992abce6e5811d",
+     "adapter_C": "5e457ca844947466d357a45f52cedbd97d7542b82d97ad0ac696e527c2f84526",
+     "adapter_D": "07891af42029004d5251ffea499b37d9eea1b28a10566600bcfbba0df1223c91",
+     "core_A": "c9cfe92f4412f7ad7aa618f2c04fb73b6bbbd9dc0fea923c0e4f3eb06ea78170",
+     "core_B": "993219c8591adc092a60553dfe426fd1adc8527f390299246216b423db32afba",
+     "core_C": "a1f8561285a013385a774ea5e8de7125f102b71bbc73cb5aae8224b49fdd20d1",
+     "core_D": "50d59e35d59feed15ef147e14b5e4f120ab3b3861dfb0307b15829c93703e29d"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {
+     "core": {
+      "accepted": 4,
+      "total": 4
+     },
+     "adapter": {
+      "accepted": 4,
+      "total": 4
+     }
+    },
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_D",
+      "verdict": "accepted",
+      "h_pass": true
+     }
+    ],
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "core_A": "accepted",
+       "core_B": "accepted",
+       "core_C": "accepted",
+       "core_D": "accepted"
+      },
+      "input_tokens": 5306,
+      "output_tokens": 8016,
+      "tokens": 13322,
+      "thinking_tokens": 6723,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted",
+       "adapter_B": "accepted",
+       "adapter_C": "accepted",
+       "adapter_D": "accepted"
+      },
+      "input_tokens": 6816,
+      "output_tokens": 8513,
+      "tokens": 15329,
+      "thinking_tokens": 7258,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     }
+    ]
+   }
+  },
+  "repeat": {
+   "scenario": "repeat",
+   "request_id": "hk1-repeat",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "packets": [],
+   "expected": {
+    "expected_launches": 0,
+    "expected_packets": [],
+    "expected_memo_hits": 8
+   },
+   "memo_hits": 8,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ]
+   ],
+   "labels": [],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": null,
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true
+    },
+    "errors": [],
+    "derived": [],
+    "actual": [],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0938,
+         "max_wall_seconds": 0.1086
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0625,
+         "max_wall_seconds": 0.0902
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1719,
+         "max_wall_seconds": 0.1863
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1406,
+         "max_wall_seconds": 0.1839
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.1562,
+         "max_wall_seconds": 0.1954
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2162
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.267
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2667
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0938,
+        "max_wall_seconds": 0.0901
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1406,
+        "max_wall_seconds": 0.1739
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.2031,
+        "max_wall_seconds": 0.2259
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.2344,
+        "max_wall_seconds": 0.2656
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "14dcf774fde6752aa417f84f634c0f19a3d889945ec817230ae561fdf7f02e34",
+     "adapter_B": "0a3e72f644792e1eedd22f75eda321a8cc5d49c8abe5fadc2f992abce6e5811d",
+     "adapter_C": "5e457ca844947466d357a45f52cedbd97d7542b82d97ad0ac696e527c2f84526",
+     "adapter_D": "07891af42029004d5251ffea499b37d9eea1b28a10566600bcfbba0df1223c91",
+     "core_A": "c9cfe92f4412f7ad7aa618f2c04fb73b6bbbd9dc0fea923c0e4f3eb06ea78170",
+     "core_B": "993219c8591adc092a60553dfe426fd1adc8527f390299246216b423db32afba",
+     "core_C": "a1f8561285a013385a774ea5e8de7125f102b71bbc73cb5aae8224b49fdd20d1",
+     "core_D": "50d59e35d59feed15ef147e14b5e4f120ab3b3861dfb0307b15829c93703e29d"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {},
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [],
+    "calls": []
+   }
+  },
+  "interrupt": {
+   "scenario": "interrupt",
+   "request_id": "hk1-interrupt",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 2,
+   "packets": [
+    4,
+    4
+   ],
+   "expected": {
+    "expected_launches": 2,
+    "expected_packets": [
+     4,
+     4
+    ],
+    "expected_memo_hits": 0
+   },
+   "memo_hits": 0,
+   "memo_trace": [
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "miss"
+    ]
+   ],
+   "labels": [
+    "unrecorded",
+    "experimental"
+   ],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 28038,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 2,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": {
+    "pass": true,
+    "checks": {
+     "kills_at_boundaries": true,
+     "first_capture_recovered_without_new_call": true,
+     "manifest_reconciled_on_resume": true,
+     "request_identity_and_deadline_kept": true
+    },
+    "exits": [
+     {
+      "faults": [
+       "worker.after_capture"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [
+       "flow.publish.after_manifest"
+      ],
+      "exit": 86,
+      "expected_exit": 86,
+      "stderr_tail": ""
+     },
+     {
+      "faults": [],
+      "exit": 0,
+      "expected_exit": 0,
+      "stderr_tail": ""
+     }
+    ]
+   },
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true,
+     "interrupt_observables": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ]
+    ],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0781,
+         "max_wall_seconds": 0.1064
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0625,
+         "max_wall_seconds": 0.0866
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1719,
+         "max_wall_seconds": 1.9314
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1406,
+         "max_wall_seconds": 0.1861
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.1562,
+         "max_wall_seconds": 0.1851
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2009
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2491
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2483
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0469,
+        "max_wall_seconds": 0.0875
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1875,
+        "max_wall_seconds": 0.5571
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.1562,
+        "max_wall_seconds": 0.1971
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.2031,
+        "max_wall_seconds": 0.2659
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "791953b92fba2182e619d268e491750c9224a85d4971b2ac9eda3c0c505ebf48",
+     "adapter_B": "7011e9c00b3ca92906b0594dd1fc5123a85cb902f76914edac3eacb571e9cd87",
+     "adapter_C": "4a8dabb1c117651cfbb1e9c043044df647181802815738c19b3c471f9f62cd4d",
+     "adapter_D": "af0f4d688e22f8fc136912a3c3b09e1607cda4d292582f8cca93dc7c9a1e276f",
+     "core_A": "fd55a7e8b743314c7c4f7f4a57c2c2c3ce5f23706b74f431507d07d7566e4409",
+     "core_B": "e6167d3ff9ed1feefe32c8a7974eae1f50a0389750970d168b49e1b2270b6fad",
+     "core_C": "f3d053358b5ff9fb60840bbf01f6134c7502a908c7e838ccc7ea12b568e0623c",
+     "core_D": "95def6dbaf5e06514e92521ea29a5b13240d1836312edce0ab105eabb7ddbc15"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {
+     "core": {
+      "accepted": 4,
+      "total": 4
+     },
+     "adapter": {
+      "accepted": 4,
+      "total": 4
+     }
+    },
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_D",
+      "verdict": "accepted",
+      "h_pass": true
+     }
+    ],
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      "attempt": 1,
+      "label": "unrecorded",
+      "verdicts": {
+       "core_A": "accepted",
+       "core_B": "accepted",
+       "core_C": "accepted",
+       "core_D": "accepted"
+      },
+      "input_tokens": 5308,
+      "output_tokens": 9078,
+      "tokens": 14386,
+      "thinking_tokens": 7968,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted",
+       "adapter_B": "accepted",
+       "adapter_C": "accepted",
+       "adapter_D": "accepted"
+      },
+      "input_tokens": 6639,
+      "output_tokens": 7013,
+      "tokens": 13652,
+      "thinking_tokens": 5869,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     }
+    ]
+   }
+  },
+  "stale": {
+   "scenario": "stale",
+   "request_id": "hk1-stale",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 4,
+   "packets": [
+    4,
+    4,
+    1,
+    1
+   ],
+   "expected": {
+    "expected_launches": 4,
+    "expected_packets": [
+     4,
+     4,
+     1,
+     1
+    ],
+    "expected_memo_hits": 6
+   },
+   "memo_hits": 6,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_A",
+     "miss"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "miss"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ]
+   ],
+   "labels": [
+    "experimental",
+    "experimental",
+    "experimental",
+    "experimental"
+   ],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 37630,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 4,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": {
+    "pass": true,
+    "checks": {
+     "no_old_A_after_mutation": true,
+     "old_verification_invalidated_and_not_delivered": true,
+     "bcd_reused_by_memo_on_identical_inputs": true,
+     "old_A_history_kept": true
+    },
+    "leaked_receipts": [],
+    "reused": {
+     "core_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "core_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "core_D": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "adapter_B": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "adapter_C": {
+      "decision": "hit",
+      "same_inputs": true
+     },
+     "adapter_D": {
+      "decision": "hit",
+      "same_inputs": true
+     }
+    }
+   },
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true,
+     "stale_observables": true,
+     "stale_order_after_mutation": true
+    },
+    "errors": [],
+    "derived": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "core_A"
+      ],
+      1
+     ],
+     [
+      3,
+      [
+       "adapter_A"
+      ],
+      1
+     ]
+    ],
+    "actual": [
+     [
+      0,
+      [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      1
+     ],
+     [
+      1,
+      [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      1
+     ],
+     [
+      2,
+      [
+       "core_A"
+      ],
+      1
+     ],
+     [
+      3,
+      [
+       "adapter_A"
+      ],
+      1
+     ]
+    ],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0625,
+         "max_wall_seconds": 0.1052
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0156,
+         "max_wall_seconds": 0.0806
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1406,
+         "max_wall_seconds": 0.1719
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1406,
+         "max_wall_seconds": 0.1998
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.1094,
+         "max_wall_seconds": 0.1872
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.1406,
+         "max_wall_seconds": 0.2056
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2344,
+         "max_wall_seconds": 0.2415
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.2515
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0469,
+        "max_wall_seconds": 0.0903
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1406,
+        "max_wall_seconds": 0.1714
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.1562,
+        "max_wall_seconds": 0.2169
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.2031,
+        "max_wall_seconds": 0.2494
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "869f2fefc382b0f936865b414b430e9c554f4e0e2ab283501ad893b66df7ee69",
+     "adapter_B": "ea69808432058756afbee7372ca9eacf5ce49c39d909a4af9e3775b5067e4357",
+     "adapter_C": "048f6b0bcaf6aa84a4ad0fb3c91dec851da1b9561486b2cef38f34cd83776c05",
+     "adapter_D": "c0c5e6e68b644f98924d6eaaa41c93b9b81cad5743365239b7d965baeb6db235",
+     "core_A": "1e2f232b662642c099556ba4029ddf1c62c414ee1acab2fd4f2bbd1e3452739e",
+     "core_B": "16f71a1aa674f8dd720fe6c6d8e2034c72578177b8336a2c71ff81709a3c89ec",
+     "core_C": "134d2d35050a9eb253f98d95b67e00bd85e6736be5a9558603c7c233e5a7ed43",
+     "core_D": "bad274a35936058bb1e938fdd34006afe465abcba149df721a85cc9300d730c2"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {
+     "core": {
+      "accepted": 5,
+      "total": 5
+     },
+     "adapter": {
+      "accepted": 5,
+      "total": 5
+     }
+    },
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_B",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_C",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_D",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "core_A",
+      "verdict": "accepted",
+      "h_pass": true
+     },
+     {
+      "receipt": "1",
+      "job": "adapter_A",
+      "verdict": "accepted",
+      "h_pass": true
+     }
+    ],
+    "calls": [
+     {
+      "stage": 0,
+      "receipt": "1",
+      "members": [
+       "core_A",
+       "core_B",
+       "core_C",
+       "core_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "core_A": "accepted",
+       "core_B": "accepted",
+       "core_C": "accepted",
+       "core_D": "accepted"
+      },
+      "input_tokens": 5304,
+      "output_tokens": 8078,
+      "tokens": 13382,
+      "thinking_tokens": 6893,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     },
+     {
+      "stage": 1,
+      "receipt": "1",
+      "members": [
+       "adapter_A",
+       "adapter_B",
+       "adapter_C",
+       "adapter_D"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted",
+       "adapter_B": "accepted",
+       "adapter_C": "accepted",
+       "adapter_D": "accepted"
+      },
+      "input_tokens": 6711,
+      "output_tokens": 7305,
+      "tokens": 14016,
+      "thinking_tokens": 6031,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     },
+     {
+      "stage": 2,
+      "receipt": "1",
+      "members": [
+       "core_A"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "core_A": "accepted"
+      },
+      "input_tokens": 3259,
+      "output_tokens": 2443,
+      "tokens": 5702,
+      "thinking_tokens": 2076,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     },
+     {
+      "stage": 3,
+      "receipt": "1",
+      "members": [
+       "adapter_A"
+      ],
+      "attempt": 1,
+      "label": "experimental",
+      "verdicts": {
+       "adapter_A": "accepted"
+      },
+      "input_tokens": 3682,
+      "output_tokens": 848,
+      "tokens": 4530,
+      "thinking_tokens": 704,
+      "model": [
+       "claude-haiku-5-5"
+      ]
+     }
+    ]
+   }
+  },
+  "bump": {
+   "scenario": "bump",
+   "request_id": "hk1-bump",
+   "status": "delivered",
+   "blocker": null,
+   "launches": 0,
+   "packets": [],
+   "expected": {
+    "expected_launches": 0,
+    "expected_packets": [],
+    "expected_memo_hits": 16
+   },
+   "memo_hits": 16,
+   "memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ]
+   ],
+   "labels": [],
+   "deliveries": 1,
+   "on_time": true,
+   "accounting": {
+    "tokens_known": 0,
+    "calls_without_usage": 0,
+    "coverage": "complete"
+   },
+   "ledger": {
+    "ok": true,
+    "ledger_calls": 0,
+    "problems": []
+   },
+   "fixture_invocations": null,
+   "observables": null,
+   "gate": {
+    "label": "pass_g3c",
+    "pass_g3c": true,
+    "strict_pass": true,
+    "recovered": false,
+    "checks": {
+     "delivered_once_on_time_verified_A_I_H": true,
+     "primary_sequence_and_memo_hits": true,
+     "independent_verdicts": true,
+     "recovery_eligibility": true,
+     "exact_trace": true,
+     "no_unresolved_stage": true,
+     "within_scenario_launch_cap": true,
+     "one_ledger_call_per_launch_and_complete_usage": true,
+     "every_dispatch_experimental": true,
+     "memo_lookup_trace": true,
+     "acceptance_trace": true
+    },
+    "errors": [],
+    "derived": [],
+    "actual": [],
+    "blocked": null,
+    "package": {
+     "verified": true,
+     "errors": [],
+     "detail": {
+      "A": {
+       "A": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "B": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "C": {
+        "core": "accepted",
+        "adapter": "accepted"
+       },
+       "D": {
+        "core": "accepted",
+        "adapter": "accepted"
+       }
+      },
+      "I": {
+       "A": {
+        "pass": true,
+        "rows": 8
+       },
+       "B": {
+        "pass": true,
+        "rows": 8
+       },
+       "C": {
+        "pass": true,
+        "rows": 8
+       },
+       "D": {
+        "pass": true,
+        "rows": 8
+       }
+      },
+      "H": {
+       "A": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9361,
+         "chunks": 8,
+         "max_cpu_seconds": 0.0938,
+         "max_wall_seconds": 0.1086
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 820,
+         "chunks": 2,
+         "max_cpu_seconds": 0.0625,
+         "max_wall_seconds": 0.0902
+        }
+       },
+       "B": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9939,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1719,
+         "max_wall_seconds": 0.1863
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 9737,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1406,
+         "max_wall_seconds": 0.1839
+        }
+       },
+       "C": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 3025,
+         "chunks": 4,
+         "max_cpu_seconds": 0.1562,
+         "max_wall_seconds": 0.1954
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 2000,
+         "chunks": 2,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2162
+        }
+       },
+       "D": {
+        "core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.2031,
+         "max_wall_seconds": 0.267
+        },
+        "adapter_with_accepted_core": {
+         "pass": true,
+         "failed": 0,
+         "total": 7598,
+         "chunks": 8,
+         "max_cpu_seconds": 0.1875,
+         "max_wall_seconds": 0.2667
+        }
+       }
+      },
+      "H_reference_core": {
+       "A": {
+        "pass": true,
+        "failed": 0,
+        "total": 820,
+        "chunks": 2,
+        "max_cpu_seconds": 0.0938,
+        "max_wall_seconds": 0.0901
+       },
+       "B": {
+        "pass": true,
+        "failed": 0,
+        "total": 9737,
+        "chunks": 8,
+        "max_cpu_seconds": 0.1406,
+        "max_wall_seconds": 0.1739
+       },
+       "C": {
+        "pass": true,
+        "failed": 0,
+        "total": 2000,
+        "chunks": 2,
+        "max_cpu_seconds": 0.2031,
+        "max_wall_seconds": 0.2259
+       },
+       "D": {
+        "pass": true,
+        "failed": 0,
+        "total": 7598,
+        "chunks": 8,
+        "max_cpu_seconds": 0.2344,
+        "max_wall_seconds": 0.2656
+       }
+      }
+     }
+    },
+    "accepted_sha256": {
+     "adapter_A": "14dcf774fde6752aa417f84f634c0f19a3d889945ec817230ae561fdf7f02e34",
+     "adapter_B": "0a3e72f644792e1eedd22f75eda321a8cc5d49c8abe5fadc2f992abce6e5811d",
+     "adapter_C": "5e457ca844947466d357a45f52cedbd97d7542b82d97ad0ac696e527c2f84526",
+     "adapter_D": "07891af42029004d5251ffea499b37d9eea1b28a10566600bcfbba0df1223c91",
+     "core_A": "c9cfe92f4412f7ad7aa618f2c04fb73b6bbbd9dc0fea923c0e4f3eb06ea78170",
+     "core_B": "993219c8591adc092a60553dfe426fd1adc8527f390299246216b423db32afba",
+     "core_C": "a1f8561285a013385a774ea5e8de7125f102b71bbc73cb5aae8224b49fdd20d1",
+     "core_D": "50d59e35d59feed15ef147e14b5e4f120ab3b3861dfb0307b15829c93703e29d"
+    }
+   },
+   "pass_g3c": true,
+   "recovered": false,
+   "recovery": {
+    "first_attempt": {},
+    "rejected_jobs": [],
+    "recovery_launches": 0,
+    "recovery_tokens": 0,
+    "wire_failures": 0,
+    "check_false_accepts": [],
+    "check_false_rejects": [],
+    "candidates_h": [],
+    "calls": []
+   }
+  }
+ },
+ "cli_version": "2.1.306",
+ "totals": {
+  "launches": 8,
+  "tokens_known": 94319,
+  "calls_without_usage": 0,
+  "caps": {
+   "max_tokens": 150000,
+   "max_launches": 18,
+   "max_launches_per_flow": 8,
+   "reserve_per_launch": 17358,
+   "reserve_rule": "measured at G2 (o1.py measure, o200k_base): the largest frozen packet is the size-4 adapter packet; with each accepted core at the 4,096-byte source limit it is 7,358 input tokens (3,402 with the fixture cores); reserve = 7,358 + 2,000 overhead + 8,000 output headroom = 17,358, applied to every launch; a call with unknown usage is charged at it",
+   "expected_failure_free_tokens": {
+    "T=0": 40860,
+    "T=2000": 56860,
+    "T=5000": 80860,
+    "note": "eight launches (clean 2, interrupt 2, stale 4); per call measured input + 2,000 overhead + fixture-sized output + T hidden reasoning; estimates, not predictions"
+   }
+  },
+  "elapsed_seconds": 303.3,
+  "accounting": "complete",
+  "suite_over_envelope": false
+ },
+ "thinking_tokens_per_call": [
+  {
+   "scenario": "clean",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "core_A",
+    "core_B",
+    "core_C",
+    "core_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "core_A": "accepted",
+    "core_B": "accepted",
+    "core_C": "accepted",
+    "core_D": "accepted"
+   },
+   "input_tokens": 5306,
+   "output_tokens": 8016,
+   "tokens": 13322,
+   "thinking_tokens": 6723
+  },
+  {
+   "scenario": "clean",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "adapter_A",
+    "adapter_B",
+    "adapter_C",
+    "adapter_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted",
+    "adapter_B": "accepted",
+    "adapter_C": "accepted",
+    "adapter_D": "accepted"
+   },
+   "input_tokens": 6816,
+   "output_tokens": 8513,
+   "tokens": 15329,
+   "thinking_tokens": 7258
+  },
+  {
+   "scenario": "interrupt",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "core_A",
+    "core_B",
+    "core_C",
+    "core_D"
+   ],
+   "attempt": 1,
+   "label": "unrecorded",
+   "verdicts": {
+    "core_A": "accepted",
+    "core_B": "accepted",
+    "core_C": "accepted",
+    "core_D": "accepted"
+   },
+   "input_tokens": 5308,
+   "output_tokens": 9078,
+   "tokens": 14386,
+   "thinking_tokens": 7968
+  },
+  {
+   "scenario": "interrupt",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "adapter_A",
+    "adapter_B",
+    "adapter_C",
+    "adapter_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted",
+    "adapter_B": "accepted",
+    "adapter_C": "accepted",
+    "adapter_D": "accepted"
+   },
+   "input_tokens": 6639,
+   "output_tokens": 7013,
+   "tokens": 13652,
+   "thinking_tokens": 5869
+  },
+  {
+   "scenario": "stale",
+   "stage": 0,
+   "receipt": "1",
+   "members": [
+    "core_A",
+    "core_B",
+    "core_C",
+    "core_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "core_A": "accepted",
+    "core_B": "accepted",
+    "core_C": "accepted",
+    "core_D": "accepted"
+   },
+   "input_tokens": 5304,
+   "output_tokens": 8078,
+   "tokens": 13382,
+   "thinking_tokens": 6893
+  },
+  {
+   "scenario": "stale",
+   "stage": 1,
+   "receipt": "1",
+   "members": [
+    "adapter_A",
+    "adapter_B",
+    "adapter_C",
+    "adapter_D"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted",
+    "adapter_B": "accepted",
+    "adapter_C": "accepted",
+    "adapter_D": "accepted"
+   },
+   "input_tokens": 6711,
+   "output_tokens": 7305,
+   "tokens": 14016,
+   "thinking_tokens": 6031
+  },
+  {
+   "scenario": "stale",
+   "stage": 2,
+   "receipt": "1",
+   "members": [
+    "core_A"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "core_A": "accepted"
+   },
+   "input_tokens": 3259,
+   "output_tokens": 2443,
+   "tokens": 5702,
+   "thinking_tokens": 2076
+  },
+  {
+   "scenario": "stale",
+   "stage": 3,
+   "receipt": "1",
+   "members": [
+    "adapter_A"
+   ],
+   "attempt": 1,
+   "label": "experimental",
+   "verdicts": {
+    "adapter_A": "accepted"
+   },
+   "input_tokens": 3682,
+   "output_tokens": 848,
+   "tokens": 4530,
+   "thinking_tokens": 704
+  }
+ ],
+ "g3c": {
+  "label": "pass_g3c",
+  "gate": "G3c-O1",
+  "pass": true,
+  "checks": {
+   "freeze": true,
+   "five_scenarios_pass_g3c": true,
+   "within_allocation": true
+  }
+ },
+ "pass": true,
+ "finished_at": 1792783433.8722575
+}

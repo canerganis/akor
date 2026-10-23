@@ -1,0 +1,264 @@
+--- a/amounts.py
++++ b/amounts.py
+@@ -2,15 +2,41 @@
+ 
+ 
+ def parse_amount(text):
+-    """Return the amount in minor units, for example "12.300" -> 12300."""
+-    value = round(float(text), 2)
+-    return int(value * 100)
++    if not isinstance(text, str):
++        raise ValueError
++    if not text.isascii():
++        raise ValueError
++    sign = 1
++    body = text
++    if body.startswith('-'):
++        sign = -1
++        body = body[1:]
++    parts = body.split('.')
++    if len(parts) > 2:
++        raise ValueError
++    whole = parts[0]
++    if len(whole) == 0 or not whole.isdigit():
++        raise ValueError
++    if len(whole) > 9 or (len(whole) > 1 and whole[0] == '0'):
++        raise ValueError
++    fraction = 0
++    if len(parts) == 2:
++        frac = parts[1]
++        if len(frac) == 0 or len(frac) > 3 or not frac.isdigit():
++            raise ValueError
++        fraction = int(frac) * 10 ** (3 - len(frac))
++    amount = int(whole) * 1000 + fraction
++    return sign * amount
+ 
+ 
+ def total_amount(texts):
+-    """Return the exact sum of the amounts as fixed-precision text."""
+     total = 0
+     for text in texts:
+         total += parse_amount(text)
+-    units, cents = divmod(total, 100)
+-    return '%d.%02d' % (units, cents)
++    if total < 0:
++        sign = '-'
++        total = -total
++    else:
++        sign = ''
++    units, frac = divmod(total, 1000)
++    return sign + str(units) + '.' + str(frac).rjust(3, '0')
+--- a/intervals.py
++++ b/intervals.py
+@@ -2,25 +2,56 @@
+ 
+ 
+ def union_intervals(intervals):
+-    """Merge overlapping or touching intervals and drop empty ones."""
++    if not isinstance(intervals, list):
++        raise ValueError('intervals must be a list')
++    for item in intervals:
++        if not isinstance(item, list) or len(item) != 2:
++            raise ValueError('invalid interval')
++        start, end = item
++        if isinstance(start, bool) or isinstance(end, bool) or not isinstance(start, int) or not isinstance(end, int) or start > end:
++            raise ValueError('invalid interval')
++    pairs = []
++    for item in intervals:
++        if item[0] < item[1]:
++            pairs.append([item[0], item[1]])
++    pairs.sort()
+     merged = []
+-    for start, end in intervals:
+-        if merged and start < merged[-1][1]:
+-            merged[-1][1] = max(merged[-1][1], end)
++    for start, end in pairs:
++        if merged and start <= merged[-1][1]:
++            if end > merged[-1][1]:
++                merged[-1][1] = end
+         else:
+             merged.append([start, end])
+     return merged
+ 
+ 
+ def free_slots(busy, window):
+-    """Return the gaps inside window that no busy interval covers."""
+-    start, end = window
++    if not isinstance(window, list) or len(window) != 2:
++        raise ValueError('invalid window')
++    ws, we = window
++    if isinstance(ws, bool) or isinstance(we, bool) or not isinstance(ws, int) or not isinstance(we, int) or ws > we:
++        raise ValueError('invalid window')
++    if not isinstance(busy, list):
++        raise ValueError('invalid busy')
++    for item in busy:
++        if not isinstance(item, list) or len(item) != 2:
++            raise ValueError('invalid interval')
++        s, e = item
++        if isinstance(s, bool) or isinstance(e, bool) or not isinstance(s, int) or not isinstance(e, int) or s > e:
++            raise ValueError('invalid interval')
++    clipped = []
++    for item in busy:
++        lo = max(item[0], ws)
++        hi = min(item[1], we)
++        if lo < hi:
++            clipped.append([lo, hi])
++    merged = union_intervals(clipped)
+     gaps = []
+-    cursor = start
+-    for b_start, b_end in union_intervals(busy):
+-        if b_start > cursor:
+-            gaps.append([cursor, b_start])
+-        cursor = b_end
+-    if cursor < end:
+-        gaps.append([cursor, end])
++    cursor = ws
++    for s, e in merged:
++        if s > cursor:
++            gaps.append([cursor, s])
++        cursor = max(cursor, e)
++    if cursor < we:
++        gaps.append([cursor, we])
+     return gaps
+--- a/config_patch.py
++++ b/config_patch.py
+@@ -2,23 +2,61 @@
+ 
+ 
+ def merge_patch(base, patch):
+-    """Apply patch to base and return the merged configuration."""
++    def copy_value(value):
++        if isinstance(value, dict):
++            out = {}
++            for key in value:
++                out[key] = copy_value(value[key])
++            return out
++        if isinstance(value, list):
++            out = []
++            for item in value:
++                out.append(copy_value(item))
++            return out
++        return value
+     if not isinstance(patch, dict):
+-        return patch
+-    result = base if isinstance(base, dict) else {}
+-    for key, value in patch.items():
++        return copy_value(patch)
++    if isinstance(base, dict):
++        result = copy_value(base)
++    else:
++        result = {}
++    for key in patch:
++        value = patch[key]
+         if value is None:
+-            del result[key]
+-        elif isinstance(value, dict):
++            result.pop(key, None)
++        else:
+             result[key] = merge_patch(result.get(key), value)
+-        else:
+-            result[key] = value
+     return result
+ 
+ 
+ def apply_revisions(base, revisions):
+-    """Apply the revision patches in sequence order."""
++    def copy_value(value):
++        if isinstance(value, dict):
++            out = {}
++            for key in value:
++                out[key] = copy_value(value[key])
++            return out
++        if isinstance(value, list):
++            out = []
++            for item in value:
++                out.append(copy_value(item))
++            return out
++        return value
++    if not isinstance(revisions, list):
++        raise ValueError('revisions must be a list')
++    seqs = set()
++    for revision in revisions:
++        if not isinstance(revision, dict) or 'seq' not in revision or 'patch' not in revision:
++            raise ValueError('invalid revision')
++        seq = revision['seq']
++        if isinstance(seq, bool) or not isinstance(seq, int) or seq < 1:
++            raise ValueError('invalid seq')
++        if seq in seqs:
++            raise ValueError('duplicate seq')
++        seqs.add(seq)
++    if not revisions:
++        return copy_value(base)
+     current = base
+-    for revision in sorted(revisions, key=lambda r: str(r['seq'])):
++    for revision in sorted(revisions, key=lambda r: r['seq']):
+         current = merge_patch(current, revision['patch'])
+     return current
+--- a/jobs.py
++++ b/jobs.py
+@@ -2,33 +2,48 @@
+ 
+ 
+ def topological_order(jobs):
+-    """Order job ids so that every job comes after its dependencies."""
+-    deps = {job['id']: set(job['deps']) for job in jobs}
+-    ready = [job['id'] for job in jobs if not deps[job['id']]]
++    seen = set()
++    for job in jobs:
++        if job['id'] in seen:
++            raise ValueError('duplicate id')
++        seen.add(job['id'])
++    deps = {}
++    for job in jobs:
++        deps[job['id']] = set(job['deps'])
++        for dep in job['deps']:
++            if dep not in seen:
++                raise ValueError('unknown dependency')
++    taken = set()
+     order = []
+-    while ready:
+-        current = ready.pop(0)
+-        order.append(current)
++    while len(order) < len(jobs):
++        chosen = None
+         for job in jobs:
+-            waiting = deps[job['id']]
+-            if current in waiting:
+-                waiting.discard(current)
+-                if not waiting:
+-                    ready.append(job['id'])
++            if job['id'] not in taken and deps[job['id']].issubset(taken):
++                chosen = job['id']
++                break
++        if chosen is None:
++            raise ValueError('cycle')
++        taken.add(chosen)
++        order.append(chosen)
+     return order
+ 
+ 
+ def execution_batches(jobs):
+-    """Group job ids into dependency frontiers."""
+     order = topological_order(jobs)
++    by_id = {}
++    for job in jobs:
++        by_id[job['id']] = job
+     level = {}
+     for job_id in order:
+-        job = [j for j in jobs if j['id'] == job_id][0]
+-        level[job_id] = min([level[d] + 1 for d in job['deps']] or [0])
++        deps = by_id[job_id]['deps']
++        if deps:
++            level[job_id] = 1 + max([level[d] for d in deps])
++        else:
++            level[job_id] = 0
+     batches = []
+-    for job in jobs:
+-        k = level[job['id']]
++    for job_id in order:
++        k = level[job_id]
+         while len(batches) <= k:
+             batches.append([])
+-        batches[k].append(job['id'])
++        batches[k].append(job_id)
+     return batches
