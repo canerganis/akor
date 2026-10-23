@@ -20,10 +20,10 @@
    "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
    "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
    "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
-   "oz_do.py": "808db50828bda5798e989639b10e9bd16d08f3975bdebf76b56b97d631d81459",
+   "oz_do.py": "04234e50ed41d037d4668d9c6c5eae1837b832b31034a16392f245374dfa67af",
    "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
    "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
-   "oz_flow.py": "dea1a4680af4e9ef87c1ca85ebe339ac16fa6cdf69ac73c41bdafb685c326c6e",
+   "oz_flow.py": "98ba8901356e0079a4b2c56a4082eff7000c2ddc96dec1888d6df40a07c14cf8",
    "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
    "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
    "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
@@ -930,5 +930,5 @@
    "clean_classify": "{\"v\":\"1g\",\"goal\":\"Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.\",\"ops\":[\"The first ref is the measurement record. The second ref is its host-checked interval: [lower,upper], or unknown. If the interval is unknown, return unknown. Otherwise use its endpoints directly. Let L and U be the lower and upper limits of the goal's acceptance interval, in mm. Return inside if lower >= L AND upper <= U; outside otherwise. Equality at either limit is inside.\"],\"refs\":[\"length=12.50 mm; uncertainty=0.02 mm; n=3; method=unknown; basis=unknown; physical_validation=not_claimed\",[\"12.48 mm\",\"12.52 mm\"],\"length=12.47 mm; uncertainty=0.03 mm; n=5; method=micrometer; basis=expanded; physical_validation=not_claimed\",[\"12.44 mm\",\"12.50 mm\"],\"length=12.51 mm; uncertainty=0.01 mm; n=1; method=caliper; basis=resolution; physical_validation=not_claimed\",[\"12.50 mm\",\"12.52 mm\"],\"length=12.50 mm; uncertainty=unknown; n=4; method=micrometer; basis=unknown; physical_validation=not_claimed\",\"unknown\"],\"jobs\":[[0,[\"classify_A\",0,1],[\"classify_B\",2,3],[\"classify_C\",4,5],[\"classify_D\",6,7]]]}"
   }
  },
- "digest": "18259ff32ec29a9ea9d047b29bc86ffb12484a0d0a4a0ee7d9ff99eec6bd1dab"
+ "digest": "e4da3c71b6fb02be8469e99b468a66577b7cbde662d40e4623458178493a44f2"
 }

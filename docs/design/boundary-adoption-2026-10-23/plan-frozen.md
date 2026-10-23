@@ -325,3 +325,21 @@ true, 1 and 1.0 are different inputs and open an explicit new generation (`input
 parser, the packets, the schedule and the qualification design are unchanged; no model call was made. Re-run, zero
 tokens: `adopt.py dry` passes, `step4.py dry`, `replay-live1` and `replay-live2` pass, `o1.py dry` passes, and the
 full suite passes (722 tests).
+
+## Addendum 2026-10-23: lossless value refs (new freeze digest `e4da3c71b6fb02be8469e99b468a66577b7cbde662d40e4623458178493a44f2`, short e4da3c71)
+
+Astra's re-review rejected the previous addendum's normalization of the carried value (`loads(J(data))`): it turned
+`{"value": RawJSON("12.50")}` into 12.5 while the digest still covered the text 12.50, so the memo key computed from
+the carried value and the bytes dispatched through the runtime could differ (foundation clause 12). The freeze is
+rewritten at the digest above (18259ff3 stays in git; `qualify --expect` and the G3b and O1 digests in the table above
+are now this one, `1f9be2705eefee3fa1ac63fae7cd8eb8891da2c5adcebd0b0c91d9d59de74dd5` and
+`088815dbd9d1817af64b5b1d7ed96f4631681193ca1784387084e9421f2b1f36`). `oz_do.py`: the carried value of a `{"value": ...}` ref is `RawJSON` of the validated compact text, so the
+request identity, the memo key and the wire all derive from the same bytes (12.50 and 12.5 are different work and
+different memo keys; a tuple or integer key still reaches the wire as its JSON text). `oz_flow.py`: a value-form model
+input selected from an upstream node is the exact source member of that node's accepted text (`_raw_pointer`, a span
+scan of the strictly validated text, so 12.50, 1e2 and -0 keep their spelling); the stage submission also records the
+serialized inputs (`inputs_json`) and a resumed stage decodes them losslessly, so reuse and the same-request
+resubmission compare and send the original bytes. Records without `inputs_json` keep the plain decode. H, the grammar,
+the parser, the default paths, the schedule and the qualification design are unchanged; no model call was made. Re-run,
+zero tokens: `adopt.py dry`, `step4.py dry`, `replay-live1`, `replay-live2` and `o1.py dry` pass, and the full suite
+passes (727 tests).

@@ -228,3 +228,14 @@ equality) changed; the default paths G3b uses are unchanged. `freeze-g3b.json` i
 (`"pass": true`; clean 3, repeat 0, interrupt 3, stale 5, bump 0, 11 launches as before; the same recovery, sabotage,
 C5 and baseline checks) and `replay-live1` and `replay-live2` (all traces match, all independent verdicts agree).
 The live2 and live3 records stand for their own freezes.
+
+## Addendum 2026-10-23: lossless value refs (new freeze digest `1f9be2705eefee3fa1ac63fae7cd8eb8891da2c5adcebd0b0c91d9d59de74dd5`, short 1f9be270)
+
+Value-form model inputs and `{"value": ...}` refs now keep the exact accepted bytes (foundation clause 12) from the
+node value through the stage record, the request identity, the memo key and the wire (`oz_do.py`: the carried value is
+`RawJSON` of the validated text; `oz_flow.py`: a source-span pointer into the stored accepted text, `inputs_json` in
+the stage submission, lossless decode on resume). The default paths G3b uses are unchanged. `freeze-g3b.json` is
+rewritten at the digest above (the 058b68d1 record is kept in git). Re-run at this digest, zero tokens: the full unit
+suite (727 tests), `step4.py dry` (`"pass": true`; clean 3, repeat 0, interrupt 3, stale 5, bump 0, 11 launches as
+before) and `replay-live1` and `replay-live2` (all traces match, all independent verdicts agree). The live2 and live3
+records stand for their own freezes.

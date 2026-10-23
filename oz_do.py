@@ -116,13 +116,15 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
         elif isinstance(value, dict) and set(value) == {'value'}:
             # Opt-in JSON value form: the packet carries this value itself (for example ["12.48 mm","12.52 mm"]),
             # not a string holding its JSON text. Its compact JSON is the text, the source label says "value".
-            data = value['value']
             try:
-                text = J(data)
-                data = loads(text)  # the carried value is exactly what the text, its digest and the identity say
+                text = J(value['value'])
+                # The carried value is the validated text itself (a RawJSON, foundation clause 12): the digest, the
+                # memo key and the wire all derive from these bytes, so a spelling such as 12.50 never becomes 12.5.
+                data = RawJSON(text)
+                decoded = data.value
             except (Error, TypeError, ValueError, RecursionError):
                 raise Error(f'reference {name}: value must be one finite JSON value') from None
-            if data is None or isinstance(data, str) and not data.strip():
+            if decoded is None or isinstance(decoded, str) and not decoded.strip():
                 raise Error(f'reference {name}: value must not be null or blank')
             source = 'value'
         else:

@@ -347,3 +347,11 @@ theirs) and `oz_flow.py` (resume compares stage inputs as canonical serialized b
 default paths O1 uses are unchanged. `o1.py freeze --write` gave the digest above (the 0aa5ecf6 record is kept in git)
 and `o1.py dry` passed every block with the freeze held (clean 2, repeat 0, interrupt 2, stale 4, bump 0). This
 refreeze is a record of the code state, not a new O1 gate. No model call was made.
+
+## Addendum 2026-10-23: refreeze after the lossless value refs (new freeze digest `088815dbd9d1817af64b5b1d7ed96f4631681193ca1784387084e9421f2b1f36`, short 088815db)
+
+`oz_do.py` (the carried value of a `{"value": ...}` ref is the validated text as `RawJSON`) and `oz_flow.py` (a
+value-form input from an upstream node keeps its accepted bytes; the stage submission records `inputs_json`) changed;
+the default paths O1 uses are unchanged. `o1.py freeze --write` gave the digest above (the 31706661 record is kept in
+git) and `o1.py dry` passed every block with the freeze held (clean 2, repeat 0, interrupt 2, stale 4, bump 0). This
+refreeze is a record of the code state, not a new O1 gate. No model call was made.

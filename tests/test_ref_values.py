@@ -20,7 +20,7 @@ from oz_batch import SYSTEM, J  # noqa: E402
 from oz_do import do, normalize  # noqa: E402
 from oz_flow import HostError, ModelOp, _model_input, _stage_request, admit  # noqa: E402
 from oz_memo import MemoStore  # noqa: E402
-from oz_reply import encode_reply  # noqa: E402
+from oz_reply import RawJSON, encode_reply, loads  # noqa: E402
 from oz_runtime import Inbox  # noqa: E402
 from oz_workspace import initialize  # noqa: E402
 
@@ -142,8 +142,8 @@ class ValueRefTests(unittest.TestCase):
         req = self.norm({'r': {'value': (1, {1: 'a'})}})
         self.assertEqual(req['texts']['r']['text'], '[1,{"1":"a"}]')
         self.assertEqual(req['texts']['r']['value'], [1, {'1': 'a'}])
-        self.assertIs(type(self.norm({'r': {'value': True}})['texts']['r']['value']), bool)
-        self.assertIs(type(self.norm({'r': {'value': 1.0}})['texts']['r']['value']), float)
+        self.assertIs(type(self.norm({'r': {'value': True}})['texts']['r']['value'].value), bool)
+        self.assertIs(type(self.norm({'r': {'value': 1.0}})['texts']['r']['value'].value), float)
 
     def run_do(self, request, adapter, **options):
         return do(request, workspace=self.root, adapter=adapter, **options)
@@ -260,10 +260,12 @@ class OrderedInputTests(unittest.TestCase):
 class ResumeInputComparisonTests(unittest.TestCase):
     """A pending stage is reused only when its resolved inputs are the same bytes (foundation clauses 1 and 12)."""
 
-    def pinned_stage(self, stored, fresh):
-        """Run _run_stage for node n whose recorded submission carried `stored` and whose inputs now resolve to
-        `fresh`; return the regenerated events (the stage is stopped at its first call)."""
+    def pinned_stage(self, first, second):
+        """Run _run_stage for node n twice. The accepted upstream value of node src is {"i": <first>} the first time
+        (the stage is submitted and stopped at its call) and {"i": <second>} the second; return the regenerated
+        events of the second run."""
         import oz_flow
+        from unittest import mock
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         flow = oz_flow.Flow(Path(temp.name) / 'flow.sqlite')
@@ -272,12 +274,8 @@ class ResumeInputComparisonTests(unittest.TestCase):
         op = two_ref_op()
         settings = oz_flow.Settings(workspace=Path(temp.name), adapter=None, registry={}, checks_registry={},
                                     route={}, model='m')
-        rid = _stage_request('f', op, ['n'], {'n': stored}, {'n': 1}, 100, 30, settings.model,
-                             settings.max_input_tokens)['request_id']
-        flow.event('stage_submitted', op=op.name, nodes=['n'], request_id=rid, run_dir='do/' + rid,
-                   members=['n'], texts={'n': stored}, generations={'n': 1})
-        descriptors = {'n': {'bindings': {'record': {'lit': stored[0]}, 'interval': {'lit': fresh}}, 'deps': [],
-                             'generation': 1}}
+        descriptors = {'n': {'bindings': {'record': {'lit': RECORD}, 'interval': {'node': 'src', 'path': '/i'}},
+                             'deps': [], 'generation': 1}}
 
         class Stop(Exception):
             pass
@@ -285,24 +283,106 @@ class ResumeInputComparisonTests(unittest.TestCase):
         def stop(*_a, **_k):
             raise Stop
 
-        from unittest import mock
-        with mock.patch.object(oz_flow, 'do', stop), mock.patch.object(oz_flow, 'stage_launches', lambda _r: []):
-            try:
-                result = oz_flow._run_stage(flow, {'request_id': 'f'}, settings, op, ['n'], descriptors, {}, {},
-                                            100, 30, None, None)
-            except Stop:
-                result = 'stopped'
-            self.assertEqual(result, 'stopped')
+        for text in (first, second):
+            current = {'src': {'value': '{"i":' + text + '}', 'seq': 1, 'cites': {}}}
+            values = {'src': loads(current['src']['value'])}
+            with mock.patch.object(oz_flow, 'do', stop), mock.patch.object(oz_flow, 'stage_launches',
+                                                                           lambda _r: []):
+                try:
+                    result = oz_flow._run_stage(flow, {'request_id': 'f'}, settings, op, ['n'], descriptors, current,
+                                                values, 100, 30, None, None)
+                except Stop:
+                    result = 'stopped'
+                self.assertEqual(result, 'stopped')
         return [e['details'] for e in flow.events() if e['event'] == 'regenerated']
 
     def test_an_equal_but_differently_typed_pending_input_opens_a_new_generation(self):
-        for stored, fresh in ((True, 1), (1, 1.0), (1, True), ([True], [1]), ({'a': 1}, {'a': 1.0})):
-            regenerated = self.pinned_stage([RECORD, stored], fresh)
+        for stored, fresh in (('true', '1'), ('1', '1.0'), ('1', 'true'), ('[true]', '[1]'), ('{"a":1}', '{"a":1.0}')):
+            regenerated = self.pinned_stage(stored, fresh)
+            self.assertEqual([r.get('reason') for r in regenerated], ['inputs_changed'], (stored, fresh))
+
+    def test_a_pending_input_that_differs_only_in_number_spelling_opens_a_new_generation(self):
+        for stored, fresh in (('12.50', '12.5'), ('[12.50,1e2]', '[12.50,100]'), ('-0', '0'), ('1E2', '1e2')):
+            regenerated = self.pinned_stage(stored, fresh)
             self.assertEqual([r.get('reason') for r in regenerated], ['inputs_changed'], (stored, fresh))
 
     def test_identical_pending_inputs_are_reused(self):
-        for same in (True, 1, 1.0, [1, 'x'], {'a': [1.5]}):
-            self.assertEqual(self.pinned_stage([RECORD, same], same), [], same)
+        for same in ('true', '1', '1.0', '12.50', '[1,"x"]', '{"a":[1.5,2.50]}', '-0', '1e2', '"\\u00e9"'):
+            self.assertEqual(self.pinned_stage(same, same), [], same)
+
+
+class LosslessValueTests(unittest.TestCase):
+    """Foundation clause 12 on the value-ref path: one byte-preserving representation for identity, memo and wire."""
+
+    def setUp(self):
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        self.root = Path(temp.name) / 'ws'
+        initialize(self.root)
+        self.config = json.loads((self.root / 'oz.json').read_text(encoding='utf-8'))
+
+    def req(self, rid, interval):
+        return {'request_id': rid, 'goal': 'g', 'ops': {'op': OP}, 'model': 'claude-sonnet-5-5',
+                'refs': {'a-record': RECORD, 'a-interval': {'value': interval}},
+                'jobs': [['a', 'op', 'a-record', 'a-interval']], 'allow_experimental': True,
+                'max_input_tokens': 100000, 'profile': SELECTIVE,
+                'checks': {'op': [{'check': 'expect', 'value': 'inside'}]}}
+
+    def test_raw_json_spelling_is_part_of_identity_and_the_carried_value(self):
+        a = normalize(self.req(None, RawJSON('[12.50,12.52]')), allow=self.root, config=self.config)
+        b = normalize(self.req(None, RawJSON('[12.5,12.52]')), allow=self.root, config=self.config)
+        self.assertEqual(a['texts']['a-interval']['text'], '[12.50,12.52]')
+        self.assertEqual(J(a['texts']['a-interval']['value']), '[12.50,12.52]')
+        self.assertNotEqual(a['sha256'], b['sha256'])
+        # A plain Python value keeps its own canonical spelling and value types.
+        c = normalize(self.req(None, [12.5, 12.52]), allow=self.root, config=self.config)
+        self.assertEqual(c['texts']['a-interval']['text'], '[12.5,12.52]')
+        self.assertIs(type(c['texts']['a-interval']['value'].value[0]), float)
+
+    def test_raw_json_spelling_reaches_the_packet_and_separates_memo_keys(self):
+        store = MemoStore(self.root / 'memo.sqlite')
+        self.addCleanup(store.close)
+        memo = {'store': store, 'namespace': 'ns', 'ops': ['op']}
+        adapter = Capture()
+        first = do(self.req('r1', RawJSON('[12.50,12.52]')), workspace=self.root, adapter=adapter, memo=memo)
+        self.assertEqual(first['status'], 'complete', first)
+        self.assertIn('[12.50,12.52]', adapter.requests[0]['prompt'])
+        run = self.root / first['run']['run_dir']
+        db = sqlite3.connect(run / 'inbox.sqlite')
+        try:
+            packet, members = db.execute('SELECT packet,members FROM dispatches').fetchone()
+        finally:
+            db.close()
+        sent = job_inputs(packet, [(m['id'], 0) for m in json.loads(members)])['a'].slots[0]['refs']
+        self.assertEqual(sent, [J(RECORD), '[12.50,12.52]'])
+
+        def decision(rid, interval):
+            plan = do(self.req(rid, interval), workspace=self.root, memo=memo, plan_only=True, adapter=Capture())
+            return plan['plan']['memo']['a']['decision']
+        self.assertEqual(decision('r2', RawJSON('[12.50,12.52]')), 'hit')
+        self.assertEqual(decision('r3', RawJSON('[12.5,12.52]')), 'miss')
+        self.assertEqual(decision('r4', [12.5, 12.52]), 'miss')
+
+    def test_a_value_input_taken_from_a_node_keeps_its_accepted_bytes(self):
+        op = two_ref_op()
+        bindings = {'record': {'lit': RECORD}, 'interval': {'node': 'n', 'path': '/b/0'}}
+        text = '{"b":[[12.50,1e2,-0],"x"],"c":"\\u00e9"}'
+        values = {'n': loads(text)}
+        got = _model_input(op, bindings, values, None, {'n': text})
+        self.assertEqual([RECORD, '[12.50,1e2,-0]'], [got[0], J(got[1])])
+        # Without the accepted text (the shipped call shape) the decoded value is used, as before.
+        self.assertEqual(_model_input(op, bindings, values, None)[1], [12.5, 100.0, 0.0])
+        # A text input is the decoded string either way.
+        bindings['record'] = {'node': 'n', 'path': '/c'}
+        self.assertEqual(_model_input(op, bindings, values, None, {'n': text})[0], 'é')
+
+    def test_the_stage_request_carries_the_spelling_to_the_wire_and_the_memo_identity(self):
+        op = two_ref_op()
+        a = _stage_request('f', op, ['n'], {'n': [RECORD, RawJSON('[12.50,12.52]')]}, {'n': 1}, 60, 30, 'm', 1000)
+        b = _stage_request('f', op, ['n'], {'n': [RECORD, RawJSON('[12.5,12.52]')]}, {'n': 1}, 60, 30, 'm', 1000)
+        self.assertNotEqual(a['request_id'], b['request_id'])
+        norm = normalize(a, allow=Path('.'), config={'batch_size': 4, 'max_tokens': 1000})
+        self.assertEqual(norm['texts']['n-interval']['text'], '[12.50,12.52]')
 
 
 if __name__ == '__main__':

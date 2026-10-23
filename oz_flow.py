@@ -31,6 +31,8 @@ import sqlite3
 import time
 from typing import Callable
 
+from json.decoder import JSONDecoder, scanstring
+
 from oz import Error
 from oz_accept import SELECTIVE
 from oz_batch import J
@@ -559,15 +561,96 @@ def _value_text(value) -> str:
     return value.text if isinstance(value, RawJSON) else J(value)
 
 
-def _model_input(op, bindings: dict, values: dict, ctx):
+_JSON_WS = ' \t\n\r'
+_SCALAR = JSONDecoder()
+
+
+def _skip(text: str, i: int) -> int:
+    while i < len(text) and text[i] in _JSON_WS:
+        i += 1
+    return i
+
+
+def _members(text: str, i: int):
+    """(key or index, start, end) of each member of the validated JSON array or object that starts at i, and the
+    index after it. Spans are the source bytes, so a selected member keeps its spelling (clause 12)."""
+    close = '}' if text[i] == '{' else ']'
+    out, i = [], _skip(text, i + 1)
+    if text[i] == close:
+        return out, i + 1
+    while True:
+        key = len(out)
+        if close == '}':
+            key, i = scanstring(text, i + 1)
+            i = _skip(text, _skip(text, i) + 1)
+        end = _members(text, i)[1] if text[i] in '{[' else _SCALAR.raw_decode(text, i)[1]
+        out.append((key, i, end))
+        i = _skip(text, end)
+        if text[i] == ',':
+            i = _skip(text, i + 1)
+            continue
+        return out, i + 1
+
+
+def _raw_pointer(text: str, path: str) -> RawJSON:
+    """The member of an accepted value's stored text that `path` selects, as its exact source bytes."""
+    try:
+        loads(text)  # strict validation first; the scan below only reads validated text
+    except (Error, ValueError, RecursionError):
+        raise HostError('an accepted value is not one finite JSON value') from None
+    start = _skip(text, 0)
+    end = len(text.rstrip(_JSON_WS))
+    for raw in (path[1:].split('/') if path else ()):
+        part = raw.replace('~1', '/').replace('~0', '~')
+        if text[start] not in '{[':
+            raise HostError(f'binding path {path} does not resolve')
+        kids = _members(text, start)[0]
+        if text[start] == '{':
+            hit = next(((s, e) for k, s, e in kids if k == part), None)
+        else:
+            hit = next(((s, e) for k, s, e in kids if re.fullmatch(r'0|[1-9][0-9]*', part) and k == int(part)), None)
+        if hit is None:
+            raise HostError(f'binding path {path} does not resolve')
+        start, end = hit
+    return RawJSON(text[start:end])
+
+
+def _resolve_raw(binding, sources, values, ctx):
+    """_resolve for a value-form model input: a value taken from an upstream node keeps its accepted bytes."""
+    if 'node' in binding and binding['node'] in sources:
+        return _raw_pointer(sources[binding['node']], binding.get('path', ''))
+    if 'list' in binding:
+        return [_resolve_raw(b, sources, values, ctx) for b in binding['list']]
+    return _resolve(binding, values, ctx)
+
+
+def _decode_inputs(op, text: str):
+    """The resolved inputs of one job as recorded by J(): the text, or the ordered list with value-form inputs as the
+    exact recorded bytes (RawJSON) and text inputs as strings."""
+    if op.single:
+        return loads(text)
+    kids = _members(text, _skip(text, 0))[0]
+    if len(kids) != len(op.ref_order):
+        raise Error('recorded stage inputs do not match the operation inputs')
+    return [RawJSON(text[s:e]) if name in op.values else loads(text[s:e])
+            for name, (_, s, e) in zip(op.ref_order, kids)]
+
+
+def _model_input(op, bindings: dict, values: dict, ctx, sources: dict | None = None):
     """The resolved model-visible input of one job: the record text of a one-input operation, else the list of its
     inputs in declared order. Text inputs must be nonblank text; value-form inputs a nonblank JSON value. Raises
-    HostError (the stage is blocked with binding_failed, nothing is dispatched)."""
+    HostError (the stage is blocked with binding_failed, nothing is dispatched). With sources (node to the stored
+    text of its accepted value) a value-form input selected from a node is its exact source bytes (a RawJSON), so
+    12.50 stays 12.50; without them the decoded value is used."""
     out = []
     for name in op.ref_order:
-        value = _resolve(bindings[name], values, ctx)
+        if name in op.values and sources:
+            value = _resolve_raw(bindings[name], sources, values, ctx)
+        else:
+            value = _resolve(bindings[name], values, ctx)
         if name in op.values:
-            if value is None or isinstance(value, str) and not value.strip():
+            plain = value.value if isinstance(value, RawJSON) else value
+            if plain is None or isinstance(plain, str) and not plain.strip():
                 raise HostError('a model value input must be a nonblank JSON value')
             try:
                 J(value)
@@ -766,14 +849,18 @@ def _publish(flow, request, settings, d, generation, value, current, cites):
     return result, {'intent': intent_id, 'target': target, 'manifest_sha256': record['files']['manifest.json']['sha256']}
 
 
-def _stage_pins(flow: Flow, op_name: str) -> dict:
+def _stage_pins(flow: Flow, op) -> dict:
     """(node, generation) -> the stage submission that first carried that logical job (its full membership, texts and
     generations, as recorded at submission). Submissions recorded without texts pin nothing."""
     pins = {}
     for e in flow.events():
         x = e['details']
-        if e['event'] != 'stage_submitted' or x.get('op') != op_name or 'texts' not in x:
+        if e['event'] != 'stage_submitted' or x.get('op') != op.name or 'texts' not in x:
             continue
+        if 'inputs_json' in x:
+            # The recorded serialized inputs, decoded without losing a value input's spelling (the plain details
+            # decode would turn 12.50 into 12.5); records without them keep the plain decode.
+            x = dict(x, texts={n: _decode_inputs(op, t) for n, t in x['inputs_json'].items()})
         for node in x['members']:
             pins.setdefault((node, x['generations'][node]), x)
     return pins
@@ -790,11 +877,12 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
     rid = request['request_id']
     refused = set() if refused is None else refused
     texts, inputs_acc, cites, generations = {}, {}, {}, {}
+    sources = {n: a['value'] for n, a in current.items()}
     for node in group:
         d = descriptors[node]
         ctx = HostContext(flow, node, 0)  # one read-set per node: sources it reads itself are its own citations
         try:
-            text = _model_input(op, d['bindings'], values, ctx)
+            text = _model_input(op, d['bindings'], values, ctx, sources)
         except HostError as exc:
             return {'reason': 'binding_failed', 'node': node, 'detail': str(exc)}
         texts[node] = text
@@ -804,7 +892,7 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
             cites[node].update(current[dep]['cites'])
         cites[node].update(ctx.reads)
         generations[node] = _generation(flow, node, descriptors)
-    pins = _stage_pins(flow, op.name)
+    pins = _stage_pins(flow, op)
     pinned = {}
     for node in group:
         stage = pins.get((node, generations[node]))
@@ -829,6 +917,7 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
         req = _stage_request(rid, op, group, texts, generations, deadline, call_timeout, settings.model,
                              settings.max_input_tokens)
         submission = {'members': group, 'texts': {n: texts[n] for n in group},
+                      'inputs_json': {n: J(texts[n]) for n in group},
                       'generations': {n: generations[n] for n in group}}
     run_dir = Path('do') / req['request_id']
     before = {d['receipt'] for d in stage_launches(Path(settings.workspace) / run_dir)}
@@ -902,6 +991,7 @@ def _plan(flow: Flow, request: dict, settings: Settings, descriptors: list) -> d
         raise Error('plan-only needs an installed flow')
     latest = flow.latest()
     values = {n: loads(a['value']) for n, a in latest.items()}
+    sources = {n: a['value'] for n, a in latest.items()}
     memo_store = MemoStore(settings.memo_store) if settings.memo_store is not None else None
     stages, misses, packets = [], 0, []
     try:
@@ -913,7 +1003,8 @@ def _plan(flow: Flow, request: dict, settings: Settings, descriptors: list) -> d
             op = settings.registry[d['op']]
             group = [x['id'] for x in descriptors if x['op'] == d['op']]
             ctx = HostContext(flow, group[0], 0)
-            texts = {n: _model_input(op, next(x for x in descriptors if x['id'] == n)['bindings'], values, ctx)
+            texts = {n: _model_input(op, next(x for x in descriptors if x['id'] == n)['bindings'], values, ctx,
+                                     sources)
                      for n in group}
             req = _stage_request(request['request_id'], op, group, texts, {n: 0 for n in group}, 3600, 300,
                                  settings.model, settings.max_input_tokens)
