@@ -17,6 +17,7 @@ benchmark = ["tiktoken==0.14.0"]
 [project.scripts]
 akor = "akor:main"
 oz = "oz_cli:main"
+oz-map = "oz_map:main"
 
 [tool.setuptools]
-py-modules = ["akor", "oz", "oz_batch", "oz_runtime", "oz_cli", "oz_worker", "oz_workspace", "oz_reply", "oz_do", "oz_accept", "oz_runner", "oz_memo", "oz_quota", "oz_flow", "oz_fault", "oz_manual"]
+py-modules = ["akor", "oz", "oz_batch", "oz_runtime", "oz_cli", "oz_worker", "oz_workspace", "oz_reply", "oz_do", "oz_accept", "oz_runner", "oz_memo", "oz_quota", "oz_flow", "oz_fault", "oz_manual", "oz_map", "oz_route"]

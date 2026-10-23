@@ -1,0 +1,326 @@
+diff --git a/examples/claude_cli_adapter.py b/examples/claude_cli_adapter.py
+index fafa1d9..35f53a8 100644
+--- a/examples/claude_cli_adapter.py
++++ b/examples/claude_cli_adapter.py
+@@ -5,6 +5,12 @@ Accounting (foundation record clause 8): usage comes only from the envelope's `m
+ the call's usage is unknown and the response carries no `usage` at all; last-turn `usage` is never substituted and a
+ missing counter is never read as zero. When the runner sets OZ_ENVELOPE_PATH, the raw CLI envelope is published there
+ before the reduced response is printed, so the runner can keep it with the capture.
++
++Route (amendment D7): the model comes from OZ_MODEL (default claude-sonnet-5-5) and the effort from OZ_EFFORT; when
++OZ_EFFORT is set it is passed as `claude --effort`. Without OZ_EFFORT no effort flag is sent and the CLI default
++applies, which the identity records as "default". `--identity` prints one JSON line with the effective backend, model,
++effort, `claude --version` and the frozen flags without any model call. A missing `claude` executable exits 127 with an
++explicit diagnostic.
+ """
+ import json, os, shutil, subprocess, sys
+ 
+@@ -50,10 +56,35 @@ def _publish(path, data):
+     os.replace(temp, path)
+ 
+ 
++FLAGS = ('-p', '--tools', '', '--setting-sources', '', '--strict-mcp-config', '--no-session-persistence',
++         '--output-format', 'json')
++MISSING = 'claude executable not found on PATH; install Claude Code or fix PATH'
++
++
++def cli_version(exe):
++    try:
++        done = subprocess.run([exe, '--version'], capture_output=True, text=True, encoding='utf-8', timeout=30,
++                              stdin=subprocess.DEVNULL)
++        return (done.stdout.strip() or done.stderr.strip() or 'unknown')[:200]
++    except (OSError, subprocess.SubprocessError) as exc:
++        return f'unknown ({type(exc).__name__})'
++
++
+ def main():
+-    request = json.load(sys.stdin)
+     model = os.environ.get('OZ_MODEL', 'claude-sonnet-5-5')
+-    proc = subprocess.run([shutil.which('claude'), '-p', '--model', model, '--system-prompt', request['system'],
++    effort = os.environ.get('OZ_EFFORT') or None
++    exe = shutil.which('claude')
++    if exe is None:
++        sys.stderr.write(MISSING)
++        sys.exit(127)
++    if '--identity' in sys.argv:
++        json.dump({'backend': 'claude', 'model': model, 'effort': effort or 'default', 'effort_applicable': True,
++                   'cli_version': cli_version(exe), 'flags': list(FLAGS) + (['--effort'] if effort else [])},
++                  sys.stdout)
++        return
++    request = json.load(sys.stdin)
++    proc = subprocess.run([exe, '-p', '--model', model, *(['--effort', effort] if effort else []),
++                           '--system-prompt', request['system'],
+                            '--tools', '', '--setting-sources', '', '--strict-mcp-config', '--no-session-persistence',
+                            '--output-format', 'json'], input=request['prompt'], capture_output=True, text=True,
+                           encoding='utf-8', timeout=300)
+diff --git a/oz_cli.py b/oz_cli.py
+index 73fb62d..45be85f 100644
+--- a/oz_cli.py
++++ b/oz_cli.py
+@@ -9,6 +9,7 @@ import uuid
+ from oz import Channel, Error
+ from oz_batch import render
+ from oz_do import do
++from oz_map import command as map_command
+ from oz_reply import dumps
+ from oz_workspace import Workspace, channel_from_files, demo, initialize, read_utf8
+ from oz_worker import process_host
+@@ -54,6 +55,31 @@ def main(argv=None):
+     p.add_argument('--workspace', type=Path, default=Path('.'), help='Directory containing oz.json')
+     p.add_argument('--adapter', type=Path, required=True, help='Explicit JSON file containing an argv list')
+     p.add_argument('--allow', type=Path, help='Directory reference paths must stay inside (default: workspace)')
++    p = sub.add_parser('map', help='Apply one operation to every file a glob matches (JSONL results, one receipt line)')
++    p.add_argument('glob', help='Glob inside the workspace, for example "refs/*.txt"')
++    ask = p.add_mutually_exclusive_group(required=True)
++    ask.add_argument('--ask', help='Operation instruction as inline text')
++    ask.add_argument('--ask-file', type=Path, help='Operation instruction read from this UTF-8 file (must exist)')
++    p.add_argument('--allow-experimental', action='store_true',
++                   help='Allow packet sizes with no passed size gate for the model (default: refuse before any call)')
++    p.add_argument('--op', default='map', help='Operation name used by --check (default: map)')
++    p.add_argument('--goal')
++    p.add_argument('--goal-file', type=Path)
++    p.add_argument('--check', type=Path, help='JSON list of check specs, or {operation: [specs]}')
++    p.add_argument('--out', type=Path, help='Results JSONL (default: results.jsonl)')
++    p.add_argument('--workspace', type=Path, default=Path('.'), help='Directory containing oz.json; files stay inside it')
++    p.add_argument('--adapter', type=Path, help='Adapter JSON file (default: examples/claude_adapter.json)')
++    p.add_argument('--model', help='Required. Model ID; passed to the adapter and bound into the worker identity')
++    p.add_argument('--effort', help='Required. Reasoning effort; passed to the adapter and bound into the worker identity')
++    p.add_argument('--producer', default='default', help='Producer name; the host issues and persists its ID (default: default)')
++    p.add_argument('--new-submission', action='store_true',
++                   help='Issue a new submission ID even when an earlier one has the same operation, goal and route')
++    p.add_argument('--deadline-seconds', type=float, help='oz.do deadline_seconds per request (default 600)')
++    p.add_argument('--call-timeout-seconds', type=float, help='oz.do call_timeout_seconds (default 300)')
++    p.add_argument('--max-jobs-per-call', type=int, help='oz.do max_jobs_per_call (default: workspace batch size)')
++    p.add_argument('--max-input-tokens', type=int, help='oz.do max_input_tokens (default: workspace max_tokens)')
++    p.add_argument('--plan', action='store_true', help='Print the expanded request and packet plan; no model call')
++    p.add_argument('--learn', action='store_true', help='Recorded only; rule learning is not active yet')
+     for command in ['send', 'plan', 'run', 'events', 'status', 'inspect', 'retry', 'channel-add']:
+         p = sub.add_parser(command)
+         p.add_argument('--workspace', type=Path, default=Path('.'), help='Directory containing oz.json')
+@@ -97,6 +123,8 @@ def main(argv=None):
+             value = do(text, workspace=args.workspace, adapter=args.adapter, allow=args.allow)
+             print(dumps(value, ensure_ascii=False, separators=(',', ':')))
+             return 0 if value['counts'].get('accepted', 0) == len(value['jobs']) else 3
++        if args.command == 'map':
++            return map_command(args)
+         if args.command not in {'decode', 'prompt', 'pack'}:
+             value = workspace_command(args)
+             if args.command == 'status' and not args.json:
+diff --git a/oz_do.py b/oz_do.py
+index e1b92d1..e689fc8 100644
+--- a/oz_do.py
++++ b/oz_do.py
+@@ -62,7 +62,10 @@ MAX_REF_BYTES = 65536
+ MAX_MESSAGE = 300
+ OPTIONS = {'v', 'request_id', 'goal', 'ops', 'refs', 'jobs', 'max_attempts', 'model', 'allow_experimental',
+            'deadline_seconds', 'call_timeout_seconds', 'max_jobs_per_call', 'max_input_tokens', 'max_inline_bytes',
+-           'profile', 'checks'}
++           'profile', 'checks', 'input_policy'}
++# Opt-in input policy (oz-rule/1 amendment 1, D2): the host removes exactly one terminal CRLF, else one LF, from a
++# file reference before the text reaches packets, checks and rules. Nothing else is normalized. Absent = literal.
++INPUT_POLICIES = ('strip-one-terminal-newline/1',)
+ _NO_VALUE = object()  # a text reference (string or file): no JSON value form
+ FAILURE = re.compile(r'(' + '|'.join(ERROR_CODES) + r'): (.*)', re.S)
+ 
+@@ -73,6 +76,15 @@ def size_profile(model: str | None, size: int, cells=CELLS) -> str:
+     return {'pass': 'qualified_cell', 'fail': 'unsupported'}.get(gate, 'experimental')
+ 
+ 
++def apply_input_policy(text: str, policy: str | None) -> tuple[str, str]:
++    """(resolved text, removed suffix) under an input policy; no policy leaves the text literal."""
++    if policy == INPUT_POLICIES[0]:
++        for suffix in (chr(13) + chr(10), chr(10)):
++            if text.endswith(suffix):
++                return text[:-len(suffix)], suffix
++    return text, ''
++
++
+ def _number(value, low, high, name, integer=False):
+     if type(value) not in ({int} if integer else {int, float}) or not low <= value <= high:
+         raise Error(f'{name} must be {"an integer " if integer else ""}{low}..{high}')
+@@ -101,7 +113,10 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
+     refs = {} if refs is None else refs
+     if not isinstance(refs, dict) or any(not valid_id(k) or len(k) > 60 for k in refs):
+         raise Error('refs maps names ([A-Za-z0-9_-], at most 60 characters) to text or {"path": ...}')
+-    texts = {}
++    policy = request.get('input_policy')
++    if policy is not None and policy not in INPUT_POLICIES:
++        raise Error('input_policy must be one of ' + ', '.join(INPUT_POLICIES))
++    texts, receipts = {}, {}
+     for name, value in refs.items():
+         data = _NO_VALUE
+         if isinstance(value, str):
+@@ -113,6 +128,12 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
+             except (OSError, UnicodeError):
+                 raise Error(f'reference {name}: cannot read UTF-8 file {value["path"]}') from None
+             source = path.relative_to(allow).as_posix()
++            if policy is not None:
++                raw = text
++                text, removed = apply_input_policy(raw, policy)
++                receipts[name] = {'policy': policy, 'raw_sha256': hashlib.sha256(raw.encode('utf-8')).hexdigest(),
++                                  'resolved_sha256': hashlib.sha256(text.encode('utf-8')).hexdigest(),
++                                  'removed': removed}
+         elif isinstance(value, dict) and set(value) == {'value'}:
+             # Opt-in JSON value form: the packet carries this value itself (for example ["12.48 mm","12.52 mm"]),
+             # not a string holding its JSON text. Its compact JSON is the text, the source label says "value".
+@@ -176,6 +197,11 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
+         # Only a non-default profile enters the work (and its digest), so default requests keep their identity.
+         work['profile'] = profile
+         work['checks'] = {k: list(pin(checks[k], registry)) for k in work['ops'] if checks and checks.get(k)}
++    if policy is not None:
++        # Only a request that sets the policy gains these keys (default requests keep their identity). The raw and
++        # resolved hashes and the removed suffix are part of the work, so a changed raw file is changed work.
++        work['input_policy'] = policy
++        work['inputs'] = {n: receipts[n] for n in sorted(work['refs']) if n in receipts}
+     forms = sorted(n for n in work['refs'] if 'value' in texts[n])
+     if forms:
+         # A {"value": ...} ref is a JSON array/object/number on the wire, a text ref a string: the form is part of the
+@@ -183,7 +209,7 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
+         # refs gain this key, so default requests keep their identity.
+         work['ref_forms'] = {n: 'value' for n in forms}
+     digest = hashlib.sha256(J(work).encode('utf-8')).hexdigest()
+-    return dict(work=work, texts=texts, sha256=digest, request_id=request_id or 'h' + digest[:16], model=model,
++    return dict(work=work, texts=texts, sha256=digest, inputs=work.get('inputs', {}), request_id=request_id or 'h' + digest[:16], model=model,
+                 allow_experimental=request.get('allow_experimental', False), deadline=deadline,
+                 call_timeout=_number(request.get('call_timeout_seconds', 300), 1, 3600, 'call_timeout_seconds'),
+                 per_call=_number(request.get('max_jobs_per_call', config['batch_size']), 1, 64,
+@@ -571,6 +597,8 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
+                       'model': req['model'], 'elapsed_seconds': round(clock() - started, 3)}}
+     if memo is not None:
+         result['memo'] = memo_report
++    if req['work'].get('input_policy'):
++        result['inputs'] = {'policy': req['work']['input_policy'], 'refs': req['inputs']}
+     return result
+ 
+ 
+@@ -613,7 +641,8 @@ def _memo_publish(box, req, root, run, memo):
+     ops = set(memo['ops'])
+     op_of = {r[0]: r[1] for r in req['work']['jobs']}
+     for c in box.candidates(status='accepted'):
+-        if c['receipt'].startswith('memo:') or op_of.get(c['job']) not in ops or c['compute_key'] is None:
++        # A memo hit is never published again, and a rule receipt never enters memo storage (amendment D9).
++        if c['receipt'].startswith(('memo:', 'rule:')) or op_of.get(c['job']) not in ops or c['compute_key'] is None:
+             continue
+         d = box.dispatch(c['receipt'])
+         if d is None:
+diff --git a/tests/test_oz_do.py b/tests/test_oz_do.py
+index b3c11c2..ecfc5c9 100644
+--- a/tests/test_oz_do.py
++++ b/tests/test_oz_do.py
+@@ -313,5 +313,116 @@ class DoTests(unittest.TestCase):
+         self.assertEqual(json.loads(out.getvalue())['job']['state'], 'done')
+ 
+ 
++class InputPolicyTests(unittest.TestCase):
++    """oz-rule/1 amendment 1, D2: the opt-in input policy (default absent = literal, byte-identical)."""
++    POLICY = 'strip-one-terminal-newline/1'
++
++    def setUp(self):
++        temp = tempfile.TemporaryDirectory()
++        self.addCleanup(temp.cleanup)
++        self.root = DoTests.space(self, Path(temp.name) / 'ws')
++
++    def run_do(self, req):
++        return do(req, workspace=self.root, adapter=self.root / 'adapter.json')
++
++    def norm(self, **extra):
++        from oz_do import normalize
++        from oz_workspace import Workspace
++        req = {'request_id': 'pol', 'goal': 'g', 'ops': {'o': 'Do it.'}, 'refs': {'c': {'path': 'f.txt'}},
++               'jobs': [['j1', 'o', 'c']], **extra}
++        return normalize(req, allow=self.root, config=Workspace(self.root).config)
++
++    def put(self, data):
++        (self.root / 'f.txt').write_bytes(data)
++
++    def test_default_request_is_literal_and_keeps_its_identity(self):
++        self.put(b'length=12.50 mm\n')
++        plain = self.norm()
++        self.assertEqual(plain['texts']['c']['text'], 'length=12.50 mm\n')
++        self.assertNotIn('input_policy', plain['work'])
++        self.assertNotIn('inputs', plain['work'])
++        self.assertEqual(plain['inputs'], {})
++        again = self.norm()
++        self.assertEqual(plain['sha256'], again['sha256'])
++
++    def test_exactly_one_terminal_crlf_else_one_lf_is_removed_and_nothing_else(self):
++        for raw, kept, removed in ((b'a\n', 'a', '\n'), (b'a\r\n', 'a', '\r\n'), (b'a\n\n', 'a\n', '\n'),
++                                   (b'a\r\n\r\n', 'a\r\n', '\r\n'), (b'a\r', 'a\r', ''), (b'a', 'a', ''),
++                                   (b'a\n\r\n', 'a\n', '\r\n'), (b'  a  \n', '  a  ', '\n'),
++                                   (b'a\nb\n', 'a\nb', '\n')):
++            self.put(raw)
++            got = self.norm(input_policy=self.POLICY)
++            self.assertEqual(got['texts']['c']['text'], kept, raw)
++            receipt = got['inputs']['c']
++            self.assertEqual((receipt['removed'], receipt['policy']), (removed, self.POLICY), raw)
++            self.assertEqual(receipt['raw_sha256'], __import__('hashlib').sha256(raw).hexdigest())
++            self.assertEqual(receipt['resolved_sha256'], __import__('hashlib').sha256(kept.encode()).hexdigest())
++
++    def test_the_policy_and_raw_bytes_are_part_of_the_work_identity(self):
++        self.put(b'v\n')
++        plain, strip = self.norm(), self.norm(input_policy=self.POLICY)
++        self.assertNotEqual(plain['sha256'], strip['sha256'])
++        self.put(b'v\r\n')
++        crlf = self.norm(input_policy=self.POLICY)
++        self.assertEqual(crlf['texts']['c']['text'], strip['texts']['c']['text'])
++        self.assertNotEqual(crlf['sha256'], strip['sha256'])  # different raw bytes, same resolved text
++
++    def test_a_file_that_is_only_a_newline_is_blank_after_the_policy(self):
++        self.put(b'\r\n')
++        with self.assertRaisesRegex(Error, 'nonblank'):
++            self.norm(input_policy=self.POLICY)
++
++    def test_policy_applies_to_file_refs_only_and_unknown_policies_are_refused(self):
++        from oz_do import normalize
++        from oz_workspace import Workspace
++        req = {'goal': 'g', 'ops': {'o': 'x'}, 'refs': {'c': 'inline\n'}, 'jobs': [['j1', 'o', 'c']],
++               'input_policy': self.POLICY}
++        got = normalize(req, allow=self.root, config=Workspace(self.root).config)
++        self.assertEqual(got['texts']['c']['text'], 'inline\n')
++        self.assertEqual(got['inputs'], {})
++        with self.assertRaisesRegex(Error, 'input_policy'):
++            self.norm(input_policy='trim/9')
++
++    def test_the_resolved_text_reaches_the_packet_and_the_result_reports_receipts(self):
++        self.put(b'length=12.50 mm\r\n')
++        req = {'request_id': 'pol1', 'goal': 'g', 'ops': {'o': 'Do it.'}, 'refs': {'c': {'path': 'f.txt'}},
++               'jobs': [['j1', 'o', 'c']], 'allow_experimental': True, 'max_input_tokens': 100000,
++               'input_policy': self.POLICY}
++        result = self.run_do(req)
++        self.assertEqual(result['jobs']['j1']['value'], ['Do it.', 'length=12.50 mm'])
++        self.assertEqual(result['inputs']['policy'], self.POLICY)
++        self.assertEqual(result['inputs']['refs']['c']['removed'], '\r\n')
++        # Without the policy the file text is literal and the result has no receipts.
++        literal = self.run_do({k: v for k, v in dict(req, request_id='pol2').items() if k != 'input_policy'})
++        self.assertEqual(literal['jobs']['j1']['value'], ['Do it.', 'length=12.50 mm\r\n'])
++        self.assertNotIn('inputs', literal)
++
++
++class RuleReceiptMemoTests(unittest.TestCase):
++    """Amendment D9: a rule receipt never enters memo storage."""
++
++    def test_memo_publish_skips_memo_and_rule_receipts(self):
++        from oz_do import _memo_publish
++
++        class Box:
++            def candidates(self, status=None):
++                return [{'receipt': r, 'job': 'j', 'compute_key': 'k', 'value': 'v', 'stored': 'v', 'checks': [],
++                         'verdicts': [], 'seq': i} for i, r in enumerate(('memo:7', 'rule:3', 'rcpt1'))]
++
++            def dispatch(self, receipt):
++                return {'route': {}}
++
++        class Store:
++            published = []
++
++            def publish(self, namespace, key, **kw):
++                self.published.append(kw['provenance']['receipt'])
++
++        store = Store()
++        _memo_publish(Box(), {'work': {'jobs': [['j', 'op']]}, 'request_id': 'r'}, Path('/w'), Path('/w/do/r'),
++                      {'store': store, 'namespace': 'n', 'ops': ['op']})
++        self.assertEqual(store.published, ['rcpt1'])
++
++
+ if __name__ == '__main__':
+     unittest.main()
