@@ -87,3 +87,18 @@ weekly quota at about 35%, well under the 49% line, because every remaining step
 - README updated (roadmap, boundary limit and authoring rule, 749 tests). Weekly quota at 40%.
 - Not done: the owner-facing push of `main` (only `oz-0.9` is pushed), and any step 5 work (Astra and Opus advise
   against an effort study for now).
+
+## Evening status, 2026-10-23
+
+- Next-work plan signed by Astra and Opus ([next-2026-10-23](../docs/design/next-2026-10-23/README.md)).
+- Step 1, zero-call trace analysis, preregistered before reading numbers: **no demonstrated actionable bottleneck**.
+  On the one model-needed workload (O1), thinking is at most 15.7% of billed tokens, waiting and resends are zero, and
+  the largest item is a fixed ~2,170 input tokens per call (system text H plus the CLI's own framing, which the data
+  cannot separate).
+- Step 2, packaging: `oz_manual` (install, run, revise, status, artifacts) over the existing runtime, read-only reads,
+  one runner per request, a Windows-only O1 example on the fixture route; contract and final diff signed by Opus;
+  two review follow-ups fixed. 809 tests. Everything pushed to `oz-0.9`; `main` untouched.
+- **Waiting on you:** step 3, one committed use case qualified live before promotion. Astra and Opus recommend
+  `repair-handoff-20` and testing what the caller-cost study left open (a cheaper worker model, references too large for
+  the caller, or a full caller context). It needs your confirmation of the use case and an allocation.
+- Weekly quota about 41%.
