@@ -1,0 +1,180 @@
+{
+ "note": "Frozen expected values (Astra round 1 table, rechecked by Opus round 1). rev2 changes only record A.",
+ "rev1": {
+  "A": {
+   "interval": [
+    "12.48 mm",
+    "12.52 mm"
+   ],
+   "status": "inside",
+   "missing": [
+    "method",
+    "basis"
+   ],
+   "follow_ups": [
+    {
+     "category": "missing_metadata",
+     "field": "method"
+    },
+    {
+     "category": "missing_metadata",
+     "field": "basis"
+    }
+   ]
+  },
+  "B": {
+   "interval": [
+    "12.44 mm",
+    "12.50 mm"
+   ],
+   "status": "outside",
+   "missing": [],
+   "follow_ups": [
+    {
+     "category": "numerical_review"
+    }
+   ]
+  },
+  "C": {
+   "interval": [
+    "12.50 mm",
+    "12.52 mm"
+   ],
+   "status": "inside",
+   "missing": [],
+   "follow_ups": []
+  },
+  "D": {
+   "interval": "unknown",
+   "status": "unknown",
+   "missing": [
+    "uncertainty",
+    "basis"
+   ],
+   "follow_ups": [
+    {
+     "category": "missing_metadata",
+     "field": "uncertainty"
+    },
+    {
+     "category": "missing_metadata",
+     "field": "basis"
+    },
+    {
+     "category": "uncertainty_required"
+    }
+   ]
+  }
+ },
+ "rev2": {
+  "A": {
+   "interval": [
+    "12.53 mm",
+    "12.57 mm"
+   ],
+   "status": "outside",
+   "missing": [
+    "method",
+    "basis"
+   ],
+   "follow_ups": [
+    {
+     "category": "missing_metadata",
+     "field": "method"
+    },
+    {
+     "category": "missing_metadata",
+     "field": "basis"
+    },
+    {
+     "category": "numerical_review"
+    }
+   ]
+  }
+ },
+ "fields": {
+  "rev1": {
+   "A": [
+    "12.50 mm",
+    "0.02 mm",
+    "3",
+    "unknown",
+    "unknown",
+    "not_claimed"
+   ],
+   "B": [
+    "12.47 mm",
+    "0.03 mm",
+    "5",
+    "micrometer",
+    "expanded",
+    "not_claimed"
+   ],
+   "C": [
+    "12.51 mm",
+    "0.01 mm",
+    "1",
+    "caliper",
+    "resolution",
+    "not_claimed"
+   ],
+   "D": [
+    "12.50 mm",
+    "unknown",
+    "4",
+    "micrometer",
+    "unknown",
+    "not_claimed"
+   ]
+  },
+  "rev2": {
+   "A": [
+    "12.55 mm",
+    "0.02 mm",
+    "3",
+    "unknown",
+    "unknown",
+    "not_claimed"
+   ]
+  }
+ },
+ "revisions": {
+  "clean": {
+   "A": 1,
+   "B": 1,
+   "C": 1,
+   "D": 1
+  },
+  "repeat": {
+   "A": 1,
+   "B": 1,
+   "C": 1,
+   "D": 1
+  },
+  "interrupt": {
+   "A": 1,
+   "B": 1,
+   "C": 1,
+   "D": 1
+  },
+  "stale": {
+   "A": 2,
+   "B": 1,
+   "C": 1,
+   "D": 1
+  },
+  "bump": {
+   "A": 2,
+   "B": 1,
+   "C": 1,
+   "D": 1
+  }
+ },
+ "variants": {
+  "clean": "rev1",
+  "repeat": "rev1",
+  "interrupt": "rev1",
+  "stale": "rev2",
+  "bump": "rev1"
+ }
+}

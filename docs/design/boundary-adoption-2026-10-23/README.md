@@ -19,3 +19,8 @@ Status: built through the zero-token gates at freeze ed082d4d ([plan-frozen.md](
 holds, G1 is green, G2 passes. No model call has been made; qualification and suite wait for the owner. The executor
 change refroze G3b (040cfd41 to 97943a55) and O1 (32333561 to 0aa5ecf6); their dry gates pass unchanged and their
 live verdicts stand for the freezes they were made under.
+
+Later: qualification attempt 1 failed at call 9 and adoption did not pass ([results-qualification.md](results-qualification.md)).
+Rounds [05](05-astra-next.md) and [06](06-opus-next.md) decided that classification becomes a host operation
+([decision-host-classify.md](decision-host-classify.md)). The v3 pack and its zero-token gate are recorded in
+[v3-plan-frozen.md](v3-plan-frozen.md).

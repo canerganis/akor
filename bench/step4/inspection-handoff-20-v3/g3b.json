@@ -1,0 +1,117 @@
+{
+ "gate": "G3b",
+ "label": "pass_g3b",
+ "identity": {
+  "workflow": "inspection-handoff-20/v3",
+  "plan_revision": "host classification, decided 2026-10-23 (docs/design/boundary-adoption-2026-10-23/decision-host-classify.md, 05-astra-next.md, 06-opus-next.md)",
+  "preregistration": "docs/design/boundary-adoption-2026-10-23/v3-plan-frozen.md",
+  "prefix": "hc1",
+  "workspace": ".oz-runtime/hc1"
+ },
+ "allocation": {
+  "max_tokens": 40000,
+  "max_launches": 16,
+  "max_launches_per_flow": 10,
+  "reserve_per_launch": 5000,
+  "estimate_tokens": 30000
+ },
+ "recovery": {
+  "packet_sizes": [
+   4,
+   1
+  ],
+  "max_attempts": 2,
+  "rule": "After a packet whose rejected set is R (a failed per-job check or a wire rejection), the stage resends exactly R at attempt 2, in job order, before the next stage, in packets of the largest allowed size that fits, repeatedly (sizes 4 and 1: one singleton per rejected member while |R| < 4, one size-4 packet when all four members were rejected). Accepted members are never resent, a member is never sent a third time, a held member (verifier outage) is never resent, and a member rejected at attempt 2 leaves the stage unresolved."
+ },
+ "scenarios": {
+  "clean": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ]
+   ]
+  },
+  "repeat": {
+   "stages": []
+  },
+  "interrupt": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ]
+   ]
+  },
+  "stale": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ],
+    [
+     "extract",
+     [
+      "extract_A"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A"
+     ]
+    ]
+   ],
+   "revised_from_stage": 2,
+   "revised_source": "A",
+   "revised_file": "sources/A.rev2.txt"
+  },
+  "bump": {
+   "stages": []
+  }
+ },
+ "baseline": false,
+ "baseline_note": "G4 (no-orchestration baseline) is not part of this pack; v3 has no baseline arm and no live run"
+}

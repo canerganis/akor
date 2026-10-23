@@ -1,0 +1,143 @@
+{
+ "files": {
+  "pack": {
+   "bench/step4/inspection-handoff-20-v3/expected.json": "b812d776c2ab92ea444214353b3edfc3aa414c63753b5505e29b308e3cb756f8",
+   "bench/step4/inspection-handoff-20-v3/g3b.json": "8cedb0163370b3ffae7a9078d05f5ff72fd0535042739d4d2a3e97821e17a53b",
+   "bench/step4/inspection-handoff-20-v3/graph.json": "ae352f5b479d30e1c693e80211bb64dc8db6a4ee903989d187090dc37682ad9f",
+   "bench/step4/inspection-handoff-20-v3/sources/A.rev2.txt": "f8eeb7b4cbc3747f3593a530070f1d06f12ee6dff64237035cb123a4da54b170",
+   "bench/step4/inspection-handoff-20-v3/sources/A.txt": "9b8956aadcaf18a51947ba10c90572ef41b6787418b3545c35279cf76e257614",
+   "bench/step4/inspection-handoff-20-v3/sources/B.txt": "b5e2dcad0a904f8c6df5f446e6ebf6d29f1fd0e4b89797d7fd89b08da3d66911",
+   "bench/step4/inspection-handoff-20-v3/sources/C.txt": "9667c65ca36d12d82b71a299c11406f799b3d3d3f29d64080a6e220cd6b2d2f5",
+   "bench/step4/inspection-handoff-20-v3/sources/D.txt": "f70e35ba2e6138925afb243c8d78f4f880d25ae11ede1cbd242deffab64277c0",
+   "bench/step4/inspection-handoff-20-v3/workflow.json": "40b3c2e3d920544e01b4caaeca875b90efda99fbe7044d9f981634386ad56dc0"
+  },
+  "code": {
+   "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
+   "oz_batch.py": "50ecdd28f5dda7c4479a0160b8860b6cad87727dbb448f7eddc0f15553d622cb",
+   "oz_reply.py": "dc58230288900c0eee17a2f230b30feaf993e15e90fda12d488b644505633ab4",
+   "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
+   "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
+   "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
+   "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
+   "oz_do.py": "04234e50ed41d037d4668d9c6c5eae1837b832b31034a16392f245374dfa67af",
+   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
+   "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
+   "oz_flow.py": "98ba8901356e0079a4b2c56a4082eff7000c2ddc96dec1888d6df40a07c14cf8",
+   "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
+   "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
+   "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
+   "bench/step4/workflow.py": "e2c2fa067285c6c55815c722787f5a50af437bfb9aa5e4923542b45d18afc62a",
+   "bench/step4/evaluator.py": "139a201ef44b83e7977aaf85b24788d56044519de0b578acde48bed451ac84f1",
+   "bench/step4/fixture_adapter.py": "3caead7723d9082717965dc0d22de28348882f2f8c84de36b763db0ac892508f",
+   "bench/step4/g3b.py": "1917bee0ceed99940d283f248baab3612e7d3f80d7e7c2245d782cea6433e3fc",
+   "bench/step4/step4.py": "afd4b26e9b47a3cca415939b3c808815356298611e35d902abc51b59b8290878",
+   "bench/step4/packs.py": "e46ef42d6cdf7021d4fe57d1ba1d53d899f06fc26a6fad48026ccd44bc03867b",
+   "bench/step4/host_classify.py": "01cb6881485443715e643f6081a4a30249b07da268bc48febfdf24598b6e8535",
+   "bench/step4/v3.py": "b61fc08c751c9bf2264e760f8690999e04dee9789e01be44bc2c62cb9933bc98"
+  },
+  "reads": {
+   "bench/step4/inspection-handoff-20-v2/qual.json": "1c8c82c1f7d628e3519508e9d197f746052f643a0cc9b1ca36c131d014741763"
+  },
+  "design": {
+   "docs/design/boundary-adoption-2026-10-23/01-astra-r1.md": "cd2302436728d0e6136b0d70155eefd80855af35ccf0231860f86d207b3963a5",
+   "docs/design/boundary-adoption-2026-10-23/02-opus-r1.md": "90174e8a4cdfaa1dc7da63d8025246632a63e54793447779cf14434ecc0c5987",
+   "docs/design/boundary-adoption-2026-10-23/03-astra-r2-signed.md": "9cabeb32f59648c71bbdc22d0e47b7ccf7541dea8ac6b754416d41add85a5f33",
+   "docs/design/boundary-adoption-2026-10-23/04-opus-r2-sign.md": "f2418033917bedd24427635b54a51404d8aa0bd2e07f76bae7143d819d5798cc",
+   "docs/design/boundary-adoption-2026-10-23/05-astra-next.md": "1a135bb6e5955a08c844d0a8ee7dc0a2478e102c46cf21020f9efe4bb620d37b",
+   "docs/design/boundary-adoption-2026-10-23/06-opus-next.md": "b4fb431a382dfd0baf87e867f080593c4dc7a609815ba40579b1e3c0b03c1bfb",
+   "docs/design/boundary-adoption-2026-10-23/decision-host-classify.md": "63dd12d14688368f60b0db841a10a5a880652b389cddad80d8e3379e26a23bd3"
+  }
+ },
+ "plan": {
+  "plan": "boundary-adoption-2026-10-23",
+  "workflow": "inspection-handoff-20/v3",
+  "decision": "docs/design/boundary-adoption-2026-10-23/decision-host-classify.md",
+  "operation": "host.classify@1",
+  "operation_inputs": [
+   "interval",
+   "limits"
+  ],
+  "limits": {
+   "lower": "12.48",
+   "upper": "12.52",
+   "unit": "mm",
+   "inclusive": true
+  },
+  "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+  "model_ops": [
+   "model.bounds",
+   "model.extract"
+  ],
+  "nodes": 20,
+  "expected_launches": {
+   "clean": 2,
+   "repeat": 0,
+   "interrupt": 2,
+   "stale": 4,
+   "bump": 0
+  },
+  "expected_packets": {
+   "clean": [
+    4,
+    4
+   ],
+   "repeat": [],
+   "interrupt": [
+    4,
+    4
+   ],
+   "stale": [
+    4,
+    4,
+    1,
+    1
+   ],
+   "bump": []
+  },
+  "expected_memo_hits": {
+   "clean": 0,
+   "repeat": 8,
+   "interrupt": 0,
+   "stale": 6,
+   "bump": 16
+  },
+  "allocation": {
+   "max_tokens": 40000,
+   "max_launches": 16,
+   "max_launches_per_flow": 10,
+   "reserve_per_launch": 5000,
+   "estimate_tokens": 30000
+  },
+  "fixtures": [
+   "limits_agree_and_a_disagreeing_goal_is_refused",
+   "graph_binds_interval_and_limits_per_record",
+   "no_classify_model_job_in_any_scenario",
+   "equality_at_both_limits_is_inside",
+   "breaches_by_0_01_are_outside",
+   "the_24_frozen_cases_agree",
+   "unknown_interval_is_unknown",
+   "invalid_inputs_are_refused_by_the_host_op",
+   "changed_limits_change_labels_and_are_caught",
+   "changed_limits_in_the_graph_are_stopped_by_the_row_check_and_the_evaluator",
+   "node11_superseded_before_the_classify_commit_is_refused",
+   "stale_scenario_classifies_on_the_new_interval",
+   "independent_oracle_grid_agrees",
+   "evaluator_agrees_with_every_delivered_status",
+   "sabotaged_host_operations_are_caught"
+  ],
+  "recovery_cases": [
+   "wrong_answers_in_both_model_stages",
+   "wire_rejected_extract_packet",
+   "stale_with_rejections_before_and_after_the_mutation",
+   "interrupt_with_recovery",
+   "second_attempt_fails"
+  ],
+  "rules": {
+   "host_classify": "inside exactly when lower_limit <= interval_low and interval_high <= upper_limit, in Decimal; outside otherwise; unknown when the interval is unknown; malformed input is refused",
+   "inputs": "node 11 checked interval (/bounds/X) and the structured goal limits as a graph literal equal to workflow.json limits",
+   "no_model": "no model.classify operation or node; the graph keeps 20 nodes",
+   "live": "none: no paid run is allocated; a later model experiment needs its own preregistration"
+  }
+ },
+ "digest": "2e1202f587ed30a8abe79c0501c348851d5283fe542315ecaab2e9e1860a211a"
+}

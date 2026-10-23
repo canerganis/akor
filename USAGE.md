@@ -204,6 +204,10 @@ Add these two keys to an `oz do` request (or pass `profile=` and `checks=` to `I
 
 With this profile, `oz do` runs the adapter under `oz_runner.py`, which publishes `do/<request_id>/captures/<receipt>.done` atomically, and journals every dispatch (intent, launch with PID and creation time, capture, or `uncertain`) in the run's SQLite inbox. A rerun after a hard crash or kill reuses a published capture without a new call (a Ctrl-C or timeout inside the running call ends the runner too, so that dispatch is recorded as uncertain), adopts a late reply only into a job that is still unresolved, never overwrites an accepted result, and reports dispatches it cannot reconcile under `accounting.unreconciled_dispatches` with usage left unknown. The profile's reliability and savings are not yet measured.
 
+## Authoring guidance
+
+When a registered total function computes a step exactly from checked values, make that step a host operation and do not send it to a model. Keeping such a model operation needs an explicit experimental reason. A host operation is exact only for the inputs it validates, so it still needs tests, and its inputs should be refused when malformed. Passing a checked intermediate forward to a model that still has to interpret it is input discipline, not a reliability guarantee. Example: step 4's classification (inside, outside or unknown from a checked interval and the goal limits) became `host.classify@1` after a model misread inclusive equality at a limit. Decision and evidence: [docs/design/boundary-adoption-2026-10-23/decision-host-classify.md](docs/design/boundary-adoption-2026-10-23/decision-host-classify.md).
+
 ## Budget, retries and visibility
 
 In `oz.json`, `max_tokens` is the upper bound on the receiver's input. `encodings` are the target tokenizer names; with more than one, the limit applies to each. `batch_size` sets how many ready jobs are scanned at most (1 to 64). The defaults are 2048 tokens and 64 jobs. Ready jobs are collected into one call without waiting.

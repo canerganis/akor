@@ -1,0 +1,323 @@
+{
+ "v": 1,
+ "base": 0,
+ "nodes": [
+  {
+   "id": "snapshot",
+   "op": "host.snapshot",
+   "in": {
+    "sources": {
+     "lit": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ]
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "extract_A",
+   "op": "model.extract",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/records/A/text"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "extract_B",
+   "op": "model.extract",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/records/B/text"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "extract_C",
+   "op": "model.extract",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/records/C/text"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "extract_D",
+   "op": "model.extract",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/records/D/text"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "normalized_records",
+   "op": "host.normalize",
+   "in": {
+    "names": {
+     "lit": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ]
+    },
+    "fields": {
+     "list": [
+      {
+       "node": "extract_A"
+      },
+      {
+       "node": "extract_B"
+      },
+      {
+       "node": "extract_C"
+      },
+      {
+       "node": "extract_D"
+      }
+     ]
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "bounds_A",
+   "op": "model.bounds",
+   "in": {
+    "record": {
+     "node": "normalized_records",
+     "path": "/A"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "bounds_B",
+   "op": "model.bounds",
+   "in": {
+    "record": {
+     "node": "normalized_records",
+     "path": "/B"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "bounds_C",
+   "op": "model.bounds",
+   "in": {
+    "record": {
+     "node": "normalized_records",
+     "path": "/C"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "bounds_D",
+   "op": "model.bounds",
+   "in": {
+    "record": {
+     "node": "normalized_records",
+     "path": "/D"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "checked_intervals",
+   "op": "host.check_intervals",
+   "in": {
+    "records": {
+     "node": "normalized_records"
+    },
+    "bounds": {
+     "list": [
+      {
+       "node": "bounds_A"
+      },
+      {
+       "node": "bounds_B"
+      },
+      {
+       "node": "bounds_C"
+      },
+      {
+       "node": "bounds_D"
+      }
+     ]
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "classify_A",
+   "op": "host.classify",
+   "in": {
+    "interval": {
+     "node": "checked_intervals",
+     "path": "/bounds/A"
+    },
+    "limits": {
+     "lit": {
+      "lower": "12.48",
+      "upper": "12.52",
+      "unit": "mm",
+      "inclusive": true
+     }
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "classify_B",
+   "op": "host.classify",
+   "in": {
+    "interval": {
+     "node": "checked_intervals",
+     "path": "/bounds/B"
+    },
+    "limits": {
+     "lit": {
+      "lower": "12.48",
+      "upper": "12.52",
+      "unit": "mm",
+      "inclusive": true
+     }
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "classify_C",
+   "op": "host.classify",
+   "in": {
+    "interval": {
+     "node": "checked_intervals",
+     "path": "/bounds/C"
+    },
+    "limits": {
+     "lit": {
+      "lower": "12.48",
+      "upper": "12.52",
+      "unit": "mm",
+      "inclusive": true
+     }
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "classify_D",
+   "op": "host.classify",
+   "in": {
+    "interval": {
+     "node": "checked_intervals",
+     "path": "/bounds/D"
+    },
+    "limits": {
+     "lit": {
+      "lower": "12.48",
+      "upper": "12.52",
+      "unit": "mm",
+      "inclusive": true
+     }
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "handoff_rows",
+   "op": "host.handoff_rows",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "records": {
+     "node": "normalized_records"
+    },
+    "intervals": {
+     "node": "checked_intervals"
+    },
+    "status": {
+     "list": [
+      {
+       "node": "classify_A"
+      },
+      {
+       "node": "classify_B"
+      },
+      {
+       "node": "classify_C"
+      },
+      {
+       "node": "classify_D"
+      }
+     ]
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "render_json",
+   "op": "host.render_json",
+   "in": {
+    "rows": {
+     "node": "handoff_rows"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "render_markdown",
+   "op": "host.render_markdown",
+   "in": {
+    "rows": {
+     "node": "handoff_rows"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "verify_package",
+   "op": "host.verify_package",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "json": {
+     "node": "render_json"
+    },
+    "markdown": {
+     "node": "render_markdown"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "publish_handoff",
+   "op": "host.publish",
+   "in": {
+    "package": {
+     "node": "verify_package"
+    }
+   },
+   "after": []
+  }
+ ],
+ "outputs": {
+  "inspection_handoff": "publish_handoff"
+ }
+}
