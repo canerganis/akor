@@ -1,0 +1,142 @@
+{
+ "gate": "G3b",
+ "label": "pass_g3b",
+ "identity": {
+  "workflow": "inspection-handoff-20/v1",
+  "plan_revision": "v2, signed 2026-10-23 (docs/design/step4-2026-10-23/g3b/03-astra-r2-signed.md, signed by Opus in 05)",
+  "preregistration": "docs/design/step4-2026-10-23/g3b/plan-frozen.md",
+  "prefix": "live2",
+  "workspace": ".oz-runtime/step4-live2"
+ },
+ "allocation": {
+  "max_tokens": 64000,
+  "max_launches": 24,
+  "max_launches_per_flow": 10,
+  "reserve_per_launch": 5000,
+  "estimate_tokens": 36000
+ },
+ "recovery": {
+  "packet_sizes": [
+   4,
+   1
+  ],
+  "max_attempts": 2,
+  "rule": "After a packet whose rejected set is R (a failed per-job check or a wire rejection), the stage resends exactly R at attempt 2, in job order, before the next stage, in packets of the largest allowed size that fits, repeatedly (sizes 4 and 1: one singleton per rejected member while |R| < 4, one size-4 packet when all four members were rejected). Accepted members are never resent, a member is never sent a third time, a held member (verifier outage) is never resent, and a member rejected at attempt 2 leaves the stage unresolved."
+ },
+ "scenarios": {
+  "clean": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ],
+    [
+     "classify",
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ]
+    ]
+   ]
+  },
+  "repeat": {
+   "stages": []
+  },
+  "interrupt": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ],
+    [
+     "classify",
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ]
+    ]
+   ]
+  },
+  "stale": {
+   "stages": [
+    [
+     "extract",
+     [
+      "extract_A",
+      "extract_B",
+      "extract_C",
+      "extract_D"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A",
+      "bounds_B",
+      "bounds_C",
+      "bounds_D"
+     ]
+    ],
+    [
+     "extract",
+     [
+      "extract_A"
+     ]
+    ],
+    [
+     "bounds",
+     [
+      "bounds_A"
+     ]
+    ],
+    [
+     "classify",
+     [
+      "classify_A",
+      "classify_B",
+      "classify_C",
+      "classify_D"
+     ]
+    ]
+   ],
+   "revised_from_stage": 2,
+   "revised_source": "A",
+   "revised_file": "sources/A.rev2.txt"
+  },
+  "bump": {
+   "stages": []
+  }
+ }
+}

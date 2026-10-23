@@ -6,7 +6,12 @@ function as examples/claude_cli_adapter.py. Every invocation is appended to invo
 log is the ground truth of physical launches in the dry gate. mode.json there selects sabotage behavior:
   {"stale_classify_A": true}  classify answers for a record with length 12.55 mm come from the old record (12.50 mm)
   {"model": "other-model"}     the envelope reports another model
-  {"wire_reject": ["job"]}     the reply omits that job (wire-invalid reply)
+  {"wire_reject": ["job"]}     the reply omits that job (wire-invalid reply), on every call
+  {"wire_reject_first": [...]} the reply omits that job on the first call of a dispatch binding that carries it only
+  {"wrong_first": [...]}       that job gets a wrong answer on its first call within a dispatch binding only
+  {"wrong_always": [...]}      that job always gets a wrong answer
+  {"usage": {"input": N, "output": M}}  fixed modelUsage tokens per call (default: derived from the byte counts)
+  {"thinking": N}              modelUsage.thinkingTokens per call (default 0); {"no_thinking": true} omits the key
   {"no_model_usage": true}     the envelope has no modelUsage (usage and model identity unknown)
   {"sleep": seconds}           wait before answering (external-kill fixtures)
 """
@@ -59,6 +64,24 @@ def answer(instruction, record, mode):
     raise SystemExit('fixture: unknown instruction')
 
 
+def wrong(instruction, answer_value):
+    """A deliberately wrong answer of the same shape (the check, not the wire, must reject it)."""
+    if instruction.startswith('Return a compact JSON array of strings'):
+        return ['wrong'] + list(answer_value[1:])
+    if instruction.startswith('Return a compact JSON array [length-uncertainty'):
+        return ['0.00 mm', '0.00 mm']
+    return 'outside' if answer_value != 'outside' else 'inside'
+
+
+def prior_calls(state, binding, job):
+    """Earlier physical calls of this dispatch binding that carried the job (the invocation log is the truth)."""
+    log = state / 'invocations.jsonl'
+    if not log.exists():
+        return 0
+    rows = (json.loads(x) for x in log.read_text(encoding='utf-8').splitlines() if x.strip())
+    return sum(1 for r in rows if r['binding'] == binding and job in r['ids'])
+
+
 def baseline_reply(prompt):
     """The no-orchestration arm's document, computed by the fixture from the prompt's records (dry gate only)."""
     lines = prompt.splitlines()
@@ -92,19 +115,26 @@ def main():
         body = json.loads(request['prompt'])
         instruction = body['ops'][block[0]]
         for row in block[1:]:
-            if row[0] in mode.get('wire_reject', []):
+            first = prior_calls(state, request['binding'], row[0]) == 0
+            if row[0] in mode.get('wire_reject', []) or (first and row[0] in mode.get('wire_reject_first', [])):
                 continue
             record = body['refs'][row[1]]
-            lines.append(json.dumps({row[0]: answer(instruction, record, mode)}, ensure_ascii=False,
-                                    separators=(',', ':')))
+            value = answer(instruction, record, mode)
+            if row[0] in mode.get('wrong_always', []) or (first and row[0] in mode.get('wrong_first', [])):
+                value = wrong(instruction, value)
+            lines.append(json.dumps({row[0]: value}, ensure_ascii=False, separators=(',', ':')))
     reply = '\n'.join(lines)
     tokens_in = (len(request['system']) + len(request['prompt'])) // 4
     model = mode.get('model', os.environ.get('OZ_FIXTURE_MODEL', 'fixture-oracle-1'))
+    used = mode.get('usage') or {}
     envelope = {'type': 'result', 'subtype': 'success', 'is_error': False, 'result': reply,
                 'usage': {'input_tokens': 1, 'output_tokens': 1, 'cache_read_input_tokens': 0,
                           'cache_creation_input_tokens': 0},
-                'modelUsage': {model: {'inputTokens': tokens_in, 'outputTokens': len(reply) // 4,
+                'modelUsage': {model: {'inputTokens': used.get('input', tokens_in),
+                                       'outputTokens': used.get('output', len(reply) // 4),
                                        'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0}}}
+    if not mode.get('no_thinking'):
+        envelope['modelUsage'][model]['thinkingTokens'] = mode.get('thinking', 0)
     if mode.get('no_model_usage'):
         del envelope['modelUsage']
     time.sleep(mode.get('sleep', 0))

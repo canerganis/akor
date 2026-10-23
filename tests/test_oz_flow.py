@@ -606,13 +606,19 @@ class DryGateTests(unittest.TestCase):
             self.assertTrue(all(c['pass'] for c in report['c5'].values()), report['c5'])
             self.assertTrue(all(c['caught'] for c in report['sabotage'].values()), report['sabotage'])
             self.assertTrue(report['pass'])
+            self.assertEqual(report['pass'], report['g3b']['pass'])
+            self.assertTrue(all(s['pass_g3b'] and s['g3b']['strict_pass'] and not s['recovered']
+                                for s in report['scenarios'].values()))
+            self.assertTrue(all(c['pass'] for c in report['recovery'].values()), report['recovery'])
+            self.assertTrue(all(c['caught'] for c in report['g3b_sabotage'].values()), report['g3b_sabotage'])
+            self.assertTrue(all(c['pass'] for c in report['feasibility'].values()), report['feasibility'])
             self.assertEqual(report['totals']['launches'], 11)
 
     def test_the_frozen_contract_matches_its_digests(self):
         self.assertEqual(S.freeze()['problems'], [])
 
     def stored_copy(self, tmp, edit):
-        stored = json.loads((W.FROZEN / 'freeze.json').read_text(encoding='utf-8'))
+        stored = json.loads(S.FREEZE_FILE.read_text(encoding='utf-8'))
         edit(stored)
         path = Path(tmp) / 'freeze.json'
         path.write_text(json.dumps(stored), encoding='utf-8')
