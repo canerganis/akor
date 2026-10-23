@@ -50,3 +50,10 @@ Branch `oz-0.9`, nothing pushed, nothing posted. Tests: 542 passing. Claude week
    (12.50 ± 0.02 against [12.48, 12.52] answered "outside"), the host checks rejected all three and the resent jobs came
    back right, which cost extra launches the frozen gate did not allow. Without the checks those wrong values would
    have been delivered. Astra and Opus then wrote G3b (a recovery-aware rerun with an exact trace oracle), the build was reviewed, and it ran live: **G3b passed** (12 launches, 31,346 tokens; one more wrong boundary answer caught and recovered), and an independent recheck of every stored model value agreed with the executor ([g3b results](../docs/design/step4-2026-10-23/g3b/results.md)). Across both live runs, every wrong classification came from a call with zero hidden reasoning (association, not proven cause). Opus also found that the 64-job pilot had no "inside" classification case at all; that coverage gap is now recorded in the pilot results.
+4. **Optional probe (about 48k tokens):** whether hidden reasoning, explicit inequality wording, or passing the
+   host-checked interval to the classifier removes the boundary errors. Astra and Opus left it to you; not run.
+5. **README** now has the subagent comparison, when `oz do` pays, and the boundary limit (b16b952); it ships only with
+   your push approval.
+
+Late additions tonight: G3b gate review findings fixed and refrozen (9624eac, 559 tests). Stopped with the Claude
+weekly quota at about 35%, well under the 49% line, because every remaining step is one of your decisions above.
