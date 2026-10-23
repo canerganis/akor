@@ -11,4 +11,4 @@ replacements or extensions. Contrast floor: A must fail on at least 3 of 6 calls
 "insufficient contrast" and nothing is selected. A candidate must be right on 6 of 6. Fisher tests, thinking-token
 distributions and cache counters are reported descriptively. No result changes G3, G3b, O1, H or any qualification;
 a goal-referencing version of a winning operation would need its own qualification.
-Status: signed, not built.
+Status: signed, built (harness bench/probe/boundary.py, freeze 520c98e8).
