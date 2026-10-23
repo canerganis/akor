@@ -12,7 +12,7 @@ Your agents keep repeating themselves on every call. AKOR stops you paying for i
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
-![Tests](https://img.shields.io/badge/tests-337%20passing-1a7f4b)
+![Tests](https://img.shields.io/badge/tests-559%20passing-1a7f4b)
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
@@ -146,6 +146,25 @@ genuine job failures. Across all 91 Claude calls on the final wire, the parser a
 thinks much longer on this wire than Sonnet (up to 10k output tokens per 64-job packet), so it is not the cheaper
 model here. Raw data, manifests and the harness are in [`bench/`](bench/); every decision is in [`docs/design/`](docs/design/).
 
+## Compared with one subagent per job
+
+The same 64 small jobs on Claude Sonnet 5.5, run four ways, preregistered, strict oracles, every billed token counted
+including subagents ([results](docs/design/brainstorm-2026-10-22/pilot-results.md)):
+
+| 64 jobs, 3 seeds | Correct jobs | Tokens per verified job | Median time |
+|---|---:|---:|---:|
+| One subagent per job | 188/192 | 7,931 | 105 s |
+| One plain JSON call per job | 139/192 | 2,834 | 491 s (sequential) |
+| One plain JSON call with all jobs | 192/192 | 151.1 | 21 s |
+| **One AKOR call with all jobs** | **192/192** | **91.6** | **20 s** |
+
+<img src="docs/assets/pilot_subagents.svg" alt="Tokens per verified job for the same 64 jobs on Sonnet 5.5: one subagent per job 7,931; one call per job 2,834; plain JSON in one call 151; AKOR in one call 91.6." width="100%">
+
+Most of that gap is batching, not the language: AKOR's own format adds about 39% over one batched plain JSON call at
+64 jobs (10% to 18% at 16). A caller agent that hands the jobs to `oz do` instead of spawning subagents spends 9 to 10
+times fewer tokens ([arm K](docs/design/foundation-2026-10-23/arm-k-results.md)); with the same model, a caller that can
+do the jobs itself in one reply is cheaper still ([caller-cost results](docs/design/caller-cost-2026-10-23/results.md)).
+
 ## Supported models
 
 This release is qualified for the tested Claude configurations only: `claude-sonnet-5-5` (32 and 64 jobs per
@@ -219,6 +238,10 @@ The full specification is in [`OZ9.md`](OZ9.md).
   that did not happen in 91 calls, which bounds the per-call failure rate (about 3.3% at 95% confidence), it does
   not prove it is zero.
 - Only the Claude configurations listed under Supported models are qualified for this wire.
+- The classification operation in the benchmark workload rarely produces an "inside" answer (none in the 64-job
+  pilot), so its correctness figures say little about inclusive-boundary cases. In the step 4 workflow, where half the
+  cases are boundaries, Sonnet 5.5 misclassified four of them, each in a call that used no hidden reasoning; per-job host
+  checks caught every one before delivery ([step 4 results](docs/design/step4-2026-10-23/g3b/results.md)).
 
 ## Related work
 
