@@ -1,0 +1,1237 @@
+{
+ "rows": [
+  {
+   "slot": 1,
+   "block": 1,
+   "position": 1,
+   "arm": "A",
+   "call_id": "178a142cc6d04d5ab2b1f79bf9a3fb5c",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 8546,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 0,
+    "cache_creation": 2541,
+    "output": 61,
+    "total": 2604,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": false
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 3,
+   "boundary_error": true,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "semantic"
+  },
+  {
+   "slot": 2,
+   "block": 1,
+   "position": 2,
+   "arm": "B",
+   "call_id": "4f02b3c48a0e47959ec9ef255dcf32eb",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 8427,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 603,
+    "cache_creation": 1986,
+    "output": 163,
+    "total": 2754,
+    "thinking": 102
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 3,
+   "block": 1,
+   "position": 3,
+   "arm": "C",
+   "call_id": "501c63c3d0974fb49c08a831402ecfc9",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6460,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 603,
+    "cache_creation": 2056,
+    "output": 61,
+    "total": 2722,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 4,
+   "block": 2,
+   "position": 1,
+   "arm": "B",
+   "call_id": "d271b29959444154ba46d870766eac19",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6763,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1930,
+    "cache_creation": 653,
+    "output": 151,
+    "total": 2736,
+    "thinking": 90
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 5,
+   "block": 2,
+   "position": 2,
+   "arm": "C",
+   "call_id": "88cb3de8a17846f6aad135388bbf897e",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6701,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 2007,
+    "cache_creation": 655,
+    "output": 61,
+    "total": 2725,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 6,
+   "block": 2,
+   "position": 3,
+   "arm": "A",
+   "call_id": "28b7ab8ee37a4dfaa21f6e9c7bcc794b",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6399,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1890,
+    "cache_creation": 654,
+    "output": 61,
+    "total": 2607,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": false
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 3,
+   "boundary_error": true,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "semantic"
+  },
+  {
+   "slot": 7,
+   "block": 3,
+   "position": 1,
+   "arm": "C",
+   "call_id": "db8cb041cb0f4e3d80f5fa7850923c64",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 7180,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 2007,
+    "cache_creation": 652,
+    "output": 61,
+    "total": 2722,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 8,
+   "block": 3,
+   "position": 2,
+   "arm": "A",
+   "call_id": "0ec2a2fea70342fe8f1626de21174122",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6865,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1890,
+    "cache_creation": 654,
+    "output": 61,
+    "total": 2607,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": false
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 3,
+   "boundary_error": true,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "semantic"
+  },
+  {
+   "slot": 9,
+   "block": 3,
+   "position": 3,
+   "arm": "B",
+   "call_id": "0cb9b3928fab4655a4cb0a550b9aab28",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 13420,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1930,
+    "cache_creation": 654,
+    "output": 185,
+    "total": 2771,
+    "thinking": 124
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 10,
+   "block": 4,
+   "position": 1,
+   "arm": "A",
+   "call_id": "9a19b11b41ee41fa8d5ac398128758f2",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 8492,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1890,
+    "cache_creation": 652,
+    "output": 125,
+    "total": 2669,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": "line 7 is not one JSON value",
+   "members": {},
+   "correct_members": 0,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "wire_rejected"
+  },
+  {
+   "slot": 11,
+   "block": 4,
+   "position": 2,
+   "arm": "C",
+   "call_id": "df55149e3006430483ef288a2fe5a693",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 5543,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 2007,
+    "cache_creation": 653,
+    "output": 61,
+    "total": 2723,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 12,
+   "block": 4,
+   "position": 3,
+   "arm": "B",
+   "call_id": "10b88ee8f5d54dea8e4049f3f9fc5e41",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 7433,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1930,
+    "cache_creation": 649,
+    "output": 178,
+    "total": 2759,
+    "thinking": 117
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 13,
+   "block": 5,
+   "position": 1,
+   "arm": "C",
+   "call_id": "78f8f59a4c7d4d89b6c18dc22ed774f0",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6238,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 2007,
+    "cache_creation": 650,
+    "output": 61,
+    "total": 2720,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 14,
+   "block": 5,
+   "position": 2,
+   "arm": "B",
+   "call_id": "584592049b354beab8024d105b3d962c",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6730,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1930,
+    "cache_creation": 655,
+    "output": 166,
+    "total": 2753,
+    "thinking": 105
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  },
+  {
+   "slot": 15,
+   "block": 5,
+   "position": 3,
+   "arm": "A",
+   "call_id": "4095ae6df17948eb8df1aea29ad3c7dd",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6388,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1890,
+    "cache_creation": 649,
+    "output": 61,
+    "total": 2602,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": false
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 3,
+   "boundary_error": true,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "semantic"
+  },
+  {
+   "slot": 16,
+   "block": 6,
+   "position": 1,
+   "arm": "B",
+   "call_id": "732f43ba9c9446c18f5183780e178c7e",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6299,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1930,
+    "cache_creation": 651,
+    "output": 193,
+    "total": 2776,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": "first nonblank line is not OZ/1g",
+   "members": {},
+   "correct_members": 0,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "wire_rejected"
+  },
+  {
+   "slot": 17,
+   "block": 6,
+   "position": 2,
+   "arm": "A",
+   "call_id": "e033f2956baf43efb64a4220f0619d40",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 7302,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1890,
+    "cache_creation": 654,
+    "output": 61,
+    "total": 2607,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": false
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 3,
+   "boundary_error": true,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "semantic"
+  },
+  {
+   "slot": 18,
+   "block": 6,
+   "position": 3,
+   "arm": "C",
+   "call_id": "ed9f693e08c244eba71f10a87ab9a4cb",
+   "orphan_closed": false,
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 7587,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 2007,
+    "cache_creation": 651,
+    "output": 213,
+    "total": 2873,
+    "thinking": 152
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  }
+ ],
+ "arms": {
+  "A": {
+   "calls": 6,
+   "entirely_correct": 0,
+   "not_entirely_correct": 6,
+   "boundary_error_calls": 5,
+   "correct_members": 15,
+   "member_total": 24,
+   "boundary_correct_members": 0,
+   "boundary_member_total": 6,
+   "outcomes": {
+    "correct": 0,
+    "semantic": 5,
+    "model_error": 0,
+    "wire_rejected": 1,
+    "process_failure": 0,
+    "deadline": 0
+   },
+   "accounting_complete_calls": 6,
+   "route_ok_calls": 6,
+   "route_mismatch_calls": 0,
+   "total_tokens_known": 15696,
+   "tokens_unknown_calls": 0,
+   "correct_on_time_members": 15,
+   "tokens_per_correct_member": 1046.4,
+   "elapsed_ms": [
+    8546,
+    6399,
+    6865,
+    8492,
+    6388,
+    7302
+   ],
+   "elapsed_total_ms": 43992,
+   "thinking_strata": {
+    "zero": {
+     "calls": 6,
+     "entirely_correct": 0,
+     "not_entirely_correct": 6,
+     "boundary_errors": 5,
+     "slots": [
+      1,
+      6,
+      8,
+      10,
+      15,
+      17
+     ]
+    },
+    "positive": {
+     "calls": 0,
+     "entirely_correct": 0,
+     "not_entirely_correct": 0,
+     "boundary_errors": 0,
+     "slots": []
+    },
+    "unknown": {
+     "calls": 0,
+     "entirely_correct": 0,
+     "not_entirely_correct": 0,
+     "boundary_errors": 0,
+     "slots": []
+    }
+   },
+   "thinking_values": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ],
+   "assessable": false
+  },
+  "B": {
+   "calls": 6,
+   "entirely_correct": 5,
+   "not_entirely_correct": 1,
+   "boundary_error_calls": 0,
+   "correct_members": 20,
+   "member_total": 24,
+   "boundary_correct_members": 5,
+   "boundary_member_total": 6,
+   "outcomes": {
+    "correct": 5,
+    "semantic": 0,
+    "model_error": 0,
+    "wire_rejected": 1,
+    "process_failure": 0,
+    "deadline": 0
+   },
+   "accounting_complete_calls": 6,
+   "route_ok_calls": 6,
+   "route_mismatch_calls": 0,
+   "total_tokens_known": 16549,
+   "tokens_unknown_calls": 0,
+   "correct_on_time_members": 20,
+   "tokens_per_correct_member": 827.45,
+   "elapsed_ms": [
+    8427,
+    6763,
+    13420,
+    7433,
+    6730,
+    6299
+   ],
+   "elapsed_total_ms": 49072,
+   "thinking_strata": {
+    "zero": {
+     "calls": 1,
+     "entirely_correct": 0,
+     "not_entirely_correct": 1,
+     "boundary_errors": 0,
+     "slots": [
+      16
+     ]
+    },
+    "positive": {
+     "calls": 5,
+     "entirely_correct": 5,
+     "not_entirely_correct": 0,
+     "boundary_errors": 0,
+     "slots": [
+      2,
+      4,
+      9,
+      12,
+      14
+     ]
+    },
+    "unknown": {
+     "calls": 0,
+     "entirely_correct": 0,
+     "not_entirely_correct": 0,
+     "boundary_errors": 0,
+     "slots": []
+    }
+   },
+   "thinking_values": [
+    0,
+    90,
+    102,
+    105,
+    117,
+    124
+   ],
+   "assessable": true
+  },
+  "C": {
+   "calls": 6,
+   "entirely_correct": 6,
+   "not_entirely_correct": 0,
+   "boundary_error_calls": 0,
+   "correct_members": 24,
+   "member_total": 24,
+   "boundary_correct_members": 6,
+   "boundary_member_total": 6,
+   "outcomes": {
+    "correct": 6,
+    "semantic": 0,
+    "model_error": 0,
+    "wire_rejected": 0,
+    "process_failure": 0,
+    "deadline": 0
+   },
+   "accounting_complete_calls": 6,
+   "route_ok_calls": 6,
+   "route_mismatch_calls": 0,
+   "total_tokens_known": 16485,
+   "tokens_unknown_calls": 0,
+   "correct_on_time_members": 24,
+   "tokens_per_correct_member": 686.875,
+   "elapsed_ms": [
+    6460,
+    6701,
+    7180,
+    5543,
+    6238,
+    7587
+   ],
+   "elapsed_total_ms": 39709,
+   "thinking_strata": {
+    "zero": {
+     "calls": 5,
+     "entirely_correct": 5,
+     "not_entirely_correct": 0,
+     "boundary_errors": 0,
+     "slots": [
+      3,
+      5,
+      7,
+      11,
+      13
+     ]
+    },
+    "positive": {
+     "calls": 1,
+     "entirely_correct": 1,
+     "not_entirely_correct": 0,
+     "boundary_errors": 0,
+     "slots": [
+      18
+     ]
+    },
+    "unknown": {
+     "calls": 0,
+     "entirely_correct": 0,
+     "not_entirely_correct": 0,
+     "boundary_errors": 0,
+     "slots": []
+    }
+   },
+   "thinking_values": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    152
+   ],
+   "assessable": true
+  }
+ },
+ "fisher": {
+  "B vs A": 0.015151515151515152,
+  "C vs A": 0.0021645021645021645
+ },
+ "problems": [],
+ "launched": 18,
+ "finished": 18,
+ "orphans": [],
+ "open_halt": null,
+ "spent_admission_tokens": 48730,
+ "digest": "520c98e895a6bc0dfb5781cc23d66bd2a1633d11bbdc98141387755428714ac2",
+ "decision": {
+  "verdict": "nominate",
+  "candidate": "C",
+  "text": "Nominate C for a separately frozen workflow evaluation and composition qualification: C met the criterion alone. No classification failures were observed in six repetitions of this frozen packet."
+ }
+}

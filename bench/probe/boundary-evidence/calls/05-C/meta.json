@@ -1,0 +1,90 @@
+{
+ "launch": {
+  "event": "launch",
+  "slot": 5,
+  "arm": "C",
+  "block": 2,
+  "position": 2,
+  "call_id": "88cb3de8a17846f6aad135388bbf897e",
+  "ts": 1792741168.9526873,
+  "at": "2026-10-23T07:39:28.952Z",
+  "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+  "prompt_sha256": "68e7833fdf602a2c4fa87e5823371a1c3396c1cc8315e845f6a7449a56254351",
+  "argv_flags": [
+   "-p",
+   "--model",
+   "claude-sonnet-5-5",
+   "--system-prompt",
+   "<H>",
+   "--tools",
+   "",
+   "--setting-sources",
+   "",
+   "--strict-mcp-config",
+   "--no-session-persistence",
+   "--output-format",
+   "json"
+  ]
+ },
+ "end": {
+  "event": "end",
+  "slot": 5,
+  "call_id": "88cb3de8a17846f6aad135388bbf897e",
+  "ts": 1792741175.655767,
+  "at": "2026-10-23T07:39:35.655Z",
+  "stdout_sha256": "92159b57a94ff944e6cd94f63d0297998c7d1982783d4d22fdadb57f86338dff",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluation": {
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6701,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 2007,
+    "cache_creation": 655,
+    "output": 61,
+    "total": 2725,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  }
+ }
+}

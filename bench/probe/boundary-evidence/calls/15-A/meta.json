@@ -1,0 +1,90 @@
+{
+ "launch": {
+  "event": "launch",
+  "slot": 15,
+  "arm": "A",
+  "block": 5,
+  "position": 3,
+  "call_id": "4095ae6df17948eb8df1aea29ad3c7dd",
+  "ts": 1792741244.0064285,
+  "at": "2026-10-23T07:40:44.006Z",
+  "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+  "prompt_sha256": "48ecc5b04ab8c6efdafdb315217a2c1729b1c2c904e52c71648b7abb0f83b0f9",
+  "argv_flags": [
+   "-p",
+   "--model",
+   "claude-sonnet-5-5",
+   "--system-prompt",
+   "<H>",
+   "--tools",
+   "",
+   "--setting-sources",
+   "",
+   "--strict-mcp-config",
+   "--no-session-persistence",
+   "--output-format",
+   "json"
+  ]
+ },
+ "end": {
+  "event": "end",
+  "slot": 15,
+  "call_id": "4095ae6df17948eb8df1aea29ad3c7dd",
+  "ts": 1792741250.3962972,
+  "at": "2026-10-23T07:40:50.396Z",
+  "stdout_sha256": "2d178679e7c76c40b0ef9a4f334f113581f238cef0289d64b05f7254eea6b601",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluation": {
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 6388,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1890,
+    "cache_creation": 649,
+    "output": 61,
+    "total": 2602,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": false
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 3,
+   "boundary_error": true,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "semantic"
+  }
+ }
+}

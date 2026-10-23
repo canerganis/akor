@@ -1,0 +1,90 @@
+{
+ "launch": {
+  "event": "launch",
+  "slot": 1,
+  "arm": "A",
+  "block": 1,
+  "position": 1,
+  "call_id": "178a142cc6d04d5ab2b1f79bf9a3fb5c",
+  "ts": 1792741138.7355142,
+  "at": "2026-10-23T07:38:58.735Z",
+  "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+  "prompt_sha256": "48ecc5b04ab8c6efdafdb315217a2c1729b1c2c904e52c71648b7abb0f83b0f9",
+  "argv_flags": [
+   "-p",
+   "--model",
+   "claude-sonnet-5-5",
+   "--system-prompt",
+   "<H>",
+   "--tools",
+   "",
+   "--setting-sources",
+   "",
+   "--strict-mcp-config",
+   "--no-session-persistence",
+   "--output-format",
+   "json"
+  ]
+ },
+ "end": {
+  "event": "end",
+  "slot": 1,
+  "call_id": "178a142cc6d04d5ab2b1f79bf9a3fb5c",
+  "ts": 1792741147.2857614,
+  "at": "2026-10-23T07:39:07.285Z",
+  "stdout_sha256": "82ddfbcd93f02d561a0a6b7bbd04338a4f9dd2e693d3967c0718dd8394ec52a6",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluation": {
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 8546,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 0,
+    "cache_creation": 2541,
+    "output": 61,
+    "total": 2604,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": false
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 3,
+   "boundary_error": true,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "semantic"
+  }
+ }
+}

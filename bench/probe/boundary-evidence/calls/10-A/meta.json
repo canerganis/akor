@@ -1,0 +1,65 @@
+{
+ "launch": {
+  "event": "launch",
+  "slot": 10,
+  "arm": "A",
+  "block": 4,
+  "position": 1,
+  "call_id": "9a19b11b41ee41fa8d5ac398128758f2",
+  "ts": 1792741209.5447774,
+  "at": "2026-10-23T07:40:09.544Z",
+  "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+  "prompt_sha256": "48ecc5b04ab8c6efdafdb315217a2c1729b1c2c904e52c71648b7abb0f83b0f9",
+  "argv_flags": [
+   "-p",
+   "--model",
+   "claude-sonnet-5-5",
+   "--system-prompt",
+   "<H>",
+   "--tools",
+   "",
+   "--setting-sources",
+   "",
+   "--strict-mcp-config",
+   "--no-session-persistence",
+   "--output-format",
+   "json"
+  ]
+ },
+ "end": {
+  "event": "end",
+  "slot": 10,
+  "call_id": "9a19b11b41ee41fa8d5ac398128758f2",
+  "ts": 1792741218.0401626,
+  "at": "2026-10-23T07:40:18.040Z",
+  "stdout_sha256": "b5171e28f02933a5d7fe1305e0079876399eda83f3c1179450c847459b3bcf2d",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluation": {
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 8492,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1890,
+    "cache_creation": 652,
+    "output": 125,
+    "total": 2669,
+    "thinking": 0
+   },
+   "route": "ok",
+   "reject_reason": "line 7 is not one JSON value",
+   "members": {},
+   "correct_members": 0,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": false,
+   "outcome": "wire_rejected"
+  }
+ }
+}

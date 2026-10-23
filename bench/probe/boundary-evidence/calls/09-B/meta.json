@@ -1,0 +1,90 @@
+{
+ "launch": {
+  "event": "launch",
+  "slot": 9,
+  "arm": "B",
+  "block": 3,
+  "position": 3,
+  "call_id": "0cb9b3928fab4655a4cb0a550b9aab28",
+  "ts": 1792741196.1189015,
+  "at": "2026-10-23T07:39:56.118Z",
+  "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+  "prompt_sha256": "7d8474ea84f52f3e1fad6aa78df2e8e74e7bf6131c8f302c84151403f34e2b9b",
+  "argv_flags": [
+   "-p",
+   "--model",
+   "claude-sonnet-5-5",
+   "--system-prompt",
+   "<H>",
+   "--tools",
+   "",
+   "--setting-sources",
+   "",
+   "--strict-mcp-config",
+   "--no-session-persistence",
+   "--output-format",
+   "json"
+  ]
+ },
+ "end": {
+  "event": "end",
+  "slot": 9,
+  "call_id": "0cb9b3928fab4655a4cb0a550b9aab28",
+  "ts": 1792741209.5419216,
+  "at": "2026-10-23T07:40:09.541Z",
+  "stdout_sha256": "761f6fbed0a5081def4ac5d4f577f1cd164605efcf79775109dc92938d44465f",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "evaluation": {
+   "exit_code": 0,
+   "timed_out": false,
+   "elapsed_ms": 13420,
+   "on_time": true,
+   "envelope_ok": true,
+   "usage": {
+    "models": [
+     "claude-sonnet-5-5"
+    ],
+    "complete": true,
+    "input": 2,
+    "cache_read": 1930,
+    "cache_creation": 654,
+    "output": 185,
+    "total": 2771,
+    "thinking": 124
+   },
+   "route": "ok",
+   "reject_reason": null,
+   "members": {
+    "classify_A": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_B": {
+     "got": "outside",
+     "kind": "value",
+     "expected": "outside",
+     "correct": true
+    },
+    "classify_C": {
+     "got": "inside",
+     "kind": "value",
+     "expected": "inside",
+     "correct": true
+    },
+    "classify_D": {
+     "got": "unknown",
+     "kind": "value",
+     "expected": "unknown",
+     "correct": true
+    }
+   },
+   "correct_members": 4,
+   "boundary_error": false,
+   "model_error_lines": 0,
+   "entirely_correct": true,
+   "outcome": "correct"
+  }
+ }
+}
