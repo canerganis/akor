@@ -1,0 +1,283 @@
+
+graft skeleton — oz_runtime.py
+- L29-L30  class Fenced  class Fenced(Error)
+- L34-L37  class Job  class Job
+- L41-L53  class Delivery  class Delivery
+- L48-L53  method prepare  def prepare(self, channel: Channel, **options) -> Batch
+- L57-L60  class Plan  class Plan
+- L64-L69  class Outcome  class Outcome
+- L72-L78  function _is_json  def _is_json(text: object) -> bool
+- L81-L86  function _base36  def _base36(n: int) -> str
+- L89-L1032  class Inbox  class Inbox
+- L90-L102  method __init__  def __init__(self, path: str | Path = ':memory:', *, clock: Callable[[], float] = time.time)
+- L104-L172  method _initialize  def _initialize(self)
+- L174-L184  method _literal_number  def _literal_number(self, binding: str, text: str) -> int
+- L186-L193  method new_receipt  def new_receipt(self) -> str
+- L195-L198  method next_receipt  def next_receipt(self) -> str
+- L200-L202  method _event  def _event(self, mid: str, event: str, **details)
+- L204-L205  method close  def close(self)
+- L207-L208  method __enter__  def __enter__(self)
+- L210-L211  method __exit__  def __exit__(self, *_)
+- L214-L222  method _transaction  def _transaction(self)
+- L224-L264  method post  def post(self, channel: Channel, mid: str, wire: str, *, binding: str, after: Iterable[str] = (), max_attempts: int = 2, profile: str = HEADER, checks=None, registry=None) -> bool
+- L266-L275  method _recover  def _recover(self, binding: str, kind: str)
+- L277-L285  method _ready  def _ready(self, channel: Channel, kind: str, limit: int, ids=())
+- L287-L298  method waiting  def waiting(self, channel: Channel, *, min_batch: int, max_wait: float) -> bool
+- L300-L346  method plan  def plan(self, channel: Channel, *, counters, limit: int = 64, max_tokens: int | None = None, max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, context_policy: str = 'needed') -> Plan
+- L323-L327  function pack  def pack(items)
+- L348-L360  method _handoffs  def _handoffs(self, ids)
+- L362-L409  method claim_prepared  def claim_prepared(self, channel: Channel, *, owner: str, counters, receipt: str, limit: int = 64, max_tokens: int | None = None, max_bytes: int = 262144, lease_seconds: float = 60, context_policy: str = 'needed', dispatch: dict | None = None) -> tuple[Delivery, Batch] | None
+- L411-L416  method _lease  def _lease(self, jobs, token, owner, lease_seconds)
+- L418-L433  method claim  def claim(self, channel: Channel, *, owner: str, kind: str = 'work', limit: int = 8, lease_seconds: float = 60) -> Delivery | None
+- L435-L445  method _check  def _check(self, delivery: Delivery) -> list[sqlite3.Row]
+- L447-L472  method complete  def complete(self, delivery: Delivery, results: dict[str, str], values: dict[str, str] | None = None) -> None
+- L474-L487  method retry  def retry(self, delivery: Delivery, reason: str, *, permanent: bool = False) -> None
+- L489-L521  method settle  def settle(self, delivery: Delivery, outcomes: dict[str, Outcome], *, retry_delay: float = 0, report: dict | None = None)
+- L523-L535  method requeue  def requeue(self, mid: str, *, extra_attempts: int = 1)
+- L537-L542  method renew  def renew(self, delivery: Delivery, *, lease_seconds: float = 60) -> None
+- L544-L553  method inspect  def inspect(self, mid: str) -> dict
+- L555-L565  method records  def records(self, ids: Iterable[str]) -> dict[str, dict]
+- L567-L585  method list_jobs  def list_jobs(self, *, limit: int = 100, after_seq: int = 0) -> list[dict]
+- L587-L594  method history  def history(self, mid: str, *, limit: int = 100) -> list[dict]
+- L596-L601  method runs  def runs(self, *, limit: int = 100) -> list[dict]
+- L603-L610  method channel  def channel(self, binding: str) -> Channel
+- L612-L613  method stats  def stats(self) -> dict[str, int]
+- L618-L620  method epoch  def epoch(self) -> int
+- L622-L627  method take_over  def take_over(self) -> int
+- L629-L630  method _selective_packet  def _selective_packet(self, plan, rows) -> bool
+- L632-L636  method _computation_keys  def _computation_keys(self, plan, route) -> dict
+- L638-L666  method _screen_dispatch  def _screen_dispatch(self, plan, binding, options) -> bool
+- L668-L708  method _open_dispatch  def _open_dispatch(self, plan, binding, lease, owner, receipt, options, max_tokens, lease_seconds) -> bool
+- L710-L717  method _dispatch_dict  def _dispatch_dict(self, row) -> dict
+- L719-L722  method dispatch  def dispatch(self, receipt: str) -> dict | None
+- L724-L730  method dispatches  def dispatches(self, *, binding: str | None = None, unsettled: bool = False) -> list[dict]
+- L732-L739  method _journal  def _journal(self, receipt: str, event: str, sql: str, args) -> bool
+- L741-L745  method dispatch_prepared  def dispatch_prepared(self, receipt: str, request_sha256: str) -> bool
+- L747-L751  method dispatch_launched  def dispatch_launched(self, receipt: str, process: dict | None) -> bool
+- L753-L767  method dispatch_captured  def dispatch_captured(self, receipt: str, *, response: dict | None = None, error: str | None = None, executed: bool = True) -> bool
+- L769-L773  method dispatch_uncertain  def dispatch_uncertain(self, receipt: str) -> bool
+- L775-L779  method in_flight  def in_flight(self, receipt: str) -> bool
+- L781-L788  method contracts  def contracts(self, ids: Iterable[str]) -> dict[str, tuple[str, tuple]]
+- L790-L806  method candidates  def candidates(self, *, job: str | None = None, receipt: str | None = None, status: str | None = None) -> list[dict]
+- L808-L859  method settle_dispatch  def settle_dispatch(self, receipt: str, decisions: dict, *, epoch: int, retry_delay: float = 0, report: dict | None = None, recheck: bool = False) -> dict
+- L861-L978  method _apply  def _apply(self, row, member, decision, *, inlease, recheck, receipt, retry_delay, now, owned=False) -> str
+- L866-L868  function update  def update(**fields)
+- L872-L878  function recover  def recover(error): # Bounded recovery of the current attempt: back to pending while attempts remain.
+- L980-L1012  method adopt_memo  def adopt_memo(self, mid: str, *, entry: str, compute_key: str, value: str, text: str, verdicts, inputs, epoch: int) -> str
+- L1014-L1032  method cancel  def cancel(self, mid: str, reason: str = 'cancelled') -> None
+
+graft skeleton — oz_do.py
+- L70-L73  function size_profile  def size_profile(model: str | None, size: int, cells=CELLS) -> str
+- L76-L79  function _number  def _number(value, low, high, name, integer=False)
+- L82-L86  function _inside  def _inside(root: Path, name: str) -> Path
+- L89-L193  function normalize  def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dict
+- L196-L204  function _channels  def _channels(req: dict) -> tuple[Channel, Channel]
+- L207-L236  function _create_run  def _create_run(root: Path, req: dict, config: dict, registry=None) -> Path
+- L239-L247  function _read_refs  def _read_refs(box: Inbox, channel: Channel, texts: dict)
+- L250-L294  function _accounting  def _accounting(run: Path, journal=()) -> dict
+- L297-L338  function _outcome  def _outcome(mid: str, row: dict | None, blocker: dict | None, now: float, run: Path, root: Path, max_inline: int, evidence: dict | None = None)
+- L341-L348  function _render_inputs  def _render_inputs(channel: Channel, req: dict, mid: str)
+- L351-L373  function _provenance  def _provenance(root: Path, entry: dict, key: str, route: dict) -> str | None
+- L376-L394  function memo_lookup  def memo_lookup(store: MemoStore, namespace: str, key: str, route: dict, inputs, checks, registry, root: Path)
+- L397-L406  function plan_sizes  def plan_sizes(misses: int, sizes) -> list
+- L409-L574  function do  def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic, route=None, registry=None, memo=None, quota=None, admit=None, response_check=None, packet_sizes=None, experimental_sizes=(), plan_only=False) -> dict
+- L456-L459  function file_adapter  def file_adapter(timeout)
+- L577-L608  function _memo_phase  def _memo_phase(box, work, req, root, run, worker, memo, registry, report) -> dict | None
+- L611-L625  function _memo_publish  def _memo_publish(box, req, root, run, memo)
+- L628-L655  function _plan_only  def _plan_only(req, root, route, registry, memo, packet_sizes, elapsed, adapter=None) -> dict
+
+graft skeleton — oz_accept.py
+- L37-L38  class Unavailable  class Unavailable(Exception)
+- L42-L50  class Check  class Check
+- L54-L69  class Inputs  class Inputs
+- L61-L69  method texts  def texts(self) -> tuple
+- L72-L74  function _keys  def _keys(spec: dict, allowed: set, required: set = frozenset())
+- L77-L80  function _type_params  def _type_params(spec)
+- L83-L94  function _type_name  def _type_name(value) -> set
+- L97-L100  function _bytes_params  def _bytes_params(spec)
+- L103-L106  function _values_params  def _values_params(spec)
+- L109-L112  function _span_params  def _span_params(spec)
+- L115-L120  function _span  def _span(value, spec, inputs)
+- L123-L124  function _expect_params  def _expect_params(spec)
+- L143-L164  function pin  def pin(specs, registry=None) -> tuple
+- L167-L182  function packet_inputs  def packet_inputs(text: str) -> dict
+- L185-L191  function job_inputs  def job_inputs(text: str, job_map) -> dict
+- L194-L200  function compute_key  def compute_key(goal: str, inputs: Inputs, route: dict) -> str
+- L203-L207  function accept_key  def accept_key(compute: str, value: str, profile: str, checks, verdicts) -> str
+- L210-L237  function run_checks  def run_checks(value_text: str, inputs: Inputs, pinned, registry=None, previous=None) -> list
+- L240-L270  function decide  def decide(candidates: dict) -> tuple[dict, dict]
+- L273-L276  function summary  def summary(verdicts) -> str
+
+graft skeleton — oz_memo.py
+- L35-L36  function sha256  def sha256(text: str) -> str
+- L39-L121  class MemoStore  class MemoStore
+- L40-L55  method __init__  def __init__(self, path, *, clock=time.time)
+- L57-L58  method close  def close(self)
+- L60-L61  method __enter__  def __enter__(self)
+- L63-L64  method __exit__  def __exit__(self, *_)
+- L66-L83  method publish  def publish(self, namespace: str, compute_key: str, *, value: str, stored: str, route: dict, checks, verdicts, provenance: dict) -> int
+- L85-L96  method revoke  def revoke(self, entry: int, reason: str) -> None
+- L98-L112  method entries  def entries(self, namespace: str | None = None, compute_key: str | None = None) -> list[dict]
+- L114-L118  method record  def record(self, namespace: str, compute_key: str, consumer: str, decision: str, *, entry: int | None = None, reason: str | None = None) -> None
+- L120-L121  method decisions  def decisions(self) -> list[dict]
+
+graft skeleton — oz_worker.py
+- L35-L41  class AdapterError  class AdapterError(Error)
+- L36-L41  method __init__  def __init__(self, code: str)
+- L45-L137  class StdioAdapter  class StdioAdapter
+- L55-L62  method __post_init__  def __post_init__(self)
+- L64-L98  method __call__  def __call__(self, request: dict, on_launch: Callable[[dict | None], None] | None = None) -> dict
+- L100-L137  method _durable  def _durable(self, request: dict, payload: bytes, on_launch) -> dict
+- L140-L155  function _terminate  def _terminate(proc) -> None
+- L158-L169  function _capture_response  def _capture_response(capture: dict, max_output_bytes: int = 1048576, stderr_bytes: int = 0) -> dict
+- L172-L178  function _digest  def _digest(text: str | None)
+- L181-L182  function _now  def _now() -> str
+- L185-L596  class Worker  class Worker
+- L205-L244  method __init__  def __init__(self, inbox: Inbox, channel: Channel, adapter: Callable[[dict], dict], *, counters, capabilities: dict | None = None, owner: str = 'worker', max_tokens: int = 2048, batch_size: int = 64, timeout: float = 120, retry_delay: float = 2, context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0, ledger_path: str | Path | None = None, tokenizer: str | None = None, epoch: int | None = None, route: dict | None = None, registry: dict | None = None, response_check: Callable[[dict], str | None] | None = None)
+- L246-L255  method _append  def _append(self, record: dict) -> bool
+- L257-L271  method _record  def _record(self, event: str, call: dict, **fields) -> dict
+- L273-L277  method _estimate  def _estimate(self, text: str | None)
+- L279-L395  method run_once  def run_once(self) -> dict
+- L397-L401  method _route  def _route(self) -> dict
+- L403-L411  method _refused  def _refused(self, dispatch: dict) -> str | None
+- L413-L416  method _invoke  def _invoke(self, request: dict, receipt: str) -> dict
+- L418-L446  method _decisions  def _decisions(self, dispatch: dict, grouped, reason: str | None) -> dict
+- L448-L488  method recover  def recover(self) -> dict
+- L490-L523  method recheck  def recheck(self) -> list
+- L525-L541  method release  def release(self, seq: int, checks=()) -> dict
+- L543-L553  method _host_only  def _host_only(self, delivery, packet, ids) -> dict
+- L555-L596  method _call_end  def _call_end(self, call, packet, started_at, elapsed, estimates, response, usage, failure, code, outcomes, grouped)
+- L599-L607  function execution_route  def execution_route(route: dict, adapter) -> dict
+- L615-L627  function _interpret  def _interpret(dispatch: dict)
+- L630-L642  function process_host  def process_host(inbox: Inbox, channel: Channel, *, owner='host', limit=64) -> dict
+
+graft skeleton — oz_flow.py
+- L54-L55  class HostError  class HostError(Error)
+- L58-L59  class SupersededIntent  class SupersededIntent(Exception)
+- L63-L72  class HostOp  class HostOp
+- L71-L72  method identity  def identity(self)
+- L76-L104  class ModelOp  class ModelOp
+- L91-L92  method ref_order  def ref_order(self) -> tuple
+- L95-L97  method single  def single(self) -> bool
+- L100-L104  method identity  def identity(self)
+- L107-L108  function _sha  def _sha(text) -> str
+- L113-L129  function _binding_nodes  def _binding_nodes(binding, where) -> list
+- L132-L191  function admit  def admit(graph: dict, registry: dict, *, effects=()) -> list
+- L175-L184  function visit  def visit(n, path=())
+- L194-L205  function pointer  def pointer(value, path: str)
+- L228-L409  class Flow  class Flow
+- L229-L241  method __init__  def __init__(self, path, *, clock=time.time)
+- L243-L244  method close  def close(self)
+- L246-L258  method tx  def tx(self)
+- L249-L257  class _Tx  class _Tx
+- L250-L251  method __enter__  def __enter__(self)
+- L253-L257  method __exit__  def __exit__(self, kind, *_)
+- L260-L262  method event  def event(self, event: str, **details) -> int
+- L264-L265  method events  def events(self) -> list
+- L268-L283  method install  def install(self, request: dict, descriptors: list, outputs: dict, deadline_seconds: float) -> bool
+- L285-L287  method info  def info(self) -> dict
+- L289-L291  method descriptors  def descriptors(self) -> list
+- L294-L301  method import_source  def import_source(self, name: str, data: bytes) -> int
+- L303-L311  method bump_source  def bump_source(self, name: str, data: bytes, *, reason: str) -> int
+- L313-L315  method revisions  def revisions(self) -> dict
+- L317-L322  method source  def source(self, name: str, revision: int | None = None) -> dict
+- L325-L330  method latest  def latest(self) -> dict
+- L332-L342  method current  def current(self) -> dict
+- L344-L351  method _fresh  def _fresh(self, inputs: dict, cites: dict) -> str | None
+- L353-L375  method commit  def commit(self, node: str, generation: int, value: str, inputs: dict, cites: dict, evidence: dict, delivery: dict | None = None) -> str
+- L377-L385  method regenerate  def regenerate(self, node: str, *, reason: str | None = None) -> int
+- L387-L388  method deliveries  def deliveries(self) -> list
+- L390-L391  method effects  def effects(self) -> list
+- L393-L403  method intent  def intent(self, intent: str, node: str, generation: int, destination: str, files: dict) -> dict
+- L405-L409  method effect_state  def effect_state(self, intent: str, state: str, detail=None)
+- L415-L428  class HostContext  class HostContext
+- L422-L428  method read_source  def read_source(self, name: str, path: Path | None = None) -> dict
+- L432-L450  class Settings  class Settings
+- L453-L454  function flow_dir  def flow_dir(workspace: Path, request_id: str) -> Path
+- L457-L465  function _resolve  def _resolve(binding, values, ctx)
+- L468-L483  function stage_launches  def stage_launches(run: Path) -> list
+- L486-L508  function flow_usage  def flow_usage(workspace: Path, request_id: str) -> dict
+- L511-L537  function _admission  def _admission(flow: Flow, settings: Settings, request_id: str, call_timeout: float)
+- L514-L536  function admit  def admit(size)
+- L540-L557  function _stage_request  def _stage_request(flow_rid, op, nodes, texts, generations, deadline, call_timeout, model, max_input_tokens)
+- L560-L561  function _value_text  def _value_text(value) -> str
+- L568-L571  function _skip  def _skip(text: str, i: int) -> int
+- L574-L592  function _members  def _members(text: str, i: int)
+- L595-L615  function _raw_pointer  def _raw_pointer(text: str, path: str) -> RawJSON
+- L618-L624  function _resolve_raw  def _resolve_raw(binding, sources, values, ctx)
+- L627-L636  function _decode_inputs  def _decode_inputs(op, text: str)
+- L639-L662  function _model_input  def _model_input(op, bindings: dict, values: dict, ctx, sources: dict | None = None)
+- L665-L683  function run_flow  def run_flow(request: dict, settings: Settings, *, plan_only=False) -> dict
+- L686-L730  function _execute  def _execute(flow: Flow, request: dict, settings: Settings, call_timeout: float) -> dict
+- L733-L740  function _generation  def _generation(flow: Flow, node: str, descriptors: dict) -> int
+- L743-L779  function _run_host  def _run_host(flow, request, settings, d, current, values) -> dict | None
+- L782-L794  function _supersede  def _supersede(flow: Flow, settings: Settings, d: dict, intent: str, reason: str)
+- L797-L849  function _publish  def _publish(flow, request, settings, d, generation, value, current, cites)
+- L852-L866  function _stage_pins  def _stage_pins(flow: Flow, op) -> dict
+- L869-L966  function _run_stage  def _run_stage(flow, request, settings, op, group, descriptors, current, values, remaining, call_timeout, admit_call, memo_store, refused=None) -> dict | None
+- L969-L984  function _stage_evidence  def _stage_evidence(run: Path) -> dict
+- L987-L1023  function _plan  def _plan(flow: Flow, request: dict, settings: Settings, descriptors: list) -> dict
+- L1026-L1049  function _result  def _result(flow: Flow, request: dict, settings: Settings, blocker) -> dict
+- L1052-L1082  function export  def export(flow: Flow, workspace: Path) -> dict
+
+graft skeleton — oz_batch.py
+- L75-L76  class BudgetError  class BudgetError(Error)
+- L79-L80  function valid_id  def valid_id(value: object) -> bool
+- L83-L84  function valid_receipt  def valid_receipt(value: object) -> bool
+- L87-L95  function J  def J(value: object) -> str
+- L99-L117  class Batch  class Batch
+- L120-L124  function explicit  def explicit(atoms) -> str
+- L127-L128  function _index  def _index(value: object, size: int) -> bool
+- L131-L166  function validate_packet  def validate_packet(body: object) -> None
+- L169-L181  function literal_names  def literal_names(known: dict, texts: Iterable[str]) -> dict
+- L184-L309  function render  def render(channel: Channel, messages: Iterable[tuple[str, str]], *, counters: Iterable[Callable[[str], int]], max_tokens: int | None = None, max_bytes: int = 262144, receipt: str = PREVIEW_RECEIPT, handoffs: Iterable[tuple[str, str, object]] = (), context_policy: str = 'needed', literals: dict | None = None) -> Batch
+- L244-L248  function record_value  def record_value(number): # Source identity (paths, hashes) stays host-side; only status changes how a worker reads text.
+- L253-L257  function ref  def ref(source, value)
+- L259-L260  function record_ref  def record_ref(number)
+- L262-L263  function result_ref  def result_ref(pid)
+- L267-L270  function op_index  def op_index(instruction)
+
+graft skeleton — oz_manual.py
+- L63-L64  class ManualError  class ManualError(Error)
+- L67-L68  class FlowNotFound  class FlowNotFound(ManualError)
+- L71-L72  class RunInProgress  class RunInProgress(ManualError)
+- L75-L81  class ArtifactsUnavailable  class ArtifactsUnavailable(ManualError)
+- L78-L81  method __init__  def __init__(self, code: str, message: str, **detail)
+- L84-L88  function _announce  def _announce()
+- L91-L94  function _check_id  def _check_id(request_id) -> str
+- L99-L132  class _RunLock  class _RunLock
+- L100-L103  method __init__  def __init__(self, directory: Path, request_id: str)
+- L105-L119  method __enter__  def __enter__(self)
+- L121-L132  method __exit__  def __exit__(self, *_)
+- L137-L139  function _stamp  def _stamp(path: Path)
+- L142-L143  function _at_rest  def _at_rest(path: Path) -> bool
+- L146-L160  function _connect_ro  def _connect_ro(path: Path)
+- L163-L179  function _read  def _read(path: Path, fn)
+- L182-L195  class _ReadFlow  class _ReadFlow(Flow)
+- L186-L189  method __init__  def __init__(self, path, *, db=None, clock=time.time)
+- L191-L192  method tx  def tx(self)
+- L194-L195  method event  def event(self, event: str, **details) -> int
+- L198-L199  function _flow_read  def _flow_read(path: Path, fn)
+- L202-L207  function _flow_file  def _flow_file(settings, request_id: str) -> Path
+- L210-L220  function _stage_launches  def _stage_launches(run: Path) -> list
+- L223-L266  function _accounting  def _accounting(run: Path, journal=()) -> dict
+- L269-L281  function _usage_of  def _usage_of(workspace, runs) -> dict
+- L284-L286  function _run_dirs  def _run_dirs(flow: Flow) -> set
+- L289-L295  function _usage  def _usage(workspace, request_id: str) -> dict
+- L300-L314  function install  def install(request: dict, settings) -> dict
+- L317-L323  function _admitted  def _admitted(request, settings)
+- L326-L332  function run  def run(request: dict, settings) -> dict
+- L335-L355  function revise  def revise(request_id: str, settings, source: str, data: bytes, reason: str) -> dict
+- L358-L370  function _targets  def _targets(info, current, deliveries) -> dict
+- L373-L380  function _blocker  def _blocker(events: list)
+- L383-L415  function status  def status(request_id: str, settings, clock=time.time) -> dict
+- L390-L398  function look  def look(flow)
+- L418-L498  function artifacts  def artifacts(request_id: str, settings, target: str | None = None, generation: int | None = None) -> dict
+- L429-L434  function look  def look(flow)
+- L501-L502  function _sha_file  def _sha_file(path: Path) -> str
+
+graft skeleton — oz_cli.py
+- L17-L25  function read_json  def read_json(path)
+- L18-L24  function pairs  def pairs(items)
+- L28-L143  function main  def main(argv=None)
+- L146-L199  function workspace_command  def workspace_command(args)
