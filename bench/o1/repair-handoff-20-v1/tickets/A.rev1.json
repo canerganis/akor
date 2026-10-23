@@ -1,0 +1,54 @@
+{
+ "schema": "akor.o1-ticket/1",
+ "workflow": "repair-handoff-20/v1",
+ "ticket": "A",
+ "revision": 1,
+ "title": "Exact decimal amounts",
+ "provenance": "seeded defects in a purpose-built utility module, not a real bug report",
+ "module": "amounts.py",
+ "module_source": "\"\"\"Exact decimal amounts as integer minor units (hundredths).\"\"\"\n\n\ndef parse_amount(text):\n    \"\"\"Return the amount in minor units, for example \"12.30\" -> 1230.\"\"\"\n    value = round(float(text), 2)\n    return int(value * 100)\n\n\ndef total_amount(texts):\n    \"\"\"Return the exact sum of the amounts as fixed-precision text.\"\"\"\n    total = 0\n    for text in texts:\n        total += parse_amount(text)\n    units, cents = divmod(total, 100)\n    return '%d.%02d' % (units, cents)\n",
+ "core": {
+  "name": "parse_amount",
+  "params": [
+   "text"
+  ],
+  "requirements": [
+   "text must be a str of ASCII characters matching -?(0|[1-9][0-9]*)(\\.[0-9]{1,2})? with at most nine integer digits. Anything else (other types, booleans, whitespace, a plus sign, exponents, leading zeros, a missing digit on either side of the point) raises ValueError.",
+   "Return the amount as an int number of minor units (hundredths, the value times 100) without floating point. \"-0\" and \"-0.0\" return 0.",
+   "A fractional part shorter than 2 digits is padded with zeros; more than 2 fractional digits is invalid (ValueError), never rounded."
+  ]
+ },
+ "adapter": {
+  "name": "total_amount",
+  "params": [
+   "texts"
+  ],
+  "calls": "parse_amount",
+  "requirements": [
+   "texts is a list of str. Call parse_amount exactly once per element, in list order; let its ValueError propagate (stop at the first invalid element).",
+   "Sum the minor units exactly with int arithmetic.",
+   "Return text: \"-\" for a negative total, the integer part without leading zeros (at least \"0\"), \".\", and exactly 2 fractional digits. A zero total is \"0.00\", never negative; an empty list gives \"0.00\"."
+  ]
+ },
+ "precision": 2,
+ "spans": {
+  "parse_amount": [
+   67,
+   226
+  ],
+  "total_amount": [
+   228,
+   473
+  ]
+ },
+ "alias_check": false,
+ "limits": "text at most 32 characters; texts at most 16 elements.",
+ "permitted_edits": [
+  "Replace the defective function with a corrected one; keep its def line exactly as given.",
+  "Nested def and lambda inside the function are allowed.",
+  "No imports, decorators, annotations, default values, helper definitions or other top-level statements."
+ ],
+ "core_record": "O1 repair ticket\nticket: A\nrevision: 1\nop: repair_core@1\nmodule: amounts.py\nfunction: parse_amount\nsignature: def parse_amount(text):\n\nExact decimal amounts. Requirements:\n1. text must be a str of ASCII characters matching -?(0|[1-9][0-9]*)(\\.[0-9]{1,2})? with at most nine integer digits. Anything else (other types, booleans, whitespace, a plus sign, exponents, leading zeros, a missing digit on either side of the point) raises ValueError.\n2. Return the amount as an int number of minor units (hundredths, the value times 100) without floating point. \"-0\" and \"-0.0\" return 0.\n3. A fractional part shorter than 2 digits is padded with zeros; more than 2 fractional digits is invalid (ValueError), never rounded.\n\nPermitted edits:\n1. Replace the defective function with a corrected one; keep its def line exactly as given.\n2. Nested def and lambda inside the function are allowed.\n3. No imports, decorators, annotations, default values, helper definitions or other top-level statements.\n\nInput limits: text at most 32 characters; texts at most 16 elements.\n\nPublic examples:\nparse_amount('12.30') returns 1230\nparse_amount('-0.5') returns -50\nparse_amount('7') returns 700\nparse_amount('1.005') raises ValueError\n\nDefective function:\ndef parse_amount(text):\n    \"\"\"Return the amount in minor units, for example \"12.30\" -> 1230.\"\"\"\n    value = round(float(text), 2)\n    return int(value * 100)\n",
+ "adapter_record_prefix": "O1 repair ticket\nticket: A\nrevision: 1\nop: repair_adapter@1\nmodule: amounts.py\nfunction: total_amount\nsignature: def total_amount(texts):\ncalls: parse_amount (the accepted repaired core function, shown at the end)\n\nExact decimal amounts. Requirements:\n1. texts is a list of str. Call parse_amount exactly once per element, in list order; let its ValueError propagate (stop at the first invalid element).\n2. Sum the minor units exactly with int arithmetic.\n3. Return text: \"-\" for a negative total, the integer part without leading zeros (at least \"0\"), \".\", and exactly 2 fractional digits. A zero total is \"0.00\", never negative; an empty list gives \"0.00\".\n\nPermitted edits:\n1. Replace the defective function with a corrected one; keep its def line exactly as given.\n2. Nested def and lambda inside the function are allowed.\n3. No imports, decorators, annotations, default values, helper definitions or other top-level statements.\n\nInput limits: text at most 32 characters; texts at most 16 elements.\n\nPublic examples:\ntotal_amount(['1.50', '2.25']) returns '3.75'\ntotal_amount([]) returns '0.00'\ntotal_amount(['1', '-1.00']) returns '0.00'\n\nDefective function:\ndef total_amount(texts):\n    \"\"\"Return the exact sum of the amounts as fixed-precision text.\"\"\"\n    total = 0\n    for text in texts:\n        total += parse_amount(text)\n    units, cents = divmod(total, 100)\n    return '%d.%02d' % (units, cents)\n\nAccepted core function (already in scope; call it, do not redefine it):\n",
+ "accepted_marker": "Accepted core function (already in scope; call it, do not redefine it):\n"
+}

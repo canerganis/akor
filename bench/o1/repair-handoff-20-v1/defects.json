@@ -1,0 +1,498 @@
+[
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "converts with float() and multiplies, so \"0.29\" becomes 28 minor units",
+  "families": [
+   "float_artifact"
+  ],
+  "why_semantic": "exact parsing needs integer construction from the digit strings; no operator or constant change of the float expression is exact",
+  "revision": 1,
+  "discriminating_rows": [
+   "A1.core.38",
+   "A1.core.39",
+   "A1.core.40",
+   "A1.core.41"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "converts with float() and multiplies, so \"0.29\" becomes 28 minor units",
+  "families": [
+   "float_artifact"
+  ],
+  "why_semantic": "exact parsing needs integer construction from the digit strings; no operator or constant change of the float expression is exact",
+  "revision": 2,
+  "discriminating_rows": [
+   "A2.core.38",
+   "A2.core.39",
+   "A2.core.40",
+   "A2.core.41"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "rounds excess fractional digits instead of rejecting them",
+  "families": [
+   "excess_precision"
+  ],
+  "why_semantic": "rejection needs a new validation of the fractional length; round() cannot raise",
+  "revision": 1,
+  "discriminating_rows": [
+   "A1.core.12",
+   "A1.core.13"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "rounds excess fractional digits instead of rejecting them",
+  "families": [
+   "excess_precision"
+  ],
+  "why_semantic": "rejection needs a new validation of the fractional length; round() cannot raise",
+  "revision": 2,
+  "discriminating_rows": [
+   "A2.core.11",
+   "A2.core.12",
+   "A2.core.13"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "accepts every syntax float() accepts (exponent, plus, whitespace, leading zeros, a missing digit, nan)",
+  "families": [
+   "malformed"
+  ],
+  "why_semantic": "the grammar has to be checked explicitly; float() has no strict mode",
+  "revision": 1,
+  "discriminating_rows": [
+   "A1.core.15",
+   "A1.core.16",
+   "A1.core.17",
+   "A1.core.18",
+   "A1.core.19",
+   "A1.core.20",
+   "A1.core.21",
+   "A1.core.27",
+   "A1.core.29"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "accepts every syntax float() accepts (exponent, plus, whitespace, leading zeros, a missing digit, nan)",
+  "families": [
+   "malformed"
+  ],
+  "why_semantic": "the grammar has to be checked explicitly; float() has no strict mode",
+  "revision": 2,
+  "discriminating_rows": [
+   "A2.core.15",
+   "A2.core.16",
+   "A2.core.17",
+   "A2.core.18",
+   "A2.core.19",
+   "A2.core.20",
+   "A2.core.21",
+   "A2.core.27",
+   "A2.core.29"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "no limit of nine integer digits",
+  "families": [
+   "integer_digit_limit"
+  ],
+  "why_semantic": "needs a new length check on the integer part",
+  "revision": 1,
+  "discriminating_rows": [
+   "A1.core.32",
+   "A1.core.33"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "no limit of nine integer digits",
+  "families": [
+   "integer_digit_limit"
+  ],
+  "why_semantic": "needs a new length check on the integer part",
+  "revision": 2,
+  "discriminating_rows": [
+   "A2.core.30",
+   "A2.core.31",
+   "A2.core.32",
+   "A2.core.33"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "accepts non-text input (an int or a bool)",
+  "families": [
+   "type_confusion"
+  ],
+  "why_semantic": "needs a new type check that excludes bool",
+  "revision": 1,
+  "discriminating_rows": [
+   "A1.core.34",
+   "A1.core.35",
+   "A1.core.36",
+   "A1.core.37"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "core",
+  "defect": "accepts non-text input (an int or a bool)",
+  "families": [
+   "type_confusion"
+  ],
+  "why_semantic": "needs a new type check that excludes bool",
+  "revision": 2,
+  "discriminating_rows": [
+   "A2.core.34",
+   "A2.core.35",
+   "A2.core.36",
+   "A2.core.37"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "adapter",
+  "defect": "formats with divmod(total, 100), so a negative total of -150 renders as \"-2.50\"",
+  "families": [
+   "negative_total"
+  ],
+  "why_semantic": "needs sign handling around the magnitude; floor division of a negative total has no operator swap that formats correctly",
+  "revision": 1,
+  "discriminating_rows": [
+   "A1.adapter.04",
+   "A1.adapter.05"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "adapter",
+  "defect": "formats with divmod(total, 100), so a negative total of -150 renders as \"-2.50\"",
+  "families": [
+   "negative_total"
+  ],
+  "why_semantic": "needs sign handling around the magnitude; floor division of a negative total has no operator swap that formats correctly",
+  "revision": 2,
+  "discriminating_rows": [
+   "A2.adapter.04",
+   "A2.adapter.05"
+  ]
+ },
+ {
+  "ticket": "A",
+  "op": "adapter",
+  "defect": "hard-codes two fractional digits (revision 2 requires three)",
+  "families": [
+   "revision_precision",
+   "formatting_padding"
+  ],
+  "why_semantic": "needs a three-digit scale and three-digit padding together",
+  "revision": 2,
+  "discriminating_rows": [
+   "A2.adapter.10",
+   "A2.adapter.11",
+   "A2.adapter.20",
+   "A2.adapter.21"
+  ]
+ },
+ {
+  "ticket": "B",
+  "op": "core",
+  "defect": "assumes sorted input",
+  "families": [
+   "unsorted"
+  ],
+  "why_semantic": "needs a sort step that the loop does not have",
+  "revision": 1,
+  "discriminating_rows": [
+   "B1.core.09",
+   "B1.core.10"
+  ]
+ },
+ {
+  "ticket": "B",
+  "op": "core",
+  "defect": "treats touching intervals as separate",
+  "families": [
+   "touching"
+  ],
+  "why_semantic": "needs <= on the merge test together with the sort; alone the operator change still fails the unsorted and zero-length rows",
+  "revision": 1,
+  "discriminating_rows": [
+   "B1.core.06",
+   "B1.core.07"
+  ]
+ },
+ {
+  "ticket": "B",
+  "op": "core",
+  "defect": "keeps zero-length intervals",
+  "families": [
+   "zero_length"
+  ],
+  "why_semantic": "needs a new filter",
+  "revision": 1,
+  "discriminating_rows": [
+   "B1.core.11",
+   "B1.core.12"
+  ]
+ },
+ {
+  "ticket": "B",
+  "op": "core",
+  "defect": "no validation: reversed, bool and non-int endpoints pass",
+  "families": [
+   "invalid"
+  ],
+  "why_semantic": "needs a new validation pass before merging",
+  "revision": 1,
+  "discriminating_rows": [
+   "B1.core.16",
+   "B1.core.17",
+   "B1.core.18",
+   "B1.core.21",
+   "B1.core.22"
+  ]
+ },
+ {
+  "ticket": "B",
+  "op": "adapter",
+  "defect": "does not clip busy intervals to the window and passes busy to the union unchanged",
+  "families": [
+   "crossing_window_start",
+   "call_contract"
+  ],
+  "why_semantic": "needs a new clipped list built from the window",
+  "revision": 1,
+  "discriminating_rows": [
+   "B1.adapter.00",
+   "B1.adapter.02",
+   "B1.adapter.03"
+  ]
+ },
+ {
+  "ticket": "B",
+  "op": "adapter",
+  "defect": "no validation of the window or busy intervals",
+  "families": [
+   "invalid_window",
+   "invalid_busy"
+  ],
+  "why_semantic": "needs a new validation pass",
+  "revision": 1,
+  "discriminating_rows": [
+   "B1.adapter.12",
+   "B1.adapter.13",
+   "B1.adapter.14",
+   "B1.adapter.15"
+  ]
+ },
+ {
+  "ticket": "C",
+  "op": "core",
+  "defect": "mutates base (the result is base itself)",
+  "families": [
+   "aliasing"
+  ],
+  "why_semantic": "needs a recursive deep copy, which the module does not have",
+  "revision": 1,
+  "discriminating_rows": [
+   "C1.core.12",
+   "C1.core.13",
+   "C1.core.14"
+  ]
+ },
+ {
+  "ticket": "C",
+  "op": "core",
+  "defect": "raises KeyError when deleting a missing key",
+  "families": [
+   "missing_deletion_target"
+  ],
+  "why_semantic": "needs a guarded removal instead of del",
+  "revision": 1,
+  "discriminating_rows": [
+   "C1.core.00",
+   "C1.core.01"
+  ]
+ },
+ {
+  "ticket": "C",
+  "op": "core",
+  "defect": "returns patch values without deep copies",
+  "families": [
+   "arrays",
+   "aliasing"
+  ],
+  "why_semantic": "needs the deep copy on every non-object value",
+  "revision": 1,
+  "discriminating_rows": [
+   "C1.core.08",
+   "C1.core.09",
+   "C1.core.12",
+   "C1.core.13",
+   "C1.core.14"
+  ]
+ },
+ {
+  "ticket": "C",
+  "op": "adapter",
+  "defect": "orders revisions by the text of seq (10 before 2)",
+  "families": [
+   "numeric_sequence_order"
+  ],
+  "why_semantic": "needs numeric ordering together with seq validation",
+  "revision": 1,
+  "discriminating_rows": [
+   "C1.adapter.00"
+  ]
+ },
+ {
+  "ticket": "C",
+  "op": "adapter",
+  "defect": "accepts duplicate seqs",
+  "families": [
+   "duplicate_sequence"
+  ],
+  "why_semantic": "needs a new duplicate check before any call",
+  "revision": 1,
+  "discriminating_rows": [
+   "C1.adapter.02",
+   "C1.adapter.03"
+  ]
+ },
+ {
+  "ticket": "C",
+  "op": "adapter",
+  "defect": "accepts bool, zero, negative and text seqs",
+  "families": [
+   "invalid_sequence"
+  ],
+  "why_semantic": "needs a new type and range check",
+  "revision": 1,
+  "discriminating_rows": [
+   "C1.adapter.04",
+   "C1.adapter.05",
+   "C1.adapter.06",
+   "C1.adapter.07"
+  ]
+ },
+ {
+  "ticket": "C",
+  "op": "adapter",
+  "defect": "returns base itself when there are no revisions",
+  "families": [
+   "empty_revisions",
+   "aliasing"
+  ],
+  "why_semantic": "needs a deep copy of base",
+  "revision": 1,
+  "discriminating_rows": [
+   "C1.adapter.09",
+   "C1.adapter.11",
+   "C1.adapter.12"
+  ]
+ },
+ {
+  "ticket": "D",
+  "op": "core",
+  "defect": "FIFO ready queue instead of the earliest input position among ready jobs",
+  "families": [
+   "newly_ready_earlier_index"
+  ],
+  "why_semantic": "needs selection of the minimum position among ready jobs at every step",
+  "revision": 1,
+  "discriminating_rows": [
+   "D1.core.08",
+   "D1.core.09",
+   "D1.core.10"
+  ]
+ },
+ {
+  "ticket": "D",
+  "op": "core",
+  "defect": "duplicate ids collapse silently",
+  "families": [
+   "duplicate_id"
+  ],
+  "why_semantic": "needs a new duplicate check",
+  "revision": 1,
+  "discriminating_rows": [
+   "D1.core.11",
+   "D1.core.12"
+  ]
+ },
+ {
+  "ticket": "D",
+  "op": "core",
+  "defect": "a missing dependency silently drops the job",
+  "families": [
+   "missing_dependency"
+  ],
+  "why_semantic": "needs a new membership check",
+  "revision": 1,
+  "discriminating_rows": [
+   "D1.core.13",
+   "D1.core.14"
+  ]
+ },
+ {
+  "ticket": "D",
+  "op": "core",
+  "defect": "a cycle returns a partial order",
+  "families": [
+   "self_cycle",
+   "multi_node_cycle"
+  ],
+  "why_semantic": "needs a completeness check after the loop",
+  "revision": 1,
+  "discriminating_rows": [
+   "D1.core.15",
+   "D1.core.16",
+   "D1.core.17",
+   "D1.core.18"
+  ]
+ },
+ {
+  "ticket": "D",
+  "op": "adapter",
+  "defect": "level is the shortest dependency chain (min) instead of the longest",
+  "families": [
+   "diamond_unequal_paths"
+  ],
+  "why_semantic": "min to max alone still fails the within-batch order rows",
+  "revision": 1,
+  "discriminating_rows": [
+   "D1.adapter.04",
+   "D1.adapter.05"
+  ]
+ },
+ {
+  "ticket": "D",
+  "op": "adapter",
+  "defect": "batches follow input order instead of the topological order",
+  "families": [
+   "within_batch_order"
+  ],
+  "why_semantic": "needs iteration over the returned order",
+  "revision": 1,
+  "discriminating_rows": [
+   "D1.adapter.06",
+   "D1.adapter.07"
+  ]
+ }
+]

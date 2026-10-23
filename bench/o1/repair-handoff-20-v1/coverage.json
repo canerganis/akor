@@ -1,0 +1,1015 @@
+{
+ "A1.core": {
+  "rows": 49,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "direct": 49
+  },
+  "families": {
+   "excess_precision": {
+    "rows": 3,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "float_artifact": {
+    "rows": 4,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "fractional_padding": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "integer_digit_limit": {
+    "rows": 4,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "integration_support": {
+    "rows": 7,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "malformed": {
+    "rows": 16,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "negative": {
+    "rows": 3,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "type_confusion": {
+    "rows": 4,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "value_basic": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "zero_and_negative_zero": {
+    "rows": 4,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   }
+  }
+ },
+ "A1.adapter": {
+  "rows": 20,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "stub": 14,
+   "integration": 6
+  },
+  "families": {
+   "call_contract": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "cancellation": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "empty_collection": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "formatting_padding": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "integration": {
+    "rows": 6,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "invalid_propagation": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "large_sum": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "negative_total": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   }
+  }
+ },
+ "A2.core": {
+  "rows": 53,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "direct": 53
+  },
+  "families": {
+   "excess_precision": {
+    "rows": 3,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "float_artifact": {
+    "rows": 4,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "fractional_padding": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "integer_digit_limit": {
+    "rows": 4,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "integration_support": {
+    "rows": 8,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "malformed": {
+    "rows": 16,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "negative": {
+    "rows": 3,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "revision_precision": {
+    "rows": 3,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "type_confusion": {
+    "rows": 4,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "value_basic": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "zero_and_negative_zero": {
+    "rows": 4,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   }
+  }
+ },
+ "A2.adapter": {
+  "rows": 23,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "stub": 16,
+   "integration": 7
+  },
+  "families": {
+   "call_contract": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "cancellation": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "empty_collection": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "formatting_padding": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "integration": {
+    "rows": 7,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "invalid_propagation": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "large_sum": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "negative_total": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "revision_precision": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   }
+  }
+ },
+ "B1.core": {
+  "rows": 26,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "direct": 26
+  },
+  "families": {
+   "duplicates": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "empty_input": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "integration_support": {
+    "rows": 3,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "invalid": {
+    "rows": 7,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "negative_endpoints": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "nesting": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "touching": {
+    "rows": 3,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "unsorted": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "zero_length": {
+    "rows": 3,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "value"
+    ]
+   }
+  }
+ },
+ "B1.adapter": {
+  "rows": 24,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "stub": 18,
+   "integration": 6
+  },
+  "families": {
+   "call_contract": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "crossing_window_end": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "crossing_window_start": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "empty_busy": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "full_cover": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "integration": {
+    "rows": 6,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "invalid_busy": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "invalid_window": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "outside_window": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "zero_width_window": {
+    "rows": 2,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   }
+  }
+ },
+ "C1.core": {
+  "rows": 25,
+  "categories": [
+   "empty_or_identity",
+   "value"
+  ],
+  "inapplicable": {
+   "raises:ValueError": "merge_patch raises nothing for inputs inside its contract"
+  },
+  "kinds": {
+   "direct": 25
+  },
+  "families": {
+   "aliasing": {
+    "rows": 3,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "arrays": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "empty_patch": {
+    "rows": 3,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "false_vs_zero": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "integration_support": {
+    "rows": 5,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "missing_deletion_target": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "nested_deletion": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "non_object_base": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "object_to_scalar": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "scalar_to_object": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   }
+  }
+ },
+ "C1.adapter": {
+  "rows": 22,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "stub": 17,
+   "integration": 5
+  },
+  "families": {
+   "aliasing": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "call_contract": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "duplicate_sequence": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "empty_revisions": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "false_vs_zero": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "integration": {
+    "rows": 5,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "invalid_sequence": {
+    "rows": 5,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "numeric_sequence_order": {
+    "rows": 2,
+    "sides": [
+     "inside",
+     "outside"
+    ],
+    "categories": [
+     "value"
+    ]
+   }
+  }
+ },
+ "D1.core": {
+  "rows": 24,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "direct": 24
+  },
+  "families": {
+   "chain": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "diamond": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "duplicate_id": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "empty_graph": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "integration_support": {
+    "rows": 3,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "missing_dependency": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "multi_node_cycle": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "multiple_roots": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "newly_ready_earlier_index": {
+    "rows": 3,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "repeated_dependency": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "self_cycle": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   }
+  }
+ },
+ "D1.adapter": {
+  "rows": 20,
+  "categories": [
+   "empty_or_identity",
+   "raises:ValueError",
+   "value"
+  ],
+  "inapplicable": {},
+  "kinds": {
+   "stub": 14,
+   "integration": 6
+  },
+  "families": {
+   "call_contract": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "chain": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "diamond_unequal_paths": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "empty_graph": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "empty_or_identity"
+    ]
+   },
+   "integration": {
+    "rows": 6,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError",
+     "value"
+    ]
+   },
+   "invalid_propagation": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "raises:ValueError"
+    ]
+   },
+   "multiple_roots": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   },
+   "within_batch_order": {
+    "rows": 2,
+    "sides": [
+     "n/a"
+    ],
+    "categories": [
+     "value"
+    ]
+   }
+  }
+ }
+}

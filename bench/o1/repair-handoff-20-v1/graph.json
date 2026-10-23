@@ -1,0 +1,318 @@
+{
+ "v": 1,
+ "base": 0,
+ "nodes": [
+  {
+   "id": "snapshot",
+   "op": "host.snapshot",
+   "in": {
+    "tickets": {
+     "lit": [
+      "A",
+      "B",
+      "C",
+      "D"
+     ]
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "core_A",
+   "op": "model.repair_core",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/core_records/A"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "core_B",
+   "op": "model.repair_core",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/core_records/B"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "core_C",
+   "op": "model.repair_core",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/core_records/C"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "core_D",
+   "op": "model.repair_core",
+   "in": {
+    "record": {
+     "node": "snapshot",
+     "path": "/core_records/D"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "ctx_A",
+   "op": "host.adapter_context",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "core": {
+     "node": "core_A"
+    },
+    "ticket": {
+     "lit": "A"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "ctx_B",
+   "op": "host.adapter_context",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "core": {
+     "node": "core_B"
+    },
+    "ticket": {
+     "lit": "B"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "ctx_C",
+   "op": "host.adapter_context",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "core": {
+     "node": "core_C"
+    },
+    "ticket": {
+     "lit": "C"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "ctx_D",
+   "op": "host.adapter_context",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "core": {
+     "node": "core_D"
+    },
+    "ticket": {
+     "lit": "D"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "contexts",
+   "op": "host.join_contexts",
+   "in": {
+    "contexts": {
+     "list": [
+      {
+       "node": "ctx_A"
+      },
+      {
+       "node": "ctx_B"
+      },
+      {
+       "node": "ctx_C"
+      },
+      {
+       "node": "ctx_D"
+      }
+     ]
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "adapter_A",
+   "op": "model.repair_adapter",
+   "in": {
+    "record": {
+     "node": "contexts",
+     "path": "/A"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "adapter_B",
+   "op": "model.repair_adapter",
+   "in": {
+    "record": {
+     "node": "contexts",
+     "path": "/B"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "adapter_C",
+   "op": "model.repair_adapter",
+   "in": {
+    "record": {
+     "node": "contexts",
+     "path": "/C"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "adapter_D",
+   "op": "model.repair_adapter",
+   "in": {
+    "record": {
+     "node": "contexts",
+     "path": "/D"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "assemble",
+   "op": "host.assemble",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "cores": {
+     "list": [
+      {
+       "node": "core_A"
+      },
+      {
+       "node": "core_B"
+      },
+      {
+       "node": "core_C"
+      },
+      {
+       "node": "core_D"
+      }
+     ]
+    },
+    "adapters": {
+     "list": [
+      {
+       "node": "adapter_A"
+      },
+      {
+       "node": "adapter_B"
+      },
+      {
+       "node": "adapter_C"
+      },
+      {
+       "node": "adapter_D"
+      }
+     ]
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "integration",
+   "op": "host.integration",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "package": {
+     "node": "assemble"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "patch",
+   "op": "host.render_patch",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "package": {
+     "node": "assemble"
+    },
+    "integration": {
+     "node": "integration"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "report",
+   "op": "host.render_report",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "package": {
+     "node": "assemble"
+    },
+    "integration": {
+     "node": "integration"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "verify",
+   "op": "host.verify_package",
+   "in": {
+    "snapshot": {
+     "node": "snapshot"
+    },
+    "package": {
+     "node": "assemble"
+    },
+    "integration": {
+     "node": "integration"
+    },
+    "patch": {
+     "node": "patch"
+    },
+    "report": {
+     "node": "report"
+    }
+   },
+   "after": []
+  },
+  {
+   "id": "publish",
+   "op": "host.publish",
+   "in": {
+    "package": {
+     "node": "verify"
+    }
+   },
+   "after": []
+  }
+ ],
+ "outputs": {
+  "repair_package": "publish"
+ }
+}
