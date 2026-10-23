@@ -197,3 +197,11 @@ The O1 dry gate found two executor defects on the resume path (record: `docs/des
 2. A logical job (flow, node, generation) keeps the stage request it was first submitted in. A resumed or re-invoked flow resubmits that request with its original membership, so attempts, terminal failures and awaiting candidates are never reset. Changed inputs under the same generation open an explicit new generation (event `regenerated`, reason `inputs_changed`); a model commit refused twice with the same value blocks with `commit_refused`.
 
 Re-run at this digest, zero tokens: the full unit suite, then `step4.py dry` (`"pass": true`; clean 3, repeat 0, interrupt 3, stale 5, bump 0 launches, 11 in total as before; recovery fixtures 11 of 11, executor sabotage 6 of 6, G3b sabotage 21 of 21, C5 4 of 4), and `replay-live1` and `replay-live2` (all traces match, all independent verdicts agree). The G3b dry traces did not change. The live2 verdict stays as recorded for its freeze. Astra requires a newly preregistered full G3b live suite on the patched executor before any claim of patched-executor conformance; Opus agrees. That run is not made here.
+
+## Preregistration 2026-10-23: G3b live3 on the patched executor
+
+Frozen before its first counted call: freeze 040cfd41 (commit 50e8ef5, executor diff approved by Astra), fresh
+workspace `.oz-runtime/step4-live3`, prefix `live3`, one suite, no reruns, predicate, evaluator and caps unchanged
+(64,000 tokens, 24 launches, 10 per scenario). Command:
+`STEP4_LIVE_CONFIRM=1 .venv/Scripts/python.exe bench/step4/step4.py live --workspace .oz-runtime/step4-live3 --prefix live3`.
+A pass here is the evidence for patched-executor conformance; live2 stays as recorded for its own freeze.
