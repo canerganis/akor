@@ -142,3 +142,48 @@ composition. O1 stays open.
 
 
 Resend packing (agreed by Astra and Opus after the build): a resend of all four members of a size-4 packet reruns the experimental size-4 composition; "singleton recovery" holds only when fewer than four members are rejected. The recovery policy's worst case exceeds the per-scenario cap; the caps bind and exhaustion means no pass.
+
+
+## Addendum 2026-10-23: predicate changes after the independent review (new freeze digest `d89ac55cc3c245f7257f9bfcb8273c4b6381547f6518e54115e0dfd0145955b2`, short d89ac55c)
+
+The live2 verdict in [results.md](results.md) was established under the predicate frozen at 02119a17 plus the
+independent recheck (`bench/step4/recheck.py`, 0 disagreements, and the ledger count). It stands as recorded and is not
+rescored. The review findings are closed in the predicate before it is reused; the gate code (`g3b.py`, `step4.py`) is
+refrozen at the digest above (`freeze-g3b.json` rewritten; the 02119a17 record is kept in git and in the live2 report).
+The workload bytes, the executor and the evaluator are unchanged. No model call was made.
+
+Predicate changes:
+
+1. Independent member verdicts are built into `pass_g3b` (`g3b.judge_dispatch`, standard library only). Each stored
+   candidate value is judged against the frozen `expected.json` (job, stage and the revision then in force) with no
+   executor code, and the candidate must be the value in the preserved reply. A member with no candidate is classified
+   by re-parsing the preserved runner capture (`g3b.capture_reply`, `g3b.parse_reply`, a reimplementation of the
+   OZ/1g reply grammar checked against the executor's parser on a corpus in the tests): failed call, wire rejection
+   (reply refused whole) or valid model error line. Any disagreement with the executor's recorded verdict, a refusal that
+   cannot be re-parsed, a missing capture or missing evidence is a finding and fails the new check
+   `independent_verdicts` with the reason (job, executor verdict, independent verdict). A candidate stored out of a reply
+   that is refused whole is `wire_rejection_not_atomic`. The trace oracle derives the policy sequence from the
+   independent verdicts.
+2. Launch order is checked across stages: creation times must be non-decreasing in trace order (`launch_order`; a
+   missing time is `launch_order_unrecorded`). Both are `recovery_eligibility` findings.
+3. `ledger_audit` counts `call_start` lines per receipt, not distinct call IDs: one call written twice under one ID is a
+   ledger problem.
+4. A candidate status or verdict label outside the known set (accepted, rejected, awaiting, quarantined) fails
+   (`unknown_status`); the harness no longer maps it to `stale`.
+5. Labels: a refused reply is `wire_rejected`, a valid per-job error line is `model_error`, a failed call is
+   `call_failed`, each as read from the capture. The executor's own columns cannot tell the first two apart, so its
+   record is `no_candidate` and agrees with either. All three stay rejections with the same verdict rules (one
+   resend at attempt 2). A storability failure of a model line rejects the whole reply in the executor's parser, so it
+   is a wire rejection; no separate label is reachable for single-slot jobs.
+6. The two generation sabotage cases are replaced: `resend_wrong_generation` is dropped (the executor never changes a
+   member's generation or computation inside one stage, so the shape cannot occur; the `generation_mismatch` and
+   `identity_mismatch` findings stay as unit-tested defenses) and `verifier_outage_triggers_regeneration` now has the
+   real shape (a new run directory and stage index, attempt 1). `resend_other_computation` stays as a defense case.
+
+Dry gate sabotage now has 21 cases, each caught (the 15 earlier cases that remain after the dropped generation case,
+plus: executor rejects a correct answer, executor accepts a wrong answer, wire rejection claimed for a valid reply,
+unknown candidate status, resend launched after the next stage, one call counted twice under one call ID). The read-only
+replay of live1 still returns matching traces and the same verdicts for all five scenarios (a regression test, not a
+verdict). The new predicate run read-only on the retained live2 evidence (`step4.py replay-live2`) and, with its preserved
+captures re-parsed, on a copy of the live2 workspace gives no finding in the trace audit for any scenario; labeled not a
+verdict, since the live2 verdict was established under the old predicate plus the recheck.

@@ -6,6 +6,7 @@
     python bench/step4/step4.py baseline --workspace DIR        G4: four no-orchestration calls (paid; refused live under G3b)
     python bench/step4/step4.py run-flow --workspace DIR --kind K --prefix P --scenario S   one flow invocation
     python bench/step4/step4.py replay-live1                     read-only predicate regression test on the live1 evidence
+    python bench/step4/step4.py replay-live2                     read-only predicate run on the live2 evidence (not a verdict)
 
 Every scenario runs through oz_flow.run_flow, which sends model stages through oz do (oz1g-selective-v1, durable
 runner, per-job checks, memo, quota reservation, admission). The dry gate and the live run share every line except
@@ -337,51 +338,65 @@ def dispatches(ws: Path, request_id: str) -> list:
     return sorted(out, key=lambda d: d['created_at'])
 
 
-_CANDIDATE_VERDICT = {'accepted': 'accepted', 'rejected': 'check_rejected', 'awaiting': 'held', 'quarantined': 'held'}
-
-
-def _candidate_status(run: Path) -> dict:
+def _candidate_rows(run: Path) -> dict:
+    """{(job, receipt): {status, value}} of a stage run's stored candidates (history included)."""
     import sqlite3
     path = run / 'inbox.sqlite'
     if not path.exists():
         return {}
     db = sqlite3.connect(str(path))
     try:
-        return {(r[0], r[1]): r[2] for r in db.execute('SELECT job,receipt,status FROM candidates ORDER BY seq')}
+        return {(r[0], r[1]): {'status': r[2], 'value': r[3]}
+                for r in db.execute('SELECT job,receipt,status,value FROM candidates ORDER BY seq')}
     finally:
         db.close()
 
 
 def _member_verdict(d: dict, job: str, candidates: dict, outcome: dict) -> str:
-    """The recorded verdict of one member of one dispatch: its stored candidate's status, or, when the reply produced
-    no candidate for it, a wire rejection (the reply was refused whole) or a failed call."""
-    status = candidates.get((job, d['receipt']))
-    if status is not None:
-        return _CANDIDATE_VERDICT.get(status, 'stale')
+    """The executor's own recorded verdict of one member of one dispatch: its stored candidate's status mapped
+    (an unknown status is recorded as such, never mapped to something else), or, when the reply produced no candidate
+    for it, a failed call or no_candidate (the executor's columns do not say whether the reply was refused whole or
+    held a model error line: g3b.judge_dispatch re-parses the preserved capture to say which)."""
+    row = candidates.get((job, d['receipt']))
+    if row is not None:
+        return G.CANDIDATE_VERDICT.get(row['status'], 'unknown_status:' + str(row['status']))
     if outcome.get(job) in ('pending', 'failed'):
-        return 'call_failed' if d['state'] == 'failed_call' else 'wire_rejected'
+        return 'call_failed' if d['state'] == 'failed_call' else 'no_candidate'
     return 'unknown'
+
+
+def _capture_evidence(run: Path, receipt: str):
+    """The preserved runner capture of a receipt as plain data for the independent check, or None when there is none."""
+    record = read_capture(run / 'captures', receipt)
+    if record is None:
+        return None
+    return {'exit_code': record['exit_code'], 'start_failed': bool(record.get('start_failed')),
+            'stdout_b64': record['stdout_b64']}
 
 
 def trace_of(ws: Path, request_id: str) -> list:
     """The flow's dispatches in launch order as the plain records g3b.py audits. A stage's index counts the flow's
-    stage runs that launched something; its refs are the exact input texts of the packet that was sent."""
+    stage runs that launched something; its refs are the exact input texts of the packet that was sent; its evidence is
+    what the independent check re-reads (the preserved capture and each member's stored candidate)."""
     out, stage = [], 0
     for rel in stage_runs(ws, request_id):
         rows = stage_launches(ws / rel)
         if not rows:
             continue
-        candidates = _candidate_status(ws / rel)
+        candidates = _candidate_rows(ws / rel)
         for d in sorted(rows, key=lambda r: (r['created_at'], len(r['receipt']), r['receipt'])):
             members = json.loads(d['members'])
             body = json.loads(d['packet'])
             refs = {row[0]: body['refs'][row[1]] for block in body['jobs'] for row in block[1:]}
             outcome = json.loads(d['outcome']) if d['outcome'] else {}
+            stored = {m['id']: candidates[(m['id'], d['receipt'])] for m in members
+                      if (m['id'], d['receipt']) in candidates}
             out.append({'stage': stage, 'op': members[0]['id'].split('_')[0], 'receipt': d['receipt'], 'run_dir': rel,
                         'created_at': d['created_at'], 'state': d['state'],
                         'members': [{k: m[k] for k in ('id', 'generation', 'attempt', 'compute_key')} for m in members],
                         'refs': refs, 'verdicts': {m['id']: _member_verdict(d, m['id'], candidates, outcome)
-                                                   for m in members}})
+                                                   for m in members},
+                        'evidence': {'capture': _capture_evidence(ws / rel, d['receipt']), 'candidates': stored}})
         stage += 1
     return out
 
@@ -413,7 +428,7 @@ def calls_of(ws: Path, request_id: str, trace: list) -> list:
             usage = _adapter_module().usage_from_envelope(envelope) or {}
         tokens_in, tokens_out = usage.get('input_tokens'), usage.get('output_tokens')
         rows.append({'stage': d['stage'], 'receipt': d['receipt'], 'members': [m['id'] for m in d['members']],
-                     'attempt': G.attempt_of(d), 'verdicts': d['verdicts'], 'input_tokens': tokens_in,
+                     'attempt': G.attempt_of(d), 'verdicts': G.shown_verdicts(d), 'input_tokens': tokens_in,
                      'output_tokens': tokens_out,
                      'tokens': tokens_in + tokens_out if type(tokens_in) is int and type(tokens_out) is int else None,
                      'thinking_tokens': G.envelope_thinking_tokens(envelope),
@@ -431,12 +446,12 @@ def ledger_audit(ws: Path, request_id: str) -> dict:
         for line in (ledger.read_text(encoding='utf-8').splitlines() if ledger.exists() else ()):
             r = json.loads(line)
             if r.get('event') == 'call_start':
-                starts.setdefault(r['batch_id'], set()).add(r['call_id'])
+                starts[r['batch_id']] = starts.get(r['batch_id'], 0) + 1  # lines, not distinct call IDs
         receipts = {d['receipt'] for d in stage_launches(ws / rel)}
-        calls += sum(len(v) for v in starts.values())
-        for receipt, ids in starts.items():
-            if len(ids) > 1:
-                problems.append(f'{rel}: receipt {receipt} counted as {len(ids)} calls')
+        calls += sum(starts.values())
+        for receipt, lines in starts.items():
+            if lines > 1:
+                problems.append(f'{rel}: receipt {receipt} counted as {lines} calls')
             if receipt not in receipts:
                 problems.append(f'{rel}: ledger call for {receipt} has no journaled launch')
         for receipt in receipts - set(starts):
@@ -496,7 +511,7 @@ def audit(ws: Path, kind: str, prefix: str, scenario: str, result: dict) -> dict
                    and out['packets'] == entry['expected_packets'] and out['memo_hits'] == entry['expected_memo_hits']
                    and out['deliveries'] == 1 and out['on_time'] and out['ledger']['ok']
                    and (kind != 'fixture' or out['fixture_invocations'] == out['launches']))
-    out['trace'] = trace_of(ws, request_id)
+    out['trace'] = G.annotate(scenario, trace_of(ws, request_id))
     out['recovery'] = G.recovery_report(out['trace'], calls_of(ws, request_id, out['trace']))
     return out
 
@@ -537,7 +552,7 @@ def stale_observables(ws: Path, prefix: str) -> dict:
     order = [d['members'] for d in after]
     # The order after the mutation is extract_A, bounds_A, the four classifications, then exactly the singleton
     # resends the frozen policy derives from the recorded verdicts (G3b; live1's strict list had no resends).
-    derived, _ = G.derive('stale', G.verdict_map(trace_of(ws, request_id)))
+    derived, _ = G.derive('stale', G.effective_verdicts('stale', trace_of(ws, request_id)))
     start = G.config()['scenarios']['stale']['revised_from_stage']
     derived_order = [list(ids) for stage, ids, attempt in derived if stage >= start]
     primary_after = [list(ids) for stage, ids, attempt in derived if stage >= start and attempt == 1]
@@ -964,6 +979,39 @@ def recovery_fixtures(ws: Path, prefix: str) -> tuple:
     return report, runs
 
 
+EXECUTOR_OF = {'accepted': 'accepted', 'check_rejected': 'check_rejected', 'held': 'held', 'call_failed': 'call_failed',
+               'wire_rejected': 'no_candidate', 'model_error': 'no_candidate'}
+
+
+def synthetic_facts(scenario: str, stage: int, jobs, story: dict) -> tuple:
+    """(executor verdicts, evidence) a dispatch would leave for the given story {job: independent verdict} (default
+    accepted): the stored candidates, the executor's own labels and a runner capture whose reply says the same. Used to
+    build the sabotaged traces and the pure tests; a wire rejection makes the whole reply invalid and a call failure
+    leaves a capture of a failed process, so only an edited story (some member accepted next to a wire rejection) can
+    contradict the preserved capture."""
+    candidates, lines = {}, [G.HEADER]
+    for job in jobs:
+        kind = story.get(job, 'accepted')
+        right = json.dumps(G.expected_value(scenario, stage, job), separators=(',', ':'))
+        if kind in ('accepted', 'held'):
+            candidates[job] = {'status': 'accepted' if kind == 'accepted' else 'awaiting', 'value': right}
+            lines.append(json.dumps({job: json.loads(right)}, separators=(',', ':')))
+        elif kind == 'check_rejected':
+            candidates[job] = {'status': 'rejected', 'value': '"wrong"'}
+            lines.append(json.dumps({job: 'wrong'}))
+        elif kind == 'model_error':
+            lines.append(json.dumps([job, 'error', 'missing_data', 'the record has no such field']))
+    failed = any(story.get(j) == 'call_failed' for j in jobs)
+    wire = any(story.get(j) == 'wire_rejected' for j in jobs)
+    reply = 'this is not an OZ/1g reply' if wire else '\n'.join(lines)
+    stdout = json.dumps({'reply': reply, 'usage': {'input_tokens': 1, 'output_tokens': 1}}).encode('utf-8')
+    capture = {'exit_code': 1 if failed else 0, 'start_failed': False, 'stdout_b64': base64.b64encode(stdout).decode()}
+    if failed:
+        candidates = {}
+    return ({job: EXECUTOR_OF[story.get(job, 'accepted')] for job in jobs},
+            {'capture': capture, 'candidates': candidates})
+
+
 def _mutated(trace: list, edit) -> list:
     import copy
     out = copy.deepcopy(trace)
@@ -971,10 +1019,20 @@ def _mutated(trace: list, edit) -> list:
     return out
 
 
-def _like(dispatch: dict, pool: list, *, members=None, attempt=None, generation_plus=0, receipt=None, verdict='accepted',
-          refs=None) -> dict:
+def _restory(dispatch: dict, scenario: str, **story) -> None:
+    """Rewrite one recorded dispatch's executor verdicts and evidence for an edited story, starting from what the
+    independent check currently says about it."""
+    current = G.judge_dispatch(scenario, dispatch)['verdicts']
+    full = {m['id']: current[m['id']] or 'accepted' for m in dispatch['members']}
+    full.update(story)
+    dispatch['verdicts'], dispatch['evidence'] = synthetic_facts(scenario, dispatch['stage'], list(full), full)
+
+
+def _like(dispatch: dict, pool: list, *, members=None, attempt=None, receipt=None, verdict='accepted',
+          refs=None, scenario='clean', stage=None, **story) -> dict:
     """A copy of a recorded dispatch for building the sabotaged traces; members are taken (identity, generation and
-    input) from the first record of that member in pool, so only the edited rule is broken."""
+    input) from the first record of that member in pool, so only the edited rule is broken. Its verdicts and evidence
+    are the ones an executor following the story would leave."""
     import copy
     d = copy.deepcopy(dispatch)
     if members is not None:
@@ -984,19 +1042,34 @@ def _like(dispatch: dict, pool: list, *, members=None, attempt=None, generation_
     for m in d['members']:
         if attempt is not None:
             m['attempt'] = attempt
-        m['generation'] += generation_plus
-    d['verdicts'] = {m['id']: verdict for m in d['members']}
+    if stage is not None:
+        d['stage'] = stage
     if refs:
         d['refs'].update(refs)
     d['receipt'] = receipt or d['receipt'] + 'x'
+    jobs = [m['id'] for m in d['members']]
+    d['verdicts'], d['evidence'] = synthetic_facts(scenario, d['stage'], jobs, dict({j: verdict for j in jobs}, **story))
     return d
+
+
+def _renumbered(trace: list) -> list:
+    """Launch times in trace order (a sabotaged trace keeps its own rules broken only: order is checked separately)."""
+    import copy
+    out = copy.deepcopy(trace)
+    base = min((d['created_at'] for d in out), default=0)
+    for i, d in enumerate(out):
+        d['created_at'] = base + i
+    return out
 
 
 def g3b_sabotage(runs: dict) -> dict:
     """Each sabotage is a recorded real trace edited to break exactly one rule, run through the same predicate; it is
-    caught when pass_g3b turns False and the expected finding is among the reasons."""
+    caught when pass_g3b turns False and the expected finding is among the reasons. The regeneration cases have the
+    shape the executor can produce (a new run directory and stage index, attempt 1, generation 1): the executor never
+    changes a member's generation or computation inside one stage, so no sabotage case fakes that."""
     two, stale = runs['two_siblings_rejected'], runs['stale_with_recovery']
     wire, outage = runs['wire_rejected_whole_packet'], runs['verifier_outage_holds']
+    early = runs['early_stage_rejections']
     old_a = W.source_bytes('A').decode('utf-8')
 
     def swap_tail(trace, new):  # replace the two singleton resends (last two dispatches)
@@ -1004,8 +1077,8 @@ def g3b_sabotage(runs: dict) -> dict:
 
     cases = {}
 
-    def add(name, base, trace, code, *, observables='keep'):
-        cases[name] = (base, trace, code)
+    def add(name, base, trace, code, *, order=False):
+        cases[name] = (base, trace if order else _renumbered(trace), code)
     t = two['out']['trace']
     first_packet, resend_a, resend_c = t[2], t[3], t[4]
     add('whole_packet_resend', two, swap_tail(t, [_like(first_packet, t, attempt=2, receipt='w1')]),
@@ -1014,12 +1087,10 @@ def g3b_sabotage(runs: dict) -> dict:
         'accepted_member_resent')
     add('size_2_resend', two, swap_tail(t, [_like(first_packet, t, members=['classify_A', 'classify_C'], attempt=2,
                                                   receipt='w3')]), 'trace_mismatch')
-    add('third_attempt', two, _mutated(t, lambda x: x[3]['verdicts'].update(classify_A='check_rejected'))
+    add('third_attempt', two, _mutated(t, lambda x: _restory(x[3], 'clean', classify_A='check_rejected'))
         + [_like(resend_a, t, attempt=3, receipt='w4')], 'third_attempt')
     add('skipped_resend_then_delivery', two, t[:-1], 'trace_mismatch')
     add('resends_out_of_order', two, swap_tail(t, [resend_c, resend_a]), 'trace_mismatch')
-    add('resend_wrong_generation', two, _mutated(t, lambda x: x[3]['members'][0].update(generation=2)),
-        'generation_mismatch')
     add('resend_other_computation', two, _mutated(t, lambda x: x[3]['members'][0].update(compute_key='f' * 64)),
         'identity_mismatch')
     add('resend_with_stale_input', two, _mutated(t, lambda x: x[3]['refs'].update(
@@ -1032,13 +1103,48 @@ def g3b_sabotage(runs: dict) -> dict:
     add('wire_rejection_resent_as_singletons', wire, tw[:-1] + [
         _like(tw[-1], tw, members=[j], attempt=2, receipt=f'v{j}') for j in
         [m['id'] for m in tw[-1]['members']]], 'trace_mismatch')
-    add('wire_rejection_not_atomic', wire, _mutated(tw, lambda x: x[2]['verdicts'].update(classify_A='accepted')),
-        'wire_rejection_not_atomic')
+
+    def not_atomic(x):  # the executor stored a candidate for A although the preserved reply is refused whole
+        x[2]['verdicts']['classify_A'] = 'accepted'
+        x[2]['evidence']['candidates']['classify_A'] = {'status': 'accepted', 'value': '"inside"'}
+    add('wire_rejection_not_atomic', wire, _mutated(tw, not_atomic), 'wire_rejection_not_atomic')
     to = outage['out']['trace']
-    add('verifier_outage_triggers_regeneration', outage, to + [_like(to[-1], to, generation_plus=1, attempt=1,
-                                                                    receipt='o1')], 'generation_mismatch')
+    add('verifier_outage_triggers_regeneration', outage, to + [_like(to[-1], to, attempt=1, receipt='o1',
+                                                                    stage=to[-1]['stage'] + 1)], 'trace_mismatch')
     add('verifier_outage_triggers_resend', outage, to + [_like(to[-1], to, attempt=2, receipt='o2')],
         'held_member_resent')
+    # The independent check: each stored candidate against the frozen expected values, each missing candidate against the
+    # preserved capture.
+
+    def reject_correct(x):  # a host check bug: the executor rejects a correct classify_B, then resends it
+        _restory(x[2], 'clean', classify_A='check_rejected', classify_C='check_rejected')
+        x[2]['verdicts']['classify_B'] = 'check_rejected'
+        x[2]['evidence']['candidates']['classify_B']['status'] = 'rejected'
+    spurious = _mutated(t[:3], reject_correct)
+    add('executor_rejects_a_correct_answer', two, spurious + [
+        _like(first_packet, t, members=[j], attempt=2, receipt=f'r{j}') for j in ('classify_A', 'classify_B',
+                                                                                  'classify_C')],
+        'verdict_disagreement')
+
+    def accept_wrong(x):  # the executor accepts a wrong value for classify_D (no resend follows)
+        x[2]['evidence']['candidates']['classify_D']['value'] = '"outside"'
+    add('executor_accepts_a_wrong_answer', two, _mutated(t, accept_wrong), 'verdict_disagreement')
+
+    def refuse_valid(x):  # the executor claims a wire rejection, the preserved reply is a valid one
+        x[2]['verdicts'] = dict.fromkeys(x[2]['verdicts'], 'no_candidate')
+        x[2]['evidence']['candidates'] = {}
+    add('wire_rejection_claimed_for_a_valid_reply', two, _mutated(t[:3], refuse_valid) + [
+        _like(first_packet, t, attempt=2, receipt='z1')], 'verdict_disagreement')
+
+    def superseded(x):
+        x[2]['verdicts']['classify_D'] = 'unknown_status:superseded'
+        x[2]['evidence']['candidates']['classify_D']['status'] = 'superseded'
+    add('unknown_candidate_status', two, _mutated(t, superseded), 'unknown_status')
+
+    def cross_stage(x):  # the extract_B resend is launched after the bounds primary packet
+        x[1]['created_at'] = x[2]['created_at'] + 0.5
+    ge = early['out']['trace']
+    add('resend_launched_after_the_next_stage', early, _mutated(ge, cross_stage), 'launch_order', order=True)
     report = {}
     for name, (base, trace, code) in cases.items():
         # fixture_invocations is dropped so that only the trace rules judge the edited trace.
@@ -1048,21 +1154,23 @@ def g3b_sabotage(runs: dict) -> dict:
         report[name] = {'caught': (not verdict[G.LABEL]) and code in codes, 'expected_finding': code,
                         'findings': codes,
                         'failed_checks': sorted(k for k, v in verdict['checks'].items() if not v)}
-    # A recovered capture counted as another physical invocation: a replayed call_start in a real recovery run's ledger.
-    copy = copy_of(two['ws'], 'sab-capture-replay')
-    request_id = rid(g3b_prefix(two), 'clean')
-    first = dispatches(copy, request_id)[0]
-    ledger = copy / first['run_dir'] / 'calls.jsonl'
-    start = next(json.loads(x) for x in ledger.read_text(encoding='utf-8').splitlines()
-                 if json.loads(x).get('batch_id') == first['receipt'] and json.loads(x).get('event') == 'call_start')
-    with ledger.open('a', encoding='utf-8') as fh:
-        fh.write(json.dumps(dict(start, call_id='replayed-' + start['call_id'])) + '\n')
-    audit_after = ledger_audit(copy, request_id)
-    verdict = G.scenario_verdict(dict(g3b_observation(two['out'], 'fixture'), ledger_ok=audit_after['ok']))
-    report['recovered_capture_counted_as_launch'] = {
-        'caught': (not audit_after['ok']) and not verdict[G.LABEL], 'expected_finding': 'ledger',
-        'findings': audit_after['problems'][:2],
-        'failed_checks': sorted(k for k, v in verdict['checks'].items() if not v)}
+    # Two ledger edits, each on a copy of a real recovery run's ledger: a recovered capture counted as another physical
+    # invocation (a replayed call_start with a new call ID) and one call counted twice (the same call_start line
+    # twice, same call ID, which a set of call IDs would merge).
+    for name, same_id in (('recovered_capture_counted_as_launch', False), ('one_call_counted_twice_same_call_id', True)):
+        copy = copy_of(two['ws'], 'sab-' + name)
+        request_id = rid(g3b_prefix(two), 'clean')
+        first = dispatches(copy, request_id)[0]
+        ledger = copy / first['run_dir'] / 'calls.jsonl'
+        start = next(json.loads(x) for x in ledger.read_text(encoding='utf-8').splitlines()
+                     if json.loads(x).get('batch_id') == first['receipt'] and json.loads(x).get('event') == 'call_start')
+        with ledger.open('a', encoding='utf-8') as fh:
+            fh.write(json.dumps(start if same_id else dict(start, call_id='replayed-' + start['call_id'])) + '\n')
+        audit_after = ledger_audit(copy, request_id)
+        verdict = G.scenario_verdict(dict(g3b_observation(two['out'], 'fixture'), ledger_ok=audit_after['ok']))
+        report[name] = {'caught': (not audit_after['ok']) and not verdict[G.LABEL], 'expected_finding': 'ledger',
+                        'findings': audit_after['problems'][:2],
+                        'failed_checks': sorted(k for k, v in verdict['checks'].items() if not v)}
     return report
 
 
@@ -1256,6 +1364,7 @@ def main(argv=None):
             p.add_argument('--only', choices=SCENARIOS, help='run one scenario (dry gate only; refused for live under G3b)')
             p.add_argument('--rerun', type=int, default=0, help='rerun number (dry gate only; refused for live under G3b)')
     sub.add_parser('replay-live1', help='read-only predicate regression test on the retained live1 evidence')
+    sub.add_parser('replay-live2', help='read-only predicate run on the retained live2 evidence (not a verdict)')
     p = sub.add_parser('run-flow')
     p.add_argument('--workspace', required=True, type=Path)
     p.add_argument('--kind', choices=('fixture', 'live'), required=True)
@@ -1271,8 +1380,8 @@ def main(argv=None):
         if key is None:
             parser.error('--rerun needs --only SCENARIO')
         RERUN[key] = args.rerun
-    if args.command == 'replay-live1':
-        print(json.dumps(G.replay_live1(), indent=1))
+    if args.command in ('replay-live1', 'replay-live2'):
+        print(json.dumps(G.replay_live1() if args.command == 'replay-live1' else G.replay_live2(), indent=1))
         return 0
     if args.command == 'baseline':
         print('G4 carries forward from live1; G3b allocates no baseline launches', file=sys.stderr)
