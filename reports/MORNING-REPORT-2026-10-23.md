@@ -109,3 +109,10 @@ Step 3 (Haiku 5.5 as a cheaper worker on repair-handoff-20) is preregistered, si
 dry-gated (derived freeze 8ec891e7; the archived Sonnet control matches on all 12 zero-call checks; 846 tests). You
 approved the paid run, but the weekly quota read exactly 45% and the preregistered start rule is "below 45%", so the
 suite was not started. It runs unchanged when the weekly figure drops below 45% (window resets 2026-10-27 09:00 UTC).
+
+## Step 3 result (evening, after the owner granted 10 more quota points)
+
+Haiku 5.5 on repair-handoff-20: all five scenarios pass, every job right on its first attempt, but 94,319 tokens and
+303 s against Sonnet's 55,413 and 190 s, because Haiku reasons six to seven times longer per call. Under the
+preregistered gate Haiku does not earn the worker place; Sonnet stays
+([results](../docs/design/step3-haiku-2026-10-23/results.md)). Weekly quota 46%.
