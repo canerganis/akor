@@ -57,3 +57,19 @@ Branch `oz-0.9`, nothing pushed, nothing posted. Tests: 542 passing. Claude week
 
 Late additions tonight: G3b gate review findings fixed and refrozen (9624eac, 559 tests). Stopped with the Claude
 weekly quota at about 35%, well under the 49% line, because every remaining step is one of your decisions above.
+
+## Daytime update, 2026-10-23 (owner away until evening)
+
+- Redaction and push done: your user name removed from the 40 unpushed commits (history rewritten locally, backup
+  branch `backup/oz-0.9-before-redact`), then `oz-0.9` pushed. `main` untouched.
+- Boundary probe ([results](../docs/design/boundary-probe-2026-10-23/results.md)): the frozen packet failed 6 of 6;
+  passing the host-checked interval as a ref gave 6 of 6 correct, mostly at zero hidden reasoning, and the lowest cost
+  per correct answer. Explicit wording alone gave 5 of 6 by pushing the model to reason.
+- O1, the real workflow ([results](../docs/design/o1-real-workflow-2026-10-23/results.md)): `repair-handoff-20/v1`,
+  where the model writes function bodies and the host judges them in three tiers. Its dry gate found two real executor
+  resume defects; both were fixed (50e8ef5, tests first, approved by Astra). **G3c live passed**: 8 launches, 55,413
+  tokens, every job accepted on its first try, every delivered function verified.
+- G3b live3 on the patched executor failed on the known boundary error (classify_C wrong twice at 0 thinking, no
+  delivery) while every executor-side check held ([record](../docs/design/step4-2026-10-23/g3b/results-live3.md)).
+- Next, running now: building the signed boundary adoption (classify consumes the checked interval), then its
+  qualification and suite.
