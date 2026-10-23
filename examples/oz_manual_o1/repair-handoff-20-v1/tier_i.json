@@ -1,0 +1,820 @@
+{
+ "A1": [
+  {
+   "id": "I.A1.00",
+   "fn": "total_amount",
+   "args": [
+    [
+     "0.10",
+     "0.20"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.30\""
+   }
+  },
+  {
+   "id": "I.A1.01",
+   "fn": "total_amount",
+   "args": [
+    [
+     "-3.07",
+     "1",
+     "0.5"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1.57\""
+   }
+  },
+  {
+   "id": "I.A1.02",
+   "fn": "total_amount",
+   "args": [
+    [
+     "999999999.99",
+     "-999999999.99"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.00\""
+   }
+  },
+  {
+   "id": "I.A1.03",
+   "fn": "total_amount",
+   "args": [
+    [
+     "1",
+     "+1"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   }
+  },
+  {
+   "id": "I.A1.04",
+   "fn": "parse_amount",
+   "args": [
+    "20.01"
+   ],
+   "expect": {
+    "r": "2001"
+   }
+  },
+  {
+   "id": "I.A1.05",
+   "fn": "parse_amount",
+   "args": [
+    "-0.09"
+   ],
+   "expect": {
+    "r": "-9"
+   }
+  },
+  {
+   "id": "I.A1.06",
+   "fn": "total_amount",
+   "args": [
+    [
+     "0.3",
+     "0.3",
+     "0.3"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.90\""
+   }
+  },
+  {
+   "id": "I.A1.07",
+   "fn": "total_amount",
+   "args": [
+    [
+     "-0.01"
+    ]
+   ],
+   "expect": {
+    "r": "\"-0.01\""
+   }
+  }
+ ],
+ "A2": [
+  {
+   "id": "I.A2.00",
+   "fn": "total_amount",
+   "args": [
+    [
+     "0.100",
+     "0.2"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.300\""
+   }
+  },
+  {
+   "id": "I.A2.01",
+   "fn": "total_amount",
+   "args": [
+    [
+     "-3.007",
+     "1",
+     "0.5"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1.507\""
+   }
+  },
+  {
+   "id": "I.A2.02",
+   "fn": "total_amount",
+   "args": [
+    [
+     "999999999.999",
+     "-999999999.999"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.000\""
+   }
+  },
+  {
+   "id": "I.A2.03",
+   "fn": "total_amount",
+   "args": [
+    [
+     "1",
+     "+1"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   }
+  },
+  {
+   "id": "I.A2.04",
+   "fn": "parse_amount",
+   "args": [
+    "20.001"
+   ],
+   "expect": {
+    "r": "20001"
+   }
+  },
+  {
+   "id": "I.A2.05",
+   "fn": "parse_amount",
+   "args": [
+    "-0.009"
+   ],
+   "expect": {
+    "r": "-9"
+   }
+  },
+  {
+   "id": "I.A2.06",
+   "fn": "total_amount",
+   "args": [
+    [
+     "0.3",
+     "0.3",
+     "0.3"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.900\""
+   }
+  },
+  {
+   "id": "I.A2.07",
+   "fn": "total_amount",
+   "args": [
+    [
+     "-0.001"
+    ]
+   ],
+   "expect": {
+    "r": "\"-0.001\""
+   }
+  }
+ ],
+ "B1": [
+  {
+   "id": "I.B1.00",
+   "fn": "free_slots",
+   "args": [
+    [
+     [
+      0,
+      3
+     ],
+     [
+      2,
+      5
+     ],
+     [
+      7,
+      8
+     ]
+    ],
+    [
+     0,
+     9
+    ]
+   ],
+   "expect": {
+    "r": "[[5,7],[8,9]]"
+   }
+  },
+  {
+   "id": "I.B1.01",
+   "fn": "free_slots",
+   "args": [
+    [
+     [
+      9,
+      12
+     ],
+     [
+      -3,
+      1
+     ]
+    ],
+    [
+     0,
+     10
+    ]
+   ],
+   "expect": {
+    "r": "[[1,9]]"
+   }
+  },
+  {
+   "id": "I.B1.02",
+   "fn": "free_slots",
+   "args": [
+    [
+     [
+      4,
+      4
+     ]
+    ],
+    [
+     0,
+     8
+    ]
+   ],
+   "expect": {
+    "r": "[[0,8]]"
+   }
+  },
+  {
+   "id": "I.B1.03",
+   "fn": "free_slots",
+   "args": [
+    [
+     [
+      1,
+      2
+     ],
+     [
+      2,
+      3
+     ],
+     [
+      3,
+      4
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[0,1],[4,5]]"
+   }
+  },
+  {
+   "id": "I.B1.04",
+   "fn": "union_intervals",
+   "args": [
+    [
+     [
+      6,
+      8
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      1,
+      2
+     ],
+     [
+      7,
+      9
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[0,2],[6,9]]"
+   }
+  },
+  {
+   "id": "I.B1.05",
+   "fn": "free_slots",
+   "args": [
+    [
+     [
+      0,
+      5
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[]"
+   }
+  },
+  {
+   "id": "I.B1.06",
+   "fn": "free_slots",
+   "args": [
+    [
+     [
+      1,
+      3
+     ]
+    ],
+    [
+     3,
+     1
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   }
+  },
+  {
+   "id": "I.B1.07",
+   "fn": "union_intervals",
+   "args": [
+    [
+     [
+      0,
+      0
+     ],
+     [
+      5,
+      5
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[]"
+   }
+  }
+ ],
+ "C1": [
+  {
+   "id": "I.C1.00",
+   "fn": "apply_revisions",
+   "args": [
+    {
+     "srv": {
+      "port": 80,
+      "tls": false
+     }
+    },
+    [
+     {
+      "seq": 12,
+      "patch": {
+       "srv": {
+        "tls": true
+       }
+      }
+     },
+     {
+      "seq": 3,
+      "patch": {
+       "srv": {
+        "port": 8080
+       }
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"srv\":{\"port\":8080,\"tls\":true}}"
+   }
+  },
+  {
+   "id": "I.C1.01",
+   "fn": "apply_revisions",
+   "args": [
+    {
+     "a": [
+      1,
+      2
+     ]
+    },
+    [
+     {
+      "seq": 1,
+      "patch": {
+       "a": null,
+       "b": [
+        0
+       ]
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"b\":[0]}"
+   }
+  },
+  {
+   "id": "I.C1.02",
+   "fn": "apply_revisions",
+   "args": [
+    {},
+    [
+     {
+      "seq": 2,
+      "patch": {
+       "x": {
+        "y": {
+         "z": 1
+        }
+       }
+      }
+     },
+     {
+      "seq": 1,
+      "patch": {
+       "x": 0
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"x\":{\"y\":{\"z\":1}}}"
+   }
+  },
+  {
+   "id": "I.C1.03",
+   "fn": "apply_revisions",
+   "args": [
+    {
+     "a": 1
+    },
+    [
+     {
+      "seq": false,
+      "patch": {}
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   }
+  },
+  {
+   "id": "I.C1.04",
+   "fn": "merge_patch",
+   "args": [
+    {
+     "a": {
+      "b": {
+       "c": 1,
+       "d": 2
+      }
+     }
+    },
+    {
+     "a": {
+      "b": {
+       "c": null
+      }
+     }
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{\"b\":{\"d\":2}}}"
+   }
+  },
+  {
+   "id": "I.C1.05",
+   "fn": "merge_patch",
+   "args": [
+    {
+     "a": 0
+    },
+    {
+     "a": false,
+     "b": null
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":false}"
+   }
+  },
+  {
+   "id": "I.C1.06",
+   "fn": "apply_revisions",
+   "args": [
+    {
+     "n": null
+    },
+    []
+   ],
+   "expect": {
+    "r": "{\"n\":null}"
+   }
+  },
+  {
+   "id": "I.C1.07",
+   "fn": "apply_revisions",
+   "args": [
+    {
+     "a": 1
+    },
+    [
+     {
+      "seq": 5,
+      "patch": [
+       1
+      ]
+     },
+     {
+      "seq": 6,
+      "patch": {
+       "k": 1
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"k\":1}"
+   }
+  }
+ ],
+ "D1": [
+  {
+   "id": "I.D1.00",
+   "fn": "execution_batches",
+   "args": [
+    [
+     {
+      "id": "lint",
+      "deps": []
+     },
+     {
+      "id": "test",
+      "deps": [
+       "build"
+      ]
+     },
+     {
+      "id": "build",
+      "deps": [
+       "lint"
+      ]
+     },
+     {
+      "id": "docs",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"lint\",\"docs\"],[\"build\"],[\"test\"]]"
+   }
+  },
+  {
+   "id": "I.D1.01",
+   "fn": "execution_batches",
+   "args": [
+    [
+     {
+      "id": "e",
+      "deps": [
+       "d"
+      ]
+     },
+     {
+      "id": "d",
+      "deps": [
+       "c"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "b"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\"],[\"b\"],[\"c\"],[\"d\"],[\"e\"]]"
+   }
+  },
+  {
+   "id": "I.D1.02",
+   "fn": "execution_batches",
+   "args": [
+    [
+     {
+      "id": "f",
+      "deps": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "id": "e",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\",\"b\"],[\"e\",\"f\"]]"
+   }
+  },
+  {
+   "id": "I.D1.03",
+   "fn": "execution_batches",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   }
+  },
+  {
+   "id": "I.D1.04",
+   "fn": "topological_order",
+   "args": [
+    [
+     {
+      "id": "u",
+      "deps": [
+       "v"
+      ]
+     },
+     {
+      "id": "v",
+      "deps": [
+       "w"
+      ]
+     },
+     {
+      "id": "w",
+      "deps": []
+     },
+     {
+      "id": "x",
+      "deps": [
+       "u"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"w\",\"v\",\"u\",\"x\"]"
+   }
+  },
+  {
+   "id": "I.D1.05",
+   "fn": "execution_batches",
+   "args": [
+    [
+     {
+      "id": "m",
+      "deps": []
+     },
+     {
+      "id": "n",
+      "deps": [
+       "m",
+       "m"
+      ]
+     },
+     {
+      "id": "o",
+      "deps": [
+       "n",
+       "m"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"m\"],[\"n\"],[\"o\"]]"
+   }
+  },
+  {
+   "id": "I.D1.06",
+   "fn": "execution_batches",
+   "args": [
+    [
+     {
+      "id": "k",
+      "deps": [
+       "k"
+      ]
+     },
+     {
+      "id": "l",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   }
+  },
+  {
+   "id": "I.D1.07",
+   "fn": "topological_order",
+   "args": [
+    [
+     {
+      "id": "p",
+      "deps": []
+     },
+     {
+      "id": "q",
+      "deps": []
+     },
+     {
+      "id": "r",
+      "deps": []
+     },
+     {
+      "id": "s",
+      "deps": []
+     },
+     {
+      "id": "t",
+      "deps": [
+       "p",
+       "q",
+       "r",
+       "s"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"p\",\"q\",\"r\",\"s\",\"t\"]"
+   }
+  }
+ ]
+}

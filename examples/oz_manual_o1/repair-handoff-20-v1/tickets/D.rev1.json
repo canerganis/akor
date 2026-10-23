@@ -1,0 +1,54 @@
+{
+ "schema": "akor.o1-ticket/1",
+ "workflow": "repair-handoff-20/v1",
+ "ticket": "D",
+ "revision": 1,
+ "title": "Dependency execution",
+ "provenance": "seeded defects in a purpose-built utility module, not a real bug report",
+ "module": "jobs.py",
+ "module_source": "\"\"\"Dependency execution order for job records {\"id\": str, \"deps\": [str]}.\"\"\"\n\n\ndef topological_order(jobs):\n    \"\"\"Order job ids so that every job comes after its dependencies.\"\"\"\n    deps = {job['id']: set(job['deps']) for job in jobs}\n    ready = [job['id'] for job in jobs if not deps[job['id']]]\n    order = []\n    while ready:\n        current = ready.pop(0)\n        order.append(current)\n        for job in jobs:\n            waiting = deps[job['id']]\n            if current in waiting:\n                waiting.discard(current)\n                if not waiting:\n                    ready.append(job['id'])\n    return order\n\n\ndef execution_batches(jobs):\n    \"\"\"Group job ids into dependency frontiers.\"\"\"\n    order = topological_order(jobs)\n    level = {}\n    for job_id in order:\n        job = [j for j in jobs if j['id'] == job_id][0]\n        level[job_id] = min([level[d] + 1 for d in job['deps']] or [0])\n    batches = []\n    for job in jobs:\n        k = level[job['id']]\n        while len(batches) <= k:\n            batches.append([])\n        batches[k].append(job['id'])\n    return batches\n",
+ "core": {
+  "name": "topological_order",
+  "params": [
+   "jobs"
+  ],
+  "requirements": [
+   "jobs is a list of dicts {\"id\": str, \"deps\": list of str}. Raise ValueError when two jobs share an id, when a dependency names no job in the list, or when the dependencies form a cycle (a job depending on itself included). Repeated entries in deps count once.",
+   "Return the list of ids in execution order: repeatedly take, among the jobs not yet taken whose dependencies are all taken, the one that comes first in the input list.",
+   "Never modify the input."
+  ]
+ },
+ "adapter": {
+  "name": "execution_batches",
+  "params": [
+   "jobs"
+  ],
+  "calls": "topological_order",
+  "requirements": [
+   "Call topological_order(jobs) exactly once; let its ValueError propagate.",
+   "A job's level is 0 when it has no dependencies, else 1 plus the largest level among its dependencies.",
+   "Return a list of batches: batch k lists the ids of level k in the order they appear in the list topological_order returned. No empty batches; [] for no jobs. Never modify the input."
+  ]
+ },
+ "precision": null,
+ "spans": {
+  "topological_order": [
+   79,
+   625
+  ],
+  "execution_batches": [
+   627,
+   1098
+  ]
+ },
+ "alias_check": false,
+ "limits": "at most 8 jobs; ids at most 8 characters.",
+ "permitted_edits": [
+  "Replace the defective function with a corrected one; keep its def line exactly as given.",
+  "Nested def and lambda inside the function are allowed.",
+  "No imports, decorators, annotations, default values, helper definitions or other top-level statements."
+ ],
+ "core_record": "O1 repair ticket\nticket: D\nrevision: 1\nop: repair_core@1\nmodule: jobs.py\nfunction: topological_order\nsignature: def topological_order(jobs):\n\nDependency execution. Requirements:\n1. jobs is a list of dicts {\"id\": str, \"deps\": list of str}. Raise ValueError when two jobs share an id, when a dependency names no job in the list, or when the dependencies form a cycle (a job depending on itself included). Repeated entries in deps count once.\n2. Return the list of ids in execution order: repeatedly take, among the jobs not yet taken whose dependencies are all taken, the one that comes first in the input list.\n3. Never modify the input.\n\nPermitted edits:\n1. Replace the defective function with a corrected one; keep its def line exactly as given.\n2. Nested def and lambda inside the function are allowed.\n3. No imports, decorators, annotations, default values, helper definitions or other top-level statements.\n\nInput limits: at most 8 jobs; ids at most 8 characters.\n\nPublic examples:\ntopological_order([{'id': 'b', 'deps': ['a']}, {'id': 'a', 'deps': []}]) returns ['a', 'b']\ntopological_order([]) returns []\ntopological_order([{'id': 'a', 'deps': ['a']}]) raises ValueError\n\nDefective function:\ndef topological_order(jobs):\n    \"\"\"Order job ids so that every job comes after its dependencies.\"\"\"\n    deps = {job['id']: set(job['deps']) for job in jobs}\n    ready = [job['id'] for job in jobs if not deps[job['id']]]\n    order = []\n    while ready:\n        current = ready.pop(0)\n        order.append(current)\n        for job in jobs:\n            waiting = deps[job['id']]\n            if current in waiting:\n                waiting.discard(current)\n                if not waiting:\n                    ready.append(job['id'])\n    return order\n",
+ "adapter_record_prefix": "O1 repair ticket\nticket: D\nrevision: 1\nop: repair_adapter@1\nmodule: jobs.py\nfunction: execution_batches\nsignature: def execution_batches(jobs):\ncalls: topological_order (the accepted repaired core function, shown at the end)\n\nDependency execution. Requirements:\n1. Call topological_order(jobs) exactly once; let its ValueError propagate.\n2. A job's level is 0 when it has no dependencies, else 1 plus the largest level among its dependencies.\n3. Return a list of batches: batch k lists the ids of level k in the order they appear in the list topological_order returned. No empty batches; [] for no jobs. Never modify the input.\n\nPermitted edits:\n1. Replace the defective function with a corrected one; keep its def line exactly as given.\n2. Nested def and lambda inside the function are allowed.\n3. No imports, decorators, annotations, default values, helper definitions or other top-level statements.\n\nInput limits: at most 8 jobs; ids at most 8 characters.\n\nPublic examples:\nexecution_batches([{'id': 'a', 'deps': []}, {'id': 'b', 'deps': ['a']}, {'id': 'c', 'deps': []}]) returns [['a', 'c'], ['b']]\nexecution_batches([]) returns []\n\nDefective function:\ndef execution_batches(jobs):\n    \"\"\"Group job ids into dependency frontiers.\"\"\"\n    order = topological_order(jobs)\n    level = {}\n    for job_id in order:\n        job = [j for j in jobs if j['id'] == job_id][0]\n        level[job_id] = min([level[d] + 1 for d in job['deps']] or [0])\n    batches = []\n    for job in jobs:\n        k = level[job['id']]\n        while len(batches) <= k:\n            batches.append([])\n        batches[k].append(job['id'])\n    return batches\n\nAccepted core function (already in scope; call it, do not redefine it):\n",
+ "accepted_marker": "Accepted core function (already in scope; call it, do not redefine it):\n"
+}

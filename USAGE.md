@@ -208,6 +208,49 @@ With this profile, `oz do` runs the adapter under `oz_runner.py`, which publishe
 
 When a registered total function computes a step exactly from checked values, make that step a host operation and do not send it to a model. Keeping such a model operation needs an explicit experimental reason. A host operation is exact only for the inputs it validates, so it still needs tests, and its inputs should be refused when malformed. Passing a checked intermediate forward to a model that still has to interpret it is input discipline, not a reliability guarantee. Example: step 4's classification (inside, outside or unknown from a checked interval and the goal limits) became `host.classify@1` after a model misread inclusive equality at a limit. Decision and evidence: [docs/design/boundary-adoption-2026-10-23/decision-host-classify.md](docs/design/boundary-adoption-2026-10-23/decision-host-classify.md).
 
+## Manual graph facade: `oz_manual`
+
+`oz_manual.py` is a Python facade over `oz_flow` and `oz_do`. It adds no execution path, no wire change, scheduler, replanner, importer or MCP, and every CLI command, schema, exit code and output default stays as it was. Scope: a manual finite DAG (at most 256 nodes) of registered host and model operations, the existing checks, durable recovery, revision-aware acceptance and local file delivery. Qualification stays experimental and packaging establishes no live-model qualification. Each process prints this notice once on stderr (also available as `oz_manual.SCOPE`):
+
+```text
+scope=manual-graph; acceptance=oz1g-selective-v1; delivery=local-files
+qualification=experimental; live-model-qualification=not-established-by-packaging
+```
+
+```python
+from oz_manual import install, run, revise, status, artifacts
+
+install(request, settings)                               # validate and store the flow, execute nothing
+result = run(request, settings)                          # oz.flow.result/1; the identical call resumes
+revise(request["request_id"], settings, "A", data, reason="ticket A revision 2")   # new source revision, no execution
+snapshot = status(request["request_id"], settings)       # read-only
+delivered = artifacts(request["request_id"], settings, target="repair_package")    # read-only
+```
+
+`request` is the existing `oz.flow/1` request with its graph. `settings` is an `oz_flow.Settings` you build yourself: registries, checks, adapter, route, budgets and destinations stay host-owned. `oz_flow.admit(graph, registry)` only validates a graph; `oz_manual.install` also stores the flow. Installation starts the deadline, so time between `install` and `run` is spent from it. Installing the same request again changes nothing, and different work under the same request ID fails.
+
+`run` is `oz_flow.run_flow` under an exclusive lock on `flows/<request_id>/run.lock`. A second concurrent `run` of one request ID fails at once with `RunInProgress`; the lock goes away when its holder ends, including a hard kill. `revise` needs a source the flow has already imported (a run reads it first) and takes no lock. After a revision the next `run` rebuilds only what the new revision touches and publishes the next generation (`<node>-g2`); the old delivery stays on disk as history.
+
+`status` and `artifacts` open `flow.sqlite` read-only and never launch, repair, extend a deadline or republish. A missing flow raises `FlowNotFound` and creates no file. `artifacts` returns destination, artifact paths, byte counts, SHA-256 values and the source citations of the current delivery, never artifact bodies. A delivery that is missing, stale, or whose files are missing or changed raises `ArtifactsUnavailable` with the code `not_delivered`, `stale`, `missing` or `conflict`. `generation=1` reads an older delivery and reports it as `superseded`, not as current.
+
+The bundled example, `examples/oz_manual_o1/`, is the O1 workflow `repair-handoff-20/v1` on its fixture route. It is **Windows-only**: the checks run model-written code in the Windows Job Object sandbox of `bench/o1`, which is bench-grade confinement and not a security boundary. Both packet sizes (1 and 4) stay experimental. Its files are byte-identical copies of the frozen `bench/o1` sources (a test pins each). It needs only standard-library Python and an empty workspace, and it prints these lines on stderr as well:
+
+```text
+route=fixture; model_calls=0; new_billed_tokens=0
+workflow=repair-handoff-20/v1; experimental_sizes=1,4
+```
+
+```powershell
+python examples/oz_manual_o1/example.py --workspace DIR run
+python examples/oz_manual_o1/example.py --workspace DIR artifacts
+python examples/oz_manual_o1/example.py --workspace DIR revise     # ticket A revision 2
+python examples/oz_manual_o1/example.py --workspace DIR run        # publishes publish-g2
+python examples/oz_manual_o1/example.py --workspace DIR artifacts --generation 1    # superseded
+python examples/oz_manual_o1/example.py --workspace DIR status
+```
+
+Each command prints one JSON document: the facade result plus a `fixture` block that keeps the fixture adapter's invocations and the usage its stored replies report apart from the model calls and billed tokens, which are zero. For a recovery drill run it with `OZ_FAULTS=worker.after_capture`, then `OZ_FAULTS=flow.publish.after_manifest` (each exits 86), then plainly: the stored capture is reused without a new invocation and the publication is reconciled once. The zero-token acceptance gate is `python -m unittest tests.test_oz_manual`; it establishes usability and compatibility only.
+
 ## Budget, retries and visibility
 
 In `oz.json`, `max_tokens` is the upper bound on the receiver's input. `encodings` are the target tokenizer names; with more than one, the limit applies to each. `batch_size` sets how many ready jobs are scanned at most (1 to 64). The defaults are 2048 tokens and 64 jobs. Ready jobs are collected into one call without waiting.

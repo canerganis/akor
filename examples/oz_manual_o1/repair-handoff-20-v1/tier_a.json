@@ -1,0 +1,6794 @@
+{
+ "A1.core": [
+  {
+   "id": "A1.core.00",
+   "kind": "direct",
+   "family": "value_basic",
+   "side": "n/a",
+   "args": [
+    "12.30"
+   ],
+   "expect": {
+    "r": "1230"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.01",
+   "kind": "direct",
+   "family": "value_basic",
+   "side": "n/a",
+   "args": [
+    "7"
+   ],
+   "expect": {
+    "r": "700"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.02",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "0"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.core.03",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "-0"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.core.04",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "-0.00"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.core.05",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "0.0"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.core.06",
+   "kind": "direct",
+   "family": "negative",
+   "side": "n/a",
+   "args": [
+    "-5"
+   ],
+   "expect": {
+    "r": "-500"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.07",
+   "kind": "direct",
+   "family": "negative",
+   "side": "n/a",
+   "args": [
+    "-0.5"
+   ],
+   "expect": {
+    "r": "-50"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.08",
+   "kind": "direct",
+   "family": "negative",
+   "side": "n/a",
+   "args": [
+    "-123.45"
+   ],
+   "expect": {
+    "r": "-12345"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.09",
+   "kind": "direct",
+   "family": "fractional_padding",
+   "side": "n/a",
+   "args": [
+    "1.5"
+   ],
+   "expect": {
+    "r": "150"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.10",
+   "kind": "direct",
+   "family": "fractional_padding",
+   "side": "n/a",
+   "args": [
+    "1.50"
+   ],
+   "expect": {
+    "r": "150"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.11",
+   "kind": "direct",
+   "family": "excess_precision",
+   "side": "inside",
+   "args": [
+    "1.05"
+   ],
+   "expect": {
+    "r": "105"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.12",
+   "kind": "direct",
+   "family": "excess_precision",
+   "side": "outside",
+   "args": [
+    "1.005"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.13",
+   "kind": "direct",
+   "family": "excess_precision",
+   "side": "outside",
+   "args": [
+    "0.001"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.14",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    ""
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.15",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    " 1"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.16",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1 "
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.17",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "+1"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.18",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1e2"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.19",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "01"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.20",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1."
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.21",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    ".5"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.22",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1.2.3"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.23",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "--1"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.24",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "-"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.25",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "abc"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.26",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1,5"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.27",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "١"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.28",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "nan"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.29",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "inf"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.30",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "inside",
+   "args": [
+    "999999999"
+   ],
+   "expect": {
+    "r": "99999999900"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.31",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "inside",
+   "args": [
+    "-999999999.99"
+   ],
+   "expect": {
+    "r": "-99999999999"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.32",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "outside",
+   "args": [
+    "1000000000"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.33",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "outside",
+   "args": [
+    "-1000000000.5"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.34",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    5
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.35",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    true
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.36",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    null
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.37",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    [
+     "1"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.38",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "0.29"
+   ],
+   "expect": {
+    "r": "29"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.39",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "1.15"
+   ],
+   "expect": {
+    "r": "115"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.40",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "4.35"
+   ],
+   "expect": {
+    "r": "435"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.41",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "0.57"
+   ],
+   "expect": {
+    "r": "57"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.42",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "2.25"
+   ],
+   "expect": {
+    "r": "225"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.43",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "-1.50"
+   ],
+   "expect": {
+    "r": "-150"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.44",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "0.01"
+   ],
+   "expect": {
+    "r": "1"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.45",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "1"
+   ],
+   "expect": {
+    "r": "100"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.46",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "x"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.core.47",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "-0.05"
+   ],
+   "expect": {
+    "r": "-5"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.core.48",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "0.05"
+   ],
+   "expect": {
+    "r": "5"
+   },
+   "category": "value"
+  }
+ ],
+ "A1.adapter": [
+  {
+   "id": "A1.adapter.00",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     "a",
+     "b"
+    ]
+   ],
+   "expect": {
+    "r": "\"1.25\"",
+    "calls": [
+     "[\"a\"]",
+     "[\"b\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "a"
+      ],
+      "return": 150
+     },
+     {
+      "args": [
+       "b"
+      ],
+      "return": -25
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.01",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     "b",
+     "a",
+     "b"
+    ]
+   ],
+   "expect": {
+    "r": "\"2.02\"",
+    "calls": [
+     "[\"b\"]",
+     "[\"a\"]",
+     "[\"b\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "a"
+      ],
+      "return": 200
+     },
+     {
+      "args": [
+       "b"
+      ],
+      "return": 1
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.02",
+   "kind": "stub",
+   "family": "invalid_propagation",
+   "side": "n/a",
+   "args": [
+    [
+     "a",
+     "bad",
+     "c"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[\"a\"]",
+     "[\"bad\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "a"
+      ],
+      "return": 100
+     },
+     {
+      "args": [
+       "c"
+      ],
+      "return": 100
+     },
+     {
+      "args": [
+       "bad"
+      ],
+      "raise": "ValueError"
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.adapter.03",
+   "kind": "stub",
+   "family": "invalid_propagation",
+   "side": "n/a",
+   "args": [
+    [
+     "bad"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[\"bad\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "bad"
+      ],
+      "raise": "ValueError"
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.adapter.04",
+   "kind": "stub",
+   "family": "negative_total",
+   "side": "n/a",
+   "args": [
+    [
+     "m"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1.50\"",
+    "calls": [
+     "[\"m\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "m"
+      ],
+      "return": -150
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.05",
+   "kind": "stub",
+   "family": "negative_total",
+   "side": "n/a",
+   "args": [
+    [
+     "m",
+     "n"
+    ]
+   ],
+   "expect": {
+    "r": "\"-0.05\"",
+    "calls": [
+     "[\"m\"]",
+     "[\"n\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "m"
+      ],
+      "return": -5
+     },
+     {
+      "args": [
+       "n"
+      ],
+      "return": 0
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.06",
+   "kind": "stub",
+   "family": "cancellation",
+   "side": "n/a",
+   "args": [
+    [
+     "p",
+     "n"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.00\"",
+    "calls": [
+     "[\"p\"]",
+     "[\"n\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "p"
+      ],
+      "return": 150
+     },
+     {
+      "args": [
+       "n"
+      ],
+      "return": -150
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.adapter.07",
+   "kind": "stub",
+   "family": "cancellation",
+   "side": "n/a",
+   "args": [
+    [
+     "p",
+     "n",
+     "q"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.00\"",
+    "calls": [
+     "[\"p\"]",
+     "[\"n\"]",
+     "[\"q\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "p"
+      ],
+      "return": -1
+     },
+     {
+      "args": [
+       "n"
+      ],
+      "return": 2
+     },
+     {
+      "args": [
+       "q"
+      ],
+      "return": -1
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.adapter.08",
+   "kind": "stub",
+   "family": "empty_collection",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "\"0.00\"",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.adapter.09",
+   "kind": "stub",
+   "family": "empty_collection",
+   "side": "n/a",
+   "args": [
+    [
+     "z"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.00\"",
+    "calls": [
+     "[\"z\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "z"
+      ],
+      "return": 0
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A1.adapter.10",
+   "kind": "stub",
+   "family": "formatting_padding",
+   "side": "n/a",
+   "args": [
+    [
+     "s"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.07\"",
+    "calls": [
+     "[\"s\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "s"
+      ],
+      "return": 7
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.11",
+   "kind": "stub",
+   "family": "formatting_padding",
+   "side": "n/a",
+   "args": [
+    [
+     "s",
+     "t"
+    ]
+   ],
+   "expect": {
+    "r": "\"1000.10\"",
+    "calls": [
+     "[\"s\"]",
+     "[\"t\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "s"
+      ],
+      "return": 100000
+     },
+     {
+      "args": [
+       "t"
+      ],
+      "return": 10
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.12",
+   "kind": "stub",
+   "family": "large_sum",
+   "side": "n/a",
+   "args": [
+    [
+     "g",
+     "h"
+    ]
+   ],
+   "expect": {
+    "r": "\"1999999999.98\"",
+    "calls": [
+     "[\"g\"]",
+     "[\"h\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "g"
+      ],
+      "return": 99999999999
+     },
+     {
+      "args": [
+       "h"
+      ],
+      "return": 99999999999
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.13",
+   "kind": "stub",
+   "family": "large_sum",
+   "side": "n/a",
+   "args": [
+    [
+     "g",
+     "k"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1999999998.99\"",
+    "calls": [
+     "[\"g\"]",
+     "[\"k\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "g"
+      ],
+      "return": -99999999999
+     },
+     {
+      "args": [
+       "k"
+      ],
+      "return": -99999999900
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.14",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "1.50",
+     "2.25"
+    ]
+   ],
+   "expect": {
+    "r": "\"3.75\"",
+    "calls": [
+     "[\"1.50\"]",
+     "[\"2.25\"]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.15",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "-1.50"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1.50\"",
+    "calls": [
+     "[\"-1.50\"]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.16",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "0.29",
+     "0.01"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.30\"",
+    "calls": [
+     "[\"0.29\"]",
+     "[\"0.01\"]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.17",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "1",
+     "x"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[\"1\"]",
+     "[\"x\"]"
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A1.adapter.18",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "\"0.00\"",
+    "calls": []
+   },
+   "category": "value"
+  },
+  {
+   "id": "A1.adapter.19",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "-0.05",
+     "0.05"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.00\"",
+    "calls": [
+     "[\"-0.05\"]",
+     "[\"0.05\"]"
+    ]
+   },
+   "category": "value"
+  }
+ ],
+ "A2.core": [
+  {
+   "id": "A2.core.00",
+   "kind": "direct",
+   "family": "value_basic",
+   "side": "n/a",
+   "args": [
+    "12.300"
+   ],
+   "expect": {
+    "r": "12300"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.01",
+   "kind": "direct",
+   "family": "value_basic",
+   "side": "n/a",
+   "args": [
+    "7"
+   ],
+   "expect": {
+    "r": "7000"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.02",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "0"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.core.03",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "-0"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.core.04",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "-0.000"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.core.05",
+   "kind": "direct",
+   "family": "zero_and_negative_zero",
+   "side": "n/a",
+   "args": [
+    "0.0"
+   ],
+   "expect": {
+    "r": "0"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.core.06",
+   "kind": "direct",
+   "family": "negative",
+   "side": "n/a",
+   "args": [
+    "-5"
+   ],
+   "expect": {
+    "r": "-5000"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.07",
+   "kind": "direct",
+   "family": "negative",
+   "side": "n/a",
+   "args": [
+    "-0.5"
+   ],
+   "expect": {
+    "r": "-500"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.08",
+   "kind": "direct",
+   "family": "negative",
+   "side": "n/a",
+   "args": [
+    "-123.45"
+   ],
+   "expect": {
+    "r": "-123450"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.09",
+   "kind": "direct",
+   "family": "fractional_padding",
+   "side": "n/a",
+   "args": [
+    "1.5"
+   ],
+   "expect": {
+    "r": "1500"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.10",
+   "kind": "direct",
+   "family": "fractional_padding",
+   "side": "n/a",
+   "args": [
+    "1.50"
+   ],
+   "expect": {
+    "r": "1500"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.11",
+   "kind": "direct",
+   "family": "excess_precision",
+   "side": "inside",
+   "args": [
+    "1.005"
+   ],
+   "expect": {
+    "r": "1005"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.12",
+   "kind": "direct",
+   "family": "excess_precision",
+   "side": "outside",
+   "args": [
+    "1.0005"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.13",
+   "kind": "direct",
+   "family": "excess_precision",
+   "side": "outside",
+   "args": [
+    "0.0001"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.14",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    ""
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.15",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    " 1"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.16",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1 "
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.17",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "+1"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.18",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1e2"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.19",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "01"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.20",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1."
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.21",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    ".5"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.22",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1.2.3"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.23",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "--1"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.24",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "-"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.25",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "abc"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.26",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "1,5"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.27",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "١"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.28",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "nan"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.29",
+   "kind": "direct",
+   "family": "malformed",
+   "side": "n/a",
+   "args": [
+    "inf"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.30",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "inside",
+   "args": [
+    "999999999"
+   ],
+   "expect": {
+    "r": "999999999000"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.31",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "inside",
+   "args": [
+    "-999999999.99"
+   ],
+   "expect": {
+    "r": "-999999999990"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.32",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "outside",
+   "args": [
+    "1000000000"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.33",
+   "kind": "direct",
+   "family": "integer_digit_limit",
+   "side": "outside",
+   "args": [
+    "-1000000000.5"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.34",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    5
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.35",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    true
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.36",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    null
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.37",
+   "kind": "direct",
+   "family": "type_confusion",
+   "side": "n/a",
+   "args": [
+    [
+     "1"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.38",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "0.29"
+   ],
+   "expect": {
+    "r": "290"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.39",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "1.15"
+   ],
+   "expect": {
+    "r": "1150"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.40",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "4.35"
+   ],
+   "expect": {
+    "r": "4350"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.41",
+   "kind": "direct",
+   "family": "float_artifact",
+   "side": "n/a",
+   "args": [
+    "0.57"
+   ],
+   "expect": {
+    "r": "570"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.42",
+   "kind": "direct",
+   "family": "revision_precision",
+   "side": "inside",
+   "args": [
+    "1.001"
+   ],
+   "expect": {
+    "r": "1001"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.43",
+   "kind": "direct",
+   "family": "revision_precision",
+   "side": "inside",
+   "args": [
+    "2.125"
+   ],
+   "expect": {
+    "r": "2125"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.44",
+   "kind": "direct",
+   "family": "revision_precision",
+   "side": "outside",
+   "args": [
+    "1.0001"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.45",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "2.25"
+   ],
+   "expect": {
+    "r": "2250"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.46",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "-1.50"
+   ],
+   "expect": {
+    "r": "-1500"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.47",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "0.01"
+   ],
+   "expect": {
+    "r": "10"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.48",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "1"
+   ],
+   "expect": {
+    "r": "1000"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.49",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "x"
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.core.50",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "-0.05"
+   ],
+   "expect": {
+    "r": "-50"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.51",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "0.05"
+   ],
+   "expect": {
+    "r": "50"
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.core.52",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    "0.009"
+   ],
+   "expect": {
+    "r": "9"
+   },
+   "category": "value"
+  }
+ ],
+ "A2.adapter": [
+  {
+   "id": "A2.adapter.00",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     "a",
+     "b"
+    ]
+   ],
+   "expect": {
+    "r": "\"1.250\"",
+    "calls": [
+     "[\"a\"]",
+     "[\"b\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "a"
+      ],
+      "return": 1500
+     },
+     {
+      "args": [
+       "b"
+      ],
+      "return": -250
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.01",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     "b",
+     "a",
+     "b"
+    ]
+   ],
+   "expect": {
+    "r": "\"2.020\"",
+    "calls": [
+     "[\"b\"]",
+     "[\"a\"]",
+     "[\"b\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "a"
+      ],
+      "return": 2000
+     },
+     {
+      "args": [
+       "b"
+      ],
+      "return": 10
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.02",
+   "kind": "stub",
+   "family": "invalid_propagation",
+   "side": "n/a",
+   "args": [
+    [
+     "a",
+     "bad",
+     "c"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[\"a\"]",
+     "[\"bad\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "a"
+      ],
+      "return": 1000
+     },
+     {
+      "args": [
+       "c"
+      ],
+      "return": 1000
+     },
+     {
+      "args": [
+       "bad"
+      ],
+      "raise": "ValueError"
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.adapter.03",
+   "kind": "stub",
+   "family": "invalid_propagation",
+   "side": "n/a",
+   "args": [
+    [
+     "bad"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[\"bad\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "bad"
+      ],
+      "raise": "ValueError"
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.adapter.04",
+   "kind": "stub",
+   "family": "negative_total",
+   "side": "n/a",
+   "args": [
+    [
+     "m"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1.500\"",
+    "calls": [
+     "[\"m\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "m"
+      ],
+      "return": -1500
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.05",
+   "kind": "stub",
+   "family": "negative_total",
+   "side": "n/a",
+   "args": [
+    [
+     "m",
+     "n"
+    ]
+   ],
+   "expect": {
+    "r": "\"-0.050\"",
+    "calls": [
+     "[\"m\"]",
+     "[\"n\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "m"
+      ],
+      "return": -50
+     },
+     {
+      "args": [
+       "n"
+      ],
+      "return": 0
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.06",
+   "kind": "stub",
+   "family": "cancellation",
+   "side": "n/a",
+   "args": [
+    [
+     "p",
+     "n"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.000\"",
+    "calls": [
+     "[\"p\"]",
+     "[\"n\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "p"
+      ],
+      "return": 1500
+     },
+     {
+      "args": [
+       "n"
+      ],
+      "return": -1500
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.adapter.07",
+   "kind": "stub",
+   "family": "cancellation",
+   "side": "n/a",
+   "args": [
+    [
+     "p",
+     "n",
+     "q"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.000\"",
+    "calls": [
+     "[\"p\"]",
+     "[\"n\"]",
+     "[\"q\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "p"
+      ],
+      "return": -10
+     },
+     {
+      "args": [
+       "n"
+      ],
+      "return": 20
+     },
+     {
+      "args": [
+       "q"
+      ],
+      "return": -10
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.adapter.08",
+   "kind": "stub",
+   "family": "empty_collection",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "\"0.000\"",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.adapter.09",
+   "kind": "stub",
+   "family": "empty_collection",
+   "side": "n/a",
+   "args": [
+    [
+     "z"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.000\"",
+    "calls": [
+     "[\"z\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "z"
+      ],
+      "return": 0
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "A2.adapter.10",
+   "kind": "stub",
+   "family": "formatting_padding",
+   "side": "n/a",
+   "args": [
+    [
+     "s"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.070\"",
+    "calls": [
+     "[\"s\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "s"
+      ],
+      "return": 70
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.11",
+   "kind": "stub",
+   "family": "formatting_padding",
+   "side": "n/a",
+   "args": [
+    [
+     "s",
+     "t"
+    ]
+   ],
+   "expect": {
+    "r": "\"1000.100\"",
+    "calls": [
+     "[\"s\"]",
+     "[\"t\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "s"
+      ],
+      "return": 1000000
+     },
+     {
+      "args": [
+       "t"
+      ],
+      "return": 100
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.12",
+   "kind": "stub",
+   "family": "large_sum",
+   "side": "n/a",
+   "args": [
+    [
+     "g",
+     "h"
+    ]
+   ],
+   "expect": {
+    "r": "\"1999999999.980\"",
+    "calls": [
+     "[\"g\"]",
+     "[\"h\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "g"
+      ],
+      "return": 999999999990
+     },
+     {
+      "args": [
+       "h"
+      ],
+      "return": 999999999990
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.13",
+   "kind": "stub",
+   "family": "large_sum",
+   "side": "n/a",
+   "args": [
+    [
+     "g",
+     "k"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1999999998.990\"",
+    "calls": [
+     "[\"g\"]",
+     "[\"k\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "g"
+      ],
+      "return": -999999999990
+     },
+     {
+      "args": [
+       "k"
+      ],
+      "return": -999999999000
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.14",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "1.50",
+     "2.25"
+    ]
+   ],
+   "expect": {
+    "r": "\"3.750\"",
+    "calls": [
+     "[\"1.50\"]",
+     "[\"2.25\"]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.15",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "-1.50"
+    ]
+   ],
+   "expect": {
+    "r": "\"-1.500\"",
+    "calls": [
+     "[\"-1.50\"]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.16",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "0.29",
+     "0.01"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.300\"",
+    "calls": [
+     "[\"0.29\"]",
+     "[\"0.01\"]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.17",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "1",
+     "x"
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[\"1\"]",
+     "[\"x\"]"
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "A2.adapter.18",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "\"0.000\"",
+    "calls": []
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.19",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "-0.05",
+     "0.05"
+    ]
+   ],
+   "expect": {
+    "r": "\"0.000\"",
+    "calls": [
+     "[\"-0.05\"]",
+     "[\"0.05\"]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.20",
+   "kind": "stub",
+   "family": "revision_precision",
+   "side": "n/a",
+   "args": [
+    [
+     "r"
+    ]
+   ],
+   "expect": {
+    "r": "\"1.001\"",
+    "calls": [
+     "[\"r\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "r"
+      ],
+      "return": 1001
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.21",
+   "kind": "stub",
+   "family": "revision_precision",
+   "side": "n/a",
+   "args": [
+    [
+     "r",
+     "s"
+    ]
+   ],
+   "expect": {
+    "r": "\"-0.025\"",
+    "calls": [
+     "[\"r\"]",
+     "[\"s\"]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       "r"
+      ],
+      "return": -125
+     },
+     {
+      "args": [
+       "s"
+      ],
+      "return": 100
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "A2.adapter.22",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     "1.001",
+     "0.009"
+    ]
+   ],
+   "expect": {
+    "r": "\"1.010\"",
+    "calls": [
+     "[\"1.001\"]",
+     "[\"0.009\"]"
+    ]
+   },
+   "category": "value"
+  }
+ ],
+ "B1.core": [
+  {
+   "id": "B1.core.00",
+   "kind": "direct",
+   "family": "empty_input",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "[]"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "B1.core.01",
+   "kind": "direct",
+   "family": "empty_input",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      2,
+      2
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[]"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "B1.core.02",
+   "kind": "direct",
+   "family": "nesting",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      10
+     ],
+     [
+      2,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,10]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.03",
+   "kind": "direct",
+   "family": "nesting",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      5
+     ],
+     [
+      1,
+      4
+     ],
+     [
+      2,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[0,5]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.04",
+   "kind": "direct",
+   "family": "duplicates",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      3
+     ],
+     [
+      1,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,3]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.05",
+   "kind": "direct",
+   "family": "duplicates",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      1
+     ],
+     [
+      0,
+      1
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[0,1]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.06",
+   "kind": "direct",
+   "family": "touching",
+   "side": "inside",
+   "args": [
+    [
+     [
+      1,
+      3
+     ],
+     [
+      3,
+      5
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,5]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.07",
+   "kind": "direct",
+   "family": "touching",
+   "side": "inside",
+   "args": [
+    [
+     [
+      3,
+      5
+     ],
+     [
+      1,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,5]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.08",
+   "kind": "direct",
+   "family": "touching",
+   "side": "outside",
+   "args": [
+    [
+     [
+      1,
+      3
+     ],
+     [
+      4,
+      5
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,3],[4,5]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.09",
+   "kind": "direct",
+   "family": "unsorted",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      5,
+      7
+     ],
+     [
+      1,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,3],[5,7]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.10",
+   "kind": "direct",
+   "family": "unsorted",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      8,
+      9
+     ],
+     [
+      0,
+      2
+     ],
+     [
+      1,
+      4
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[0,4],[8,9]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.11",
+   "kind": "direct",
+   "family": "zero_length",
+   "side": "inside",
+   "args": [
+    [
+     [
+      1,
+      1
+     ],
+     [
+      3,
+      4
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[3,4]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.12",
+   "kind": "direct",
+   "family": "zero_length",
+   "side": "inside",
+   "args": [
+    [
+     [
+      2,
+      2
+     ],
+     [
+      1,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,3]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.13",
+   "kind": "direct",
+   "family": "zero_length",
+   "side": "outside",
+   "args": [
+    [
+     [
+      1,
+      2
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,2]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.14",
+   "kind": "direct",
+   "family": "negative_endpoints",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      -5,
+      -2
+     ],
+     [
+      -3,
+      0
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[-5,0]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.15",
+   "kind": "direct",
+   "family": "negative_endpoints",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      -2,
+      -1
+     ],
+     [
+      0,
+      1
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[-2,-1],[0,1]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.16",
+   "kind": "direct",
+   "family": "invalid",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      3,
+      1
+     ]
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.core.17",
+   "kind": "direct",
+   "family": "invalid",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      true,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.core.18",
+   "kind": "direct",
+   "family": "invalid",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      "2"
+     ]
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.core.19",
+   "kind": "direct",
+   "family": "invalid",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      2,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.core.20",
+   "kind": "direct",
+   "family": "invalid",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1
+     ]
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.core.21",
+   "kind": "direct",
+   "family": "invalid",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      1
+     ],
+     [
+      2,
+      1
+     ]
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.core.22",
+   "kind": "direct",
+   "family": "invalid",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      false
+     ]
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.core.23",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      4
+     ],
+     [
+      2,
+      6
+     ],
+     [
+      8,
+      9
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[1,6],[8,9]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.24",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      2,
+      4
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[2,4]]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.core.25",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      -1,
+      1
+     ],
+     [
+      2,
+      3
+     ]
+    ]
+   ],
+   "expect": {
+    "r": "[[-1,1],[2,3]]"
+   },
+   "category": "value"
+  }
+ ],
+ "B1.adapter": [
+  {
+   "id": "B1.adapter.00",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      3
+     ],
+     [
+      5,
+      9
+     ]
+    ],
+    [
+     0,
+     8
+    ]
+   ],
+   "expect": {
+    "r": "[[0,1],[3,5]]",
+    "calls": [
+     "[[[1,3],[5,8]]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        [
+         1,
+         3
+        ],
+        [
+         5,
+         8
+        ]
+       ]
+      ],
+      "return": [
+       [
+        1,
+        3
+       ],
+       [
+        5,
+        8
+       ]
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.01",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      2
+     ],
+     [
+      2,
+      4
+     ]
+    ],
+    [
+     0,
+     6
+    ]
+   ],
+   "expect": {
+    "r": "[[0,1],[4,6]]",
+    "calls": [
+     "[[[1,2],[2,4]]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        [
+         1,
+         2
+        ],
+        [
+         2,
+         4
+        ]
+       ]
+      ],
+      "return": [
+       [
+        1,
+        4
+       ]
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.02",
+   "kind": "stub",
+   "family": "crossing_window_start",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      -4,
+      2
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[2,5]]",
+    "calls": [
+     "[[[0,2]]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        [
+         0,
+         2
+        ]
+       ]
+      ],
+      "return": [
+       [
+        0,
+        2
+       ]
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.03",
+   "kind": "stub",
+   "family": "crossing_window_start",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      -4,
+      0
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[0,5]]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.04",
+   "kind": "stub",
+   "family": "crossing_window_end",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      3,
+      9
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[0,3]]",
+    "calls": [
+     "[[[3,5]]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        [
+         3,
+         5
+        ]
+       ]
+      ],
+      "return": [
+       [
+        3,
+        5
+       ]
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.05",
+   "kind": "stub",
+   "family": "crossing_window_end",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      5,
+      9
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[0,5]]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.06",
+   "kind": "stub",
+   "family": "outside_window",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      -5,
+      -1
+     ],
+     [
+      7,
+      9
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[0,5]]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.07",
+   "kind": "stub",
+   "family": "outside_window",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      6,
+      7
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[0,5]]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.08",
+   "kind": "stub",
+   "family": "zero_width_window",
+   "side": "inside",
+   "args": [
+    [
+     [
+      1,
+      2
+     ]
+    ],
+    [
+     3,
+     3
+    ]
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "B1.adapter.09",
+   "kind": "stub",
+   "family": "zero_width_window",
+   "side": "outside",
+   "args": [
+    [],
+    [
+     3,
+     4
+    ]
+   ],
+   "expect": {
+    "r": "[[3,4]]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "B1.adapter.10",
+   "kind": "stub",
+   "family": "empty_busy",
+   "side": "n/a",
+   "args": [
+    [],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[0,5]]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "B1.adapter.11",
+   "kind": "stub",
+   "family": "empty_busy",
+   "side": "n/a",
+   "args": [
+    [],
+    [
+     -3,
+     -1
+    ]
+   ],
+   "expect": {
+    "r": "[[-3,-1]]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "B1.adapter.12",
+   "kind": "stub",
+   "family": "invalid_window",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      2
+     ]
+    ],
+    [
+     5,
+     0
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.adapter.13",
+   "kind": "stub",
+   "family": "invalid_window",
+   "side": "n/a",
+   "args": [
+    [],
+    [
+     true,
+     3
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.adapter.14",
+   "kind": "stub",
+   "family": "invalid_busy",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      2,
+      1
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.adapter.15",
+   "kind": "stub",
+   "family": "invalid_busy",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      1
+     ],
+     [
+      1,
+      "x"
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "B1.adapter.16",
+   "kind": "stub",
+   "family": "full_cover",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      10
+     ]
+    ],
+    [
+     2,
+     4
+    ]
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[[2,4]]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        [
+         2,
+         4
+        ]
+       ]
+      ],
+      "return": [
+       [
+        2,
+        4
+       ]
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.17",
+   "kind": "stub",
+   "family": "full_cover",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      2
+     ],
+     [
+      1,
+      5
+     ]
+    ],
+    [
+     0,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[[0,2],[1,5]]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        [
+         0,
+         2
+        ],
+        [
+         1,
+         5
+        ]
+       ]
+      ],
+      "return": [
+       [
+        0,
+        5
+       ]
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.18",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      4
+     ],
+     [
+      2,
+      6
+     ],
+     [
+      8,
+      9
+     ]
+    ],
+    [
+     0,
+     10
+    ]
+   ],
+   "expect": {
+    "r": "[[0,1],[6,8],[9,10]]",
+    "calls": [
+     "[[[1,4],[2,6],[8,9]]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.19",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [],
+    [
+     2,
+     2
+    ]
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.20",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      5,
+      7
+     ],
+     [
+      1,
+      3
+     ]
+    ],
+    [
+     0,
+     8
+    ]
+   ],
+   "expect": {
+    "r": "[[0,1],[3,5],[7,8]]",
+    "calls": [
+     "[[[5,7],[1,3]]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.21",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      0,
+      10
+     ]
+    ],
+    [
+     2,
+     4
+    ]
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[[2,4]]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.22",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      1,
+      5
+     ]
+    ],
+    [
+     3,
+     3
+    ]
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "B1.adapter.23",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     [
+      -3,
+      1
+     ],
+     [
+      4,
+      4
+     ],
+     [
+      2,
+      3
+     ]
+    ],
+    [
+     -1,
+     5
+    ]
+   ],
+   "expect": {
+    "r": "[[1,2],[3,5]]",
+    "calls": [
+     "[[[-1,1],[2,3]]]"
+    ]
+   },
+   "category": "value"
+  }
+ ],
+ "C1.core": [
+  {
+   "id": "C1.core.00",
+   "kind": "direct",
+   "family": "missing_deletion_target",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    {
+     "b": null
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":1}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.01",
+   "kind": "direct",
+   "family": "missing_deletion_target",
+   "side": "n/a",
+   "args": [
+    {},
+    {
+     "x": null
+    }
+   ],
+   "expect": {
+    "r": "{}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.02",
+   "kind": "direct",
+   "family": "nested_deletion",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": 1,
+      "c": 2
+     }
+    },
+    {
+     "a": {
+      "b": null
+     }
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{\"c\":2}}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.03",
+   "kind": "direct",
+   "family": "nested_deletion",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": {
+       "c": 1
+      }
+     }
+    },
+    {
+     "a": {
+      "b": {
+       "c": null
+      }
+     }
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{\"b\":{}}}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.04",
+   "kind": "direct",
+   "family": "scalar_to_object",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    {
+     "a": {
+      "b": 2
+     }
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{\"b\":2}}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.05",
+   "kind": "direct",
+   "family": "scalar_to_object",
+   "side": "n/a",
+   "args": [
+    3,
+    {
+     "a": 1
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":1}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.06",
+   "kind": "direct",
+   "family": "object_to_scalar",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": 1
+     }
+    },
+    {
+     "a": 5
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":5}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.07",
+   "kind": "direct",
+   "family": "object_to_scalar",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    7
+   ],
+   "expect": {
+    "r": "7"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.08",
+   "kind": "direct",
+   "family": "arrays",
+   "side": "n/a",
+   "args": [
+    {
+     "a": [
+      1,
+      2
+     ]
+    },
+    {
+     "a": [
+      3
+     ]
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":[3]}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.09",
+   "kind": "direct",
+   "family": "arrays",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    [
+     1,
+     {
+      "b": null
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[1,{\"b\":null}]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.10",
+   "kind": "direct",
+   "family": "false_vs_zero",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 0
+    },
+    {
+     "a": false
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":false}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.11",
+   "kind": "direct",
+   "family": "false_vs_zero",
+   "side": "n/a",
+   "args": [
+    {
+     "a": false
+    },
+    {
+     "b": 0
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":false,\"b\":0}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.12",
+   "kind": "direct",
+   "family": "aliasing",
+   "side": "n/a",
+   "args": [
+    {},
+    {
+     "a": [
+      1
+     ]
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":[1]}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.13",
+   "kind": "direct",
+   "family": "aliasing",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": [
+       1
+      ]
+     }
+    },
+    {
+     "c": 1
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{\"b\":[1]},\"c\":1}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.14",
+   "kind": "direct",
+   "family": "aliasing",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": 1
+     }
+    },
+    {
+     "a": {
+      "c": 2
+     }
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{\"b\":1,\"c\":2}}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.15",
+   "kind": "direct",
+   "family": "non_object_base",
+   "side": "n/a",
+   "args": [
+    null,
+    {
+     "a": null
+    }
+   ],
+   "expect": {
+    "r": "{}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.16",
+   "kind": "direct",
+   "family": "non_object_base",
+   "side": "n/a",
+   "args": [
+    [
+     1
+    ],
+    {
+     "a": 1
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":1}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.17",
+   "kind": "direct",
+   "family": "empty_patch",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    {}
+   ],
+   "expect": {
+    "r": "{\"a\":1}"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "C1.core.18",
+   "kind": "direct",
+   "family": "empty_patch",
+   "side": "n/a",
+   "args": [
+    null,
+    {}
+   ],
+   "expect": {
+    "r": "{}"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "C1.core.19",
+   "kind": "direct",
+   "family": "empty_patch",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    null
+   ],
+   "expect": {
+    "r": "null"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "C1.core.20",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    {
+     "b": 2
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":1,\"b\":2}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.21",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1,
+     "b": 2
+    },
+    {
+     "a": 3
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":3,\"b\":2}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.22",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": 1
+     }
+    },
+    {
+     "a": {
+      "b": null
+     }
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{}}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.23",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 0
+    },
+    {
+     "a": {
+      "k": 0
+     }
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":{\"k\":0}}"
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.core.24",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "k": 0
+     }
+    },
+    {
+     "a": [
+      1
+     ]
+    }
+   ],
+   "expect": {
+    "r": "{\"a\":[1]}"
+   },
+   "category": "value"
+  }
+ ],
+ "C1.adapter": [
+  {
+   "id": "C1.adapter.00",
+   "kind": "stub",
+   "family": "numeric_sequence_order",
+   "side": "outside",
+   "args": [
+    {
+     "v": 0
+    },
+    [
+     {
+      "seq": 10,
+      "patch": {
+       "x": 10
+      }
+     },
+     {
+      "seq": 2,
+      "patch": {
+       "x": 2
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"s\":2}",
+    "calls": [
+     "[{\"v\":0},{\"x\":2}]",
+     "[{\"s\":1},{\"x\":10}]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       {
+        "v": 0
+       },
+       {
+        "x": 2
+       }
+      ],
+      "return": {
+       "s": 1
+      }
+     },
+     {
+      "args": [
+       {
+        "s": 1
+       },
+       {
+        "x": 10
+       }
+      ],
+      "return": {
+       "s": 2
+      }
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.01",
+   "kind": "stub",
+   "family": "numeric_sequence_order",
+   "side": "inside",
+   "args": [
+    {
+     "v": 0
+    },
+    [
+     {
+      "seq": 3,
+      "patch": {
+       "x": 3
+      }
+     },
+     {
+      "seq": 1,
+      "patch": {
+       "x": 1
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"t\":2}",
+    "calls": [
+     "[{\"v\":0},{\"x\":1}]",
+     "[{\"t\":1},{\"x\":3}]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       {
+        "v": 0
+       },
+       {
+        "x": 1
+       }
+      ],
+      "return": {
+       "t": 1
+      }
+     },
+     {
+      "args": [
+       {
+        "t": 1
+       },
+       {
+        "x": 3
+       }
+      ],
+      "return": {
+       "t": 2
+      }
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.02",
+   "kind": "stub",
+   "family": "duplicate_sequence",
+   "side": "n/a",
+   "args": [
+    {},
+    [
+     {
+      "seq": 1,
+      "patch": {}
+     },
+     {
+      "seq": 1,
+      "patch": {}
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "C1.adapter.03",
+   "kind": "stub",
+   "family": "duplicate_sequence",
+   "side": "n/a",
+   "args": [
+    {},
+    [
+     {
+      "seq": 2,
+      "patch": {
+       "a": 1
+      }
+     },
+     {
+      "seq": 5,
+      "patch": {}
+     },
+     {
+      "seq": 2,
+      "patch": {}
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "C1.adapter.04",
+   "kind": "stub",
+   "family": "invalid_sequence",
+   "side": "outside",
+   "args": [
+    {},
+    [
+     {
+      "seq": true,
+      "patch": {}
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "C1.adapter.05",
+   "kind": "stub",
+   "family": "invalid_sequence",
+   "side": "outside",
+   "args": [
+    {},
+    [
+     {
+      "seq": 0,
+      "patch": {}
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "C1.adapter.06",
+   "kind": "stub",
+   "family": "invalid_sequence",
+   "side": "outside",
+   "args": [
+    {},
+    [
+     {
+      "seq": -1,
+      "patch": {}
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "C1.adapter.07",
+   "kind": "stub",
+   "family": "invalid_sequence",
+   "side": "outside",
+   "args": [
+    {},
+    [
+     {
+      "seq": "1",
+      "patch": {}
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "C1.adapter.08",
+   "kind": "stub",
+   "family": "invalid_sequence",
+   "side": "inside",
+   "args": [
+    {},
+    [
+     {
+      "seq": 1,
+      "patch": {
+       "a": 1
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"a\":1}",
+    "calls": [
+     "[{},{\"a\":1}]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       {},
+       {
+        "a": 1
+       }
+      ],
+      "return": {
+       "a": 1
+      }
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.09",
+   "kind": "stub",
+   "family": "empty_revisions",
+   "side": "n/a",
+   "args": [
+    {
+     "a": [
+      1
+     ]
+    },
+    []
+   ],
+   "expect": {
+    "r": "{\"a\":[1]}",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "C1.adapter.10",
+   "kind": "stub",
+   "family": "empty_revisions",
+   "side": "n/a",
+   "args": [
+    null,
+    []
+   ],
+   "expect": {
+    "r": "null",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "C1.adapter.11",
+   "kind": "stub",
+   "family": "aliasing",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": [
+       2
+      ]
+     }
+    },
+    []
+   ],
+   "expect": {
+    "r": "{\"a\":{\"b\":[2]}}",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.12",
+   "kind": "stub",
+   "family": "aliasing",
+   "side": "n/a",
+   "args": [
+    [
+     1,
+     [
+      2
+     ]
+    ],
+    []
+   ],
+   "expect": {
+    "r": "[1,[2]]",
+    "calls": []
+   },
+   "stub": {
+    "responses": []
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.13",
+   "kind": "stub",
+   "family": "false_vs_zero",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 0
+    },
+    [
+     {
+      "seq": 1,
+      "patch": {
+       "a": false
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"a\":false}",
+    "calls": [
+     "[{\"a\":0},{\"a\":false}]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       {
+        "a": 0
+       },
+       {
+        "a": false
+       }
+      ],
+      "return": {
+       "a": false
+      }
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.14",
+   "kind": "stub",
+   "family": "false_vs_zero",
+   "side": "n/a",
+   "args": [
+    {
+     "a": false
+    },
+    [
+     {
+      "seq": 1,
+      "patch": {
+       "b": 0
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"a\":false,\"b\":0}",
+    "calls": [
+     "[{\"a\":false},{\"b\":0}]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       {
+        "a": false
+       },
+       {
+        "b": 0
+       }
+      ],
+      "return": {
+       "a": false,
+       "b": 0
+      }
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.15",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    {
+     "k": 1
+    },
+    [
+     {
+      "seq": 4,
+      "patch": 9
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"w\":1}",
+    "calls": [
+     "[{\"k\":1},9]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       {
+        "k": 1
+       },
+       9
+      ],
+      "return": {
+       "w": 1
+      }
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.16",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    {
+     "k": 1
+    },
+    [
+     {
+      "seq": 4,
+      "patch": {
+       "q": 1
+      }
+     },
+     {
+      "seq": 7,
+      "patch": {
+       "q": null
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"k\":1}",
+    "calls": [
+     "[{\"k\":1},{\"q\":1}]",
+     "[{\"k\":1,\"q\":1},{\"q\":null}]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       {
+        "k": 1
+       },
+       {
+        "q": 1
+       }
+      ],
+      "return": {
+       "k": 1,
+       "q": 1
+      }
+     },
+     {
+      "args": [
+       {
+        "k": 1,
+        "q": 1
+       },
+       {
+        "q": null
+       }
+      ],
+      "return": {
+       "k": 1
+      }
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.17",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 1
+    },
+    [
+     {
+      "seq": 2,
+      "patch": {
+       "a": 3
+      }
+     },
+     {
+      "seq": 1,
+      "patch": {
+       "b": 2
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"a\":3,\"b\":2}",
+    "calls": [
+     "[{\"a\":1},{\"b\":2}]",
+     "[{\"a\":1,\"b\":2},{\"a\":3}]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.18",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    {
+     "a": {
+      "b": 1
+     }
+    },
+    [
+     {
+      "seq": 1,
+      "patch": {
+       "a": {
+        "b": null
+       }
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"a\":{}}",
+    "calls": [
+     "[{\"a\":{\"b\":1}},{\"a\":{\"b\":null}}]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.19",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 0
+    },
+    [
+     {
+      "seq": 10,
+      "patch": {
+       "a": [
+        1
+       ]
+      }
+     },
+     {
+      "seq": 9,
+      "patch": {
+       "a": {
+        "k": 0
+       }
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"a\":[1]}",
+    "calls": [
+     "[{\"a\":0},{\"a\":{\"k\":0}}]",
+     "[{\"a\":{\"k\":0}},{\"a\":[1]}]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.20",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    {
+     "a": 0
+    },
+    [
+     {
+      "seq": 3,
+      "patch": {
+       "a": false
+      }
+     }
+    ]
+   ],
+   "expect": {
+    "r": "{\"a\":false}",
+    "calls": [
+     "[{\"a\":0},{\"a\":false}]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "C1.adapter.21",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    {
+     "a": [
+      1
+     ]
+    },
+    []
+   ],
+   "expect": {
+    "r": "{\"a\":[1]}",
+    "calls": []
+   },
+   "category": "value"
+  }
+ ],
+ "D1.core": [
+  {
+   "id": "D1.core.00",
+   "kind": "direct",
+   "family": "empty_graph",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "[]"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "D1.core.01",
+   "kind": "direct",
+   "family": "empty_graph",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\"]"
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "D1.core.02",
+   "kind": "direct",
+   "family": "chain",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "c",
+      "deps": [
+       "b"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\",\"c\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.03",
+   "kind": "direct",
+   "family": "chain",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "b"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\",\"c\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.04",
+   "kind": "direct",
+   "family": "diamond",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "d",
+      "deps": [
+       "b",
+       "c"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\",\"c\",\"d\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.05",
+   "kind": "direct",
+   "family": "diamond",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "d",
+      "deps": [
+       "b",
+       "c"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"c\",\"b\",\"d\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.06",
+   "kind": "direct",
+   "family": "multiple_roots",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "x",
+      "deps": []
+     },
+     {
+      "id": "y",
+      "deps": []
+     },
+     {
+      "id": "z",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"x\",\"y\",\"z\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.07",
+   "kind": "direct",
+   "family": "multiple_roots",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "q",
+      "deps": []
+     },
+     {
+      "id": "p",
+      "deps": []
+     },
+     {
+      "id": "r",
+      "deps": [
+       "p"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"q\",\"p\",\"r\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.08",
+   "kind": "direct",
+   "family": "newly_ready_earlier_index",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "c",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\",\"c\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.09",
+   "kind": "direct",
+   "family": "newly_ready_earlier_index",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "d",
+      "deps": [
+       "c"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"c\",\"d\",\"b\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.10",
+   "kind": "direct",
+   "family": "newly_ready_earlier_index",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "x",
+      "deps": [
+       "z"
+      ]
+     },
+     {
+      "id": "y",
+      "deps": [
+       "w"
+      ]
+     },
+     {
+      "id": "w",
+      "deps": []
+     },
+     {
+      "id": "z",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"w\",\"y\",\"z\",\"x\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.11",
+   "kind": "direct",
+   "family": "duplicate_id",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.12",
+   "kind": "direct",
+   "family": "duplicate_id",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.13",
+   "kind": "direct",
+   "family": "missing_dependency",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": [
+       "z"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.14",
+   "kind": "direct",
+   "family": "missing_dependency",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a",
+       "q"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.15",
+   "kind": "direct",
+   "family": "self_cycle",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": [
+       "a"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.16",
+   "kind": "direct",
+   "family": "self_cycle",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "b",
+      "deps": []
+     },
+     {
+      "id": "a",
+      "deps": [
+       "a"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.17",
+   "kind": "direct",
+   "family": "multi_node_cycle",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": [
+       "b"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.18",
+   "kind": "direct",
+   "family": "multi_node_cycle",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": [
+       "c"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "b"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError"
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.core.19",
+   "kind": "direct",
+   "family": "repeated_dependency",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a",
+       "a"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.20",
+   "kind": "direct",
+   "family": "repeated_dependency",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "b",
+      "deps": [
+       "a",
+       "a",
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.21",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "deps": [],
+      "id": "a"
+     },
+     {
+      "deps": [
+       "a"
+      ],
+      "id": "b"
+     },
+     {
+      "deps": [],
+      "id": "c"
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\",\"c\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.22",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "deps": [
+       "a"
+      ],
+      "id": "b"
+     },
+     {
+      "deps": [],
+      "id": "a"
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\"]"
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.core.23",
+   "kind": "direct",
+   "family": "integration_support",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "deps": [],
+      "id": "a"
+     },
+     {
+      "deps": [
+       "a"
+      ],
+      "id": "b"
+     },
+     {
+      "deps": [
+       "b"
+      ],
+      "id": "c"
+     },
+     {
+      "deps": [
+       "a",
+       "c"
+      ],
+      "id": "d"
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[\"a\",\"b\",\"c\",\"d\"]"
+   },
+   "category": "value"
+  }
+ ],
+ "D1.adapter": [
+  {
+   "id": "D1.adapter.00",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"b\",\"a\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"a\"},{\"deps\":[],\"id\":\"b\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "a",
+         "deps": []
+        },
+        {
+         "id": "b",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "b",
+       "a"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.01",
+   "kind": "stub",
+   "family": "call_contract",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "m",
+      "deps": []
+     },
+     {
+      "id": "n",
+      "deps": [
+       "m"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"m\"],[\"n\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"m\"},{\"deps\":[\"m\"],\"id\":\"n\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "m",
+         "deps": []
+        },
+        {
+         "id": "n",
+         "deps": [
+          "m"
+         ]
+        }
+       ]
+      ],
+      "return": [
+       "m",
+       "n"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.02",
+   "kind": "stub",
+   "family": "invalid_propagation",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": [
+       "a"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[[{\"deps\":[\"a\"],\"id\":\"a\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "a",
+         "deps": [
+          "a"
+         ]
+        }
+       ]
+      ],
+      "raise": "ValueError"
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.adapter.03",
+   "kind": "stub",
+   "family": "invalid_propagation",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"a\"},{\"deps\":[],\"id\":\"b\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "a",
+         "deps": []
+        },
+        {
+         "id": "b",
+         "deps": []
+        }
+       ]
+      ],
+      "raise": "ValueError"
+     }
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.adapter.04",
+   "kind": "stub",
+   "family": "diamond_unequal_paths",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "b"
+      ]
+     },
+     {
+      "id": "d",
+      "deps": [
+       "a",
+       "c"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\"],[\"b\"],[\"c\"],[\"d\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"a\"},{\"deps\":[\"a\"],\"id\":\"b\"},{\"deps\":[\"b\"],\"id\":\"c\"},{\"deps\":[\"a\",\"c\"],\"id\":\"d\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "a",
+         "deps": []
+        },
+        {
+         "id": "b",
+         "deps": [
+          "a"
+         ]
+        },
+        {
+         "id": "c",
+         "deps": [
+          "b"
+         ]
+        },
+        {
+         "id": "d",
+         "deps": [
+          "a",
+          "c"
+         ]
+        }
+       ]
+      ],
+      "return": [
+       "a",
+       "b",
+       "c",
+       "d"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.05",
+   "kind": "stub",
+   "family": "diamond_unequal_paths",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "d",
+      "deps": [
+       "a",
+       "b"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\"],[\"b\"],[\"d\"]]",
+    "calls": [
+     "[[{\"deps\":[\"a\",\"b\"],\"id\":\"d\"},{\"deps\":[\"a\"],\"id\":\"b\"},{\"deps\":[],\"id\":\"a\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "d",
+         "deps": [
+          "a",
+          "b"
+         ]
+        },
+        {
+         "id": "b",
+         "deps": [
+          "a"
+         ]
+        },
+        {
+         "id": "a",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "a",
+       "b",
+       "d"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.06",
+   "kind": "stub",
+   "family": "within_batch_order",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "x",
+      "deps": [
+       "z"
+      ]
+     },
+     {
+      "id": "y",
+      "deps": [
+       "w"
+      ]
+     },
+     {
+      "id": "w",
+      "deps": []
+     },
+     {
+      "id": "z",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"w\",\"z\"],[\"y\",\"x\"]]",
+    "calls": [
+     "[[{\"deps\":[\"z\"],\"id\":\"x\"},{\"deps\":[\"w\"],\"id\":\"y\"},{\"deps\":[],\"id\":\"w\"},{\"deps\":[],\"id\":\"z\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "x",
+         "deps": [
+          "z"
+         ]
+        },
+        {
+         "id": "y",
+         "deps": [
+          "w"
+         ]
+        },
+        {
+         "id": "w",
+         "deps": []
+        },
+        {
+         "id": "z",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "w",
+       "y",
+       "z",
+       "x"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.07",
+   "kind": "stub",
+   "family": "within_batch_order",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "p",
+      "deps": []
+     },
+     {
+      "id": "q",
+      "deps": []
+     },
+     {
+      "id": "r",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"r\",\"p\",\"q\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"p\"},{\"deps\":[],\"id\":\"q\"},{\"deps\":[],\"id\":\"r\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "p",
+         "deps": []
+        },
+        {
+         "id": "q",
+         "deps": []
+        },
+        {
+         "id": "r",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "r",
+       "p",
+       "q"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.08",
+   "kind": "stub",
+   "family": "empty_graph",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       []
+      ],
+      "return": []
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "D1.adapter.09",
+   "kind": "stub",
+   "family": "empty_graph",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "s",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"s\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"s\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "s",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "s"
+      ]
+     }
+    ]
+   },
+   "category": "empty_or_identity"
+  },
+  {
+   "id": "D1.adapter.10",
+   "kind": "stub",
+   "family": "multiple_roots",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "k",
+      "deps": []
+     },
+     {
+      "id": "l",
+      "deps": [
+       "k"
+      ]
+     },
+     {
+      "id": "j",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"k\",\"j\"],[\"l\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"k\"},{\"deps\":[\"k\"],\"id\":\"l\"},{\"deps\":[],\"id\":\"j\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "k",
+         "deps": []
+        },
+        {
+         "id": "l",
+         "deps": [
+          "k"
+         ]
+        },
+        {
+         "id": "j",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "k",
+       "j",
+       "l"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.11",
+   "kind": "stub",
+   "family": "chain",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "k",
+      "deps": [
+       "j",
+       "j"
+      ]
+     },
+     {
+      "id": "j",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"j\"],[\"k\"]]",
+    "calls": [
+     "[[{\"deps\":[\"j\",\"j\"],\"id\":\"k\"},{\"deps\":[],\"id\":\"j\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "k",
+         "deps": [
+          "j",
+          "j"
+         ]
+        },
+        {
+         "id": "j",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "j",
+       "k"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.12",
+   "kind": "stub",
+   "family": "chain",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "c",
+      "deps": [
+       "b"
+      ]
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\"],[\"b\"],[\"c\"]]",
+    "calls": [
+     "[[{\"deps\":[\"b\"],\"id\":\"c\"},{\"deps\":[\"a\"],\"id\":\"b\"},{\"deps\":[],\"id\":\"a\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "c",
+         "deps": [
+          "b"
+         ]
+        },
+        {
+         "id": "b",
+         "deps": [
+          "a"
+         ]
+        },
+        {
+         "id": "a",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "a",
+       "b",
+       "c"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.13",
+   "kind": "stub",
+   "family": "multiple_roots",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "u",
+      "deps": []
+     },
+     {
+      "id": "v",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"u\",\"v\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"u\"},{\"deps\":[],\"id\":\"v\"}]]"
+    ]
+   },
+   "stub": {
+    "responses": [
+     {
+      "args": [
+       [
+        {
+         "id": "u",
+         "deps": []
+        },
+        {
+         "id": "v",
+         "deps": []
+        }
+       ]
+      ],
+      "return": [
+       "u",
+       "v"
+      ]
+     }
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.14",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\",\"c\"],[\"b\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"a\"},{\"deps\":[\"a\"],\"id\":\"b\"},{\"deps\":[],\"id\":\"c\"}]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.15",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    []
+   ],
+   "expect": {
+    "r": "[]",
+    "calls": [
+     "[[]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.16",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "a",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\"],[\"b\"]]",
+    "calls": [
+     "[[{\"deps\":[\"a\"],\"id\":\"b\"},{\"deps\":[],\"id\":\"a\"}]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.17",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": [
+       "a"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "x": "ValueError",
+    "calls": [
+     "[[{\"deps\":[\"a\"],\"id\":\"a\"}]]"
+    ]
+   },
+   "category": "raises:ValueError"
+  },
+  {
+   "id": "D1.adapter.18",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "x",
+      "deps": [
+       "z"
+      ]
+     },
+     {
+      "id": "y",
+      "deps": [
+       "w"
+      ]
+     },
+     {
+      "id": "w",
+      "deps": []
+     },
+     {
+      "id": "z",
+      "deps": []
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"w\",\"z\"],[\"y\",\"x\"]]",
+    "calls": [
+     "[[{\"deps\":[\"z\"],\"id\":\"x\"},{\"deps\":[\"w\"],\"id\":\"y\"},{\"deps\":[],\"id\":\"w\"},{\"deps\":[],\"id\":\"z\"}]]"
+    ]
+   },
+   "category": "value"
+  },
+  {
+   "id": "D1.adapter.19",
+   "kind": "integration",
+   "family": "integration",
+   "side": "n/a",
+   "args": [
+    [
+     {
+      "id": "a",
+      "deps": []
+     },
+     {
+      "id": "b",
+      "deps": [
+       "a"
+      ]
+     },
+     {
+      "id": "c",
+      "deps": [
+       "b"
+      ]
+     },
+     {
+      "id": "d",
+      "deps": [
+       "a",
+       "c"
+      ]
+     }
+    ]
+   ],
+   "expect": {
+    "r": "[[\"a\"],[\"b\"],[\"c\"],[\"d\"]]",
+    "calls": [
+     "[[{\"deps\":[],\"id\":\"a\"},{\"deps\":[\"a\"],\"id\":\"b\"},{\"deps\":[\"b\"],\"id\":\"c\"},{\"deps\":[\"a\",\"c\"],\"id\":\"d\"}]]"
+    ]
+   },
+   "category": "value"
+  }
+ ]
+}

@@ -1,0 +1,56 @@
+{
+ "schema": "akor.o1-ticket/1",
+ "workflow": "repair-handoff-20/v1",
+ "ticket": "C",
+ "revision": 1,
+ "title": "Configuration updates",
+ "provenance": "seeded defects in a purpose-built utility module, not a real bug report",
+ "module": "config_patch.py",
+ "module_source": "\"\"\"JSON configuration updates with merge-patch semantics.\"\"\"\n\n\ndef merge_patch(base, patch):\n    \"\"\"Apply patch to base and return the merged configuration.\"\"\"\n    if not isinstance(patch, dict):\n        return patch\n    result = base if isinstance(base, dict) else {}\n    for key, value in patch.items():\n        if value is None:\n            del result[key]\n        elif isinstance(value, dict):\n            result[key] = merge_patch(result.get(key), value)\n        else:\n            result[key] = value\n    return result\n\n\ndef apply_revisions(base, revisions):\n    \"\"\"Apply the revision patches in sequence order.\"\"\"\n    current = base\n    for revision in sorted(revisions, key=lambda r: str(r['seq'])):\n        current = merge_patch(current, revision['patch'])\n    return current\n",
+ "core": {
+  "name": "merge_patch",
+  "params": [
+   "base",
+   "patch"
+  ],
+  "requirements": [
+   "base and patch are JSON values: None, bool, int, str, list, or dict with str keys.",
+   "If patch is not a dict, return a deep copy of patch. Otherwise start from a deep copy of base when base is a dict, else from {}; for each key of patch, a None value deletes the key (no error when it is absent) and any other value v sets the key to merge_patch(the current value of the key or None, v).",
+   "Never modify base or patch, and share no list or dict with them in the result."
+  ]
+ },
+ "adapter": {
+  "name": "apply_revisions",
+  "params": [
+   "base",
+   "revisions"
+  ],
+  "calls": "merge_patch",
+  "requirements": [
+   "revisions is a list of dicts with keys \"seq\" and \"patch\". Every seq must be an int >= 1 (a bool is not an int here) and the seqs must be distinct; otherwise raise ValueError before calling merge_patch.",
+   "Apply the patches in increasing seq order: current = base, then current = merge_patch(current, patch) for each revision, calling merge_patch exactly once per revision; return current.",
+   "With no revisions, return a deep copy of base. Never modify base or revisions, and share no list or dict with them in the result."
+  ]
+ },
+ "precision": null,
+ "spans": {
+  "merge_patch": [
+   63,
+   524
+  ],
+  "apply_revisions": [
+   526,
+   784
+  ]
+ },
+ "alias_check": true,
+ "limits": "JSON values nested at most 4 deep with at most 8 entries per list or dict.",
+ "permitted_edits": [
+  "Replace the defective function with a corrected one; keep its def line exactly as given.",
+  "Nested def and lambda inside the function are allowed.",
+  "No imports, decorators, annotations, default values, helper definitions or other top-level statements."
+ ],
+ "core_record": "O1 repair ticket\nticket: C\nrevision: 1\nop: repair_core@1\nmodule: config_patch.py\nfunction: merge_patch\nsignature: def merge_patch(base, patch):\n\nConfiguration updates. Requirements:\n1. base and patch are JSON values: None, bool, int, str, list, or dict with str keys.\n2. If patch is not a dict, return a deep copy of patch. Otherwise start from a deep copy of base when base is a dict, else from {}; for each key of patch, a None value deletes the key (no error when it is absent) and any other value v sets the key to merge_patch(the current value of the key or None, v).\n3. Never modify base or patch, and share no list or dict with them in the result.\n\nPermitted edits:\n1. Replace the defective function with a corrected one; keep its def line exactly as given.\n2. Nested def and lambda inside the function are allowed.\n3. No imports, decorators, annotations, default values, helper definitions or other top-level statements.\n\nInput limits: JSON values nested at most 4 deep with at most 8 entries per list or dict.\n\nPublic examples:\nmerge_patch({'a': 1, 'b': {'c': 2}}, {'b': {'c': None, 'd': 3}}) returns {'a': 1, 'b': {'d': 3}}\nmerge_patch({'a': [1]}, {'a': [2]}) returns {'a': [2]}\nmerge_patch(5, {'x': None}) returns {}\n\nDefective function:\ndef merge_patch(base, patch):\n    \"\"\"Apply patch to base and return the merged configuration.\"\"\"\n    if not isinstance(patch, dict):\n        return patch\n    result = base if isinstance(base, dict) else {}\n    for key, value in patch.items():\n        if value is None:\n            del result[key]\n        elif isinstance(value, dict):\n            result[key] = merge_patch(result.get(key), value)\n        else:\n            result[key] = value\n    return result\n",
+ "adapter_record_prefix": "O1 repair ticket\nticket: C\nrevision: 1\nop: repair_adapter@1\nmodule: config_patch.py\nfunction: apply_revisions\nsignature: def apply_revisions(base, revisions):\ncalls: merge_patch (the accepted repaired core function, shown at the end)\n\nConfiguration updates. Requirements:\n1. revisions is a list of dicts with keys \"seq\" and \"patch\". Every seq must be an int >= 1 (a bool is not an int here) and the seqs must be distinct; otherwise raise ValueError before calling merge_patch.\n2. Apply the patches in increasing seq order: current = base, then current = merge_patch(current, patch) for each revision, calling merge_patch exactly once per revision; return current.\n3. With no revisions, return a deep copy of base. Never modify base or revisions, and share no list or dict with them in the result.\n\nPermitted edits:\n1. Replace the defective function with a corrected one; keep its def line exactly as given.\n2. Nested def and lambda inside the function are allowed.\n3. No imports, decorators, annotations, default values, helper definitions or other top-level statements.\n\nInput limits: JSON values nested at most 4 deep with at most 8 entries per list or dict.\n\nPublic examples:\napply_revisions({'a': 1}, [{'seq': 2, 'patch': {'a': 3}}, {'seq': 1, 'patch': {'b': 2}}]) returns {'a': 3, 'b': 2}\napply_revisions({'a': 1}, []) returns {'a': 1}\napply_revisions({}, [{'seq': 1, 'patch': {}}, {'seq': 1, 'patch': {}}]) raises ValueError\n\nDefective function:\ndef apply_revisions(base, revisions):\n    \"\"\"Apply the revision patches in sequence order.\"\"\"\n    current = base\n    for revision in sorted(revisions, key=lambda r: str(r['seq'])):\n        current = merge_patch(current, revision['patch'])\n    return current\n\nAccepted core function (already in scope; call it, do not redefine it):\n",
+ "accepted_marker": "Accepted core function (already in scope; call it, do not redefine it):\n"
+}

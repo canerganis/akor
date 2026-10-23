@@ -1,0 +1,526 @@
+{
+ "workflow": "repair-handoff-20/v1",
+ "gate": "G3c-O1",
+ "label": "O1 real-workflow gate: eight model jobs write repaired functions (the host can run and judge code, not write it); seeded defects, not real bug reports",
+ "target": {
+  "name": "repair_package",
+  "weight": 1
+ },
+ "goal": "Repair seeded defects in a small Python utility package. Each ref is one repair ticket; each result is one corrected Python function returned as a JSON string.",
+ "model_ops": {
+  "model.repair_core": {
+   "name": "repair_core",
+   "version": 1,
+   "instruction": "Return the ref's defective function repaired, as one JSON string holding its complete Python source: exactly one function definition whose def line equals the ref's signature and that meets every requirement in the ref. Rules for the code: nested def and lambda are allowed; no imports, decorators, annotations, default values, global, nonlocal, yield, await, with, class or match; no name or attribute that starts with an underscore; the only built-ins available are abs, all, any, bool, dict, divmod, enumerate, filter, float, int, isinstance, len, list, map, max, min, range, reversed, round, set, sorted, str, sum, tuple, zip, ArithmeticError, Exception, IndexError, KeyError, LookupError, OverflowError, RecursionError, TypeError, ValueError, ZeroDivisionError; the only methods you may call are append, copy, count, endswith, extend, find, get, index, insert, isascii, isdecimal, isdigit, items, join, keys, lower, lstrip, partition, pop, remove, replace, reverse, rfind, rjust, rpartition, rsplit, rstrip, setdefault, sort, split, startswith, strip, update, upper, values, zfill, add, discard, difference, intersection, union, issubset, ljust, clear; at most 4096 UTF-8 bytes.",
+   "checks": [
+    {
+     "check": "json_type",
+     "types": [
+      "string"
+     ]
+    },
+    {
+     "check": "o1_source"
+    },
+    {
+     "check": "o1_policy",
+     "op": "core"
+    },
+    {
+     "check": "o1_tier_a",
+     "op": "core"
+    }
+   ],
+   "memo": true
+  },
+  "model.repair_adapter": {
+   "name": "repair_adapter",
+   "version": 1,
+   "instruction": "Return the ref's defective function repaired, as one JSON string holding its complete Python source: exactly one function definition whose def line equals the ref's signature and that meets every requirement in the ref. The ref ends with the accepted core function: it is already in scope, so call it by name and do not include it in your answer. Rules for the code: nested def and lambda are allowed; no imports, decorators, annotations, default values, global, nonlocal, yield, await, with, class or match; no name or attribute that starts with an underscore; the only built-ins available are abs, all, any, bool, dict, divmod, enumerate, filter, float, int, isinstance, len, list, map, max, min, range, reversed, round, set, sorted, str, sum, tuple, zip, ArithmeticError, Exception, IndexError, KeyError, LookupError, OverflowError, RecursionError, TypeError, ValueError, ZeroDivisionError; the only methods you may call are append, copy, count, endswith, extend, find, get, index, insert, isascii, isdecimal, isdigit, items, join, keys, lower, lstrip, partition, pop, remove, replace, reverse, rfind, rjust, rpartition, rsplit, rstrip, setdefault, sort, split, startswith, strip, update, upper, values, zfill, add, discard, difference, intersection, union, issubset, ljust, clear; at most 4096 UTF-8 bytes.",
+   "checks": [
+    {
+     "check": "json_type",
+     "types": [
+      "string"
+     ]
+    },
+    {
+     "check": "o1_source"
+    },
+    {
+     "check": "o1_policy",
+     "op": "adapter"
+    },
+    {
+     "check": "o1_tier_a",
+     "op": "adapter"
+    }
+   ],
+   "memo": true
+  }
+ },
+ "host_ops": [
+  "host.snapshot@1",
+  "host.adapter_context@1",
+  "host.join_contexts@1",
+  "host.assemble@1",
+  "host.integration@1",
+  "host.render_patch@1",
+  "host.render_report@1",
+  "host.verify_package@1",
+  "host.publish@1"
+ ],
+ "effects": [
+  "local_publish"
+ ],
+ "sources": {
+  "A": "tickets/A.rev1.json",
+  "B": "tickets/B.rev1.json",
+  "C": "tickets/C.rev1.json",
+  "D": "tickets/D.rev1.json"
+ },
+ "ticket_files": {
+  "A.rev1": "tickets/A.rev1.json",
+  "A.rev2": "tickets/A.rev2.json",
+  "B.rev1": "tickets/B.rev1.json",
+  "C.rev1": "tickets/C.rev1.json",
+  "D.rev1": "tickets/D.rev1.json"
+ },
+ "mutations": {
+  "stale": {
+   "source": "A",
+   "file": "tickets/A.rev2.json",
+   "hook": "flow.committed:integration",
+   "note": "after node 16 commits, before rendering or delivery: ticket A revision 2 (three fractional digits)"
+  },
+  "bump": {
+   "source": "A",
+   "file": "tickets/A.rev1.json",
+   "hook": "flow.committed:integration",
+   "note": "same hook; identical bytes, a new authoritative source revision"
+  }
+ },
+ "route": {
+  "model": "claude-sonnet-5-5",
+  "effort": "default",
+  "cli_version": "2.1.306",
+  "transport": "claude -p, no tools",
+  "adapter_script": "examples/claude_cli_adapter.py",
+  "parser": "oz1g-header/1",
+  "profile": "oz1g-selective-v1",
+  "durable": true,
+  "alias_map": {
+   "claude-sonnet-5-5": "claude-sonnet-5-5"
+  },
+  "completion_limit": "none set by the route: claude -p runs with no output-limit flag, so admission does not cover an enforced billable completion limit (04-opus-r2-sign.md); the reserve is measured input plus the declared headroom, and any actual overrun of the allocation prevents an overall pass"
+ },
+ "fixture_route": {
+  "model": "fixture-oracle-1",
+  "effort": "fixture",
+  "cli_version": "fixture",
+  "adapter_script": "bench/o1/fixture_adapter.py",
+  "parser": "oz1g-header/1"
+ },
+ "packets": {
+  "sizes": [
+   4,
+   1
+  ],
+  "experimental_sizes": [
+   4,
+   1
+  ],
+  "max_attempts": 2,
+  "cross_run_batching": false,
+  "note": "code repair is an unqualified workload: every dispatch, size 4 and size 1, is labeled experimental (M9); a pass qualifies no cell"
+ },
+ "deadlines": {
+  "scenario_seconds": 3600,
+  "call_timeout_seconds": 300,
+  "suite_envelope_seconds": 14400
+ },
+ "allocation": {
+  "max_tokens": 150000,
+  "max_launches": 18,
+  "max_launches_per_flow": 8,
+  "reserve_per_launch": 17358,
+  "reserve_rule": "measured at G2 (o1.py measure, o200k_base): the largest frozen packet is the size-4 adapter packet; with each accepted core at the 4,096-byte source limit it is 7,358 input tokens (3,402 with the fixture cores); reserve = 7,358 + 2,000 overhead + 8,000 output headroom = 17,358, applied to every launch; a call with unknown usage is charged at it",
+  "expected_failure_free_tokens": {
+   "T=0": 40860,
+   "T=2000": 56860,
+   "T=5000": 80860,
+   "note": "eight launches (clean 2, interrupt 2, stale 4); per call measured input + 2,000 overhead + fixture-sized output + T hidden reasoning; estimates, not predictions"
+  }
+ },
+ "recovery": {
+  "packet_sizes": [
+   4,
+   1
+  ],
+  "max_attempts": 2,
+  "rule": "After a packet whose rejected set R holds check rejections, wire rejections or failed calls, the stage resends exactly R at attempt 2, in job order, before the next stage: one size-4 packet when all four members of a size-4 packet are pending, else one singleton per member. Accepted siblings are never resent; no third attempt; a member held by a verifier outage is never resent or regenerated; a valid model failure record is terminal (no resend, the target fails, M10); a member rejected at attempt 2 leaves the stage unresolved."
+ },
+ "scenarios": [
+  {
+   "name": "clean",
+   "namespace": "own",
+   "mutation": null,
+   "expected_launches": 2,
+   "expected_packets": [
+    4,
+    4
+   ],
+   "expected_memo_hits": 0,
+   "stages": [
+    [
+     "repair_core",
+     [
+      "core_A",
+      "core_B",
+      "core_C",
+      "core_D"
+     ]
+    ],
+    [
+     "repair_adapter",
+     [
+      "adapter_A",
+      "adapter_B",
+      "adapter_C",
+      "adapter_D"
+     ]
+    ]
+   ]
+  },
+  {
+   "name": "repeat",
+   "namespace": "clean",
+   "mutation": null,
+   "expected_launches": 0,
+   "expected_packets": [],
+   "expected_memo_hits": 8,
+   "stages": []
+  },
+  {
+   "name": "interrupt",
+   "namespace": "own",
+   "mutation": null,
+   "expected_launches": 2,
+   "expected_packets": [
+    4,
+    4
+   ],
+   "expected_memo_hits": 0,
+   "faults": [
+    "worker.after_capture",
+    "flow.publish.after_manifest"
+   ],
+   "stages": [
+    [
+     "repair_core",
+     [
+      "core_A",
+      "core_B",
+      "core_C",
+      "core_D"
+     ]
+    ],
+    [
+     "repair_adapter",
+     [
+      "adapter_A",
+      "adapter_B",
+      "adapter_C",
+      "adapter_D"
+     ]
+    ]
+   ]
+  },
+  {
+   "name": "stale",
+   "namespace": "own",
+   "mutation": "stale",
+   "expected_launches": 4,
+   "expected_packets": [
+    4,
+    4,
+    1,
+    1
+   ],
+   "expected_memo_hits": 6,
+   "stages": [
+    [
+     "repair_core",
+     [
+      "core_A",
+      "core_B",
+      "core_C",
+      "core_D"
+     ]
+    ],
+    [
+     "repair_adapter",
+     [
+      "adapter_A",
+      "adapter_B",
+      "adapter_C",
+      "adapter_D"
+     ]
+    ],
+    [
+     "repair_core",
+     [
+      "core_A"
+     ]
+    ],
+    [
+     "repair_adapter",
+     [
+      "adapter_A"
+     ]
+    ]
+   ],
+   "revised_from_stage": 2,
+   "revised_source": "A",
+   "revised_revision": 2
+  },
+  {
+   "name": "bump",
+   "namespace": "clean",
+   "mutation": "bump",
+   "expected_launches": 0,
+   "expected_packets": [],
+   "expected_memo_hits": 16,
+   "stages": [],
+   "expected_memo_trace": [
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_A",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_B",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_C",
+     "hit"
+    ],
+    [
+     "repair_core",
+     "core_D",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_A",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_B",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_C",
+     "hit"
+    ],
+    [
+     "repair_adapter",
+     "adapter_D",
+     "hit"
+    ]
+   ],
+   "expected_acceptance_trace": [
+    [
+     "snapshot",
+     1
+    ],
+    [
+     "core_A",
+     1
+    ],
+    [
+     "core_B",
+     1
+    ],
+    [
+     "core_C",
+     1
+    ],
+    [
+     "core_D",
+     1
+    ],
+    [
+     "ctx_A",
+     1
+    ],
+    [
+     "ctx_B",
+     1
+    ],
+    [
+     "ctx_C",
+     1
+    ],
+    [
+     "ctx_D",
+     1
+    ],
+    [
+     "contexts",
+     1
+    ],
+    [
+     "adapter_A",
+     1
+    ],
+    [
+     "adapter_B",
+     1
+    ],
+    [
+     "adapter_C",
+     1
+    ],
+    [
+     "adapter_D",
+     1
+    ],
+    [
+     "assemble",
+     1
+    ],
+    [
+     "integration",
+     1
+    ],
+    [
+     "snapshot",
+     2
+    ],
+    [
+     "core_A",
+     2
+    ],
+    [
+     "core_B",
+     2
+    ],
+    [
+     "core_C",
+     2
+    ],
+    [
+     "core_D",
+     2
+    ],
+    [
+     "ctx_A",
+     2
+    ],
+    [
+     "ctx_B",
+     2
+    ],
+    [
+     "ctx_C",
+     2
+    ],
+    [
+     "ctx_D",
+     2
+    ],
+    [
+     "contexts",
+     2
+    ],
+    [
+     "adapter_A",
+     2
+    ],
+    [
+     "adapter_B",
+     2
+    ],
+    [
+     "adapter_C",
+     2
+    ],
+    [
+     "adapter_D",
+     2
+    ],
+    [
+     "assemble",
+     2
+    ],
+    [
+     "integration",
+     2
+    ],
+    [
+     "patch",
+     1
+    ],
+    [
+     "report",
+     1
+    ],
+    [
+     "verify",
+     1
+    ],
+    [
+     "publish",
+     1
+    ]
+   ],
+   "trace_source": "frozen from the zero-token dry run (o1.py dry): eight hits before the bump, eight after; nodes 1 to 16 accepted at generation 1, again at generation 2 after the bump, then nodes 17 to 20 once"
+  }
+ ]
+}
