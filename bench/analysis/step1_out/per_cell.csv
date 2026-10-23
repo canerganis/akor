@@ -1,0 +1,144 @@
+workload,model,size,arm,scenario,stratum,model_needed,calls,denominator,thinking_share,visible_out_share,packet_in_share,fixed_in_share,input_unsplit_share,failed_resent_share,check_driven_share,caller_overhead_share
+live22_1g_A_H,claude-sonnet-5-5,64,H,std,main,False,20,111368,0.163,0.2372,,,0.5998,0.0,0.0,0.0
+live22_1g_A_H,claude-sonnet-5-5,64,0.8-exec,std,main,False,5,46935,0.0856,0.2123,,,0.7021,0.0,0.0,0.0
+live23_1g_B_H,claude-sonnet-5-5,64,H,het,main,False,5,28905,0.1928,0.203,,,0.6042,0.0,0.0,0.0
+live24_1g_D_fable64,claude-fable-5-1,64,H,std,main,False,5,27398,0.1484,0.2423,,,0.6093,0.0,0.0,0.0
+live24_1g_D_fable_het,claude-fable-5-1,64,H,het,main,False,5,29254,0.1939,0.2102,,,0.596,0.0,0.0,0.0
+live24_1g_D_haiku64,claude-haiku-5-5,64,H,std,main,False,10,92668,0.5006,0.1429,,,0.3565,0.0,0.0,0.0
+live24_1g_D_haiku_het,claude-haiku-5-5,64,H,het,main,False,5,52869,0.5598,0.1133,,,0.3269,0.0,0.0,0.0
+live24_1g_D_sonnet32,claude-sonnet-5-5,32,H,std,main,False,5,19454,0.1221,0.172,,,0.7058,0.0,0.0,0.0
+live25_1g_R_haiku,claude-haiku-5-5,64,H,het,main,False,4,38829,0.5259,0.1169,,,0.3572,0.0,0.0,0.0
+live25_1g_R_sonnet,claude-sonnet-5-5,64,H,het,main,False,4,23520,0.2104,0.1939,,,0.5957,0.0,0.0,0.0
+live26_1g_R3_fable,claude-fable-5-1,64,H,het,main,False,4,23509,0.2091,0.194,,,0.597,0.0,0.0,0.0
+live26_1g_R3_haiku,claude-haiku-5-5,64,H,het,main,False,3,39340,0.5832,0.1281,,,0.2886,0.0,0.0,0.0
+live26_1g_R3_sonnet,claude-sonnet-5-5,64,H,het,main,False,1,8024,0.3141,0.2094,,,0.4766,0.0,0.0,0.0
+live27_1g_opus_het,claude-opus-5-5,64,H,het,main,False,5,28060,0.155,0.2112,,,0.6337,0.0,0.0,0.0
+live27_1g_opus_std,claude-opus-5-5,64,0.8-exec,std,main,False,5,46176,0.0696,0.212,,,0.7184,0.0,0.0,0.0
+live27_1g_opus_std,claude-opus-5-5,64,H,std,main,False,5,26423,0.108,0.2518,,,0.6402,0.0,0.0,0.0
+live28_1g_fable_paired,claude-fable-5-1,64,0.8-exec,std,main,False,5,46822,0.0819,0.2096,,,0.7085,0.0,0.0,0.0
+live28_1g_fable_paired,claude-fable-5-1,64,H,std,main,False,5,27811,0.1522,0.2397,,,0.6081,0.0,0.0,0.0
+live29_1g_haiku_paired,claude-haiku-5-5,64,H,std,main,False,5,45473,0.4869,0.1449,,,0.3681,0.0,0.0,0.0
+live29_1g_haiku_paired,claude-haiku-5-5,64,0.8-exec,std,main,False,5,65700,0.3509,0.147,,,0.502,0.0,0.0,0.0
+pilot2-materials-1g,claude-haiku-5-5,16,H,std,main,False,3,13070,0.3197,0.0775,,,0.6028,0.0,0.0,0.0
+pilot2-materials-1g,claude-haiku-5-5,16,J,std,main,False,3,14442,0.2749,0.1023,,,0.6228,0.0,0.0,0.0
+pilot2-materials-1g,claude-haiku-5-5,1,P,std,main,False,48,107608,0.1416,0.0283,,,0.8301,0.0,0.0,0.0
+pilot2-materials-1g,claude-haiku-5-5,16,S,std,main,False,3,371229,0.0426,0.0539,,,0.9035,0.0,0.0,0.0
+pilot2-materials-1g,claude-opus-5-5,16,H,std,main,False,3,9436,0.0657,0.1074,,,0.8269,0.0,0.0,0.0
+pilot2-materials-1g,claude-opus-5-5,16,J,std,main,False,3,11193,0.0719,0.132,,,0.7961,0.0,0.0,0.0
+pilot2-materials-1g,claude-opus-5-5,1,P,std,main,False,48,93429,0.0126,0.0445,,,0.9429,0.3354,0.0,0.0
+pilot2-materials-1g,claude-opus-5-5,16,S,std,main,False,3,395855,0.005,0.0503,,,0.9447,0.0,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,16,S,std,smoke,False,1,152151,0.0062,0.0381,,,0.9557,0.0,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,16,H,std,main,False,3,9626,0.0757,0.1052,,,0.819,0.0,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,16,J,std,main,False,3,11766,0.11,0.1255,,,0.7645,0.0,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,1,P,std,main,False,240,488910,0.0148,0.0421,,,0.9431,0.0531,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,16,S,std,main,False,3,413597,0.002,0.0394,,,0.9586,0.0,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,64,H,std,main,False,3,17591,0.1632,0.226,,,0.6108,0.0,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,64,J,std,main,False,3,29018,0.0855,0.208,,,0.7065,0.0,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,64,S,std,main,False,3,1491032,0.0053,0.0442,,,0.9504,0.0,0.0,0.0
+pilot2-materials-1g,claude-haiku-5-5,1,Q,std,main,False,48,126394,0.0993,0.0112,,,0.8895,0.0,0.0,0.0
+pilot2-materials-1g,claude-opus-5-5,1,Q,std,main,False,48,113307,0.005,0.0132,,,0.9818,0.1451,0.0,0.0
+pilot2-materials-1g,claude-sonnet-5-5,1,Q,std,main,False,48,114670,0.0068,0.012,,,0.9813,0.0,0.0,0.0
+pilot_k-pilot_k_smoke,claude-sonnet-5-5,16,K,n/a,smoke,False,1,16229,,,,,0.8403,0.0,0.0,0.0
+pilot_k-pilot_k_sonnet16,claude-sonnet-5-5,16,K,n/a,main,False,3,48059,,,,,0.8445,0.0,0.0,0.0
+pilot_k-pilot_k_sonnet64,claude-sonnet-5-5,64,K,n/a,main,False,3,153345,,,,,0.8744,0.0,0.0,0.0
+pilot_k2-A-reply,claude-sonnet-5-5,16,J,n/a,main,False,3,15434,0.057,0.0957,,,0.8473,0.0,0.0,0.0
+pilot_k2-A-reply,claude-sonnet-5-5,64,J,n/a,main,False,3,32376,0.0605,0.1864,,,0.7531,0.0,0.0,0.0
+pilot_k2-A-reply,claude-sonnet-5-5,64,K0,n/a,main,False,6,124974,0.0074,0.0848,,,0.8499,0.0,0.0,0.8668
+pilot_k2-A-reply,claude-sonnet-5-5,64,K1f,n/a,main,False,6,95788,0.0099,0.1282,,,0.7874,0.0,0.0,0.8273
+pilot_k2-B-art,claude-sonnet-5-5,16,J,n/a,main,False,3,44966,0.0123,0.0482,,,0.9395,0.0,0.0,0.0
+pilot_k2-B-art,claude-sonnet-5-5,64,J,n/a,main,False,3,99133,0.0047,0.0325,,,0.9629,0.0,0.0,0.0
+pilot_k2-B-art,claude-sonnet-5-5,16,K1f,n/a,main,False,6,44115,0.0,0.0497,0.0403,0.1067,0.7418,0.0,0.0,0.7916
+pilot_k2-B-art,claude-sonnet-5-5,64,K1f,n/a,main,False,6,80858,0.0072,0.0617,0.0589,0.058,0.7227,0.0,0.0,0.7915
+pilot_k2-B-art,claude-sonnet-5-5,16,K1r,n/a,main,False,6,60890,0.0009,0.0437,0.0294,0.077,0.8104,0.0,0.0,0.855
+pilot_k2-B-art,claude-sonnet-5-5,64,K1r,n/a,main,False,6,134520,0.0026,0.0467,0.0353,0.035,0.828,0.0,0.0,0.8773
+pilot_k2-B-reply,claude-sonnet-5-5,16,J,n/a,main,False,3,27942,0.0165,0.0617,,,0.9218,0.0,0.0,0.0
+pilot_k2-B-reply,claude-sonnet-5-5,64,J,n/a,main,False,3,53611,0.0241,0.1165,,,0.8594,0.0,0.0,0.0
+pilot_k2-B-reply,claude-sonnet-5-5,16,K1f,n/a,main,False,6,45319,0.0023,0.0785,0.0395,0.1037,0.7197,0.0,0.0,0.8005
+pilot_k2-B-reply,claude-sonnet-5-5,64,K1f,n/a,main,False,6,98274,0.0044,0.1086,0.0485,0.0478,0.7153,0.0,0.0,0.8282
+pilot_k2-C-art,claude-sonnet-5-5,64,J,n/a,main,False,3,130042,0.0049,0.0279,,,0.9672,0.0,0.0,0.0
+pilot_k2-C-art,claude-sonnet-5-5,64,K1r,n/a,main,False,6,179710,0.0008,0.0271,,,0.9265,0.0,0.0,0.5221
+pilot_k2-A-reply,claude-sonnet-5-5,64,K0,n/a,smoke,False,2,43001,0.0071,0.0783,,,0.8593,0.0,0.0,0.8718
+pilot_k2-B-art,claude-sonnet-5-5,64,K1f,n/a,smoke,False,2,26863,0.0086,0.0595,,,0.8456,0.0,0.0,0.7968
+pilot_k2-C-art,claude-sonnet-5-5,64,J,n/a,smoke,False,1,58500,0.0024,0.0296,,,0.968,0.0,0.0,0.0
+pilot_k2-C-art,claude-sonnet-5-5,64,K1r,n/a,smoke,False,2,57698,0.003,0.031,,,0.9208,0.0,0.0,0.5065
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,repair_adapter,clean,main,True,1,8535,0.1059,0.1132,0.5241,0.2568,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,* (all stages),clean,main,True,2,15647,0.1008,0.1338,0.485,0.2803,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,repair_core,clean,main,True,1,7112,0.0946,0.1586,0.4381,0.3086,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,repair_adapter,interrupt,main,True,1,8479,0.1012,0.1182,0.5231,0.2575,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,* (all stages),interrupt,main,True,2,16048,0.1265,0.1301,0.4705,0.2728,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,repair_core,interrupt,main,True,1,7569,0.1548,0.1435,0.4117,0.29,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,repair_adapter,stale,main,True,1,8193,0.0713,0.1214,0.5412,0.2661,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,* (all stages),stale,main,True,2,15767,0.1123,0.1315,0.4788,0.2774,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,1,repair_adapter,stale,main,True,1,3913,0.034,0.0335,0.3706,0.562,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,1,* (all stages),stale,main,True,2,7951,0.0728,0.0576,0.3197,0.5499,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,1,repair_core,stale,main,True,1,4038,0.1105,0.081,0.2703,0.5382,,0.0,0.0,0.0
+o1-repair-handoff-20/live1,claude-sonnet-5-5,4,repair_core,stale,main,True,1,7574,0.1566,0.1425,0.4114,0.2895,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,bounds,clean,main,False,1,2651,,,0.1407,0.8212,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,* (all stages),clean,main,False,3,8049,,,0.137,0.8119,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,classify,clean,main,False,1,2685,,,0.1356,0.8123,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,extract,clean,main,False,1,2713,,,0.1347,0.8023,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,bounds,interrupt,main,False,1,2656,,,0.1404,0.8216,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,* (all stages),interrupt,main,False,3,5263,0.0,0.0,0.14,0.8292,0.0,0.4953,0.4953,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,classify,interrupt,main,False,1,2607,,,0.1396,0.837,,1.0,1.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,1,classify,interrupt,main,False,2,4888,,,0.0763,0.8928,,1.0,1.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,1,* (all stages),interrupt,main,False,2,4888,,,0.0763,0.8928,,1.0,1.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,extract,interrupt,main,False,1,0,,,,,,,,
+step4-inspection-handoff-20/live1,unrecorded,4,bounds,stale,main,False,1,2653,,,0.1406,0.8214,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,* (all stages),stale,main,False,3,7965,,,0.1384,0.8198,,0.3266,0.3266,0.0
+step4-inspection-handoff-20/live1,unrecorded,1,bounds,stale,main,False,1,2409,,,0.0826,0.9032,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,1,* (all stages),stale,main,False,3,7272,,,0.0795,0.8977,,0.3373,0.3373,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,classify,stale,main,False,1,2601,,,0.1399,0.8366,,1.0,1.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,1,classify,stale,main,False,1,2453,,,0.0763,0.8899,,1.0,1.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,4,extract,stale,main,False,1,2711,,,0.1348,0.8021,,0.0,0.0,0.0
+step4-inspection-handoff-20/live1,unrecorded,1,extract,stale,main,False,1,2410,,,0.0795,0.9001,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,bounds,clean,main,False,1,2652,0.0,0.0381,0.1424,0.8196,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,* (all stages),clean,main,False,3,8046,0.0098,0.0414,0.1387,0.8101,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,classify,clean,main,False,1,2683,0.0294,0.0227,0.1374,0.8105,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,extract,clean,main,False,1,2711,0.0,0.0631,0.1365,0.8004,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,bounds,interrupt,main,False,1,2660,0.0,0.038,0.1419,0.8201,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,* (all stages),interrupt,main,False,3,8059,0.0098,0.0413,0.1385,0.8104,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,classify,interrupt,main,False,1,2685,0.0294,0.0227,0.1373,0.8106,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,extract,interrupt,main,False,1,2714,0.0,0.063,0.1363,0.8007,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,bounds,stale,main,False,1,2654,0.0,0.0381,0.1423,0.8197,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,* (all stages),stale,main,False,3,7969,0.0,0.0418,0.1401,0.8182,,0.3268,0.3268,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,1,bounds,stale,main,False,1,2411,0.0,0.0141,0.0836,0.9023,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,1,* (all stages),stale,main,False,3,7272,0.0088,0.0143,0.0805,0.8964,,0.3372,0.3372,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,classify,stale,main,False,1,2604,0.0,0.0234,0.1415,0.8351,,1.0,1.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,1,classify,stale,main,False,1,2452,0.0261,0.0086,0.0773,0.888,,1.0,1.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,4,extract,stale,main,False,1,2711,0.0,0.0631,0.1365,0.8004,,0.0,0.0,0.0
+step4-inspection-handoff-20/live2,claude-sonnet-5-5,1,extract,stale,main,False,1,2409,0.0,0.0203,0.0805,0.8991,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,bounds,clean,main,False,1,2653,0.0,0.0381,0.1423,0.8196,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,* (all stages),clean,main,False,3,8067,0.0118,0.0413,0.1384,0.8086,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,classify,clean,main,False,1,2701,0.0352,0.0226,0.1364,0.8058,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,extract,clean,main,False,1,2713,0.0,0.063,0.1364,0.8006,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,bounds,interrupt,main,False,1,2652,0.0,0.0381,0.1424,0.8196,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,* (all stages),interrupt,main,False,3,8055,0.0108,0.0413,0.1386,0.8093,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,classify,interrupt,main,False,1,2691,0.0323,0.0227,0.1369,0.8081,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,extract,interrupt,main,False,1,2712,0.0,0.0631,0.1364,0.8005,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,bounds,stale,main,False,1,2653,0.0,0.0381,0.1423,0.8196,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,* (all stages),stale,main,False,3,7971,0.0,0.0418,0.14,0.8182,,0.3271,0.3271,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,1,bounds,stale,main,False,1,2410,0.0,0.0141,0.0836,0.9023,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,1,* (all stages),stale,main,False,3,7216,0.0,0.0144,0.0811,0.9045,,0.3313,0.3313,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,classify,stale,main,False,1,2607,0.0,0.0234,0.1414,0.8352,,1.0,1.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,1,classify,stale,main,False,1,2391,0.0,0.0088,0.0793,0.912,,1.0,1.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,4,extract,stale,main,False,1,2711,0.0,0.0631,0.1365,0.8004,,0.0,0.0,0.0
+step4-inspection-handoff-20/live3,claude-sonnet-5-5,1,extract,stale,main,False,1,2415,0.0,0.0203,0.0803,0.8994,,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,A,block1,control,False,1,2604,0.0,0.0234,,,0.9766,1.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,B,block1,control,False,1,2754,0.037,0.0221,,,0.9408,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,C,block1,control,False,1,2722,0.0,0.0224,,,0.9776,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,B,block2,control,False,1,2736,0.0329,0.0223,,,0.9448,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,C,block2,control,False,1,2725,0.0,0.0224,,,0.9776,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,A,block2,control,False,1,2607,0.0,0.0234,,,0.9766,1.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,C,block3,control,False,1,2722,0.0,0.0224,,,0.9776,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,A,block3,control,False,1,2607,0.0,0.0234,,,0.9766,1.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,B,block3,control,False,1,2771,0.0447,0.022,,,0.9332,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,A,block4,control,False,1,2669,0.0,0.0468,,,0.9532,1.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,C,block4,control,False,1,2723,0.0,0.0224,,,0.9776,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,B,block4,control,False,1,2759,0.0424,0.0221,,,0.9355,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,C,block5,control,False,1,2720,0.0,0.0224,,,0.9776,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,B,block5,control,False,1,2753,0.0381,0.0222,,,0.9397,0.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,A,block5,control,False,1,2602,0.0,0.0234,,,0.9766,1.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,B,block6,control,False,1,2776,0.0,0.0695,,,0.9305,1.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,A,block6,control,False,1,2607,0.0,0.0234,,,0.9766,1.0,0.0,0.0
+boundary-probe,claude-sonnet-5-5,4,C,block6,control,False,1,2873,0.0529,0.0212,,,0.9259,0.0,0.0,0.0
+adopt-qual,claude-sonnet-5-5,4,q4,size4,control,False,9,25506,0.0301,0.0214,,,0.9485,0.1075,0.0,0.0
