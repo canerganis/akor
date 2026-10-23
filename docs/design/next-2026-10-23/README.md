@@ -14,3 +14,9 @@ Status 2026-10-23: step 1 done (no demonstrated actionable bottleneck, step1-res
 blocking: `status` should use the flow's injectable clock for `deadline_remaining_seconds`; the facade should stop
 importing the private `oz_do._accounting`. Step 3 (one committed use case qualified) needs the owner to confirm the use
 case and allocation first; recommended: `repair-handoff-20`, testing what the caller-cost study left open.
+
+2026-10-24: owner raised the weekly line to 60% (admission stop 58%). The H attribution candidate ([08](08-astra-h-attribution.md),
+[09](09-opus-zero-cost-bound.md), [10](10-astra-closes-and-next.md)) is closed with zero model calls: even at H's hard
+upper bound of 1,590 billed tokens per call, H is 20.3% of the prespecified gate cell (O1 all stages, n=4, clean),
+under the 25% threshold, so a shorter H cannot be a bottleneck fix. Next proposed by Astra: context offloading with
+large references and a full caller, on code review as the first new task family.
