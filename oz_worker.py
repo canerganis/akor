@@ -19,6 +19,7 @@ from typing import Callable
 from oz import Channel, Error
 from oz_accept import HEADER, REGISTRY, Inputs, decide, job_inputs, pin, run_checks
 from oz_batch import WIRE, valid_receipt
+import oz_fault
 from oz_reply import BINDING, LANGUAGE, PROTOCOL, RETRY_REASON, check_capabilities, loads, regroup, validate_usage
 from oz_runner import done_path, process_alive, process_identity, publish, read_capture, request_path
 from oz_runtime import Fenced, Inbox, Outcome
@@ -206,7 +207,8 @@ class Worker:
                  batch_size: int = 64, timeout: float = 120, retry_delay: float = 2,
                  context_policy: str = 'needed', min_batch: int = 1, max_wait: float = 0,
                  ledger_path: str | Path | None = None, tokenizer: str | None = None,
-                 epoch: int | None = None, route: dict | None = None, registry: dict | None = None):
+                 epoch: int | None = None, route: dict | None = None, registry: dict | None = None,
+                 response_check: Callable[[dict], str | None] | None = None):
         if not callable(adapter) or type(timeout) not in {int, float} or not 0 < timeout <= 3600:
             raise Error('invalid adapter or timeout')
         if (type(min_batch) is not int or not 1 <= min_batch <= batch_size
@@ -223,9 +225,14 @@ class Worker:
         self.options = dict(counters=tuple(counters), owner=owner, max_tokens=max_tokens, limit=batch_size,
                             lease_seconds=timeout + 30, context_policy=context_policy)
         self.retry_delay = retry_delay
-        if route is not None and (not isinstance(route, dict) or set(route) - {'model', 'effort', 'cli_version'}
+        if route is not None and (not isinstance(route, dict) or set(route) - set(ROUTE_KEYS)
                                   or any(v is not None and not isinstance(v, str) for v in route.values())):
-            raise Error('route takes model, effort and cli_version strings')
+            raise Error('route takes ' + ', '.join(ROUTE_KEYS) + ' strings')
+        if response_check is not None and not callable(response_check):
+            raise Error('response_check must be callable')
+        # Host check of a captured dispatch before any of its candidates is judged (for example the actual model in
+        # the retained provider envelope): a returned reason rejects every candidate of that call.
+        self.response_check = response_check
         if epoch is not None and type(epoch) is not int:
             raise Error('epoch must be an integer')
         self.timeout = timeout
@@ -319,6 +326,8 @@ class Worker:
         try:
             if durable:
                 response = self._invoke(request, receipt)
+                # Named boundary: the runner has published <receipt>.done; nothing is journaled or accepted yet.
+                oz_fault.point('worker.after_capture')
                 # Capture before interpretation (clause 5 step 3).
                 self.inbox.dispatch_captured(receipt, response=response)
             else:
@@ -360,8 +369,11 @@ class Worker:
             report['ledger_error'] = 'write_failed'
         if durable:
             dispatch = self.inbox.dispatch(receipt)
-            decisions = self._decisions(dispatch, grouped if failure is None else None,
-                                        None if failure is None else outcomes[ids[0]].text)
+            refused = self._refused(dispatch) if failure is None else None
+            if refused is not None:
+                report['response_check'] = refused
+            decisions = self._decisions(dispatch, grouped if failure is None and refused is None else None,
+                                        refused if failure is None else outcomes[ids[0]].text)
             settled = self.inbox.settle_dispatch(receipt, decisions, epoch=self.epoch, retry_delay=self.retry_delay,
                                                  report=report)
             states = {mid: STATUS.get(settled['jobs'].get(mid), 'late') for mid in ids}
@@ -384,10 +396,24 @@ class Worker:
 
     def _route(self) -> dict:
         """The execution route of this worker (clause 1): adapter identity, model, effort, CLI version and wire. A
-        field the caller did not give stays null (unknown), never guessed."""
-        return {'adapter': getattr(self.adapter, '__name__', type(self.adapter).__name__),
-                'model': self.route.get('model'), 'effort': self.route.get('effort'),
-                'cli_version': self.route.get('cli_version'), 'wire': WIRE}
+        field the caller did not give stays null (unknown), never guessed. A caller-pinned adapter identity (for
+        example argv plus script digest) replaces the class name; a pinned parser identity is added when given."""
+        route = {'adapter': self.route.get('adapter') or getattr(self.adapter, '__name__', type(self.adapter).__name__),
+                 'model': self.route.get('model'), 'effort': self.route.get('effort'),
+                 'cli_version': self.route.get('cli_version'), 'wire': WIRE}
+        if self.route.get('parser') is not None:
+            route['parser'] = self.route['parser']
+        return route
+
+    def _refused(self, dispatch: dict) -> str | None:
+        """The response check's reason for refusing every candidate of a captured dispatch, or None."""
+        if self.response_check is None:
+            return None
+        try:
+            reason = self.response_check(dispatch)
+        except Exception as exc:
+            reason = 'response check crashed (' + type(exc).__name__ + ')'
+        return None if reason is None else 'response_check: ' + str(reason)[:200]
 
     def _invoke(self, request: dict, receipt: str) -> dict:
         if isinstance(self.adapter, StdioAdapter):
@@ -455,6 +481,8 @@ class Worker:
                     continue
             grouped, reason = _interpret(d) if d['state'] == 'captured' else (None, (d['error'] or 'adapter_failure')
                                                                                  + ' (recovered)')
+            if grouped is not None and self._refused(d) is not None:
+                grouped, reason = None, self._refused(d)
             result = self.inbox.settle_dispatch(
                 receipt, self._decisions(d, grouped, reason), epoch=self.epoch, retry_delay=self.retry_delay,
                 report={'status': 'recovered', 'receipt': receipt, 'dispatch_state': d['state'],
@@ -573,6 +601,7 @@ class Worker:
         return self._record('call_end', call, **fields)
 
 
+ROUTE_KEYS = ('model', 'effort', 'cli_version', 'adapter', 'parser')
 STATUS = {'done': 'ok', 'pending': 'retry', 'failed': 'failed', 'checking': 'checking',
           'quarantined': 'quarantined', 'stale': 'late', 'ignored': 'late'}
 

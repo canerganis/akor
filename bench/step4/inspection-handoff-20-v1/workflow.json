@@ -1,0 +1,198 @@
+{
+ "workflow": "inspection-handoff-20/v1",
+ "label": "executor conformance gate (step 4); conformance passed is not the owner's real-workflow criterion (O1)",
+ "target": {
+  "name": "inspection_handoff",
+  "weight": 1
+ },
+ "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+ "instruction_source": "bench/live/live2.py MAT_D e, b, v with c[N]'s replaced by the ref's (live11 arm H, size gates)",
+ "model_ops": {
+  "model.extract": {
+   "name": "extract",
+   "version": 1,
+   "instruction": "Return a compact JSON array of strings containing the ref's length, uncertainty, n, method, basis, physical_validation, in that order, preserving field values exactly.",
+   "checks": [
+    {
+     "check": "mat_fields"
+    }
+   ],
+   "memo": true
+  },
+  "model.bounds": {
+   "name": "bounds",
+   "version": 1,
+   "instruction": "Return a compact JSON array [length-uncertainty,length+uncertainty], each formatted as a string with two decimal places and unit mm. If uncertainty is unknown, return unknown.",
+   "checks": [
+    {
+     "check": "mat_bounds"
+    }
+   ],
+   "memo": true
+  },
+  "model.classify": {
+   "name": "classify",
+   "version": 1,
+   "instruction": "Return inside if the entire length +/- uncertainty interval lies within the goal's acceptance interval; outside otherwise. If uncertainty is unknown, return unknown.",
+   "checks": [
+    {
+     "check": "mat_classify"
+    }
+   ],
+   "memo": true
+  }
+ },
+ "host_ops": [
+  "host.snapshot@1",
+  "host.normalize@1",
+  "host.check_intervals@1",
+  "host.handoff_rows@1",
+  "host.render_json@1",
+  "host.render_markdown@1",
+  "host.verify_package@1",
+  "host.publish@1"
+ ],
+ "effects": [
+  "local_publish"
+ ],
+ "sources": {
+  "A": "sources/A.txt",
+  "B": "sources/B.txt",
+  "C": "sources/C.txt",
+  "D": "sources/D.txt"
+ },
+ "mutations": {
+  "stale": {
+   "source": "A",
+   "file": "sources/A.rev2.txt",
+   "hook": "flow.committed:checked_intervals",
+   "note": "after node 11 commits and before classification dispatch: A length 12.50 mm -> 12.55 mm"
+  },
+  "bump": {
+   "source": "A",
+   "file": "sources/A.txt",
+   "hook": "flow.committed:checked_intervals",
+   "note": "same hook; identical bytes, new authoritative revision"
+  }
+ },
+ "route": {
+  "model": "claude-sonnet-5-5",
+  "effort": "default",
+  "cli_version": "2.1.306",
+  "transport": "claude -p, no tools",
+  "adapter_script": "examples/claude_cli_adapter.py",
+  "parser": "oz1g-header/1",
+  "profile": "oz1g-selective-v1",
+  "durable": true,
+  "alias_map": {
+   "claude-sonnet-5-5": "claude-sonnet-5-5"
+  }
+ },
+ "fixture_route": {
+  "model": "fixture-oracle-1",
+  "effort": "fixture",
+  "cli_version": "fixture",
+  "adapter_script": "bench/step4/fixture_adapter.py",
+  "parser": "oz1g-header/1"
+ },
+ "packets": {
+  "sizes": [
+   4,
+   1
+  ],
+  "experimental_sizes": [
+   4
+  ],
+  "max_attempts": 2,
+  "cross_run_batching": false,
+  "note": "size-4 stages are an experimental composition (four records, one operation) with oracle proof; size-1 recovery uses the qualified Sonnet size-1 cell"
+ },
+ "deadlines": {
+  "scenario_seconds": 3600,
+  "call_timeout_seconds": 300,
+  "suite_envelope_seconds": 14400
+ },
+ "budgets": {
+  "executor": {
+   "max_tokens": 60000,
+   "max_launches": 16,
+   "max_launches_per_flow": 8,
+   "reserve_per_launch": 5000,
+   "estimate_tokens": 28500
+  },
+  "baseline": {
+   "max_tokens": 20000,
+   "max_launches": 5,
+   "reserve_per_launch": 6000,
+   "expected_calls": 4
+  }
+ },
+ "scenarios": [
+  {
+   "name": "clean",
+   "namespace": "own",
+   "mutation": null,
+   "faults": [],
+   "expected_launches": 3,
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "expected_memo_hits": 0
+  },
+  {
+   "name": "repeat",
+   "namespace": "clean",
+   "mutation": null,
+   "faults": [],
+   "expected_launches": 0,
+   "expected_packets": [],
+   "expected_memo_hits": 12
+  },
+  {
+   "name": "interrupt",
+   "namespace": "own",
+   "mutation": null,
+   "faults": [
+    "worker.after_capture",
+    "flow.publish.after_manifest"
+   ],
+   "expected_launches": 3,
+   "expected_packets": [
+    4,
+    4,
+    4
+   ],
+   "expected_memo_hits": 0
+  },
+  {
+   "name": "stale",
+   "namespace": "own",
+   "mutation": "stale",
+   "faults": [],
+   "expected_launches": 5,
+   "expected_packets": [
+    4,
+    4,
+    1,
+    1,
+    4
+   ],
+   "expected_memo_hits": 6
+  },
+  {
+   "name": "bump",
+   "namespace": "clean",
+   "mutation": "bump",
+   "faults": [],
+   "expected_launches": 0,
+   "expected_packets": [],
+   "expected_memo_hits": 20
+  }
+ ],
+ "reruns": {
+  "model_reply_failure": 1,
+  "note": "one scenario rerun within the same caps; failed work stays counted"
+ }
+}

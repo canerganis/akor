@@ -1,0 +1,36 @@
+{
+ "frozen": {
+  "bench/step4/inspection-handoff-20-v1/baseline/prompt-rev1.txt": "4053925d3b7b02ba0df420c3d018be486a47164a11ad04f6d8ebb15cee971b73",
+  "bench/step4/inspection-handoff-20-v1/baseline/prompt-rev2.txt": "8646418fa9047861f4e0602add9e39a9f0b7dadaa802a25f04960fddcb01b4ba",
+  "bench/step4/inspection-handoff-20-v1/baseline/system.txt": "ea38f6b341559e92806477611e927ba44f7502a18687f3afd836d1286f2740be",
+  "bench/step4/inspection-handoff-20-v1/expected.json": "b812d776c2ab92ea444214353b3edfc3aa414c63753b5505e29b308e3cb756f8",
+  "bench/step4/inspection-handoff-20-v1/graph.json": "4fea1b250e17af00d0c83686b9b8209b05e835ce5bfe1c8bbaea44f6db2a3372",
+  "bench/step4/inspection-handoff-20-v1/sources/A.rev2.txt": "f8eeb7b4cbc3747f3593a530070f1d06f12ee6dff64237035cb123a4da54b170",
+  "bench/step4/inspection-handoff-20-v1/sources/A.txt": "9b8956aadcaf18a51947ba10c90572ef41b6787418b3545c35279cf76e257614",
+  "bench/step4/inspection-handoff-20-v1/sources/B.txt": "b5e2dcad0a904f8c6df5f446e6ebf6d29f1fd0e4b89797d7fd89b08da3d66911",
+  "bench/step4/inspection-handoff-20-v1/sources/C.txt": "9667c65ca36d12d82b71a299c11406f799b3d3d3f29d64080a6e220cd6b2d2f5",
+  "bench/step4/inspection-handoff-20-v1/sources/D.txt": "f70e35ba2e6138925afb243c8d78f4f880d25ae11ede1cbd242deffab64277c0",
+  "bench/step4/inspection-handoff-20-v1/workflow.json": "69f220a8ce22c73e53957103669250dce11f499f52a17ef87a4941096f0057ab"
+ },
+ "code": {
+  "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
+  "oz_batch.py": "50ecdd28f5dda7c4479a0160b8860b6cad87727dbb448f7eddc0f15553d622cb",
+  "oz_reply.py": "dc58230288900c0eee17a2f230b30feaf993e15e90fda12d488b644505633ab4",
+  "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
+  "oz_runtime.py": "ceea48b7e78aa35b1b6ddf6d856c35837de94f7e42fe85f7abe9f91eeaaa0fae",
+  "oz_worker.py": "02ac924b95fae71e884631b3970e68dc7780443029af4fb98a958576655734e9",
+  "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
+  "oz_do.py": "bfa2a91da640e150938b30d11e3fd8cc8a5c085718ec21ee39f9e25e0b3e120a",
+  "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
+  "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
+  "oz_flow.py": "e9537afef8bb4956f0a68c1c0e6ea9e09741630c8235401a3630c6d3c5ffcd71",
+  "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
+  "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
+  "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
+  "bench/step4/workflow.py": "cdaa26c184bd1c3e4ed3bf969d2db691b9818254bd3db3a37cb9ea15bcf2bdeb",
+  "bench/step4/evaluator.py": "13bd4d10a6d7190abd7fb46c340e2b12f4c407fdf8b0a22a205ff9b833bc532e",
+  "bench/step4/fixture_adapter.py": "a6663d2a5f2ecf93dac4cd3e601332b5f27b487c92a9fa66047ee5a57a2703b2",
+  "bench/step4/step4.py": "fc010cf9c77a952f172b01f0f3b6fb6b80fa2ca3f7f5f40013f94e2f47328825"
+ },
+ "digest": "3ccadb65bfd2f197ba07e4d2b7d3af5428e5116de9b31dd520e394321f4247d0"
+}

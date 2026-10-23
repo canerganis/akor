@@ -112,6 +112,12 @@ def done_path(directory, receipt: str) -> Path:
     return Path(directory) / f'{receipt}.done'
 
 
+def envelope_path(directory, receipt: str) -> Path:
+    """Where an adapter that keeps its raw provider envelope writes it (OZ_ENVELOPE_PATH); the runner folds it into the
+    completion record, so the envelope is bound to the same receipt and request bytes."""
+    return Path(directory) / f'{receipt}.envelope'
+
+
 def read_capture(directory, receipt: str, request_sha256: str | None = None) -> dict | None:
     """The completed capture of a receipt, or None. A file that is missing, not one JSON object of this schema, bound to
     another receipt or (when given) to other request bytes, does not count."""
@@ -138,9 +144,11 @@ def main(argv: list[str]) -> int:
     directory, receipt, command = Path(argv[0]), argv[1], argv[3:]
     data = request_path(directory, receipt).read_bytes()
     digest = hashlib.sha256(data).hexdigest()
+    envelope = envelope_path(directory, receipt)
     try:
         proc = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                env=dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1'),
+                                env=dict(os.environ, PYTHONIOENCODING='utf-8', PYTHONUTF8='1',
+                                         OZ_ENVELOPE_PATH=str(envelope)),
                                 creationflags=subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0)
     except OSError:
         # The adapter never started, so it never ran: publish that fact (confirmed non-execution), not a failed run.
@@ -154,6 +162,11 @@ def main(argv: list[str]) -> int:
     record = {'v': CAPTURE_SCHEMA, 'receipt': receipt, 'request_sha256': digest,
               'exit_code': proc.returncode, 'stdout_b64': base64.b64encode(stdout).decode('ascii'),
               'stderr_bytes': len(stderr), 'runner': process_identity(os.getpid()), 'adapter': child}
+    try:
+        # The adapter's raw provider envelope, when it wrote one (additive field; absent means not kept).
+        record['envelope_b64'] = base64.b64encode(envelope.read_bytes()).decode('ascii')
+    except OSError:
+        pass
     publish(done_path(directory, receipt), json.dumps(record, separators=(',', ':')).encode('utf-8'))
     return 0
 

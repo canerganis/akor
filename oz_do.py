@@ -21,13 +21,15 @@ import json
 import os
 from pathlib import Path
 import re
+import sqlite3
 import time
 import uuid
 from dataclasses import replace
 
 from oz import Channel, Error, Reference
-from oz_accept import HEADER, PROFILES, SELECTIVE, pin, summary
-from oz_batch import J, valid_id
+from oz_accept import HEADER, PROFILES, REGISTRY, SELECTIVE, compute_key, job_inputs, pin, run_checks, summary
+from oz_batch import WIRE, J, render, valid_id
+from oz_memo import MemoStore, sha256 as text_sha256
 from oz_reply import ERROR_CODES, USAGE_FIELDS, RawJSON, loads
 from oz_runtime import Inbox
 from oz_worker import Worker
@@ -79,7 +81,7 @@ def _inside(root: Path, name: str) -> Path:
     return path
 
 
-def normalize(request: dict, *, allow: Path, config: dict) -> dict:
+def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dict:
     """Validated request with file references read inside allow. Raises Error before anything is stored."""
     if not isinstance(request, dict) or set(request) - OPTIONS:
         raise Error('request keys must be among: ' + ', '.join(sorted(OPTIONS)))
@@ -151,7 +153,7 @@ def normalize(request: dict, *, allow: Path, config: dict) -> dict:
     if profile != HEADER:
         # Only a non-default profile enters the work (and its digest), so default requests keep their identity.
         work['profile'] = profile
-        work['checks'] = {k: list(pin(checks[k])) for k in work['ops'] if checks and checks.get(k)}
+        work['checks'] = {k: list(pin(checks[k], registry)) for k in work['ops'] if checks and checks.get(k)}
     digest = hashlib.sha256(J(work).encode('utf-8')).hexdigest()
     return dict(work=work, texts=texts, sha256=digest, request_id=request_id or 'h' + digest[:16], model=model,
                 allow_experimental=request.get('allow_experimental', False), deadline=deadline,
@@ -174,7 +176,7 @@ def _channels(req: dict) -> tuple[Channel, Channel]:
     return Channel(recipient='host', **base), Channel(recipient='worker', **base)
 
 
-def _create_run(root: Path, req: dict, config: dict) -> Path:
+def _create_run(root: Path, req: dict, config: dict, registry=None) -> Path:
     """The run directory, created once; an existing one must hold exactly this work."""
     run = root / 'do' / req['request_id']
     run.mkdir(parents=True, exist_ok=True)
@@ -201,7 +203,8 @@ def _create_run(root: Path, req: dict, config: dict) -> Path:
         for mid, op, *uses in req['work']['jobs']:
             box.post(work, mid, ':' + req['work']['ops'][op], binding=work.binding,
                      after=['ref-' + n for n in uses], max_attempts=req['work']['max_attempts'],
-                     profile=req['work'].get('profile', HEADER), checks=req['work'].get('checks', {}).get(op))
+                     profile=req['work'].get('profile', HEADER), checks=req['work'].get('checks', {}).get(op),
+                     registry=registry)
     return run
 
 
@@ -305,27 +308,119 @@ def _outcome(mid: str, row: dict | None, blocker: dict | None, now: float, run: 
     return dict({'status': 'unresolved', 'attempts': row['attempts']}, **reason)
 
 
-def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic) -> dict:
+def _render_inputs(channel: Channel, req: dict, mid: str):
+    """The model-visible inputs of one job exactly as a packet carries them (the instruction and each reference text,
+    cut from the rendered body bytes). Packet siblings do not enter them (the declared independence contract)."""
+    row = next(r for r in req['work']['jobs'] if r[0] == mid)
+    packet = render(channel, [(mid, ':' + req['work']['ops'][row[1]])], counters=[len],
+                    handoffs=[(mid, 'ref-' + n, req['texts'][n]['text']) for n in row[2:]])
+    return job_inputs(packet.text, packet.job_map)[mid]
+
+
+def _provenance(root: Path, entry: dict, key: str, route: dict) -> str | None:
+    """None when the entry's provenance is an accepted candidate of a real dispatch on this route with these value
+    bytes in its run's authoritative SQLite, else why not."""
+    p = entry['provenance']
+    if not isinstance(p, dict) or not isinstance(p.get('run_dir'), str):
+        return 'provenance missing'
+    inbox = (root / p['run_dir']).resolve() / 'inbox.sqlite'
+    if root not in inbox.parents or not inbox.exists():
+        return 'provenance run not found'
+    db = sqlite3.connect(str(inbox), timeout=10)
+    try:
+        c = db.execute('SELECT value,compute_key,status,receipt FROM candidates WHERE seq=? AND job=?',
+                       (p.get('candidate'), p.get('job'))).fetchone()
+        d = db.execute('SELECT route FROM dispatches WHERE receipt=?', (p.get('receipt'),)).fetchone()
+    except sqlite3.Error:
+        return 'provenance unreadable'
+    finally:
+        db.close()
+    if c is None or c[2] != 'accepted' or c[3] != p.get('receipt') or c[1] != key or c[0] != entry['value']:
+        return 'provenance does not hold this accepted value'
+    if d is None or json.loads(d[0]) != route:
+        return 'provenance dispatch ran on another route'
+    return None
+
+
+def memo_lookup(store: MemoStore, namespace: str, key: str, route: dict, inputs, checks, registry, root: Path):
+    """(decision, entry, detail) for one consumer job (clause 4): hit (detail: verdicts), pending (a check is
+    inconclusive; the hit waits and nothing is dispatched for it) or miss (detail: why each entry was refused).
+    Integrity, revocation, route, provenance and the consumer's own pinned checks, rerun on the stored value against
+    the consumer's inputs, must all hold for a hit."""
+    refused = []
+    for entry in store.entries(namespace, key):
+        why = ('revoked: ' + entry['revoked'] if entry['revoked'] else
+               'integrity: value digest mismatch' if text_sha256(entry['value']) != entry['value_sha256'] else
+               'route mismatch' if entry['route'] != route else _provenance(root, entry, key, route))
+        if why is None:
+            verdicts = run_checks(entry['value'], inputs, checks, registry)
+            if any(v['verdict'] == 'inconclusive' for v in verdicts):
+                return 'pending', entry, verdicts
+            if all(v['verdict'] == 'pass' for v in verdicts) and any(v['job_bound'] for v in verdicts):
+                return 'hit', entry, verdicts
+            why = 'revalidation failed: ' + ', '.join(v['check'] for v in verdicts if v['verdict'] != 'pass')
+        refused.append({'entry': entry['id'], 'reason': why})
+    return 'miss', None, refused
+
+
+def plan_sizes(misses: int, sizes) -> list:
+    """Packet sizes for misses jobs: the largest allowed size that fits, repeatedly (no padding, no other sizes)."""
+    out = []
+    while misses > 0:
+        fit = max((s for s in sizes if s <= misses), default=None) if sizes else misses
+        if fit is None:
+            return out + [misses]
+        out.append(fit)
+        misses -= fit
+    return out
+
+
+def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic, route=None, registry=None,
+       memo=None, quota=None, admit=None, response_check=None, packet_sizes=None, experimental_sizes=(),
+       plan_only=False) -> dict:
     """Run one oz do request to completion or its deadline and return the compact result (see USAGE.md).
 
     request is a dict or JSON text. adapter is the adapter JSON file (as for `oz run`) or a callable adapter with a
     capabilities attribute; a callable is not interrupted at the deadline. allow is the directory reference paths
-    must resolve inside (default: the workspace root)."""
+    must resolve inside (default: the workspace root).
+
+    Host-side options (Python only, never read from the request; all off by default, so the shipped behavior is
+    unchanged), each needing "profile": "oz1g-selective-v1" except route and registry: route pins further
+    execution-route fields (effort, cli_version, adapter, parser) next to the request's model; registry is the check
+    registry. memo = {"store": MemoStore, "namespace": str, "ops": [op names]} makes those operations memo-eligible
+    (clause 4): an eligible job whose computation already has an accepted entry is accepted without a call once
+    integrity, provenance and its own pinned checks hold, and every accepted call result is published. quota =
+    {"store": oz_quota.Quota, "group": str} reserves the quota-group slot before each call. admit(size) returns None
+    or a blocker before each call (budget, deadline, route rechecks). response_check(dispatch) may refuse every
+    candidate of a captured call (for example an unexpected model in the retained envelope). packet_sizes limits
+    packets to those job counts (the largest that fits); experimental_sizes are labeled experimental even where a
+    qualified cell exists (a packet composition the gate did not sample). plan_only makes the memo decisions and the
+    packet plan without storing, posting, accepting or calling anything."""
     started = clock()
     if isinstance(request, str):
         request = loads(request)
     space = Workspace(Path(workspace))
     root = space.root
     allow = Path(allow).resolve() if allow is not None else root
-    req = normalize(request, allow=allow, config=space.config)
-    if adapter is None:
+    registry = REGISTRY if registry is None else registry
+    req = normalize(request, allow=allow, config=space.config, registry=registry)
+    if adapter is None and not plan_only:
         raise Error('an explicit adapter is required (adapter JSON file or callable)')
-    run = _create_run(root, req, space.config)
+    selective = req['work'].get('profile') == SELECTIVE
+    if (memo is not None or quota is not None or packet_sizes or plan_only) and not selective:
+        raise Error(f'memo, quota, packet sizes and plan-only need "profile": "{SELECTIVE}"')
+    if packet_sizes is not None and (not packet_sizes or any(type(n) is not int or not 1 <= n <= 64
+                                                             for n in packet_sizes)):
+        raise Error('packet_sizes must list job counts 1..64')
+    route_fields = dict({'model': req['model']}, **(route or {}))
+    if plan_only:
+        return _plan_only(req, root, route_fields, registry, memo, packet_sizes, clock() - started)
+    run = _create_run(root, req, space.config, registry)
     runspace = Workspace(run)
     refs, work = runspace.channel('refs'), runspace.channel('worker')
     ids = [r[0] for r in req['work']['jobs']]
     calls, blocker = [], None
-    selective = req['work'].get('profile') == SELECTIVE
+    memo_report = {}
 
     def file_adapter(timeout):
         made = adapter_from_file(Path(adapter), timeout=timeout)
@@ -341,8 +436,13 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
                         max_tokens=req['max_tokens'], retry_delay=0, ledger_path=run / 'calls.jsonl',
                         tokenizer=space.config['encodings'][0],
                         # Each selective foreground call is a new coordinator epoch: an older one cannot commit.
-                        epoch=box.take_over() if selective else None, route={'model': req['model']})
-        while True:
+                        epoch=box.take_over() if selective else None, route=route_fields, registry=registry,
+                        response_check=response_check)
+        if memo is not None:
+            # Earlier dispatches are reconciled first, so a captured reply is adopted rather than replaced by a memo.
+            worker.recover()
+            blocker = _memo_phase(box, work, req, root, run, worker, memo, registry, memo_report)
+        while blocker is None:
             if selective:
                 worker.recover()
             remaining = req['deadline'] - (clock() - started)
@@ -356,14 +456,39 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
                 blocker = {'reason': 'deadline'}
                 break
             size = len(plan.packet.job_map)
-            profile = size_profile(req['model'], size)
+            if packet_sizes:
+                fit = max((n for n in packet_sizes if n <= size), default=None)
+                if fit is None:
+                    blocker = {'reason': 'unsupported_size', 'size': size, 'model': req['model']}
+                    break
+                worker.options['limit'] = fit
+                if fit != size:
+                    plan = box.plan(work, counters=counters, limit=fit, max_tokens=req['max_tokens'],
+                                    receipt=box.next_receipt())
+                    size = len(plan.packet.job_map)
+            profile = 'experimental' if size in experimental_sizes else size_profile(req['model'], size)
             if profile == 'unsupported' or profile == 'experimental' and not req['allow_experimental']:
                 blocker = {'reason': ('unsupported_size' if profile == 'unsupported'
                                       else 'experimental_size_not_authorized'), 'size': size, 'model': req['model']}
                 break
+            if admit is not None:
+                blocker = admit(size)
+                if blocker is not None:
+                    break
             if not callable_adapter:
                 worker.adapter = file_adapter(min(req['call_timeout'], remaining))
+            slot, receipt = None, box.next_receipt()
+            if quota is not None:
+                slot = quota['store'].acquire(quota['group'], run_dir=run, receipt=receipt)
+                if slot['status'] != 'acquired':
+                    blocker = {'reason': 'quota_slot_held', 'detail': slot['reason']}
+                    break
             report = worker.run_once()
+            if slot is not None:
+                held = box.dispatch(receipt)
+                # Released only once the call is reconciled; an uncertain call keeps its slot (clauses 5 and 7).
+                if held is None or held['state'] in ('captured', 'failed_call', 'not_launched'):
+                    quota['store'].release(quota['group'], slot['token'])
             if report['status'] == 'fenced':
                 blocker = {'reason': 'coordinator_superseded'}
                 break
@@ -372,11 +497,15 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
             entry = {'jobs': size, 'profile': profile, 'status': report['status']}
             if report.get('error_code'):
                 entry['error_code'] = report['error_code']
+            if report.get('response_check'):
+                entry['response_check'] = report['response_check']
             calls.append(entry)
             if report.get('call_id'):
                 with (run / 'do.jsonl').open('a', encoding='utf-8') as file:
                     file.write(J({'call_id': report['call_id'], 'jobs': size, 'profile': profile,
                                   'model': req['model']}) + '\n')
+        if memo is not None:
+            _memo_publish(box, req, root, run, memo)
         rows = box.records(ids)
         now = box.clock()
         journal = box.dispatches() if selective else []
@@ -386,24 +515,106 @@ def do(request, *, workspace='.', adapter=None, allow=None, clock=time.monotonic
             if c['status'] == 'accepted' and c['job'] in rows:
                 evidence[c['job']] = {'profile': SELECTIVE, 'summary': summary(c['verdicts']),
                                       'checks': [f"{v['check']}@{v['version']}" for v in c['verdicts']]}
+                if c['receipt'].startswith('memo:'):
+                    evidence[c['job']]['memo_entry'] = c['receipt'][5:]
     jobs = {mid: _outcome(mid, rows.get(mid), blocker, now, run, root, req['max_inline'], evidence.get(mid))
             for mid in ids}
     counts = {}
     for outcome in jobs.values():
         counts[outcome['status']] = counts.get(outcome['status'], 0) + 1
     accounting = _accounting(run, journal)
-    return {'schema': RESULT_SCHEMA,
-            'status': 'complete' if 'unresolved' not in counts else 'incomplete',
-            'counts': counts,
-            'jobs': jobs,
-            'evidence': ({'scope': 'per_job_checks', 'profile': SELECTIVE, 'checks_run': checks_run,
-                          'id_binding': 'declared'} if selective else
-                         {'scope': 'model_declared', 'checks_run': 0, 'id_binding': 'declared'}),
-            'calls': calls,
-            'accounting': accounting,
-            # What a qualified_cell label covers, shown only when one was used.
-            'qualification': QUALIFICATION if accounting['qualified_cell_calls'] else None,
-            'blocker': blocker,
-            'run': {'workspace': str(root), 'run_dir': run.relative_to(root).as_posix(), 'request_id': req['request_id'],
-                    'request_sha256': req['sha256'], 'binding': work.binding, 'model': req['model'],
-                    'elapsed_seconds': round(clock() - started, 3)}}
+    result = {'schema': RESULT_SCHEMA,
+              'status': 'complete' if 'unresolved' not in counts else 'incomplete',
+              'counts': counts,
+              'jobs': jobs,
+              'evidence': ({'scope': 'per_job_checks', 'profile': SELECTIVE, 'checks_run': checks_run,
+                            'id_binding': 'declared'} if selective else
+                           {'scope': 'model_declared', 'checks_run': 0, 'id_binding': 'declared'}),
+              'calls': calls,
+              'accounting': accounting,
+              # What a qualified_cell label covers, shown only when one was used.
+              'qualification': QUALIFICATION if accounting['qualified_cell_calls'] else None,
+              'blocker': blocker,
+              'run': {'workspace': str(root), 'run_dir': run.relative_to(root).as_posix(),
+                      'request_id': req['request_id'], 'request_sha256': req['sha256'], 'binding': work.binding,
+                      'model': req['model'], 'elapsed_seconds': round(clock() - started, 3)}}
+    if memo is not None:
+        result['memo'] = memo_report
+    return result
+
+
+def _memo_phase(box, work, req, root, run, worker, memo, registry, report) -> dict | None:
+    """Memo lookups for the request's unsettled eligible jobs before any dispatch; each hit is adopted in its own
+    conditional transaction and every decision is recorded. Returns a blocker when a hit is pending revalidation."""
+    store, namespace, ops = memo['store'], memo['namespace'], set(memo['ops'])
+    ids = [r[0] for r in req['work']['jobs']]
+    rows = box.records(ids)
+    contracts = box.contracts(ids)
+    route = worker._route()
+    blocker = None
+    for mid, op, *_ in req['work']['jobs']:
+        if op not in ops or rows[mid]['state'] == 'done':
+            continue
+        inputs = _render_inputs(work, req, mid)
+        key = compute_key(req['work']['goal'], inputs, route)
+        decision, entry, detail = memo_lookup(store, namespace, key, route, inputs, contracts[mid][1], registry, root)
+        reason = None
+        if decision == 'hit':
+            state = box.adopt_memo(mid, entry=str(entry['id']), compute_key=key, value=entry['value'],
+                                   text=entry['stored'], verdicts=detail, inputs=inputs, epoch=worker.epoch)
+            if state != 'done':
+                decision, reason = 'refused', state
+        elif decision == 'pending':
+            blocker = blocker or {'reason': 'memo_revalidation_pending', 'job': mid}
+        else:
+            reason = J(detail) if detail else 'no entry'
+        store.record(namespace, key, run.relative_to(root).as_posix() + ':' + mid, decision,
+                     entry=entry['id'] if entry else None, reason=reason)
+        report[mid] = {'decision': decision, 'compute_key': key, 'entry': entry['id'] if entry else None,
+                       'inputs_sha256': text_sha256(J([s['refs'] for s in inputs.slots]))}
+        if reason is not None:
+            report[mid]['reason'] = reason
+    return blocker
+
+
+def _memo_publish(box, req, root, run, memo):
+    """Publish every accepted candidate of a real dispatch of a memo-eligible operation (never a memo hit again)."""
+    ops = set(memo['ops'])
+    op_of = {r[0]: r[1] for r in req['work']['jobs']}
+    for c in box.candidates(status='accepted'):
+        if c['receipt'].startswith('memo:') or op_of.get(c['job']) not in ops or c['compute_key'] is None:
+            continue
+        d = box.dispatch(c['receipt'])
+        if d is None:
+            continue
+        memo['store'].publish(memo['namespace'], c['compute_key'], value=c['value'], stored=c['stored'],
+                              route=d['route'], checks=c['checks'], verdicts=c['verdicts'],
+                              provenance={'run_dir': run.relative_to(root).as_posix(),
+                                          'request_id': req['request_id'], 'receipt': c['receipt'],
+                                          'candidate': c['seq'], 'job': c['job']})
+
+
+def _plan_only(req, root, route, registry, memo, packet_sizes, elapsed) -> dict:
+    """Memo decisions and the packet plan for a request, with nothing stored, posted, accepted or called."""
+    _, work = _channels(req)
+    route = {'adapter': route.get('adapter'), 'model': route.get('model'), 'effort': route.get('effort'),
+             'cli_version': route.get('cli_version'), 'wire': WIRE,
+             **({'parser': route['parser']} if route.get('parser') is not None else {})}
+    checks = req['work'].get('checks', {})
+    decisions, misses = {}, 0
+    for mid, op, *_ in req['work']['jobs']:
+        inputs = _render_inputs(work, req, mid)
+        key = compute_key(req['work']['goal'], inputs, route)
+        if memo is not None and op in set(memo['ops']):
+            decision, entry, detail = memo_lookup(memo['store'], memo['namespace'], key, route, inputs,
+                                                  checks.get(op, []), registry, root)
+        else:
+            decision, entry, detail = 'miss', None, 'not memo-eligible'
+        decisions[mid] = {'decision': decision, 'compute_key': key, 'entry': entry['id'] if entry else None}
+        if decision != 'hit':
+            decisions[mid]['reason'] = detail
+        misses += decision != 'hit'
+    return {'schema': RESULT_SCHEMA, 'status': 'planned',
+            'plan': {'memo': decisions, 'misses': misses, 'packets': plan_sizes(misses, packet_sizes), 'launched': 0},
+            'run': {'request_id': req['request_id'], 'request_sha256': req['sha256'], 'model': req['model'],
+                    'elapsed_seconds': round(elapsed, 3)}}

@@ -953,6 +953,40 @@ class Inbox:
                 raise Error('candidate changed during settlement; nothing applied')
         return state
 
+    def adopt_memo(self, mid: str, *, entry: str, compute_key: str, value: str, text: str, verdicts, inputs,
+                   epoch: int) -> str:
+        """Accept a memo entry for one unresolved selective job in one conditional transaction (clause 4): the job's
+        pinned computation key must equal compute_key (an unpinned job is pinned to it here), verdicts are the job's
+        own pinned checks rerun on the stored value against this job's inputs, and the acceptance association is a new
+        candidate row with receipt memo:<entry>. A job that is settled, leased by a live dispatch, cancelled or failed
+        by the model is never touched. Returns done, or the reason nothing changed. No model call, no attempt."""
+        if any(v['verdict'] != 'pass' for v in verdicts) or not any(v['job_bound'] for v in verdicts):
+            raise Error('a memo hit needs every pinned check to pass, one of them job-bound')
+        with self._transaction():
+            if epoch != self.epoch():
+                return 'fenced'
+            row = self.db.execute('SELECT * FROM jobs WHERE id=?', (mid,)).fetchone()
+            if row is None or row['profile'] != SELECTIVE:
+                return 'not_selective'
+            live = (row['state'] in ('pending', 'checking', 'quarantined')
+                    or (row['state'] == 'failed' and row['failure_kind'] == 'exhausted')
+                    or (row['state'] == 'leased' and row['deadline'] <= self.clock()))
+            if not live:
+                return 'not_live'
+            if row['compute_key'] not in (None, compute_key):
+                return 'pinned_computation_mismatch'
+            key = accept_key(compute_key, value, row['profile'], json.loads(row['checks']), verdicts)
+            self.db.execute("""UPDATE jobs SET state='done',result=?,result_json=?,error='',available_at=0,
+                failure_kind=NULL,lease=NULL,owner=NULL,deadline=NULL,compute_key=? WHERE id=?""",
+                            (text, value, compute_key, mid))
+            self.db.execute("""INSERT INTO candidates(job,receipt,generation,compute_key,value,stored,inputs,checks,
+                verdicts,status,reason,suspect,at,accept_key) VALUES (?,?,?,?,?,?,?,?,?,'accepted',?,0,?,?)""",
+                            (mid, 'memo:' + entry, row['generation'], compute_key, value, text,
+                             _dump([dict(s) for s in inputs.slots]), row['checks'], _dump(list(verdicts)),
+                             'memo hit ' + entry, self.clock(), key))
+            self._event(mid, 'memo_hit', entry=entry, compute_key=compute_key)
+        return 'done'
+
     def cancel(self, mid: str, reason: str = 'cancelled') -> None:
         """Cancel an unresolved job: it fails as cancelled, and no late reply can revive it."""
         if not isinstance(reason, str) or not reason.strip() or len(reason.encode('utf-8')) > 4096:
