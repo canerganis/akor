@@ -1,0 +1,1361 @@
+FILE: fixtures/codereview-v1/packA/paging.py
+```python
+"""Pagination helpers for in-memory result lists.
+
+Page numbers are zero based. Page sizes must be positive integers.
+Counts and page numbers must be nonnegative integers. Boolean values
+are outside the supported input domain. Input lists are never mutated.
+"""
+
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def _positive_size(page_size: int) -> None:
+    if page_size <= 0:
+        raise ValueError("page_size must be positive")
+
+
+def _nonnegative(value: int, name: str) -> None:
+    if value < 0:
+        raise ValueError(f"{name} must be nonnegative")
+
+
+def page_count(item_count: int, page_size: int) -> int:
+    """Return the number of pages, with zero pages for zero items."""
+    _positive_size(page_size)
+    _nonnegative(item_count, "item_count")
+    numerator = item_count + page_size - 1
+    return numerator // page_size
+
+
+def get_page(items: list[T], page_number: int, page_size: int) -> list[T]:
+    """Return up to page_size items, or [] beyond the final page."""
+    _positive_size(page_size)
+    _nonnegative(page_number, "page_number")
+    start = page_number * page_size
+    stop = start + page_size - 1
+    return items[start:stop]
+
+
+def page_for_index(item_index: int, page_size: int) -> int:
+    """Return the page containing an index in a conceptual result list."""
+    _positive_size(page_size)
+    _nonnegative(item_index, "item_index")
+    return item_index // page_size
+
+
+def page_sizes(item_count: int, page_size: int) -> list[int]:
+    """Return the actual size of each page without constructing items."""
+    count = page_count(item_count, page_size)
+    sizes: list[int] = []
+    for number in range(count):
+        remaining = item_count - number * page_size
+        size = min(remaining, page_size)
+        sizes.append(size)
+    return sizes
+
+
+def page_label(page_number: int, item_count: int, page_size: int) -> str:
+    """Return a display label; reject pages absent from the result set."""
+    total = page_count(item_count, page_size)
+    _nonnegative(page_number, "page_number")
+    if page_number >= total:
+        raise ValueError("page does not exist")
+    display_number = page_number + 1
+    return f"{display_number} / {total}"
+```
+
+FILE: fixtures/codereview-v1/packA/sample_stats.py
+```python
+"""Small summaries for bounded sensor samples.
+
+Inputs are lists of finite numbers in [-1000000, 1000000].
+Nonfinite and out-of-range values raise ValueError. Other types are
+outside the input contract. Empty data is valid and represents no data.
+"""
+
+import math
+
+
+def _checked(values: list[float]) -> list[float]:
+    result: list[float] = []
+    for value in values:
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("samples must be finite")
+        if abs(number) > 1000000:
+            raise ValueError("sample outside supported range")
+        result.append(number)
+    return result
+
+
+def mean(values: list[float]) -> float | None:
+    """Return the arithmetic mean, or None when there are no samples."""
+    checked = _checked(values)
+    total = math.fsum(checked)
+    return total / len(checked)
+
+
+def spread(values: list[float]) -> float | None:
+    """Return maximum minus minimum, or None for an empty list."""
+    checked = _checked(values)
+    if not checked:
+        return None
+    smallest = min(checked)
+    largest = max(checked)
+    return largest - smallest
+
+
+def latest(values: list[float], limit: int) -> list[float]:
+    """Return the last limit samples; limit is a nonnegative integer."""
+    if limit < 0:
+        raise ValueError("limit must be nonnegative")
+    checked = _checked(values)
+    if limit == 0:
+        return []
+    return checked[-limit:]
+
+
+def describe(values: list[float]) -> dict:
+    """Return count, mean and spread using the same empty-data policy."""
+    checked = _checked(values)
+    summary = {
+        "count": len(checked),
+        "mean": mean(checked),
+        "spread": spread(checked),
+    }
+    return summary
+
+
+def centered(values: list[float]) -> list[float]:
+    """Subtract the mean; an empty input produces an empty output."""
+    checked = _checked(values)
+    if not checked:
+        return []
+    average = mean(checked)
+    return [value - average for value in checked]
+```
+
+FILE: fixtures/codereview-v1/packA/labels.py
+```python
+"""ASCII identifiers for export columns.
+
+Labels are arbitrary strings. Slugs retain ASCII letters and digits,
+lowercase letters, and replace runs of other characters with a hyphen.
+Unicode characters are separators, without transliteration.
+"""
+
+
+def slug(label: str) -> str:
+    """Return a normalized identifier, or 'item' if nothing remains."""
+    parts: list[str] = []
+    pending_separator = False
+    for character in label:
+        is_letter = "a" <= character <= "z" or "A" <= character <= "Z"
+        is_digit = "0" <= character <= "9"
+        if is_letter or is_digit:
+            if pending_separator and parts:
+                parts.append("-")
+            parts.append(character.lower())
+            pending_separator = False
+        else:
+            pending_separator = True
+    normalized = "".join(parts)
+    return normalized or "item"
+
+
+def unique_labels(labels: list[str]) -> list[str]:
+    """Slug labels in order, adding the first unused suffix from 2."""
+    used: set[str] = set()
+    result: list[str] = []
+    for label in labels:
+        base = slug(label)
+        candidate = base
+        suffix = 2
+        while candidate in used:
+            candidate = f"{base}-{suffix}"
+            suffix += 1
+        used.add(candidate)
+        result.append(candidate)
+    return result
+
+
+def make_header(labels: list[str], delimiter: str = ",") -> str:
+    """Join unique identifiers using one allowed delimiter."""
+    allowed = (",", ";", "\t", "|")
+    if delimiter not in allowed:
+        raise ValueError("unsupported delimiter")
+    normalized_labels = unique_labels(labels)
+    return delimiter.join(normalized_labels)
+
+
+def label_map(labels: list[str]) -> dict[str, str]:
+    """Map each generated unique identifier to its original label."""
+    identifiers = unique_labels(labels)
+    result: dict[str, str] = {}
+    for identifier, original in zip(identifiers, labels):
+        result[identifier] = original
+    return result
+
+
+def is_slug(value: str) -> bool:
+    """Whether value is a nonempty canonical identifier."""
+    if not value:
+        return False
+    return slug(value) == value
+```
+
+FILE: fixtures/codereview-v1/packB/ranges.py
+```python
+"""Utilities for closed integer ranges in job manifests.
+
+Each range is a two-item list [start, end], with start <= end.
+Endpoints and offsets are integers, excluding booleans. Other endpoint
+types are outside the contract. Results never alias input range lists.
+"""
+
+
+def _validated(ranges: list[list[int]]) -> list[list[int]]:
+    result: list[list[int]] = []
+    for pair in ranges:
+        if len(pair) != 2:
+            raise ValueError("each range needs two endpoints")
+        start, end = pair
+        if start > end:
+            raise ValueError("range endpoints are reversed")
+        result.append([start, end])
+    return result
+
+
+def compact_ranges(ranges: list[list[int]]) -> list[list[int]]:
+    """Sort and merge overlapping or adjacent closed integer ranges."""
+    ordered = sorted(_validated(ranges))
+    merged: list[list[int]] = []
+    for start, end in ordered:
+        if not merged:
+            merged.append([start, end])
+            continue
+        previous = merged[-1]
+        if start <= previous[1]:
+            previous[1] = max(previous[1], end)
+        else:
+            merged.append([start, end])
+    return merged
+
+
+def covered_count(ranges: list[list[int]]) -> int:
+    """Count distinct integers covered by the input ranges."""
+    total = 0
+    for start, end in compact_ranges(ranges):
+        width = end - start + 1
+        total += width
+    return total
+
+
+def contains(ranges: list[list[int]], value: int) -> bool:
+    """Test membership after validating every supplied range."""
+    checked = _validated(ranges)
+    return any(start <= value <= end for start, end in checked)
+
+
+def shift_ranges(ranges: list[list[int]], offset: int) -> list[list[int]]:
+    """Translate endpoints, preserving the original range order."""
+    checked = _validated(ranges)
+    shifted = []
+    for start, end in checked:
+        shifted.append([start + offset, end + offset])
+    return shifted
+
+
+def bounding_range(ranges: list[list[int]]) -> list[int] | None:
+    """Return the smallest enclosing range, or None for no ranges."""
+    checked = _validated(ranges)
+    if not checked:
+        return None
+    return [min(pair[0] for pair in checked), max(pair[1] for pair in checked)]
+```
+
+FILE: fixtures/codereview-v1/packB/rotation.py
+```python
+"""Deterministic rotation and assignment for small work queues.
+
+Items and tasks are JSON-compatible values. Worker identifiers are
+distinct strings. Offsets, rounds and sizes are integers excluding
+booleans. Functions create new outer lists and never mutate inputs.
+"""
+
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def rotate_left(items: list[T], offset: int) -> list[T]:
+    """Rotate left, wrapping offsets; an empty list always returns []."""
+    pivot = offset % len(items)
+    before = items[:pivot]
+    after = items[pivot:]
+    return after + before
+
+
+def rotation_order(workers: list[str], round_number: int) -> list[str]:
+    """Choose a starting worker; rounds must be nonnegative."""
+    if round_number < 0:
+        raise ValueError("round_number must be nonnegative")
+    if len(set(workers)) != len(workers):
+        raise ValueError("worker identifiers must be distinct")
+    return rotate_left(workers, round_number)
+
+
+def assign_tasks(tasks: list[T], workers: list[str]) -> dict[str, list[T]]:
+    """Distribute tasks cyclically; an empty worker list is invalid."""
+    if not workers:
+        raise ValueError("at least one worker is required")
+    if len(set(workers)) != len(workers):
+        raise ValueError("worker identifiers must be distinct")
+    assignments: dict[str, list[T]] = {worker: [] for worker in workers}
+    for position, task in enumerate(tasks):
+        worker = workers[position % len(workers)]
+        assignments[worker].append(task)
+    return assignments
+
+
+def chunk_tasks(tasks: list[T], size: int) -> list[list[T]]:
+    """Split tasks into consecutive chunks of a positive size."""
+    if size <= 0:
+        raise ValueError("size must be positive")
+    chunks = []
+    for start in range(0, len(tasks), size):
+        chunk = tasks[start:start + size]
+        chunks.append(chunk)
+    return chunks
+
+
+def interleave(left: list[T], right: list[T]) -> list[T]:
+    """Alternate values, starting on the left, retaining any remainder."""
+    result: list[T] = []
+    common_length = min(len(left), len(right))
+    for position in range(common_length):
+        result.append(left[position])
+        result.append(right[position])
+    result.extend(left[common_length:])
+    result.extend(right[common_length:])
+    return result
+```
+
+FILE: fixtures/codereview-v1/packB/settings.py
+```python
+"""Parse simple line-oriented application settings.
+
+Keys are case-sensitive ASCII identifiers starting with a letter or
+underscore. Values are strings. Blank lines and whole-line comments
+starting with # are ignored. Inline comments and escapes are not used.
+"""
+
+
+def _valid_key(key: str) -> bool:
+    if not key:
+        return False
+    first = key[0]
+    if not (first.isascii() and (first.isalpha() or first == "_")):
+        return False
+    for character in key[1:]:
+        if not (character.isascii() and (character.isalnum() or character == "_")):
+            return False
+    return True
+
+
+def parse_settings(text: str) -> dict[str, str]:
+    """Parse key=value lines; duplicate keys use the last value."""
+    settings: dict[str, str] = {}
+    for line_number, raw in enumerate(text.splitlines(), start=1):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        key, separator, value = line.partition("=")
+        key = key.strip()
+        if not separator or not _valid_key(key):
+            raise ValueError(f"invalid setting on line {line_number}")
+        settings[key] = value.strip()
+    return settings
+
+
+def render_settings(settings: dict[str, str]) -> str:
+    """Render sorted keys with one final newline, or '' for no keys.
+
+    Values must have no outer whitespace or splitlines line boundaries.
+    These restrictions make rendering and parsing exact inverses.
+    """
+    lines: list[str] = []
+    for key, value in sorted(settings.items()):
+        if not _valid_key(key):
+            raise ValueError("invalid setting key")
+        if value != value.strip():
+            raise ValueError("value has outer whitespace")
+        if value and value.splitlines() != [value]:
+            raise ValueError("value contains a line boundary")
+        lines.append(f"{key}={value}")
+    return "\n".join(lines) + ("\n" if lines else "")
+
+
+def overlay(base: dict[str, str], updates: dict[str, str]) -> dict[str, str]:
+    """Return a new mapping with updates taking precedence."""
+    combined = dict(base)
+    combined.update(updates)
+    return combined
+
+
+def select_prefix(settings: dict[str, str], prefix: str) -> dict[str, str]:
+    """Select matching keys without removing the prefix."""
+    return {key: value for key, value in settings.items() if key.startswith(prefix)}
+```
+
+FILE: fixtures/codereview-v1/ref/packA/paging.py
+```python
+"""Pagination helpers for in-memory result lists.
+
+Page numbers are zero based. Page sizes must be positive integers.
+Counts and page numbers must be nonnegative integers. Boolean values
+are outside the supported input domain. Input lists are never mutated.
+"""
+
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def _positive_size(page_size: int) -> None:
+    if page_size <= 0:
+        raise ValueError("page_size must be positive")
+
+
+def _nonnegative(value: int, name: str) -> None:
+    if value < 0:
+        raise ValueError(f"{name} must be nonnegative")
+
+
+def page_count(item_count: int, page_size: int) -> int:
+    """Return the number of pages, with zero pages for zero items."""
+    _positive_size(page_size)
+    _nonnegative(item_count, "item_count")
+    numerator = item_count + page_size - 1
+    return numerator // page_size
+
+
+def get_page(items: list[T], page_number: int, page_size: int) -> list[T]:
+    """Return up to page_size items, or [] beyond the final page."""
+    _positive_size(page_size)
+    _nonnegative(page_number, "page_number")
+    start = page_number * page_size
+    stop = start + page_size
+    return items[start:stop]
+
+
+def page_for_index(item_index: int, page_size: int) -> int:
+    """Return the page containing an index in a conceptual result list."""
+    _positive_size(page_size)
+    _nonnegative(item_index, "item_index")
+    return item_index // page_size
+
+
+def page_sizes(item_count: int, page_size: int) -> list[int]:
+    """Return the actual size of each page without constructing items."""
+    count = page_count(item_count, page_size)
+    sizes: list[int] = []
+    for number in range(count):
+        remaining = item_count - number * page_size
+        size = min(remaining, page_size)
+        sizes.append(size)
+    return sizes
+
+
+def page_label(page_number: int, item_count: int, page_size: int) -> str:
+    """Return a display label; reject pages absent from the result set."""
+    total = page_count(item_count, page_size)
+    _nonnegative(page_number, "page_number")
+    if page_number >= total:
+        raise ValueError("page does not exist")
+    display_number = page_number + 1
+    return f"{display_number} / {total}"
+```
+
+FILE: fixtures/codereview-v1/ref/packA/sample_stats.py
+```python
+"""Small summaries for bounded sensor samples.
+
+Inputs are lists of finite numbers in [-1000000, 1000000].
+Nonfinite and out-of-range values raise ValueError. Other types are
+outside the input contract. Empty data is valid and represents no data.
+"""
+
+import math
+
+
+def _checked(values: list[float]) -> list[float]:
+    result: list[float] = []
+    for value in values:
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError("samples must be finite")
+        if abs(number) > 1000000:
+            raise ValueError("sample outside supported range")
+        result.append(number)
+    return result
+
+
+def mean(values: list[float]) -> float | None:
+    """Return the arithmetic mean, or None when there are no samples."""
+    checked = _checked(values)
+    if not checked:
+        return None
+    total = math.fsum(checked)
+    return total / len(checked)
+
+
+def spread(values: list[float]) -> float | None:
+    """Return maximum minus minimum, or None for an empty list."""
+    checked = _checked(values)
+    if not checked:
+        return None
+    smallest = min(checked)
+    largest = max(checked)
+    return largest - smallest
+
+
+def latest(values: list[float], limit: int) -> list[float]:
+    """Return the last limit samples; limit is a nonnegative integer."""
+    if limit < 0:
+        raise ValueError("limit must be nonnegative")
+    checked = _checked(values)
+    if limit == 0:
+        return []
+    return checked[-limit:]
+
+
+def describe(values: list[float]) -> dict:
+    """Return count, mean and spread using the same empty-data policy."""
+    checked = _checked(values)
+    summary = {
+        "count": len(checked),
+        "mean": mean(checked),
+        "spread": spread(checked),
+    }
+    return summary
+
+
+def centered(values: list[float]) -> list[float]:
+    """Subtract the mean; an empty input produces an empty output."""
+    checked = _checked(values)
+    if not checked:
+        return []
+    average = mean(checked)
+    return [value - average for value in checked]
+```
+
+FILE: fixtures/codereview-v1/ref/packB/ranges.py
+```python
+"""Utilities for closed integer ranges in job manifests.
+
+Each range is a two-item list [start, end], with start <= end.
+Endpoints and offsets are integers, excluding booleans. Other endpoint
+types are outside the contract. Results never alias input range lists.
+"""
+
+
+def _validated(ranges: list[list[int]]) -> list[list[int]]:
+    result: list[list[int]] = []
+    for pair in ranges:
+        if len(pair) != 2:
+            raise ValueError("each range needs two endpoints")
+        start, end = pair
+        if start > end:
+            raise ValueError("range endpoints are reversed")
+        result.append([start, end])
+    return result
+
+
+def compact_ranges(ranges: list[list[int]]) -> list[list[int]]:
+    """Sort and merge overlapping or adjacent closed integer ranges."""
+    ordered = sorted(_validated(ranges))
+    merged: list[list[int]] = []
+    for start, end in ordered:
+        if not merged:
+            merged.append([start, end])
+            continue
+        previous = merged[-1]
+        if start <= previous[1] + 1:
+            previous[1] = max(previous[1], end)
+        else:
+            merged.append([start, end])
+    return merged
+
+
+def covered_count(ranges: list[list[int]]) -> int:
+    """Count distinct integers covered by the input ranges."""
+    total = 0
+    for start, end in compact_ranges(ranges):
+        width = end - start + 1
+        total += width
+    return total
+
+
+def contains(ranges: list[list[int]], value: int) -> bool:
+    """Test membership after validating every supplied range."""
+    checked = _validated(ranges)
+    return any(start <= value <= end for start, end in checked)
+
+
+def shift_ranges(ranges: list[list[int]], offset: int) -> list[list[int]]:
+    """Translate endpoints, preserving the original range order."""
+    checked = _validated(ranges)
+    shifted = []
+    for start, end in checked:
+        shifted.append([start + offset, end + offset])
+    return shifted
+
+
+def bounding_range(ranges: list[list[int]]) -> list[int] | None:
+    """Return the smallest enclosing range, or None for no ranges."""
+    checked = _validated(ranges)
+    if not checked:
+        return None
+    return [min(pair[0] for pair in checked), max(pair[1] for pair in checked)]
+```
+
+FILE: fixtures/codereview-v1/ref/packB/rotation.py
+```python
+"""Deterministic rotation and assignment for small work queues.
+
+Items and tasks are JSON-compatible values. Worker identifiers are
+distinct strings. Offsets, rounds and sizes are integers excluding
+booleans. Functions create new outer lists and never mutate inputs.
+"""
+
+from typing import TypeVar
+
+T = TypeVar("T")
+
+
+def rotate_left(items: list[T], offset: int) -> list[T]:
+    """Rotate left, wrapping offsets; an empty list always returns []."""
+    if not items:
+        return []
+    pivot = offset % len(items)
+    before = items[:pivot]
+    after = items[pivot:]
+    return after + before
+
+
+def rotation_order(workers: list[str], round_number: int) -> list[str]:
+    """Choose a starting worker; rounds must be nonnegative."""
+    if round_number < 0:
+        raise ValueError("round_number must be nonnegative")
+    if len(set(workers)) != len(workers):
+        raise ValueError("worker identifiers must be distinct")
+    return rotate_left(workers, round_number)
+
+
+def assign_tasks(tasks: list[T], workers: list[str]) -> dict[str, list[T]]:
+    """Distribute tasks cyclically; an empty worker list is invalid."""
+    if not workers:
+        raise ValueError("at least one worker is required")
+    if len(set(workers)) != len(workers):
+        raise ValueError("worker identifiers must be distinct")
+    assignments: dict[str, list[T]] = {worker: [] for worker in workers}
+    for position, task in enumerate(tasks):
+        worker = workers[position % len(workers)]
+        assignments[worker].append(task)
+    return assignments
+
+
+def chunk_tasks(tasks: list[T], size: int) -> list[list[T]]:
+    """Split tasks into consecutive chunks of a positive size."""
+    if size <= 0:
+        raise ValueError("size must be positive")
+    chunks = []
+    for start in range(0, len(tasks), size):
+        chunk = tasks[start:start + size]
+        chunks.append(chunk)
+    return chunks
+
+
+def interleave(left: list[T], right: list[T]) -> list[T]:
+    """Alternate values, starting on the left, retaining any remainder."""
+    result: list[T] = []
+    common_length = min(len(left), len(right))
+    for position in range(common_length):
+        result.append(left[position])
+        result.append(right[position])
+    result.extend(left[common_length:])
+    result.extend(right[common_length:])
+    return result
+```
+
+FILE: fixtures/codereview-v1/tests/support.py
+```python
+"""Load only fixture modules, without importing executor code."""
+
+import importlib.util
+import os
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+CLEAN = {"packA/labels.py", "packB/settings.py"}
+
+
+def load_module(relative_path: str):
+    mode = os.environ.get("FIXTURE_IMPLEMENTATION", "reference")
+    if mode not in {"reference", "shipped"}:
+        raise ValueError("FIXTURE_IMPLEMENTATION must be reference or shipped")
+    source = ROOT / relative_path
+    if mode == "reference" and relative_path not in CLEAN:
+        source = ROOT / "ref" / relative_path
+    name = "fixture_" + relative_path.replace("/", "_").replace(".", "_")
+    spec = importlib.util.spec_from_file_location(name, source)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+```
+
+FILE: fixtures/codereview-v1/tests/test_packA_paging.py
+```python
+import unittest
+
+from support import load_module
+
+m = load_module("packA/paging.py")
+
+
+class PagingTests(unittest.TestCase):
+    def test_pages_exhaustively(self):
+        for count in range(13):
+            items = list(range(count))
+            for size in range(1, 6):
+                pages = [m.get_page(items, n, size) for n in range(count + 2)]
+                self.assertEqual([x for page in pages for x in page], items)
+                expected = [items[n:n + size] for n in range(0, count, size)]
+                self.assertEqual(pages[:len(expected)], expected)
+                self.assertTrue(all(page == [] for page in pages[len(expected):]))
+                self.assertEqual(m.page_count(count, size), len(expected))
+                self.assertEqual(m.page_sizes(count, size), list(map(len, expected)))
+
+    def test_page_indices_and_labels(self):
+        for size in range(1, 5):
+            for index in range(20):
+                self.assertEqual(m.page_for_index(index, size), index // size)
+        self.assertEqual(m.page_label(0, 7, 3), "1 / 3")
+        self.assertEqual(m.page_label(2, 7, 3), "3 / 3")
+        for args in [(0, 0, 3), (3, 7, 3), (-1, 7, 3)]:
+            with self.assertRaises(ValueError):
+                m.page_label(*args)
+
+    def test_invalid_arguments(self):
+        for size in [0, -1]:
+            calls = [
+                lambda: m.page_count(3, size), lambda: m.get_page([], 0, size),
+                lambda: m.page_for_index(0, size), lambda: m.page_sizes(3, size),
+                lambda: m.page_label(0, 3, size),
+            ]
+            for call in calls:
+                with self.assertRaises(ValueError):
+                    call()
+        for call in [
+            lambda: m.page_count(-1, 2), lambda: m.get_page([], -1, 2),
+            lambda: m.page_for_index(-1, 2), lambda: m.page_sizes(-1, 2),
+            lambda: m.page_label(0, -1, 2),
+        ]:
+            with self.assertRaises(ValueError):
+                call()
+
+    def test_copy_and_no_mutation(self):
+        items = ["a", "b"]
+        result = m.get_page(items, 0, 9)
+        self.assertEqual(items, ["a", "b"])
+        self.assertIsNot(result, items)
+        result.append("c")
+        self.assertEqual(items, ["a", "b"])
+```
+
+FILE: fixtures/codereview-v1/tests/test_packA_sample_stats.py
+```python
+import unittest
+
+from support import load_module
+
+m = load_module("packA/sample_stats.py")
+
+
+class SampleStatsTests(unittest.TestCase):
+    def test_empty(self):
+        self.assertIsNone(m.mean([]))
+        self.assertIsNone(m.spread([]))
+        self.assertEqual(m.latest([], 2), [])
+        self.assertEqual(m.centered([]), [])
+        self.assertEqual(m.describe([]), {"count": 0, "mean": None, "spread": None})
+
+    def test_summaries(self):
+        for values, average, width in [
+            ([4], 4.0, 0.0), ([1, 2, 6], 3.0, 5.0),
+            ([-1000000, 1000000], 0.0, 2000000.0),
+            ([1000000, 0.25, -1000000], 0.25 / 3, 2000000.0),
+        ]:
+            self.assertEqual(m.mean(values), average)
+            self.assertEqual(m.spread(values), width)
+            self.assertEqual(m.describe(values),
+                             {"count": len(values), "mean": average, "spread": width})
+        self.assertEqual(m.centered([1, 2, 6]), [-2.0, -1.0, 3.0])
+
+    def test_latest_and_copy(self):
+        values = [1, 2, 3]
+        for limit, expected in [(0, []), (1, [3.0]), (3, [1.0, 2.0, 3.0]),
+                                (9, [1.0, 2.0, 3.0])]:
+            result = m.latest(values, limit)
+            self.assertEqual(result, expected)
+            self.assertIsNot(result, values)
+        m.centered(values)
+        m.describe(values)
+        self.assertEqual(values, [1, 2, 3])
+        with self.assertRaises(ValueError):
+            m.latest(values, -1)
+
+    def test_validation_in_every_entry_point(self):
+        for value in [float("nan"), float("inf"), -float("inf"), 1000001, -1000001]:
+            for function in [m.mean, m.spread, m.describe, m.centered,
+                             lambda data: m.latest(data, 0)]:
+                with self.assertRaises(ValueError):
+                    function([value])
+```
+
+FILE: fixtures/codereview-v1/tests/test_packA_labels.py
+```python
+import unittest
+
+from support import load_module
+
+m = load_module("packA/labels.py")
+
+
+class LabelTests(unittest.TestCase):
+    def test_slug(self):
+        for source, expected in [
+            ("", "item"), ("---", "item"), (" A__B 7 ", "a-b-7"),
+            ("Already-good", "already-good"), ("café", "caf"),
+            ("éAéBé", "a-b"), ("42", "42"), ("A..-- B", "a-b"),
+            ("東京", "item"),
+        ]:
+            self.assertEqual(m.slug(source), expected)
+            self.assertEqual(m.slug(expected), expected)
+
+    def test_uniqueness_and_suffix_collisions(self):
+        labels = ["A", "A", "a-2", "", "---", "A"]
+        self.assertEqual(m.unique_labels(labels),
+                         ["a", "a-2", "a-2-2", "item", "item-2", "a-3"])
+        self.assertEqual(m.unique_labels(["x-2", "x", "x"]), ["x-2", "x", "x-3"])
+        self.assertEqual(m.unique_labels([]), [])
+        self.assertEqual(labels, ["A", "A", "a-2", "", "---", "A"])
+
+    def test_headers(self):
+        for delimiter in [",", ";", "\t", "|"]:
+            self.assertEqual(m.make_header(["A", "A"], delimiter),
+                             delimiter.join(["a", "a-2"]))
+        self.assertEqual(m.make_header([]), "")
+        self.assertEqual(m.make_header(["A", "B"]), "a,b")
+        for delimiter in ["", "::", "\n", "a"]:
+            with self.assertRaises(ValueError):
+                m.make_header(["A"], delimiter)
+
+    def test_map_and_canonical_check(self):
+        self.assertEqual(m.label_map(["A", "a"]), {"a": "A", "a-2": "a"})
+        self.assertEqual(m.label_map([]), {})
+        for value in ["a", "item", "a-2", "0"]:
+            self.assertTrue(m.is_slug(value))
+        for value in ["", "A", "-a", "a-", "a--b", "é"]:
+            self.assertFalse(m.is_slug(value))
+```
+
+FILE: fixtures/codereview-v1/tests/test_packB_ranges.py
+```python
+import itertools
+import unittest
+
+from support import load_module
+
+m = load_module("packB/ranges.py")
+
+
+class RangeTests(unittest.TestCase):
+    def test_compaction_exhaustively(self):
+        pairs = [[a, b] for a in range(-2, 3) for b in range(a, 3)]
+        for length in range(3):
+            for combination in itertools.product(pairs, repeat=length):
+                ranges = [pair[:] for pair in combination]
+                values = sorted({x for a, b in ranges for x in range(a, b + 1)})
+                expected = []
+                for value in values:
+                    if expected and value == expected[-1][1] + 1:
+                        expected[-1][1] = value
+                    else:
+                        expected.append([value, value])
+                self.assertEqual(m.compact_ranges(ranges), expected)
+                self.assertEqual(m.covered_count(ranges), len(values))
+                self.assertEqual(ranges, list(combination))
+
+    def test_containment_bounds_and_shift(self):
+        ranges = [[5, 7], [-2, 0]]
+        for value in range(-3, 9):
+            self.assertEqual(m.contains(ranges, value), value in {-2, -1, 0, 5, 6, 7})
+        self.assertEqual(m.bounding_range(ranges), [-2, 7])
+        self.assertIsNone(m.bounding_range([]))
+        self.assertFalse(m.contains([], 0))
+        self.assertEqual(m.shift_ranges(ranges, -2), [[3, 5], [-4, -2]])
+        self.assertEqual(m.shift_ranges([], 5), [])
+        shifted = m.shift_ranges(ranges, 0)
+        shifted[0][0] = 100
+        compacted = m.compact_ranges(ranges)
+        compacted[0][0] = 100
+        self.assertEqual(ranges, [[5, 7], [-2, 0]])
+
+    def test_invalid_ranges(self):
+        for bad in [[], [1], [1, 2, 3], [2, 1]]:
+            for function in [m.compact_ranges, m.covered_count, m.bounding_range,
+                             lambda data: m.contains(data, 0),
+                             lambda data: m.shift_ranges(data, 1)]:
+                with self.assertRaises(ValueError):
+                    function([[0, 0], bad])
+```
+
+FILE: fixtures/codereview-v1/tests/test_packB_rotation.py
+```python
+import unittest
+
+from support import load_module
+
+m = load_module("packB/rotation.py")
+
+
+class RotationTests(unittest.TestCase):
+    def test_rotation_exhaustively(self):
+        for length in range(7):
+            items = list(range(length))
+            for offset in range(-15, 16):
+                if length:
+                    expected = [items[(i + offset) % length] for i in range(length)]
+                else:
+                    expected = []
+                result = m.rotate_left(items, offset)
+                self.assertEqual(result, expected)
+                self.assertIsNot(result, items)
+                self.assertEqual(items, list(range(length)))
+
+    def test_rotation_order(self):
+        self.assertEqual(m.rotation_order(["a", "b", "c"], 4), ["b", "c", "a"])
+        self.assertEqual(m.rotation_order([], 0), [])
+        for workers, number in [(["a"], -1), (["a", "a"], 0)]:
+            with self.assertRaises(ValueError):
+                m.rotation_order(workers, number)
+
+    def test_assignment(self):
+        tasks = [0, 1, 2, 3, 4]
+        workers = ["a", "b"]
+        self.assertEqual(m.assign_tasks(tasks, workers), {"a": [0, 2, 4], "b": [1, 3]})
+        self.assertEqual(m.assign_tasks([], workers), {"a": [], "b": []})
+        self.assertEqual(tasks, [0, 1, 2, 3, 4])
+        self.assertEqual(workers, ["a", "b"])
+        for invalid in [[], ["a", "a"]]:
+            with self.assertRaises(ValueError):
+                m.assign_tasks([], invalid)
+
+    def test_chunks(self):
+        self.assertEqual(m.chunk_tasks([1, 2, 3], 2), [[1, 2], [3]])
+        self.assertEqual(m.chunk_tasks([1], 4), [[1]])
+        self.assertEqual(m.chunk_tasks([], 2), [])
+        for size in [0, -1]:
+            with self.assertRaises(ValueError):
+                m.chunk_tasks([], size)
+
+    def test_interleave(self):
+        for left, right, expected in [
+            ([], [], []), ([1], [], [1]), ([], [2], [2]),
+            ([1, 3], [2, 4], [1, 2, 3, 4]),
+            ([1, 3, 5], [2], [1, 2, 3, 5]),
+            ([1], [2, 4, 6], [1, 2, 4, 6]),
+        ]:
+            saved = (left[:], right[:])
+            self.assertEqual(m.interleave(left, right), expected)
+            self.assertEqual((left, right), saved)
+```
+
+FILE: fixtures/codereview-v1/tests/test_packB_settings.py
+```python
+import unittest
+
+from support import load_module
+
+m = load_module("packB/settings.py")
+
+
+class SettingsTests(unittest.TestCase):
+    def test_parse(self):
+        self.assertEqual(m.parse_settings(""), {})
+        text = " # comment\r\n port = 80\nempty=\nexpr=a=b # literal\nport=81\n"
+        self.assertEqual(m.parse_settings(text),
+                         {"port": "81", "empty": "", "expr": "a=b # literal"})
+        self.assertEqual(m.parse_settings("_x2=yes\nA=one\na=two"),
+                         {"_x2": "yes", "A": "one", "a": "two"})
+        for text in ["broken", "=value", "2x=yes", "a-b=yes", "é=yes", "aé=yes"]:
+            with self.assertRaises(ValueError):
+                m.parse_settings(text)
+        with self.assertRaisesRegex(ValueError, "line 3"):
+            m.parse_settings("# comment\n\nbroken")
+
+    def test_render_and_round_trip(self):
+        values = {"z": "", "a": "x=y # literal", "_2": "café"}
+        rendered = "_2=café\na=x=y # literal\nz=\n"
+        self.assertEqual(m.render_settings(values), rendered)
+        self.assertEqual(m.parse_settings(rendered), values)
+        self.assertEqual(m.render_settings({}), "")
+        self.assertEqual(values, {"z": "", "a": "x=y # literal", "_2": "café"})
+
+    def test_render_rejections(self):
+        for key in ["", "2x", "x-y", "é", "aé"]:
+            with self.assertRaises(ValueError):
+                m.render_settings({key: "ok"})
+        for value in [" x", "x ", "\tx", "x\n", "x\ny", "x\ry", "x\vy",
+                      "x\fy", "x\x1cy", "x\x1dy", "x\x1ey",
+                      "x\x85y", "x\u2028y", "x\u2029y"]:
+            with self.assertRaises(ValueError):
+                m.render_settings({"key": value})
+
+    def test_overlay_and_prefix(self):
+        base = {"db_host": "local", "db_port": "1", "mode": "dev"}
+        updates = {"mode": "prod"}
+        result = m.overlay(base, updates)
+        self.assertEqual(result, {"db_host": "local", "db_port": "1", "mode": "prod"})
+        self.assertEqual(base["mode"], "dev")
+        self.assertEqual(updates, {"mode": "prod"})
+        self.assertIsNot(result, base)
+        self.assertEqual(m.select_prefix(base, "db_"), {"db_host": "local", "db_port": "1"})
+        self.assertEqual(m.select_prefix(base, "absent"), {})
+        self.assertEqual(m.select_prefix(base, ""), base)
+        self.assertIsNot(m.select_prefix(base, ""), base)
+```
+
+FILE: fixtures/codereview-v1/answer_key.json
+```json
+{
+  "schema_version": 1,
+  "fixture_id": "codereview-v1",
+  "classification": "evaluator-only",
+  "witness_format": "codereview-witness-v1",
+  "modules": [
+    {
+      "file": "packA/paging.py",
+      "reference_file": "ref/packA/paging.py",
+      "test_file": "tests/test_packA_paging.py",
+      "seeds": [
+        {
+          "id": "A1",
+          "class": "off_by_one",
+          "span": {
+            "start_line": 36,
+            "end_line": 36
+          },
+          "hidden_witness": {
+            "function": "get_page",
+            "args": [
+              [
+                "a",
+                "b",
+                "c",
+                "d"
+              ],
+              1,
+              2
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": [
+                "c",
+                "d"
+              ]
+            }
+          },
+          "reference_fix": "Replace stop = start + page_size - 1 with stop = start + page_size."
+        }
+      ]
+    },
+    {
+      "file": "packA/sample_stats.py",
+      "reference_file": "ref/packA/sample_stats.py",
+      "test_file": "tests/test_packA_sample_stats.py",
+      "seeds": [
+        {
+          "id": "A2",
+          "class": "missing_guard",
+          "span": {
+            "start_line": 27,
+            "end_line": 27
+          },
+          "hidden_witness": {
+            "function": "mean",
+            "args": [
+              []
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": null
+            }
+          },
+          "reference_fix": "Before computing total, return None when checked is empty."
+        }
+      ]
+    },
+    {
+      "file": "packA/labels.py",
+      "reference_file": "packA/labels.py",
+      "test_file": "tests/test_packA_labels.py",
+      "seeds": []
+    },
+    {
+      "file": "packB/ranges.py",
+      "reference_file": "ref/packB/ranges.py",
+      "test_file": "tests/test_packB_ranges.py",
+      "seeds": [
+        {
+          "id": "B1",
+          "class": "off_by_one",
+          "span": {
+            "start_line": 30,
+            "end_line": 30
+          },
+          "hidden_witness": {
+            "function": "compact_ranges",
+            "args": [
+              [
+                [
+                  1,
+                  2
+                ],
+                [
+                  3,
+                  5
+                ]
+              ]
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": [
+                [
+                  1,
+                  5
+                ]
+              ]
+            }
+          },
+          "reference_fix": "Replace start <= previous[1] with start <= previous[1] + 1."
+        }
+      ]
+    },
+    {
+      "file": "packB/rotation.py",
+      "reference_file": "ref/packB/rotation.py",
+      "test_file": "tests/test_packB_rotation.py",
+      "seeds": [
+        {
+          "id": "B2",
+          "class": "missing_guard",
+          "span": {
+            "start_line": 15,
+            "end_line": 15
+          },
+          "hidden_witness": {
+            "function": "rotate_left",
+            "args": [
+              [],
+              7
+            ],
+            "kwargs": {},
+            "expected": {
+              "return": []
+            }
+          },
+          "reference_fix": "Before computing pivot, return [] when items is empty."
+        }
+      ]
+    },
+    {
+      "file": "packB/settings.py",
+      "reference_file": "packB/settings.py",
+      "test_file": "tests/test_packB_settings.py",
+      "seeds": []
+    }
+  ]
+}
+```
+
+FILE: fixtures/codereview-v1/WITNESS_FORMAT.md
+```markdown
+# codereview-witness-v1
+
+This file defines the frozen witness syntax for codereview-v1.
+
+## Finding record
+
+A per-file response is a JSON array of finding objects. Each object has
+exactly these four keys:
+
+- `file`: the exact module path relative to fixtures/codereview-v1,
+  using forward slashes, for example `packA/example.py`.
+- `line`: a positive JSON integer, excluding booleans, identifying a
+  1-based physical line in the shipped module. Blank lines count.
+- `class`: exactly `off_by_one` or `missing_guard`.
+- `witness`: an object with the schema below.
+
+A clean-file response is exactly `[]`. Markdown fences and explanatory
+text are not part of an oracle response. Examples here use fictitious
+functions and do not disclose fixture answers.
+
+## Witness schema
+
+Every witness has exactly four keys:
+
+    {
+      "function": "lookup",
+      "args": [["first", "second"], 1],
+      "kwargs": {},
+      "expected": {"return": "second"}
+    }
+
+- `function` is the name of a public, synchronous function defined
+  directly in the target module. It must be a Python identifier and
+  must not start with an underscore. Dotted paths are forbidden.
+- `args` is a JSON array of positional arguments.
+- `kwargs` is a JSON object of keyword arguments. Its keys must be
+  Python identifiers and must not start with an underscore.
+- `expected` is an object with exactly one key: either `return` or
+  `exception`. Neither additional keys nor both keys are permitted.
+
+An exception expectation looks like this:
+
+    {
+      "function": "lookup",
+      "args": [[], -1],
+      "kwargs": {},
+      "expected": {"exception": "ValueError"}
+    }
+
+The allowed exception names are exactly `ValueError`, `TypeError`,
+`IndexError`, `KeyError`, `ZeroDivisionError`, and `OverflowError`.
+They denote the corresponding built-in types. Matching requires exact
+type identity, not a subclass match; messages and tracebacks are ignored.
+
+The entire record must be strict JSON. Reject duplicate object keys,
+NaN, Infinity, and nonfinite values after numeric decoding. Use Python
+3.12 JSON decoding semantics for ordinary integers and finite floats.
+Arguments and expected returns may contain only JSON values: null,
+booleans, numbers, strings, arrays and objects with string keys.
+
+## Execution and equality
+
+1. Validate the record and witness schema before loading either module.
+2. Resolve the file against an explicit fixture allowlist. Do not use a
+   submitted path or function name to import arbitrary code.
+3. Run the shipped and reference calls in separate fresh O1 sandbox
+   processes, with the same limits. Decode independent copies of args
+   and kwargs for each call. Invoke function(*args, **kwargs) once.
+4. A return expectation matches only a normal return that is recursively
+   equal to the expected JSON value. Require exact Python types at every
+   node: bool differs from int, int differs from float, and tuple differs
+   from list. Compare list order and length; compare dictionary key sets
+   and values while ignoring insertion order. Compare finite floats by
+   numeric equality, so positive and negative zero compare equal.
+5. An exception expectation matches only the exact allowed exception
+   raised by the target call. Import errors, invalid function selection,
+   invalid binding of args/kwargs, timeouts, process failures and resource
+   limits are execution errors, not successful exception expectations.
+   Prevalidate binding with inspect.signature(function).bind(*args, **kwargs).
+6. A witness proves a differential only when the reference expectation
+   matches and the shipped expectation does not. A different normal
+   return or a target-call exception can establish a shipped mismatch.
+   Infrastructure failures cannot establish a mismatch.
+
+Inputs must meet each module's documented domain, except when exercising
+an explicitly documented rejection rule. Behavior on unsupported input
+types is not a fixture defect.
+
+A seeded finding additionally needs the frozen class and a reported
+line within the seed's inclusive span. A submitted witness need not be
+identical to the hidden witness. Multiple symptoms caused by one seed
+still represent one seed. A real defect outside the frozen seeds must
+be reported separately and repaired before later runs, as preregistered.
+
+## Layout and isolation
+
+Each pack directory contains exactly its three reviewable modules.
+Only the selected pack and this format specification belong in the
+review environment. Keep answer_key.json, ref/, tests/, and the hash
+manifest in evaluator-only storage inaccessible to callers and workers.
+A directory label alone does not enforce isolation.
+
+answer_key.json uses paths relative to fixtures/codereview-v1.
+Its hidden_witness values use this exact witness schema. Seed spans
+refer to shipped files, never reference files. Clean modules have
+seeds: [] and use the shipped file as their reference.
+
+The reference test loader imports fixture modules and Python standard
+library modules only. It imports no executor code. Each test file is
+the complete supplied suite for its corresponding module.
+
+From fixtures/codereview-v1, run all reference suites with:
+
+    python -B -m unittest discover -s tests -p "test_*.py"
+
+FIXTURE_IMPLEMENTATION defaults to reference. Set it to shipped to run
+the identical suites against the reviewable versions. Unknown mode
+values fail rather than selecting an implementation implicitly.
+
+## Bytes, validation and pilot scope
+
+Save every supplied file as UTF-8 without a BOM, with LF line endings
+and exactly one final LF. SHA256SUMS hashes those exact bytes for every
+other supplied file. It does not hash itself. Freeze its hash separately
+in the host's preregistered run manifest.
+
+Author verification used Python 3.12.12 and in-memory module loading:
+24 reference test methods passed; all four hidden witnesses mismatched
+on shipped code and matched on reference code. Both clean-control
+suites passed against their shipped bytes. The file-based support
+loader was syntax-checked; filesystem discovery was not executed.
+
+These artifacts supply fixtures, reference suites, fixes and witnesses.
+They do not constitute the full pilot freeze: caller prompts, the
+unrelated fill prefix, evaluator implementation, sandbox configuration,
+accounting and admission checks must also be frozen before model calls.
+No pilot model calls or ranking runs were performed during authoring.
+```
+
+FILE: fixtures/codereview-v1/SHA256SUMS
+```text
+fa7a55e9ce6def29a21cd3c2a1827394e47ef0d62879627db18a07ecff7f85c9  answer_key.json
+007d0aea38171edcb1515c7420cd0350238f5820a337d995bcbd4a8614b5c676  packA/labels.py
+3ce17c9294f13490062689048f50e99ec05d91362e941d71666778faf2a028a4  packA/paging.py
+a21180d13728122c5cbf350f5684efa7d3b0778a255dbadca254788017f71301  packA/sample_stats.py
+1d70b0cccb628354057a376806177c203aaa9134f97b41e3173ef6a30ff0ee95  packB/ranges.py
+841e33a12f8fd287db068faa5cb68971391d691487c199f8d56687b1ad784743  packB/rotation.py
+e56f98600f1a5a634afd823a15e6fefd43102fdda101a3c379347a154f833f40  packB/settings.py
+8b50d0b080444dd3c3c0e681fd39525e4a8e88176eb7a7bb707a6f768fb825e8  ref/packA/paging.py
+9c4e0089693f11dcbf4ef18601d87264df3d96ffa08c37561b8c9e3623e4d08c  ref/packA/sample_stats.py
+959fcadeeb4c2c307d66bd98f91b23ca79207f2ea2511d54eb06684887bcdf68  ref/packB/ranges.py
+c23f299664a5b1cf338506cbf19043674a6a1714bd29435a000b9f141c0d0d41  ref/packB/rotation.py
+50c5310819f9c44a6583dcdb8a7bfb012777f1853d0ecf3ca2d91340fc44c20d  tests/support.py
+4b1064ee1aec1de04d3cb13030457998b45550b10f4e7025bfd3e75c87efd16f  tests/test_packA_labels.py
+b178a5bb52fcff9acf1901be6f5fa0acaebbbbab71fbe62e8016d9d149d4b23e  tests/test_packA_paging.py
+6c7dacfa1d26c7cd258daeb4f5792e5b768de9764f4b4aec2870f927d872002a  tests/test_packA_sample_stats.py
+405f1ed3496b3f9e22ca9c1a8207ae9de22c7a7938ad3cf6f536c3a4801faba4  tests/test_packB_ranges.py
+1116a5b491f28f21b09233f29048241aaf35d9322093e9d6bce97f2fcd12b0d7  tests/test_packB_rotation.py
+85951c7943d7eeaa18307de1f63a2dee5fcef9809228cb49ef3ad4df0dc7e72f  tests/test_packB_settings.py
+8436840021729727bbaf9367c49048589ebdb7c6a610b2af9aa431e7d313d1f8  WITNESS_FORMAT.md
+```
+
+
