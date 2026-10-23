@@ -119,7 +119,7 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
             data = value['value']
             try:
                 text = J(data)
-                loads(text)
+                data = loads(text)  # the carried value is exactly what the text, its digest and the identity say
             except (Error, TypeError, ValueError, RecursionError):
                 raise Error(f'reference {name}: value must be one finite JSON value') from None
             if data is None or isinstance(data, str) and not data.strip():
@@ -174,6 +174,12 @@ def normalize(request: dict, *, allow: Path, config: dict, registry=None) -> dic
         # Only a non-default profile enters the work (and its digest), so default requests keep their identity.
         work['profile'] = profile
         work['checks'] = {k: list(pin(checks[k], registry)) for k in work['ops'] if checks and checks.get(k)}
+    forms = sorted(n for n in work['refs'] if 'value' in texts[n])
+    if forms:
+        # A {"value": ...} ref is a JSON array/object/number on the wire, a text ref a string: the form is part of the
+        # work (a file named "value" holding the same text has the same source label). Only requests that use value
+        # refs gain this key, so default requests keep their identity.
+        work['ref_forms'] = {n: 'value' for n in forms}
     digest = hashlib.sha256(J(work).encode('utf-8')).hexdigest()
     return dict(work=work, texts=texts, sha256=digest, request_id=request_id or 'h' + digest[:16], model=model,
                 allow_experimental=request.get('allow_experimental', False), deadline=deadline,

@@ -309,3 +309,19 @@ The declared cells only: Sonnet 5.5, CLI 2.1.306, default effort, this op text, 
 limits, two-decimal intervals, the frozen value form and layout, sizes 4 and 1; and the one observed suite. Extract
 and bounds stay experimental compositions. No reliability, savings, model-necessity or O1 claim follows. The author
 guidance (pass a checked intermediate explicitly) cites one probe, one packet, six calls per arm.
+
+## Addendum 2026-10-23: review fixes before the first paid call (new freeze digest `18259ff32ec29a9ea9d047b29bc86ffb12484a0d0a4a0ee7d9ff99eec6bd1dab`, short 18259ff3)
+
+Two reviewed defects in the opt-in executor changes are fixed and the freeze is rewritten at the digest above (the
+ed082d4d record is kept in git; the `qualify --expect` digest in the commands above is now this one, and the G3b and O1 digests in the
+table above are now 058b68d14c9a8fc1e6c749975ad326bdbeb1f3d94cb07db34b1cd43d256c3e0f and
+31706661ac36a234e9df2f69f67751dae2767e45f22cf6a0daa16dc0f4e0609d). `oz_do.py`: a request that uses a `{"value": ...}`
+ref now records the ref form of each such ref in its work (`ref_forms`), so a file named `value` holding `[1]` and
+`{"value": [1]}` are different work and a resubmission under the same request id with the other form is refused; the
+carried value is the value of the compact JSON text that the digest covers (a tuple or integer key does not survive
+as itself). Requests without value refs have no `ref_forms` key and keep their identity. `oz_flow.py`: resume
+compares a pending stage's recorded inputs with the fresh ones as canonical serialized bytes, not Python equality, so
+true, 1 and 1.0 are different inputs and open an explicit new generation (`inputs_changed`). H, the grammar, the
+parser, the packets, the schedule and the qualification design are unchanged; no model call was made. Re-run, zero
+tokens: `adopt.py dry` passes, `step4.py dry`, `replay-live1` and `replay-live2` pass, `o1.py dry` passes, and the
+full suite passes (722 tests).

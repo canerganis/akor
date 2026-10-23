@@ -42,10 +42,10 @@
   "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
   "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
   "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
-  "oz_do.py": "1e7c40f2e53736b22631ade663ff321c92955d644b60dc2d689756b7e30b6518",
+  "oz_do.py": "808db50828bda5798e989639b10e9bd16d08f3975bdebf76b56b97d631d81459",
   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
   "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
-  "oz_flow.py": "1a6e5483fda0a5aa6d411a96cb3ac4eeda2580bb1b95db91ee5bad827f7213b5",
+  "oz_flow.py": "dea1a4680af4e9ef87c1ca85ebe339ac16fa6cdf69ac73c41bdafb685c326c6e",
   "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
   "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
   "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
@@ -68,5 +68,5 @@
   "docs/design/o1-real-workflow-2026-10-23/03-astra-r2-signed.md": "7d6ccea60e8e4b6408864a3178957b9932c4353d47ac533f35ed6dc72209f55d",
   "docs/design/o1-real-workflow-2026-10-23/04-opus-r2-sign.md": "a464b0eebd755866e3fc87381386210de31446a0ea9d6a174324a79b2c62b607"
  },
- "digest": "0aa5ecf6cb453c195654679c8b7902768a0aff1a909263968100abfae386c933"
+ "digest": "31706661ac36a234e9df2f69f67751dae2767e45f22cf6a0daa16dc0f4e0609d"
 }

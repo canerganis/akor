@@ -218,3 +218,13 @@ in git). Re-run at this digest, zero tokens: the full unit suite, `step4.py dry`
 clean 3, repeat 0, interrupt 3, stale 5, bump 0, 11 launches as before; recovery 11 of 11, executor sabotage 6 of 6,
 G3b sabotage 21 of 21, C5 4 of 4, baseline smoke), and `replay-live1` and `replay-live2` (all traces match, all
 independent verdicts agree). The live2 and live3 records stand for their own freezes (02119a17 and 040cfd41).
+
+## Addendum 2026-10-23: review fixes to the opt-in executor changes (new freeze digest `058b68d14c9a8fc1e6c749975ad326bdbeb1f3d94cb07db34b1cd43d256c3e0f`, short 058b68d1)
+
+`oz_do.py` (the ref form of a `{"value": ...}` ref is part of the request identity; requests without value refs keep
+theirs) and `oz_flow.py` (resume compares recorded and fresh stage inputs as canonical serialized bytes, never Python
+equality) changed; the default paths G3b uses are unchanged. `freeze-g3b.json` is rewritten at the digest above (the
+97943a55 record is kept in git). Re-run at this digest, zero tokens: the full unit suite (722 tests), `step4.py dry`
+(`"pass": true`; clean 3, repeat 0, interrupt 3, stale 5, bump 0, 11 launches as before; the same recovery, sabotage,
+C5 and baseline checks) and `replay-live1` and `replay-live2` (all traces match, all independent verdicts agree).
+The live2 and live3 records stand for their own freezes.

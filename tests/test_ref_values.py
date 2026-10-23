@@ -100,6 +100,51 @@ class ValueRefTests(unittest.TestCase):
         self.assertEqual(rows['a']['result_json'], '["1"]')
         self.assertIsNone(rows['b']['result_json'])
 
+    def test_the_ref_form_is_part_of_the_request_identity(self):
+        # A file named "value" holding [1] and {"value": [1]} carry the same text and the same label, yet they are
+        # different wire types (a string versus an array): they must be different work.
+        (self.root / 'value').write_text('[1]', encoding='utf-8')
+        as_path = self.norm({'r': {'path': 'value'}})
+        as_value = self.norm({'r': {'value': [1]}})
+        self.assertEqual(as_path['texts']['r']['text'], as_value['texts']['r']['text'])
+        self.assertNotEqual(as_path['sha256'], as_value['sha256'])
+        self.assertNotEqual(as_path['work'], as_value['work'])
+        # Exact bytes: true, 1 and 1.0 are three different values.
+        digests = {self.norm({'r': {'value': v}})['sha256'] for v in (True, 1, 1.0)}
+        self.assertEqual(len(digests), 3)
+
+    def test_default_requests_keep_their_identity_without_ref_forms(self):
+        plain = self.norm({'r': 'unknown'})
+        self.assertEqual(set(plain['work']), {'goal', 'ops', 'refs', 'jobs', 'max_attempts'})
+        mixed = self.norm({'r': 'unknown', 's': {'value': [1]}})
+        self.assertIn('ref_forms', mixed['work'])
+
+    def test_reusing_a_request_id_with_another_ref_form_is_refused(self):
+        (self.root / 'value').write_text('[1]', encoding='utf-8')
+        adapter = Capture()
+
+        def req(ref):
+            return {'request_id': 'form1', 'goal': 'g', 'ops': {'op': OP}, 'model': 'claude-sonnet-5-5',
+                    'refs': {'r': ref}, 'jobs': [['a', 'op', 'r']], 'allow_experimental': True,
+                    'max_input_tokens': 100000, 'profile': SELECTIVE}
+        first = self.run_do(req({'path': 'value'}), adapter)
+        self.assertEqual(first['status'], 'complete', first)
+        with self.assertRaisesRegex(Error, 'already names different work'):
+            self.run_do(req({'value': [1]}), adapter)
+        # And the other way round on a fresh id.
+        other = dict(req({'value': [1]}), request_id='form2')
+        self.assertEqual(self.run_do(other, adapter)['status'], 'complete')
+        with self.assertRaisesRegex(Error, 'already names different work'):
+            self.run_do(dict(req({'path': 'value'}), request_id='form2'), adapter)
+
+    def test_the_carried_value_is_exactly_what_the_text_and_digest_say(self):
+        # A tuple and an int key do not survive their JSON text; the carried value must be the text's value.
+        req = self.norm({'r': {'value': (1, {1: 'a'})}})
+        self.assertEqual(req['texts']['r']['text'], '[1,{"1":"a"}]')
+        self.assertEqual(req['texts']['r']['value'], [1, {'1': 'a'}])
+        self.assertIs(type(self.norm({'r': {'value': True}})['texts']['r']['value']), bool)
+        self.assertIs(type(self.norm({'r': {'value': 1.0}})['texts']['r']['value']), float)
+
     def run_do(self, request, adapter, **options):
         return do(request, workspace=self.root, adapter=adapter, **options)
 
@@ -210,6 +255,54 @@ class OrderedInputTests(unittest.TestCase):
             _model_input(op, bindings, {'n': {'records': {'A': ['x']}, 'bounds': {'A': 'unknown'}}}, None)
         plain = ModelOp('extract', 1, 'g', 'i', (), True)
         self.assertEqual(_model_input(plain, {'record': {'node': 'n', 'path': '/records/A'}}, values, None), RECORD)
+
+
+class ResumeInputComparisonTests(unittest.TestCase):
+    """A pending stage is reused only when its resolved inputs are the same bytes (foundation clauses 1 and 12)."""
+
+    def pinned_stage(self, stored, fresh):
+        """Run _run_stage for node n whose recorded submission carried `stored` and whose inputs now resolve to
+        `fresh`; return the regenerated events (the stage is stopped at its first call)."""
+        import oz_flow
+        temp = tempfile.TemporaryDirectory()
+        self.addCleanup(temp.cleanup)
+        flow = oz_flow.Flow(Path(temp.name) / 'flow.sqlite')
+        self.addCleanup(flow.close)
+        flow.db.execute("INSERT INTO nodes(id,idx,descriptor) VALUES ('n',0,'{}')")
+        op = two_ref_op()
+        settings = oz_flow.Settings(workspace=Path(temp.name), adapter=None, registry={}, checks_registry={},
+                                    route={}, model='m')
+        rid = _stage_request('f', op, ['n'], {'n': stored}, {'n': 1}, 100, 30, settings.model,
+                             settings.max_input_tokens)['request_id']
+        flow.event('stage_submitted', op=op.name, nodes=['n'], request_id=rid, run_dir='do/' + rid,
+                   members=['n'], texts={'n': stored}, generations={'n': 1})
+        descriptors = {'n': {'bindings': {'record': {'lit': stored[0]}, 'interval': {'lit': fresh}}, 'deps': [],
+                             'generation': 1}}
+
+        class Stop(Exception):
+            pass
+
+        def stop(*_a, **_k):
+            raise Stop
+
+        from unittest import mock
+        with mock.patch.object(oz_flow, 'do', stop), mock.patch.object(oz_flow, 'stage_launches', lambda _r: []):
+            try:
+                result = oz_flow._run_stage(flow, {'request_id': 'f'}, settings, op, ['n'], descriptors, {}, {},
+                                            100, 30, None, None)
+            except Stop:
+                result = 'stopped'
+            self.assertEqual(result, 'stopped')
+        return [e['details'] for e in flow.events() if e['event'] == 'regenerated']
+
+    def test_an_equal_but_differently_typed_pending_input_opens_a_new_generation(self):
+        for stored, fresh in ((True, 1), (1, 1.0), (1, True), ([True], [1]), ({'a': 1}, {'a': 1.0})):
+            regenerated = self.pinned_stage([RECORD, stored], fresh)
+            self.assertEqual([r.get('reason') for r in regenerated], ['inputs_changed'], (stored, fresh))
+
+    def test_identical_pending_inputs_are_reused(self):
+        for same in (True, 1, 1.0, [1, 'x'], {'a': [1.5]}):
+            self.assertEqual(self.pinned_stage([RECORD, same], same), [], same)
 
 
 if __name__ == '__main__':

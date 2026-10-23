@@ -339,3 +339,11 @@ on the new code before the refreeze (clean 2, repeat 0, interrupt 2, stale 4, bu
 sabotage, escape, seeds, oracle, feasibility, measured; only the freeze check failed, as expected), then
 `o1.py freeze --write` gave the digest above (the 32333561 record is kept in git), and `dry` passed again with the
 freeze held. This refreeze is a record of the code state, not a new O1 gate.
+
+## Addendum 2026-10-23: refreeze after the review fixes to the opt-in executor changes (new freeze digest `31706661ac36a234e9df2f69f67751dae2767e45f22cf6a0daa16dc0f4e0609d`, short 31706661)
+
+`oz_do.py` (the ref form of a `{"value": ...}` ref enters the request identity; requests without value refs keep
+theirs) and `oz_flow.py` (resume compares stage inputs as canonical serialized bytes, not Python equality) changed; the
+default paths O1 uses are unchanged. `o1.py freeze --write` gave the digest above (the 0aa5ecf6 record is kept in git)
+and `o1.py dry` passed every block with the freeze held (clean 2, repeat 0, interrupt 2, stale 4, bump 0). This
+refreeze is a record of the code state, not a new O1 gate. No model call was made.

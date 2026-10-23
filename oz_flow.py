@@ -808,7 +808,8 @@ def _run_stage(flow, request, settings, op, group, descriptors, current, values,
     pinned = {}
     for node in group:
         stage = pins.get((node, generations[node]))
-        if stage is not None and stage['texts'][node] != texts[node]:
+        if stage is not None and J(stage['texts'][node]) != J(texts[node]):
+            # Compared as canonical serialized bytes: Python equality would treat true, 1 and 1.0 as one input.
             # Clause 1: changed inputs need an explicit new logical job, never a silent reuse or replacement.
             generations[node] = flow.regenerate(node, reason='inputs_changed')
             descriptors[node]['generation'] = generations[node]
