@@ -1,0 +1,179 @@
+{
+ "backend": "codex",
+ "evidence": {
+  "calls": [
+   {
+    "call_id": "eb8e463c6c0040c68fd96e2458e83237",
+    "prompt_sha256": "618cde160e6d253cc91cc1ad607174c01799d4358c4787046aa6dd968a6ea09e",
+    "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+    "usage": {
+     "cache_creation_input_tokens": 0,
+     "cached_input_tokens": 0,
+     "input_tokens": 29686,
+     "output_tokens": 42,
+     "reasoning_output_tokens": 24
+    },
+    "usage_source": "core_ledger",
+    "visible_tokens": 12,
+    "workdir": "C:\\Users\\can02\\AppData\\Local\\Temp\\oz-codex-empty-0"
+   },
+   {
+    "call_id": "566436e47df542daaab6bd6ea76c74d3",
+    "prompt_sha256": "618cde160e6d253cc91cc1ad607174c01799d4358c4787046aa6dd968a6ea09e",
+    "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+    "usage": {
+     "cache_creation_input_tokens": 0,
+     "cached_input_tokens": 0,
+     "input_tokens": 29686,
+     "output_tokens": 46,
+     "reasoning_output_tokens": 28
+    },
+    "usage_source": "core_ledger",
+    "visible_tokens": 12,
+    "workdir": "C:\\Users\\can02\\AppData\\Local\\Temp\\oz-codex-empty-0"
+   }
+  ],
+  "inclusion": {
+   "cached_input_tokens": [
+    0,
+    0
+   ],
+   "input_tokens": [
+    29686,
+    29686
+   ]
+  },
+  "problems": [
+   "cached_input_tokens did not change on the identical repeat: inclusion not shown"
+  ]
+ },
+ "freeze_sha256": "bb76c7b0f329c2bf15df3ee8856dcb6a0a0b089374403b241264c2a9a97d344f",
+ "leakage": [],
+ "results": [
+  {
+   "bucket": "telemetry",
+   "calls": [
+    {
+     "call_id": "eb8e463c6c0040c68fd96e2458e83237",
+     "elapsed_ms": 11672,
+     "jobs": [
+      "j0"
+     ],
+     "outcome": "ok",
+     "prompt_sha256": "618cde160e6d253cc91cc1ad607174c01799d4358c4787046aa6dd968a6ea09e",
+     "receipt": "1",
+     "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+     "usage": {
+      "cache_creation_input_tokens": 0,
+      "cached_input_tokens": 0,
+      "input_tokens": 29686,
+      "output_tokens": 42,
+      "reasoning_output_tokens": 24
+     },
+     "usage_source": "core_ledger",
+     "visible_tokens": 12,
+     "workdir": "C:\\Users\\can02\\AppData\\Local\\Temp\\oz-codex-empty-0"
+    }
+   ],
+   "envelopes": [
+    {
+     "exit_code": 0,
+     "kind": "codex",
+     "leakage": [],
+     "receipt": "1",
+     "sha256": "63913f817666cbb998599efa76f5959eeb52101995d470a0559ed6f96997e73c",
+     "usage": {
+      "cache_creation_input_tokens": 0,
+      "cached_input_tokens": 0,
+      "input_tokens": 29686,
+      "output_tokens": 42,
+      "reasoning_output_tokens": 24
+     }
+    }
+   ],
+   "key": "telemetry-1",
+   "leakage": [],
+   "meta": {
+    "exit_code": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "9e11f3600f675fc219f3a261ffe40bb904b13b7f3d9dbd3865921baaa4a9e41c",
+    "timed_out": false,
+    "tree": {
+     "killed": false,
+     "mode": "job",
+     "survivors_after_exit": 0,
+     "verified": true
+    },
+    "tree_killed": null
+   },
+   "status": "complete",
+   "tree_verified": true,
+   "unresolved": [],
+   "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
+  },
+  {
+   "bucket": "reserve",
+   "calls": [
+    {
+     "call_id": "566436e47df542daaab6bd6ea76c74d3",
+     "elapsed_ms": 9985,
+     "jobs": [
+      "j0"
+     ],
+     "outcome": "ok",
+     "prompt_sha256": "618cde160e6d253cc91cc1ad607174c01799d4358c4787046aa6dd968a6ea09e",
+     "receipt": "1",
+     "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+     "usage": {
+      "cache_creation_input_tokens": 0,
+      "cached_input_tokens": 0,
+      "input_tokens": 29686,
+      "output_tokens": 46,
+      "reasoning_output_tokens": 28
+     },
+     "usage_source": "core_ledger",
+     "visible_tokens": 12,
+     "workdir": "C:\\Users\\can02\\AppData\\Local\\Temp\\oz-codex-empty-0"
+    }
+   ],
+   "envelopes": [
+    {
+     "exit_code": 0,
+     "kind": "codex",
+     "leakage": [],
+     "receipt": "1",
+     "sha256": "378d2d780ea1e3cddc5e407d8a91a8a78b40b9552021d6749b0f49acb68054c5",
+     "usage": {
+      "cache_creation_input_tokens": 0,
+      "cached_input_tokens": 0,
+      "input_tokens": 29686,
+      "output_tokens": 46,
+      "reasoning_output_tokens": 28
+     }
+    }
+   ],
+   "key": "telemetry-2",
+   "leakage": [],
+   "meta": {
+    "exit_code": 0,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "stdout_sha256": "d08e6d6a0db1d5585b03b3dfc05bf1cb1f20cdefbe3116acdf3970b83287859c",
+    "timed_out": false,
+    "tree": {
+     "killed": false,
+     "mode": "job",
+     "survivors_after_exit": 0,
+     "verified": true
+    },
+    "tree_killed": null
+   },
+   "status": "complete",
+   "tree_verified": true,
+   "unresolved": [],
+   "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
+  }
+ ],
+ "run_dir": "bench/ozmap/runs/live-bb76c7b0f329",
+ "status": "unverified",
+ "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
+}

@@ -1,0 +1,131 @@
+{
+ "boolq": "available",
+ "cells": [
+  {
+   "arm": "B",
+   "evidence": "incomplete",
+   "id": "codex-materials",
+   "wave": "cold"
+  },
+  {
+   "arm": "A",
+   "evidence": "complete",
+   "id": "codex-materials",
+   "wave": "cold"
+  },
+  {
+   "arm": "C",
+   "evidence": "incomplete",
+   "id": "codex-materials",
+   "wave": "cold"
+  },
+  {
+   "arm": "A",
+   "evidence": "incomplete",
+   "id": "codex-materials",
+   "wave": "warm"
+  },
+  {
+   "arm": "C",
+   "evidence": "incomplete",
+   "id": "codex-materials",
+   "wave": "warm"
+  },
+  {
+   "arm": "B",
+   "evidence": "incomplete",
+   "id": "codex-boolq",
+   "wave": "cold"
+  },
+  {
+   "arm": "A",
+   "evidence": "incomplete",
+   "id": "codex-boolq",
+   "wave": "cold"
+  },
+  {
+   "arm": "C",
+   "evidence": "incomplete",
+   "id": "codex-boolq",
+   "wave": "cold"
+  },
+  {
+   "arm": "C",
+   "evidence": "complete",
+   "id": "sonnet-materials",
+   "wave": "cold"
+  },
+  {
+   "arm": "B",
+   "evidence": "complete",
+   "id": "sonnet-materials",
+   "wave": "cold"
+  },
+  {
+   "arm": "A",
+   "evidence": "complete",
+   "id": "sonnet-materials",
+   "wave": "cold"
+  },
+  {
+   "arm": "C",
+   "evidence": "incomplete",
+   "id": "sonnet-materials",
+   "wave": "warm"
+  },
+  {
+   "arm": "A",
+   "evidence": "complete",
+   "id": "sonnet-materials",
+   "wave": "warm"
+  }
+ ],
+ "finished_at": 1792850140.7761934,
+ "freeze_sha256": "bb76c7b0f329c2bf15df3ee8856dcb6a0a0b089374403b241264c2a9a97d344f",
+ "gold_accessed_during_run": true,
+ "leakage_problems": [],
+ "mode": "live",
+ "session": "live-61ee61d32201",
+ "started_at": 1792849277.7643566,
+ "telemetry": {
+  "accepted": true,
+  "cache_certified": false,
+  "freeze_sha256": "bb76c7b0f329c2bf15df3ee8856dcb6a0a0b089374403b241264c2a9a97d344f",
+  "reasons": [
+   "cached_input_tokens did not change on the identical repeat: inclusion not shown"
+  ],
+  "run_dir": "bench/ozmap/runs/live-bb76c7b0f329",
+  "status": "unverified"
+ },
+ "tool_use_leakage": [
+  {
+   "at": 1792849784.3778238,
+   "attempt_id": "au6anhmeymei65rda4jumllzoho7iz554lq63vmpo35iiotx4c7lq",
+   "call_id": "a5a07e4405f74240ba425e15dcd10e8b",
+   "exit_code": 86,
+   "kind": "codex",
+   "leakage": [
+    {
+     "item_type": "command_execution",
+     "line": 6,
+     "type": "item.started"
+    },
+    {
+     "item_type": "command_execution",
+     "line": 7,
+     "type": "item.completed"
+    }
+   ],
+   "receipt": "qcljjl42hi7f6ny3ulwktmivhaiyzjjhphf4lqit3towlg57r4haa/1",
+   "request_id": "qcljjl42hi7f6ny3ulwktmivhaiyzjjhphf4lqit3towlg57r4haa",
+   "sha256": "facac4de106afd1fd8d5a615deb8633a8f1dcdeffd770d99d908dba12c7dd412",
+   "usage": {
+    "cache_creation_input_tokens": 0,
+    "cached_input_tokens": 41472,
+    "input_tokens": 84045,
+    "output_tokens": 2963,
+    "reasoning_output_tokens": 476
+   }
+  }
+ ]
+}

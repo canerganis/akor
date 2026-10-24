@@ -1,0 +1,108 @@
+{
+  "version": 1,
+  "channels": {
+    "worker": {
+      "session": "s-a6af4a55513c425082ab04b64d6e2754",
+      "task": "demo",
+      "revision": 1,
+      "sender": "lead",
+      "recipient": "worker",
+      "goal": "DEMO only: read supplied data, retain uncertainty, propose a plan. Do not execute tools.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "DEMO: 12.50 ± 0.02 mm; method unknown.",
+          "source": "",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "proposal",
+          "text": "DEMO: ask for the measurement method before concluding.",
+          "source": "",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "reason",
+          "text": "DEMO: measurement method unavailable.",
+          "source": "",
+          "status": ""
+        }
+      ],
+      "macros": [
+        {
+          "code": "P",
+          "steps": [
+            {
+              "code": "r",
+              "ref": 0,
+              "text": null
+            },
+            {
+              "code": ">",
+              "ref": 2,
+              "text": null
+            }
+          ]
+        }
+      ]
+    },
+    "reviewer": {
+      "session": "s-a6af4a55513c425082ab04b64d6e2754",
+      "task": "demo",
+      "revision": 1,
+      "sender": "lead",
+      "recipient": "reviewer",
+      "goal": "DEMO only: read supplied data, retain uncertainty, propose a plan. Do not execute tools.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "DEMO: 12.50 ± 0.02 mm; method unknown.",
+          "source": "",
+          "status": ""
+        },
+        {
+          "number": 2,
+          "kind": "proposal",
+          "text": "DEMO: ask for the measurement method before concluding.",
+          "source": "",
+          "status": ""
+        },
+        {
+          "number": 3,
+          "kind": "reason",
+          "text": "DEMO: measurement method unavailable.",
+          "source": "",
+          "status": ""
+        }
+      ],
+      "macros": [
+        {
+          "code": "P",
+          "steps": [
+            {
+              "code": "r",
+              "ref": 0,
+              "text": null
+            },
+            {
+              "code": ">",
+              "ref": 2,
+              "text": null
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "encodings": [
+    "o200k_base"
+  ],
+  "max_tokens": 2048,
+  "batch_size": 64
+}

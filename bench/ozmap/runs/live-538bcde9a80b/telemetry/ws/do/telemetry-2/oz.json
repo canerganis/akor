@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "channels": {
+    "worker": {
+      "session": "do-telemetry-2",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "worker",
+      "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.60 mm; uncertainty=0.01 mm; n=8; method=unknown; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:435a5694c63942d67942ccc5dc045766126fa8f78ebea895965545e36f2a02c5",
+          "status": ""
+        }
+      ],
+      "macros": []
+    },
+    "refs": {
+      "session": "do-telemetry-2",
+      "task": "do",
+      "revision": 1,
+      "sender": "caller",
+      "recipient": "host",
+      "goal": "Prepare an evidence-limited inspection handoff. The numerical acceptance interval is [12.48,12.52] mm, inclusive. Interval inclusion is arithmetic only, not physical validation.",
+      "active": 1,
+      "references": [
+        {
+          "number": 1,
+          "kind": "source",
+          "text": "length=12.60 mm; uncertainty=0.01 mm; n=8; method=unknown; basis=unknown; physical_validation=not_claimed",
+          "source": "inline@sha256:435a5694c63942d67942ccc5dc045766126fa8f78ebea895965545e36f2a02c5",
+          "status": ""
+        }
+      ],
+      "macros": []
+    }
+  },
+  "encodings": [
+    "o200k_base"
+  ],
+  "max_tokens": 1000000,
+  "batch_size": 1
+}

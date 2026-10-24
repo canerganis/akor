@@ -1,0 +1,41 @@
+{
+ "frozen": {
+  "caps": {
+   "codex": {
+    "A": 12,
+    "B": 8,
+    "C": 7,
+    "bootstrap": 2,
+    "reserve": 7,
+    "telemetry": 1
+   },
+   "sonnet": {
+    "A": 8,
+    "B": 4,
+    "C": 2,
+    "bootstrap": 1,
+    "reserve": 2,
+    "telemetry": 0
+   }
+  },
+  "global_cap": 54
+ },
+ "total": 46,
+ "used": {
+  "codex": {
+   "A": 12,
+   "B": 8,
+   "C": 5,
+   "bootstrap": 2,
+   "reserve": 1,
+   "telemetry": 1
+  },
+  "sonnet": {
+   "A": 8,
+   "B": 4,
+   "C": 2,
+   "bootstrap": 1,
+   "reserve": 2
+  }
+ }
+}
