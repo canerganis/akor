@@ -92,6 +92,32 @@ TOKENIZER_PYTHON = REPO / '.venv' / 'Scripts' / 'python.exe'
 
 INPUT_POLICY = {'version': 'oz-input/1', 'terminal_newline': 'strip_one', 'text_ref': 0}
 
-# Exit codes of `run cell` (INTERFACE.md); 12 to 14 are harness additions recorded in build-notes.md.
+# Exit codes of `run cell` (INTERFACE.md); 12 and above are harness additions recorded in build-notes.md.
 EXIT_OK, EXIT_USAGE, EXIT_ALREADY, EXIT_REQUIRES, EXIT_INCOMPLETE = 0, 2, 3, 4, 5
 EXIT_QUOTA, EXIT_AUTH_GATE, EXIT_AUTH_STOP, EXIT_TELEMETRY, EXIT_FREEZE, EXIT_INTERRUPTED = 10, 11, 12, 13, 14, 75
+EXIT_IDENTITY, EXIT_BUSY, EXIT_SAFETY_KILL, EXIT_CLASSIFICATION = 15, 16, 17, 18
+
+# Council round 1: the live run directory and the experiment ledger. Live cells run only in the canonical run
+# directory (freeze.json may name another one, which needs a new freeze and a recorded council disposition), and every
+# live charge is also appended to the experiment ledger outside every run directory, so a new or emptied run
+# directory never grants a fresh allocation (RT1.5, item 9).
+LIVE_RUN_DIR_DEFAULT = RUNS_DEFAULT / 'replication'
+LIVE_LEDGER_DEFAULT = RUNS_DEFAULT / 'live-calls.jsonl'
+
+# Signed exceptions (council round 1). Each entry needs a prospective signed ruling (Astra A and Opus B) named in
+# build-notes.md before the freeze; all are empty until then, which is the strict reading of A4.2 and A4.3.
+# Top level error events and error items whose message starts with one of these are transport events, not tool
+# activity (B1 part b). Empty: every such event is uncertain.
+SIGNED_TRANSPORT_NOTICES = ()
+# Disable options that may be left out of the frozen argv, with the signed document that authorizes it (item 8).
+SIGNED_OMITTED_DISABLES = {}
+# Runtime files the CLI writes into CODEX_HOME at startup that the telemetry certificate may accept as not being
+# effective instruction sources (item 1). Empty: any instruction bearing startup file blocks certification.
+SIGNED_STARTUP_FILES = ()
+# Instruction bearing runtime file patterns (relative to CODEX_HOME) inspected by the telemetry certificate.
+INSTRUCTION_BEARING = ('AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', '*.md', 'skills/*', 'skills/**/*',
+                       'memories/*', 'rules/*', 'prompts/*', 'plugins/*', 'hooks/*', 'instructions*')
+
+# Live Codex stop freshness (A4.12, council C4 and RT1.6 interim): a live Codex cell launches only when the newest
+# owner session file holding a rate limit reading is newer than the end of the last Codex evaluation attempt.
+QUOTA_FRESH_AFTER_LAST_CODEX_CALL = True

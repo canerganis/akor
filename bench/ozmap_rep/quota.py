@@ -5,7 +5,9 @@ newest session file (*/*/*/*.jsonl by modification time). An unreadable reading 
 """
 from __future__ import annotations
 
+import datetime as dt
 import json
+import math
 from pathlib import Path
 
 from . import config
@@ -60,8 +62,21 @@ def codex_primary_used_percent(sessions_dir):
     return percent
 
 
+def codex_reading_time(sessions_dir):
+    """When the newest session file holding a rate limit reading was last written (aware UTC), or None."""
+    path = newest_session(sessions_dir)
+    if path is None or codex_primary_used_percent(sessions_dir) is None:
+        return None
+    try:
+        return dt.datetime.fromtimestamp(path.stat().st_mtime, tz=dt.timezone.utc)
+    except (OSError, OverflowError, ValueError):
+        return None
+
+
 def codex_gate(sessions_dir) -> dict:
     percent = codex_primary_used_percent(sessions_dir)
+    if percent is not None and not math.isfinite(percent):
+        percent = None
     if percent is None:
         return {'ok': False, 'percent': None, 'reason': 'Codex primary used_percent unreadable: stop (A4.12)'}
     if percent >= config.CODEX_STOP_PERCENT:
@@ -71,8 +86,13 @@ def codex_gate(sessions_dir) -> dict:
 
 
 def claude_gate(weekly_percent) -> dict:
-    if weekly_percent is None:
-        return {'ok': False, 'reason': 'Claude weekly usage unknown: stop (A4.12 handoff rule needs a reading)'}
+    try:
+        value = None if weekly_percent is None else float(weekly_percent)
+    except (TypeError, ValueError):
+        value = None
+    if value is None or not math.isfinite(value) or value < 0:
+        return {'ok': False, 'reason': 'Claude weekly usage unknown or not a finite reading: stop (A4.12 handoff rule '
+                                       'needs a reading)'}
     if float(weekly_percent) >= config.CLAUDE_HANDOFF_PERCENT:
         return {'ok': False, 'reason': f'Claude weekly usage {float(weekly_percent):g}% >= '
                                        f'{config.CLAUDE_HANDOFF_PERCENT}%: hand off (A4.12)'}

@@ -59,6 +59,29 @@ def decode_codex(raw, cache_certified=False):
     return out
 
 
+def decode_codex_checked(raw, cache_certified=False):
+    """decode_codex (whose source hash is the certified decoder trace, so it is never edited) plus the accounting
+    violations that partial counters already demonstrate (council round 1, CHANGE 21): when a counter is missing,
+    a negative counter, cached input above input or reasoning above output among the present counters still makes
+    the usage invalid, so a known violation is never hidden behind incompleteness."""
+    out = decode_codex(raw, cache_certified=cache_certified)
+    if out['status'] != 'incomplete' or not isinstance(raw, dict):
+        return out
+    present = {k: raw[k] for k in REQUIRED if _count(raw.get(k))}
+    problems = []
+    if any(v < 0 for v in present.values()):
+        problems.append('a present counter is negative')
+    if ('cached_input_tokens' in present and 'input_tokens' in present
+            and present['cached_input_tokens'] > present['input_tokens']):
+        problems.append('cached_input_tokens exceeds input_tokens (0 <= cached <= input violated)')
+    if ('reasoning_output_tokens' in present and 'output_tokens' in present
+            and present['reasoning_output_tokens'] > present['output_tokens']):
+        problems.append('reasoning_output_tokens exceeds output_tokens')
+    if problems:
+        out = dict(out, status='invalid', problems=list(out['problems']) + problems, incomplete=True)
+    return out
+
+
 def additive_tokens(raw) -> int:
     """The sensitivity reading under additive input accounting: input + cached + output."""
     return raw['input_tokens'] + raw['cached_input_tokens'] + raw['output_tokens']
@@ -161,8 +184,97 @@ def load_archived_certificate(path=None) -> Certificate:
     return Certificate.from_pair(json.loads(path.read_text(encoding='utf-8')))
 
 
+# A4.7: the one authorized live inclusion certificate (archived telemetry run 1). Arithmetic pair validity
+# (Certificate.valid) is separate from this authority (council round 1, item 19).
+AUTHORIZED_RUN = 'live-6a518ece47ab'
+AUTHORIZED_PAIR = ((29694, 7296), (29694, 0))
+CAPTURE_DECODER = config.REPO / 'examples' / 'codex_cli_adapter.py'
+
+
+def _envelope_usage(doc):
+    found = None
+    for line in str(doc.get('stdout') or '').splitlines():
+        if not line.startswith('{'):
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict) and event.get('type') == 'turn.completed':
+            found = event.get('usage')
+    return found
+
+
+def certificate_authority(path=None, repo=None) -> list:
+    """Problems that keep the archived certificate from certifying the frozen route; [] when it does. Checks the
+    authorized run and pair, the route, the replication decoder hash, the capture decoder trace (hash of the frozen
+    capture adapter), and every source envelope: present, hash equal to the recorded one, its route equal to the
+    certificate's, and its own turn.completed counters equal to the stated pair."""
+    repo = Path(repo or config.REPO)
+    path = Path(path or config.CERTIFICATE_FILE)
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return ['certificate archive missing or unreadable']
+    cert = Certificate.from_pair(doc)
+    problems = []
+    if not cert.valid:
+        problems.append('the certificate pair is not arithmetically valid')
+    if doc.get('run') != AUTHORIZED_RUN:
+        problems.append('the certificate is not the A4.7 authorized run')
+    try:
+        pair = tuple((c['input'], c['cached']) for c in doc.get('calls') or [])
+    except (KeyError, TypeError):
+        pair = ()
+    if pair != AUTHORIZED_PAIR:
+        problems.append('the certificate pair is not the A4.7 authorized pair')
+    if not cert.applies(config.ROUTE, decoder_sha256()):
+        problems.append('the certificate does not apply to the frozen route and the current decoder')
+    trace = doc.get('decoder_trace') or {}
+    try:
+        capture_sha = hashlib.sha256(CAPTURE_DECODER.read_bytes()).hexdigest()
+    except OSError:
+        capture_sha = None
+    if not trace.get('capture_decoder_sha256') or trace.get('capture_decoder_sha256') != capture_sha:
+        problems.append('the capture decoder trace does not match the frozen capture adapter')
+    sources = doc.get('sources') or []
+    if len(sources) != len(pair) or not sources:
+        problems.append('the certificate does not map one source envelope to each call of the pair')
+    seen = []
+    for src in sources:
+        rel = src.get('envelope') if isinstance(src, dict) else None
+        if not rel:
+            problems.append('a source without an envelope path')
+            continue
+        env_path = repo / rel
+        try:
+            data = env_path.read_bytes()
+        except OSError:
+            problems.append(f'source envelope missing: {rel}')
+            continue
+        if hashlib.sha256(data).hexdigest() != src.get('envelope_sha256'):
+            problems.append(f'source envelope hash differs: {rel}')
+            continue
+        try:
+            env = json.loads(data.decode('utf-8'))
+        except (ValueError, UnicodeError):
+            problems.append(f'source envelope unreadable: {rel}')
+            continue
+        route = {'model': env.get('model'), 'effort': env.get('effort'), 'cli_version': env.get('codex_version')}
+        if any(route[k] != (doc.get('route') or {}).get(k) for k in route):
+            problems.append(f'source envelope route differs from the certificate route: {rel}')
+        u = _envelope_usage(env)
+        if not isinstance(u, dict):
+            problems.append(f'source envelope has no turn.completed usage: {rel}')
+            continue
+        seen.append((u.get('input_tokens'), u.get('cached_input_tokens')))
+    if sorted(seen) != sorted(pair):
+        problems.append('the source envelopes do not decode to the stated pair')
+    return problems
+
+
 def cache_certified_for_route() -> bool:
     try:
-        return load_archived_certificate().applies(config.ROUTE, decoder_sha256())
-    except (OSError, ValueError, KeyError):
+        return not certificate_authority()
+    except (OSError, ValueError, KeyError, TypeError):
         return False

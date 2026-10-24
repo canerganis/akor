@@ -33,11 +33,12 @@ itself never needs tiktoken in the calling interpreter (see A4.7 below).
 
 ## Open disputes
 
-None. No acceptance test was found to contradict Amendment 4, so `disputes.md` was not created.
+None. No acceptance test was found to contradict Amendment 4, so `disputes.md` was not created. Round 1: no council
+blocker was judged wrong, so `disputes.md` still does not exist (see the round 1 section).
 
 ## Clause map (A4.x to code)
 
-Paths are relative to `bench/ozmap_rep/`. Line numbers are those of this commit.
+Paths are relative to `bench/ozmap_rep/`. Line numbers are those of commit 4839d99; after the council round 1 fixes the function names are authoritative and the round 1 section at the end of this file supersedes any row it contradicts.
 
 | clause | what | where |
 |---|---|---|
@@ -195,3 +196,105 @@ fake refresh marker is assembled at run time so the fake's own source never hold
    four) must pass before any live Codex cell.
 4. Cells in plan order, one Codex cell process at a time:
    `python -m bench.ozmap_rep.run cell <id> --mode live --claude-weekly-percent <pct>`.
+
+## Council build round 1 fixes (2026-10-24)
+
+Implementer: one fresh Opus workflow subagent (claude-opus-5-5), logged in call-ledger.jsonl as
+`implementer-council-r1-fixes`. No model call and no Codex call was made; every live mode path was exercised with the
+harness' own fakes. Inputs: council-build-astra-r1.md, council-build-opus-r1.md, council-build-redteam-r1.md. Frozen
+code (`bench/ozmap/`, `oz_*.py`, `examples/`), Fable's `ops/`, the acceptance suite and the red team tests are
+unchanged. The red team tests pass without edits.
+
+### Test results after the fixes
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` (acceptance, ops, red team, harness tests) | 467 passed |
+| red team round 1 alone | 16 passed |
+| new regression tests `tests/test_council_r1.py` (one or more per blocker) | 90 passed |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls; scored as simulation, artifact chain clean |
+| `python -m pytest -q --continue-on-collection-errors` (full repository) | 1,728 passed, 50 failed, 1 skipped, 3 collection errors; the failures and errors are exactly the files listed under the build test results above (missing tiktoken in the system interpreter), none in `bench/ozmap_rep/` |
+
+### Blocker dispositions
+
+| id | fix | where |
+|---|---|---|
+| 1 | Live cells need `telemetry_certificate`, not the two booleans: an exec probe on the frozen argv with an empty CODEX_HOME must end in an authentication failure without reply or usage; `login status` with an empty home must say not logged in before and after the call; the call itself must be plain with a home of exactly auth.json, an empty workdir, no reachable instruction file, and no instruction bearing file among the runtime files written at startup (less `SIGNED_STARTUP_FILES`, empty); the certificate is published only after reconciliation. `telemetry_checks` keeps its boolean interface (acceptance) | `isolation.telemetry_certificate`, `run.TelemetryRun`, `run.telemetry_problems` |
+| 2, RT1.2, C1 | Every cell, telemetry and features run takes a non blocking per cell lock and the experiment lock before reading any state (second runner: exit 16, no call); prerequisites are checked under them; one cell process per run directory makes budget reservation atomic; features and login probes own their slot, write an in-flight marker and are reconciled | `run.exclusive`, `CellRun.run`, `_guarded`, `worker_probe` |
+| 3, B3 | Markers carry the prepared auth hash (baseline generation) and, right after the spawn, the child pid and creation time; they are removed only after the group is reconciled. Recovery runs first, experiment wide: a recorded child still running stops the resume (exit 75, nothing touched); every Codex worker is finished and reconciled against its generation; a marker without pid on a home showing a started CLI is ambiguous and stops Codex; only then are orphans recorded as interrupted | `run.recover_inflight`, `isolation.reconcile_generations`, `CellRun.after_group` |
+| 4, B4, C2, C3 | Telemetry runs through the same locks, recovery, gates (wave gate, inventory, Codex stop, quota, freeze, canonical run directory, ledger), slots, markers, budget, ledger, redaction, reconciliation and stop as evaluation, on its own allocation. Every result is appended to `evidence/telemetry.jsonl`; any failed or interrupted telemetry attempt blocks evaluation and further telemetry in that run directory for good; the scorer reports telemetry separately | `run.TelemetryRun`, `score.score_run` |
+| 5 | Authentication failure is detected first, on the error channels only (turn.failed, top level errors, error items, stderr), whatever the timeout or event verdict; propagation is checked against the prepared generation under the lock, so a worker change after an owner reseed stops Codex and keeps the newer baseline | `run.judge_codex`, `Isolation.propagate(expected_baseline_sha256=)` |
+| 6 | stdout and stderr are redacted before judging and before anything is written (token strings of the baseline, the worker and the probe home, plus JWT, API key and bearer shapes); a redaction record with the original hash is kept and the attempt is a credential disclosure, which fails isolation | `redact.py`, `CellRun.after_group`, `worker_probe` |
+| 7 | The executable and its launcher payload (files named after it, libraries) are hashed before every launch group and compared with the frozen identity; verify_freeze checks the version found now; CODEX_HOME, HOME and USERPROFILE must be the worker home and no other value may point into an owner configuration directory; instruction discovery fails closed on unreadable locations | `isolation.executable_identity`, `Executables.verify`, `isolation.instruction_scan`, `env_selection_problems` |
+| 8 | `code_mode_host` is disabled (its `--disable` is accepted). See pending ruling P4 | `cli-flags.json` |
+| 9, RT1.1, RT1.5 | `--mode` is required at run time (exit 2 without it); the plan keeps the exact `command` of the acceptance interface and adds `live_command`; fake mode refuses the live run directory, the owner seeded baseline and any baseline with a signed token; `D/experiment.json` binds mode, freeze hash and baseline lineage at the first dispatch; mixed modes are refused (exit 15); live cells run only in the frozen live run directory and every live charge is also written to the experiment ledger `~/.ozmap_rep/runs/live-calls.jsonl`, which Budget counts in full, so a new or emptied directory gets no fresh allocation; reports say simulation or evaluation | `run.mode_problem`, `identity_problem`, `bind_identity`, `ledger_problems`, `CellRun.budget` |
+| 10 | `run freeze` refuses once a live run is bound (a new freeze needs `--new-run-dir` and `--disposition`); live runs archive the freeze as `D/freeze.json`; freeze globs add `tests/`, `tests/fixtures/`, `redteam/` and the certificate envelopes; the scorer verifies the artifact chain (capture hashes, outcome, events, usage and answers derived again from captures, cell answers against their calls, rule answers recomputed, admission records reproduced, launch evidence) and, for live runs, the frozen inputs against the run bound freeze; any problem withholds every claim | `run.freeze_command`, `score._rejudge`, `_cell_chain`, `_freeze_problems` |
+| 11, RT1.3 | Tool items are aggregated over all events (execution sticky); missing ids, and one id seen with two item types, are uncertain; every top level `error` is uncertain unless a signed transport notice names it; a non JSON stdout line is uncertain | `events.classify_stream` |
+| 13, C6 | Order in judge: authentication failure, tool verdict, delivered reply (turn completed) accepted even after a timeout or nonzero exit, and only then the infrastructure predicate (no reply delivered) is retryable. Sonnet parses the envelope even after a timeout | `run.judge_codex`, `judge_sonnet` |
+| 14 | Gated makespan is the sum of the cell's work windows (submission to resolution of each invocation, local work and launch skew included), plus the bootstrap windows for cold B and C; `child_makespan_s` reports the old statistic | `CellRun._window`, `score.cell_summary` |
+| 15 | Bootstrap answers that are malformed or missing make the call `malformed_answers` and the bootstrap a completion failure; proposals are kept with admission `not_evaluated`; a cell with any terminal unsuccessful outcome writes `SETTLED.json`, returns 5 and is never rerun; only an all ok cell writes `DONE.json` | `CellRun.interpret`, `run_bootstrap`, `_run_locked` |
+| 16 | `validate_classification` requires every operation, valid fields and a timestamp no later than now and the first learner call, before any dispatch (exit 18) and in the scorer; an invalid classification gives no R and blocks materials claims; its hash is in the freeze | `bootstrap.validate_classification`, `CellRun.gates` |
+| 17 | Unanswered audits are listed in `unresolved_audits`; a cell or R subset with one is incomplete, so affected comparisons are inconclusive; no repair call | `CellRun.run_BC`, `gates._incomplete` |
+| 18, B2 | `magnitude` returns invalid with reasons before any ratio when any A4.10 validity problem or a safety kill exists; BoolQ and pooling gates include the kill; an accepted incorrect rule answer writes `D/safety-kill.json` and every later dispatch exits 17 | `gates.magnitude`, `CellRun._run_locked`, `CellRun.gates` |
+| 19 | Pair validity stays `Certificate.valid`; authority is `certificate_authority`: authorized run and pair, route, decoder hash, capture decoder trace (hash of the frozen capture adapter), and every source envelope present, hashing to its record, on the certificate's route and decoding to the stated pair | `usage.certificate_authority` |
+| 23 | A4.13 (`amendment-4-13-caps.md`, signed by Astra A and Opus B before the build, commit b1d41ff) authorizes the caps 20, 40, 4, 40 and global 206; the round 1 review calls are within them (ledger below). A test checks config against the signed text | `tests/test_council_r1.py::test_item23_*` |
+| B1 | (a) done (item 5); a replay of `cliprobe/exec-noauth2.out` (copied to `tests/fixtures/`) is an authentication failure and stops Codex. (b) needs a ruling: P1 | `config.SIGNED_TRANSPORT_NOTICES` (empty) |
+| B5 | Not changed: needs a ruling, P2. Until then any retry or interruption leaves that cell's usage incomplete, so it forfeits the cell's token claims | |
+| RT1.4 | The pinned CLI's refresh failure texts and the 401 texts are matched | `run.AUTH_FAILURE_RE` |
+| RT1.6 | Interim (C4): a live Codex cell launches only when the owner session reading is newer than the end of the last live Codex call; the full fix needs a ruling, P3 | `CellRun.codex_quota_gate`, `quota.codex_reading_time` |
+
+Changes adopted: C5 (live Codex gates need the pinned tokenizer), C7 (a positive `cache_write_input_tokens` makes
+usage unverified), C9 (live isolation needs a passing telemetry certificate, a wave gate row, a features record and an
+auth record per Codex attempt), C11, item 20 (sensitivity recomputes R totals from additive costs), item 21
+(`decode_codex_checked` keeps known violations visible when a counter is missing; `decode_codex` itself is unchanged,
+so the certified decoder hash holds), item 22 (finite quota readings; the report shows current preparation counts,
+physical, telemetry and analytical token views and warm increments), red team observations 2, 3 and 9. Not adopted:
+C10 (leakage stays global: the stricter reading, as the reviewer allowed).
+
+### Pending prospective rulings (needed before the freeze)
+
+Each needs Astra A and Opus B signatures; none is implemented beyond an empty signed slot in `config.py`. Until
+signed, the harness applies the strict reading, and P1, P4 and P5 make a live run unable to produce valid efficiency
+evidence.
+
+* P1 (B1 b, item 11). Whether the 0.160.0 transport texts (`Falling back from WebSockets to HTTPS transport.`,
+  `Reconnecting... `) are transport events. Today every such event is uncertain, so one transient reconnect
+  invalidates replication efficiency. A signed ruling fills `config.SIGNED_TRANSPORT_NOTICES`.
+* P4 (item 8). With `code_mode_host` disabled every exec emits `Code Mode is unavailable...` as an error item, which is
+  uncertain under A4.3, so every live Codex call would invalidate efficiency. A ruling must either define that notice
+  as allowed or sign the omission of the option (`config.SIGNED_OMITTED_DISABLES`).
+* P5 (item 1). The CLI writes bundled skills (`skills/.system/*`) into CODEX_HOME at startup. They are instruction
+  bearing names, so the telemetry certificate cannot pass until a ruling either accepts named startup files
+  (`config.SIGNED_STARTUP_FILES`) on stated evidence or names other evidence of the effective instruction sources.
+* P2 (B5). Bounded accounting of failed or interrupted attempts with unknown usage, as proposed in Opus B5. Today any
+  retry forfeits the cell's token claims.
+* P3 (RT1.6). Dropping `--ephemeral` to read worker rate limits, or a headroom rule. Today only the freshness gate
+  above holds, and within one cell the reading can go stale.
+
+### Readings where A4 is silent (the stricter validity reading)
+
+1. One cell process per run directory; a second runner exits 16 at once instead of waiting.
+2. A spawn exception, or a marker whose termination cannot be established, stops Codex rather than being treated as
+   a call that never started.
+3. The empty home exec probe in telemetry reaches the provider without credentials, so it is charged as a telemetry
+   call (two of the four telemetry calls per attempt) although no model can serve it.
+4. A settled cell with a terminal unsuccessful outcome does not satisfy a `requires` dependency, so cold B and C never
+   run after a failed bootstrap (they would be inconclusive anyway).
+5. A delivered reply after a timeout or nonzero exit is accepted, not retried and not discarded, so no answer is
+   repaired and no batch is sent twice.
+6. The red team asked for `--mode live` inside the plan command; the acceptance interface fixes that command exactly,
+   so `--mode` is required at run time instead and the plan adds `live_command`. The red team asked fake mode to accept
+   only a synthetic baseline inside D; acceptance tests pass a baseline outside D, so fake mode accepts any baseline
+   whose access token is unsigned and refuses the owner seeded one.
+7. A telemetry failure needs a new run directory, which needs a new freeze (`--new-run-dir`, `--disposition`). Live
+   calls of the superseded directory stay in the experiment ledger and keep counting against every allocation and cap.
+8. The launcher payload is the set of files beside the executable named after it or loaded by it (for codex-cli
+   0.160.0: `codex-code-mode-host.exe`), so unrelated programs in the same directory do not block a launch.
+
+New exit codes (harness additions to INTERFACE.md): 15 run identity or directory refused, 16 another runner active,
+17 safety kill established, 18 classification invalid.
+
+### Preparation calls after this step
+
+Astra 8 of 20, Opus 16 of 40, Fable 1 of 4, Sonnet 1 of 40 (ledger sums, this implementer included). Evaluation calls
+so far: 0 Codex, 0 Sonnet. Driver quota at the start of this step: Claude weekly all models 65%.

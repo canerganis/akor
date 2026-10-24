@@ -237,20 +237,31 @@ def sonnet_env(base_env) -> dict:
     return {k: v for k, v in (base_env or {}).items() if k.upper() in allow}
 
 
-def instruction_sources(workdir) -> list:
-    """Instruction files Codex or Claude could discover: AGENTS.md, AGENTS.override.md and CLAUDE.md in the working
-    directory and every ancestor."""
-    found = []
+def instruction_scan(workdir) -> tuple:
+    """(found, unreadable): instruction files Codex or Claude could discover (AGENTS.md, AGENTS.override.md and
+    CLAUDE.md in the working directory and every ancestor), and the locations whose state could not be read. An
+    unreadable location is never treated as absent (council round 1, item 7)."""
+    found, unreadable = [], []
     here = Path(workdir).resolve()
     for d in [here, *here.parents]:
         for name in INSTRUCTION_NAMES:
             p = d / name
             try:
-                if p.exists():
-                    found.append(p)
-            except OSError:
+                os.stat(p)
+            except (FileNotFoundError, NotADirectoryError):
                 continue
-    return found
+            except OSError:
+                unreadable.append(p)
+                continue
+            found.append(p)
+    return found, unreadable
+
+
+def instruction_sources(workdir) -> list:
+    """Instruction files reachable from the working directory, plus every location that could not be read (fail
+    closed: an unreadable ancestor blocks the launch like an instruction file would)."""
+    found, unreadable = instruction_scan(workdir)
+    return found + unreadable
 
 
 def effort_arg(effort) -> str:
@@ -344,6 +355,9 @@ def verify_launch(*, argv, env, workdir, exe_sha256, frozen) -> list:
         listing = sorted(os.listdir(home))
         if listing != [AUTH]:
             problems.append(f'worker home holds more than auth.json: {listing}')
+        problems += env_selection_problems(env, home)
+    if argv and not Path(str(argv[0])).is_absolute():
+        problems.append('the executable is not an absolute path (PATH would select it)')
     work = Path(workdir)
     if not work.is_dir():
         problems.append('working directory missing')
@@ -353,21 +367,133 @@ def verify_launch(*, argv, env, workdir, exe_sha256, frozen) -> list:
         k = list(argv).index('-C')
         if k + 1 < len(argv) and Path(str(argv[k + 1])).resolve() != work.resolve():
             problems.append('-C argument is not the prepared working directory')
-    sources = instruction_sources(work)
-    if sources:
-        problems.append(f'instruction files reachable from the working directory: {[str(p) for p in sources]}')
+    found, unreadable = instruction_scan(work)
+    if found:
+        problems.append(f'instruction files reachable from the working directory: {[str(p) for p in found]}')
+    if unreadable:
+        problems.append(f'instruction locations that could not be read (fail closed): {[str(p) for p in unreadable]}')
     return problems
+
+
+def env_selection_problems(env, home) -> list:
+    """Environment values that select executables or configuration sources (council round 1, item 7): CODEX_HOME,
+    HOME and USERPROFILE must all be the worker home, and no value may point into an owner Codex or Claude
+    configuration directory or the baseline."""
+    problems = []
+    want = Path(home).resolve()
+    for key in ('CODEX_HOME', 'HOME', 'USERPROFILE'):
+        value = next((v for k, v in env.items() if k.upper() == key), None)
+        if value is None or Path(value).resolve() != want:
+            problems.append(f'{key} is not the worker home')
+    owner = []
+    for o in (Path.home() / '.codex', Path.home() / '.claude', config.BASELINE_DEFAULT):
+        try:
+            owner.append(o.resolve())
+        except OSError:
+            continue
+    for key, value in env.items():
+        if key.upper() in ('PATH', 'PATHEXT'):
+            # PATH only resolves helper programs; the pinned CLI itself is installed under ~/.codex/packages and is
+            # launched by its absolute, hash verified path (argv[0]), never through PATH.
+            continue
+        for part in str(value).split(os.pathsep):
+            if not part:
+                continue
+            try:
+                rp = Path(part).resolve()
+            except (OSError, ValueError):
+                continue
+            if any(rp == o or o in rp.parents for o in owner):
+                problems.append(f'{key} points into an owner configuration directory or the baseline')
+    return sorted(set(problems))
+
+
+def executable_identity(exe) -> dict:
+    """The executable that will actually run, hashed now: its resolved path, its SHA256 and the SHA256 of its launcher
+    payload, every file beside it named after it or loaded by it (codex-code-mode-host.exe, libraries). Council round 1, item 7: computed
+    before every launch group, never cached from runner start."""
+    real = Path(exe).resolve()
+    payload = {}
+    stem = real.stem.lower()
+    try:
+        siblings = sorted(p for p in real.parent.iterdir() if p.is_file() and p != real
+                          and (p.name.lower().startswith((stem + '-', stem + '_', stem + '.'))
+                               or p.suffix.lower() in ('.dll', '.so', '.dylib', '.node')))
+    except OSError:
+        siblings = []
+    for p in siblings:
+        try:
+            payload[p.name] = sha256_file(p)
+        except OSError:
+            payload[p.name] = None
+    return {'path': str(real), 'sha256': sha256_file(real), 'payload': payload}
 
 
 def telemetry_checks(evidence) -> list:
     """A4.2: telemetry must establish that the pinned CLI reads authentication from CODEX_HOME (not an OS credential
-    store) and that its read only sandbox starts with clean home state. Missing evidence is a failure."""
+    store) and that its read only sandbox starts with clean home state. Missing evidence is a failure. This is the
+    boolean summary; telemetry_certificate() is what live cells require."""
     evidence = evidence or {}
     problems = []
     if evidence.get('auth_read_from_codex_home') is not True:
         problems.append('telemetry did not establish that authentication is read from CODEX_HOME')
     if evidence.get('sandbox_clean_home') is not True:
         problems.append('telemetry did not establish that the read only sandbox starts with clean home state')
+    return problems
+
+
+def _matches(rel, patterns):
+    return any(fnmatch.fnmatchcase(rel, pat) or fnmatch.fnmatchcase(Path(rel).name, pat) for pat in patterns)
+
+
+def startup_instruction_files(runtime_files) -> list:
+    """Runtime files written by the CLI that could carry instructions (names only), less the signed exceptions."""
+    return sorted(rel for rel in (runtime_files or ())
+                  if _matches(rel, config.INSTRUCTION_BEARING) and not _matches(rel, config.SIGNED_STARTUP_FILES))
+
+
+def telemetry_certificate(evidence) -> list:
+    """Council round 1, item 1: certification from evidence tied to the pinned execution path, never from the two
+    booleans alone. Everything is metadata (no token text).
+
+    Authentication: the frozen exec argv with an empty CODEX_HOME ended in an authentication failure without a reply
+    or usage (no alternative credential source on the exec route); `login status` with an empty home reported not
+    logged in before and after the call (the call left no credential in an OS store) and logged in with the worker
+    home. Instructions: the worker home held exactly auth.json at launch, the working directory was empty, no
+    instruction file was reachable, the stream was plain, and no instruction bearing file appeared among the runtime
+    files written at startup (less config.SIGNED_STARTUP_FILES). Lifecycle: the call was reconciled before the
+    certificate was published."""
+    ev = evidence or {}
+    problems = list(telemetry_checks(ev))
+    probe = ev.get('exec_probe_empty_home') if isinstance(ev.get('exec_probe_empty_home'), dict) else {}
+    if probe.get('outcome') != 'auth_failure' or probe.get('reply') or probe.get('usage_present') is not False:
+        problems.append('the exec route with an empty CODEX_HOME did not end in an authentication failure without a '
+                        'reply or usage (an alternative credential source is not excluded)')
+    status = ev.get('login_status') if isinstance(ev.get('login_status'), dict) else {}
+    for key in ('empty_home_before', 'empty_home_after'):
+        if status.get(key) != 'not_logged_in':
+            problems.append(f'login status with an empty home ({key}) did not report not logged in')
+    if status.get('worker_home') != 'logged_in':
+        problems.append('login status with the reconstructed worker home did not report logged in')
+    call = ev.get('call') if isinstance(ev.get('call'), dict) else {}
+    if call.get('outcome') != 'ok' or call.get('stream_verdict') != 'plain':
+        problems.append('the telemetry call with the reconstructed worker home did not deliver a plain reply')
+    if call.get('home_listing_before') != [AUTH]:
+        problems.append('the worker home did not hold exactly auth.json at launch')
+    if call.get('workdir_listing_before') != []:
+        problems.append('the working directory was not empty at launch')
+    if call.get('instruction_sources') != []:
+        problems.append('instruction files or unreadable locations were reachable from the working directory')
+    runtime = call.get('runtime_files')
+    if not isinstance(runtime, list):
+        problems.append('no runtime file inventory after the call')
+    else:
+        found = startup_instruction_files(runtime)
+        if found:
+            problems.append('instruction bearing files were written at startup and no signed ruling accepts them: '
+                            f'{found[:10]}')
+    if ev.get('reconciled') is not True:
+        problems.append('the telemetry call was not reconciled before certification')
     return problems
 
 
@@ -389,6 +515,37 @@ def reconcile_auth(baseline_sha256, workers, in_flight=()) -> dict:
         return {'action': 'propagate', 'slot': changed[0]}
     return {'action': 'stop_codex', 'interrupted': True, 'reason': 'more than one worker changed authentication',
             'changed': changed, 'failures': failures}
+
+
+def reconcile_generations(baseline_sha256, workers, ambiguous=()) -> dict:
+    """A4.2 reconciliation against the baseline generation each worker was prepared from (council round 1, items 3
+    and 5). workers: {slot: {"sha256", "prepared", "auth_failure"}}. A worker equal to the current baseline or to its
+    prepared generation is unchanged (or already propagated). A worker that changed while the baseline itself moved
+    (an owner reseed, another propagation) is a conflict: Codex stops and the newer baseline is kept. Otherwise the
+    A4.2 rule: an authentication failure stops Codex; exactly one changed worker is propagated (against its prepared
+    generation); more than one stops Codex. Any ambiguity stops Codex."""
+    if ambiguous:
+        return {'action': 'stop_codex', 'interrupted': True, 'reason': f'ambiguous recovery: {list(ambiguous)[:5]}'}
+    changed, conflicts = [], []
+    for slot, w in sorted(workers.items()):
+        prepared = w.get('prepared') or baseline_sha256
+        if w.get('sha256') is not None and w.get('sha256') in (baseline_sha256, prepared):
+            continue
+        (changed if prepared == baseline_sha256 else conflicts).append(slot)
+    failures = sorted(s for s, w in workers.items() if w.get('auth_failure'))
+    if failures:
+        return {'action': 'stop_codex', 'interrupted': True, 'reason': 'authentication failure', 'changed': changed,
+                'failures': failures}
+    if conflicts:
+        return {'action': 'stop_codex', 'interrupted': True, 'reason': 'a worker changed authentication while the '
+                'baseline changed too (reseed or another propagation); the newer baseline is kept',
+                'conflicts': conflicts}
+    if not changed:
+        return {'action': 'continue'}
+    if len(changed) == 1:
+        return {'action': 'propagate', 'slot': changed[0]}
+    return {'action': 'stop_codex', 'interrupted': True, 'reason': 'more than one worker changed authentication',
+            'changed': changed}
 
 
 # --------------------------------------------------------------------------------------------------- Isolation
@@ -475,12 +632,16 @@ class Isolation:
         self._log(dict(out, event='finish', runtime_file_count=len(runtime)))
         return out
 
-    def propagate(self, slot, lock_timeout=30.0) -> dict:
+    def propagate(self, slot, lock_timeout=30.0, expected_baseline_sha256=None) -> dict:
         """Copy the worker auth.json over the baseline atomically under the authentication lock. Never restores an
-        older snapshot: a worker whose last_refresh is older than the baseline's raises StaleAuth."""
+        older snapshot: a worker whose last_refresh is older than the baseline's raises StaleAuth. With
+        expected_baseline_sha256 (the baseline generation the worker was prepared from), a baseline that changed in
+        the meantime (an owner reseed, another propagation) raises StaleAuth and is never replaced."""
         worker = self.home(slot) / AUTH
         with auth_lock(self.lock, timeout=lock_timeout):
             before = self.baseline_sha256()
+            if expected_baseline_sha256 is not None and before != expected_baseline_sha256:
+                raise StaleAuth('the baseline changed since this worker was prepared; the newer baseline is kept')
             new_doc, old_doc = _read_auth(worker), _read_auth(self.baseline / AUTH)
             if new_doc is None:
                 raise StaleAuth('worker auth.json unreadable; nothing propagated')

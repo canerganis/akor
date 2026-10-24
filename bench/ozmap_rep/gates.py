@@ -40,8 +40,11 @@ def _f(x):
 
 
 def _incomplete(cell):
+    """A cell that cannot support a comparison: not complete, usage or evidence not complete, an unresolved job, or
+    an unresolved required audit (council round 1, item 17)."""
     return (cell is None or cell.get('state') != 'complete' or cell.get('usage') != 'complete'
-            or cell.get('evidence', 'complete') != 'complete' or int(cell.get('unresolved', 0)) > 0)
+            or cell.get('evidence', 'complete') != 'complete' or int(cell.get('unresolved', 0)) > 0
+            or int(cell.get('unresolved_audits', 0)) > 0)
 
 
 def _validity(summary, backend, workload):
@@ -56,6 +59,16 @@ def _validity(summary, backend, workload):
         problems.append('leakage')
     if v.get('accounting_failures'):
         problems.append('accounting failures')
+    # council round 1: simulation is never evidence (RT1.1, item 9), claims need the run bound freeze and the artifact
+    # chain (item 10) and a valid classification (item 16)
+    if v.get('simulation'):
+        problems.append('simulation (fake executables), not evaluation')
+    if v.get('freeze_problems'):
+        problems.append('run bound freeze not verified')
+    if v.get('artifact_problems'):
+        problems.append('artifact chain not verified')
+    if workload == 'materials' and v.get('classification_problems'):
+        problems.append('classification invalid')
     return problems
 
 
@@ -102,7 +115,7 @@ def boolq_gate(summary) -> dict:
     checks = {'no_added_gold_errors': err_c <= err_a,
               'tokens_at_most_1.10': ratios['tokens'] is not None and ratios['tokens'] <= Fraction(11, 10),
               'makespan_at_most_1.10': ratios['makespan'] is not None and ratios['makespan'] <= Fraction(11, 10)}
-    return _result(keys, cells, checks, _validity(summary, 'codex', 'boolq'), ratios)
+    return _result(keys, cells, checks, _validity(summary, 'codex', 'boolq'), ratios, safety_kill(summary))
 
 
 def pooling_gate(summary) -> dict:
@@ -117,7 +130,7 @@ def pooling_gate(summary) -> dict:
     checks = {'tokens_below_B': int(c['tokens']) < int(b['tokens']),
               'correctness_not_worse': int(c['correct']) >= int(b['correct']),
               'makespan_not_worse': _span(c) <= _span(b)}
-    return _result(keys, cells, checks, _validity(summary, 'codex', 'materials'), ratios)
+    return _result(keys, cells, checks, _validity(summary, 'codex', 'materials'), ratios, safety_kill(summary))
 
 
 def attribute_tokens(total, jobs_by_op) -> dict:
@@ -155,9 +168,13 @@ def per_operation(summary) -> dict:
 def magnitude(summary, backend) -> dict:
     base = {'status': 'inconclusive', 'token_ratio': None, 'makespan_ratio': None, 'direction_replicated': False,
             'label': None, 'missed': [], 'scope': SCOPE}
-    v = summary.get('validity', {})
-    if v.get('leakage') or v.get('accounting_failures'):
-        return dict(base, status='invalid')
+    # A4.11 direction requires A4.10's gates, so every validity and safety prerequisite of A4.10 applies before any
+    # ratio is computed (council round 1, item 18 and B2).
+    reasons = _validity(summary, backend, 'materials')
+    if safety_kill(summary):
+        reasons = reasons + ['safety kill']
+    if reasons:
+        return dict(base, status='invalid', reasons=reasons)
     rc = summary.get('R_cells', {})
     a, c = rc.get(f'{backend}/warm/A'), rc.get(f'{backend}/warm/C')
     if a is None or c is None or not summary.get('R'):

@@ -91,12 +91,39 @@ def refresh(home):
         json.dump(doc, f)
 
 
+NO_AUTH = 'unexpected status 401 Unauthorized: Missing bearer or basic authentication in header'
+
+
+def local_command(argv, home):
+    """The local subcommands the harness runs (no model request): login status and features list."""
+    authed = bool(home) and os.path.isfile(os.path.join(home, 'auth.json'))
+    if 'login' in argv and 'status' in argv:
+        sys.stdout.write('Logged in using ChatGPT\n' if authed else 'Not logged in\n')
+        return 0 if authed else 1
+    if 'features' in argv and 'list' in argv:
+        disabled = {argv[i + 1] for i, a in enumerate(argv[:-1]) if a == '--disable'}
+        for name in ('plugins', 'apps', 'memories', 'hooks', 'unified_exec', 'code_mode_host', 'shell_tool'):
+            on = name == 'unified_exec' or name not in disabled
+            sys.stdout.write(f'{name:<40} stable             {str(on).lower()}\n')
+        return 0
+    return None
+
+
 def main():
     argv = list(sys.argv)
+    home = os.environ.get('CODEX_HOME')
+    local = local_command(argv, home)
+    if local is not None:
+        return local
     stdin = sys.stdin.buffer.read()
     workdir = argv[argv.index('-C') + 1] if '-C' in argv else os.getcwd()
     directive = directive_for(workdir)
-    home = os.environ.get('CODEX_HOME')
+    if not (home and os.path.isfile(os.path.join(home, 'auth.json'))):
+        out = [{'type': 'thread.started', 'thread_id': 'fake-noauth'}, {'type': 'turn.started'},
+               {'type': 'error', 'message': 'Reconnecting... 1/5 (' + NO_AUTH + ')'},
+               {'type': 'turn.failed', 'error': {'message': NO_AUTH}}]
+        sys.stdout.write('\n'.join(json.dumps(e) for e in out) + '\n')
+        return 1
     publish(os.path.join(CFG['records'], directive['call_id'] + '.json'),
             {'cell': directive['cell'], 'n': directive['n'], 'cli': 'codex', 'argv': argv, 'codex_home': home,
              'home_listing': listing(home), 'workdir': workdir, 'workdir_listing': listing(workdir),

@@ -32,6 +32,7 @@
   "browser_use_external",
   "browser_use_full_cdp_access",
   "in_app_browser",
+  "code_mode_host",
   "remote_plugin",
   "plugin_sharing",
   "recommended_plugins",
@@ -44,9 +45,7 @@
   "workspace_dependencies",
   "project_doc_max_bytes"
  ],
- "unsupported": {
-  "code_mode_host": "accepted and disabled, but then every exec emits the error item 'Code Mode is unavailable because code-mode host is disabled...' (id, type, message), which is not one of the frozen KNOWN_NOTICES, so A4.3 would classify every call as uncertain; code_mode itself is off by default (under development, false)"
- },
+ "unsupported": {},
  "stays_enabled": {
   "unified_exec": "--disable unified_exec and -c features.unified_exec=false are accepted but `features list` still shows unified_exec true (as Opus B observed); recorded, does not block launch, A4.3 governs its events"
  },
@@ -57,5 +56,8 @@
   "secret_auth_storage is a stable feature, enabled by default; it is not a tool feature and is not disabled by the frozen arguments. The telemetry check (auth read from CODEX_HOME) covers its effect.",
   "A WebSockets to HTTPS fallback produces the error item 'Falling back from WebSockets to HTTPS transport. ...', which is not a frozen KNOWN_NOTICE: a live call that hits that fallback is classified uncertain under A4.3.",
   "The CLI refuses to create PATH helper binaries when CODEX_HOME is under the system temp directory; live run directories should therefore live outside temp (default ~/.ozmap_rep/runs)."
- ]
+ ],
+ "disabled_with_notice": {
+  "code_mode_host": "accepted and disabled (council round 1, item 8: every available disable option is used). With it disabled every exec emits the error item 'Code Mode is unavailable because code-mode host is disabled...' (id, type, message), which is not a frozen KNOWN_NOTICE: A4.3 classifies every such call as uncertain until a prospective signed ruling defines the allowed feature state and the treatment of that notice. The notice exception is not broadened here."
+ }
 }

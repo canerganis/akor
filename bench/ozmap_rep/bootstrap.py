@@ -70,6 +70,53 @@ def load_R(path=None, first_learner_call=None) -> set:
     return R
 
 
+def validate_classification(path=None, first_learner_call=None, now=None) -> tuple:
+    """(R, problems): the complete classification check run before any learner dispatch and by the scorer (council
+    round 1, item 16). Unlike load_R, every materials operation must be classified, classified_at must be a real
+    timestamp no later than now and the first learner call, and every entry must carry its rule_shaped boolean and,
+    when rule shaped, every A4.6 field. A valid classification may give an empty R; an invalid one gives R = None,
+    never an empty R."""
+    path = Path(path or config.CLASSIFICATION_FILE)
+    problems = []
+    try:
+        doc = json.loads(Path(path).read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None, ['classification missing or unreadable']
+    if not isinstance(doc, dict) or not isinstance(doc.get('operations'), dict):
+        return None, ['classification must be {classified_at, operations}']
+    try:
+        classified = _time(doc.get('classified_at'))
+    except ClassificationError as exc:
+        return None, [str(exc)]
+    now = now or dt.datetime.now(dt.timezone.utc)
+    if classified > _time(now):
+        problems.append('classified_at lies in the future')
+    if first_learner_call is not None and classified > _time(first_learner_call):
+        problems.append('the classification is later than the first learner call')
+    ops = doc['operations']
+    missing = [op for op in config.OPERATIONS if op not in ops]
+    if missing:
+        problems.append(f'operations not classified: {missing}')
+    extra = [op for op in ops if op not in config.OPERATIONS]
+    if extra:
+        problems.append(f'not materials operations: {extra}')
+    R = set()
+    for op in config.OPERATIONS:
+        entry = ops.get(op)
+        if entry is None:
+            continue
+        if not isinstance(entry, dict) or type(entry.get('rule_shaped')) is not bool:
+            problems.append(f'{op}: rule_shaped must be a boolean')
+            continue
+        if entry['rule_shaped']:
+            lack = [f for f in RULE_FIELDS if not entry.get(f)]
+            if lack:
+                problems.append(f'{op}: a rule shaped operation needs {lack}')
+            else:
+                R.add(op)
+    return (None if problems else R), problems
+
+
 def admission_report(R, admitted) -> dict:
     """Admitted operations outside R are classification misses; R itself never changes."""
     R = set(R or ())
