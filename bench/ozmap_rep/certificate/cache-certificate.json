@@ -1,0 +1,53 @@
+{
+ "schema": "ozmap-rep.cache-certificate/1",
+ "run": "live-6a518ece47ab",
+ "route": {
+  "model": "gpt-6.1-sol",
+  "effort": "high",
+  "cli_version": "codex-cli 0.160.0"
+ },
+ "decoder_sha256": "815e2aae53745e203c60e6826c451678d3359543d2cc0c99934c5f32d4a90a87",
+ "calls": [
+  {
+   "input": 29694,
+   "cached": 7296,
+   "output": 43,
+   "reasoning": 25
+  },
+  {
+   "input": 29694,
+   "cached": 0,
+   "output": 43,
+   "reasoning": 25
+  }
+ ],
+ "test": "equal input totals (29694, 29694) with different cached counts (7296, 0) on byte-identical requests: exclusive accounting would move input_tokens by the cached difference, so input_tokens includes cached",
+ "decoder_trace": {
+  "replication_decoder": "bench/ozmap_rep/usage.py decode_codex (sha256 of its source text above)",
+  "capture_decoder": "examples/codex_cli_adapter.py usage_from_event passes the turn.completed counters unchanged",
+  "capture_decoder_sha256": "7cbde60a119dbeba9af550c6eec27e0454ee2bc6d96a2e19cfad00d57ce89cef"
+ },
+ "sources": [
+  {
+   "call": "telemetry-1",
+   "envelope": "bench/ozmap/runs/live-6a518ece47ab/telemetry/ws/do/telemetry-1/captures/1.envelope",
+   "envelope_sha256": "9c0fffa04cf6f1ec5ab14a09e8c35222f82764e9ee60bda4587a81fe8b5c54bd",
+   "model": "gpt-6.1-sol",
+   "effort": "high",
+   "codex_version": "codex-cli 0.160.0",
+   "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+   "prompt_sha256": "618cde160e6d253cc91cc1ad607174c01799d4358c4787046aa6dd968a6ea09e"
+  },
+  {
+   "call": "telemetry-2",
+   "envelope": "bench/ozmap/runs/live-6a518ece47ab/telemetry/ws/do/telemetry-2/captures/1.envelope",
+   "envelope_sha256": "db90ef6597e9f7526166943094f21baff2cae48459778c71556ca6a2dfbc0350",
+   "model": "gpt-6.1-sol",
+   "effort": "high",
+   "codex_version": "codex-cli 0.160.0",
+   "system_sha256": "d941a86d530ab0fe1d90dc1fb9d957bd95da1bfa8d150d17e320debcef50ea06",
+   "prompt_sha256": "618cde160e6d253cc91cc1ad607174c01799d4358c4787046aa6dd968a6ea09e"
+  }
+ ],
+ "notes": "Run 1 was rejected in the pilot only for CLI notice items, later classified as not leakage (live-telemetry-notes.md). A4.7 adopts it as the live inclusion certificate for the frozen route; a route or decoder change needs renewed certification."
+}

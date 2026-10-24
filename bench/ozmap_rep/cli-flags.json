@@ -1,0 +1,61 @@
+{
+ "schema": "ozmap-rep.cli-flags/1",
+ "cli_version": "codex-cli 0.160.0",
+ "verified_at": "2026-10-24T16:31:00Z",
+ "method": "local commands only, no model request: `codex exec --help`, `codex features list` and `codex <--disable f ...> -c project_doc_max_bytes=0 features list` with an empty temporary CODEX_HOME, and the complete frozen exec argv with an empty CODEX_HOME (no auth.json), which reached the API without credentials and ended with 401 Missing bearer (no model call possible). Raw outputs: scratchpad rep/cliprobe.",
+ "frozen_exec_flags": {
+  "--ignore-user-config": true,
+  "--ignore-rules": true,
+  "--ephemeral": true,
+  "--skip-git-repo-check": true,
+  "--json": true,
+  "-s read-only": true,
+  "-C": true,
+  "-m": true,
+  "-c": true,
+  "--disable": true
+ },
+ "supported": [
+  "plugins",
+  "apps",
+  "memories",
+  "hooks",
+  "multi_agent",
+  "skill_search",
+  "browser_use",
+  "computer_use",
+  "image_generation",
+  "view_image",
+  "shell_tool",
+  "unified_exec",
+  "unified_exec_tty",
+  "browser_use_external",
+  "browser_use_full_cdp_access",
+  "in_app_browser",
+  "remote_plugin",
+  "plugin_sharing",
+  "recommended_plugins",
+  "skill_mcp_dependency_install",
+  "tool_suggest",
+  "tool_call_mcp_elicitation",
+  "sleep_tool",
+  "multi_agent_v2",
+  "shell_snapshot",
+  "workspace_dependencies",
+  "project_doc_max_bytes"
+ ],
+ "unsupported": {
+  "code_mode_host": "accepted and disabled, but then every exec emits the error item 'Code Mode is unavailable because code-mode host is disabled...' (id, type, message), which is not one of the frozen KNOWN_NOTICES, so A4.3 would classify every call as uncertain; code_mode itself is off by default (under development, false)"
+ },
+ "stays_enabled": {
+  "unified_exec": "--disable unified_exec and -c features.unified_exec=false are accepted but `features list` still shows unified_exec true (as Opus B observed); recorded, does not block launch, A4.3 governs its events"
+ },
+ "project_doc_max_bytes": "-c project_doc_max_bytes=0 accepted: no error and no unrecognized-setting notice",
+ "observations": [
+  "With an empty CODEX_HOME, `codex login status` prints 'Not logged in' and an exec request carries no bearer (401 Missing bearer): no OS credential store fallback was used for an empty home. The A4.2 telemetry still has to establish this for a reconstructed worker home.",
+  "At startup the CLI writes runtime state into CODEX_HOME, including skills/.system/* (bundled system skills such as imagegen, openai-docs, skill-creator), sqlite state files and installation_id. They are inventoried and removed after every call (Isolation.finish). skill_search is disabled; whether bundled system skills reach the model context is not observable without a model call and is left to the telemetry evidence and council.",
+  "secret_auth_storage is a stable feature, enabled by default; it is not a tool feature and is not disabled by the frozen arguments. The telemetry check (auth read from CODEX_HOME) covers its effect.",
+  "A WebSockets to HTTPS fallback produces the error item 'Falling back from WebSockets to HTTPS transport. ...', which is not a frozen KNOWN_NOTICE: a live call that hits that fallback is classified uncertain under A4.3.",
+  "The CLI refuses to create PATH helper binaries when CODEX_HOME is under the system temp directory; live run directories should therefore live outside temp (default ~/.ozmap_rep/runs)."
+ ]
+}

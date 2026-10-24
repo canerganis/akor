@@ -1,0 +1,15 @@
+{
+ "schema": "ozmap-rep.baseline-inventory/1",
+ "recorded_at": "2026-10-24T16:40:00Z",
+ "note": "Names (fnmatch patterns) other than auth.json that the owner's seeding `codex login` left in the baseline home (C:/Users/can02/.ozmap_rep/baseline, listing by name only, contents never read). Only auth.json is ever copied into a worker home.",
+ "allowed": [
+  "log",
+  "log/codex-login.log",
+  "tmp",
+  "tmp/arg0",
+  "tmp/arg0/codex-arg0*",
+  "tmp/arg0/codex-arg0*/.lock",
+  "tmp/arg0/codex-arg0*/applypatch.bat",
+  "tmp/arg0/codex-arg0*/apply_patch.bat"
+ ]
+}

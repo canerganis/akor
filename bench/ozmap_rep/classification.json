@@ -1,0 +1,43 @@
+{
+ "schema": "ozmap-rep.classification/1",
+ "classified_at": "2026-10-24T15:23:10Z",
+ "source": "docs/design/ozmap-replication-2026-10-24/expressibility-review.md (commit 34f612e), fresh Opus reviewer, before any learner call",
+ "domain_common": "one record text in the ops.md grammar after the D2 input policy (one terminal LF or CRLF removed), parseable by field (segments separated by '; ', one '=' per segment, unique keys, values without ';', '=', CR or LF), every numeral the operation reads within the interpreter input limits (at most 38 digits, at most 12 fractional digits)",
+ "operations": {
+  "verdict": {
+   "rule_shaped": true,
+   "inputs": "the job's own resolved text; fields grade, yield, uts",
+   "outputs": "string: pass, fail, unknown",
+   "guards": "exact equality with unknown; grade membership in the five table labels decided by equality before any table access; unit read from the second space separated piece and the numeral parsed with that exact unit; missing fields and malformed records abstain through field",
+   "domain": "common domain; grade any label, yield and uts each a numeral with unit MPa or N/mm2, or unknown",
+   "reasons": "a fixed five row table plus two inclusive comparisons: exact string equality, lookup over at most 32 literal entries, exact decimal parsing with an exact unit suffix and inclusive le; no multiplication, division or iteration",
+   "sealed_ast_sha256": "5171571e0099d340ee7d367b0aa0eeeb83a8d6beb8953b45a69da5277ff31cce"
+  },
+  "margin": {
+   "rule_shaped": true,
+   "inputs": "the job's own resolved text; fields yield, uts",
+   "outputs": "string: an integer, one space, MPa, or unknown",
+   "guards": "exact equality with unknown for each field; unit selection and exact unit parsing as for verdict",
+   "domain": "common domain; yield and uts each a numeral with unit MPa or N/mm2, or unknown",
+   "reasons": "one exact subtraction and a fixed format: fmt with 0 places and unit MPa rounds half to even, emits no decimal point, keeps the sign and suppresses negative zero",
+   "sealed_ast_sha256": "3ac7ac7ee6689e33a49aec22841c78c51ade0c5d22d6e2a47417a0ec0bd7e0a8"
+  },
+  "elong": {
+   "rule_shaped": false,
+   "inputs": "would be fields gauge, final",
+   "outputs": "string: one decimal place, one space, %, or unknown",
+   "guards": "not applicable",
+   "domain": "common domain; gauge and final numerals with unit mm (gauge positive), or unknown",
+   "reasons": "(final - gauge) / gauge * 100 divides by a per record value; the language has add and sub only and fmt rounds half to even where the contract asks half away from zero; the gauge 50 carve-out was rejected as not the contract domain"
+  },
+  "temp_class": {
+   "rule_shaped": true,
+   "inputs": "the job's own resolved text; field temp",
+   "outputs": "string: cold, room, hot, unknown",
+   "guards": "exact equality with unknown; unit selection and exact unit parsing as above",
+   "domain": "common domain; temp a numeral with unit C or degC, or unknown",
+   "reasons": "two inclusive thresholds on one exact decimal: t < 10 is not le(10, t) and 10 <= t <= 35 is two le tests",
+   "sealed_ast_sha256": "1c96db2d161600f70a62bef1f4726fac8984001b607dabe3bbe416dc59448ebd"
+  }
+ }
+}
