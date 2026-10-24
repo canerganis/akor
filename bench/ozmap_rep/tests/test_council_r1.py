@@ -131,10 +131,13 @@ class Live:
         monkeypatch.setattr(run, 'run_local', run_local)
 
     def touch_sessions(self, percent=10.0):
+        """An owner reading of the same account timestamped now (council round 2, P3: the event time covers the
+        calls before it; the file time is never used)."""
         folder = self.sessions / '2026' / '10' / '24'
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / 'rollout-test.jsonl'
-        path.write_text(json.dumps({'type': 'event_msg', 'payload': {'rate_limits': {
+        stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        path.write_text(json.dumps({'timestamp': stamp, 'type': 'event_msg', 'payload': {'rate_limits': {
             'primary': {'used_percent': percent}}}}) + '\n', encoding='utf-8')
         now = time.time() + 1
         os.utime(path, (now, now))
@@ -159,12 +162,15 @@ def live(tmp_path, monkeypatch):
 
 
 def full_certificate(**over):
+    paths = {str(k): 'not_logged_in' for k in range(config.SLOTS)}
     doc = {'auth_read_from_codex_home': True, 'sandbox_clean_home': True, 'reconciled': True,
-           'exec_probe_empty_home': {'outcome': 'auth_failure', 'reply': False, 'usage_present': False},
-           'login_status': {'empty_home_before': 'not_logged_in', 'empty_home_after': 'not_logged_in',
+           'exec_probe': {'outcome': 'auth_failure', 'reply': False, 'usage_present': False, 'home': 'worker',
+                          'account_metadata_kept': True, 'runtime_files': ['state.sqlite']},
+           'login_status': {'worker_paths_before': dict(paths), 'worker_paths_after': dict(paths),
                             'worker_home': 'logged_in'},
            'call': {'outcome': 'ok', 'stream_verdict': 'plain', 'home_listing_before': ['auth.json'],
-                    'workdir_listing_before': [], 'instruction_sources': [], 'runtime_files': ['state.sqlite']}}
+                    'workdir_listing_before': [], 'instruction_sources': [], 'runtime_files': ['state.sqlite'],
+                    'auth_source': {'store': 'file', 'home': 'worker', 'auth_sha256': 'a' * 64}}}
     for k, v in over.items():
         if isinstance(v, dict) and isinstance(doc.get(k), dict):
             doc[k] = dict(doc[k], **v)
@@ -190,10 +196,13 @@ def test_item1_a_startup_instruction_source_with_the_same_listing_and_reply_fail
 
 
 def test_item1_an_alternative_credential_lookup_fails_certification():
-    doc = full_certificate(exec_probe_empty_home={'outcome': 'ok', 'reply': True, 'usage_present': True})
+    doc = full_certificate(exec_probe={'outcome': 'ok', 'reply': True, 'usage_present': True})
     assert any('alternative credential' in p for p in isolation.telemetry_certificate(doc))
-    doc = full_certificate(login_status={'empty_home_after': 'logged_in'})
-    assert isolation.telemetry_certificate(doc)
+    doc = full_certificate(login_status={'worker_paths_after': {'0': 'not_logged_in', '1': 'logged_in',
+                                                                '2': 'not_logged_in', '3': 'not_logged_in'}})
+    assert any('worker path' in p for p in isolation.telemetry_certificate(doc))
+    doc = full_certificate(call={'auth_source': {'store': 'keyring', 'home': 'worker', 'auth_sha256': 'a'}})
+    assert any('file credential store' in p for p in isolation.telemetry_certificate(doc))
 
 
 def test_item1_live_telemetry_through_the_lifecycle_certifies_a_clean_route(live):
@@ -201,7 +210,9 @@ def test_item1_live_telemetry_through_the_lifecycle_certifies_a_clean_route(live
     rows = run.jsonl(live.run_dir / 'evidence' / 'telemetry.jsonl')
     assert len(rows) == 1 and rows[0]['passed'] is True
     cert = rows[0]['certificate']
-    assert cert['exec_probe_empty_home']['outcome'] == 'auth_failure'
+    assert cert['exec_probe']['outcome'] == 'auth_failure' and cert['exec_probe']['home'] == 'worker'
+    assert set(cert['login_status']['worker_paths_before'].values()) == {'not_logged_in'}
+    assert set(cert['login_status']['worker_paths_after'].values()) == {'not_logged_in'}
     assert cert['call']['home_listing_before'] == ['auth.json'] and cert['reconciled'] is True
     assert run.telemetry_problems(live.run_dir) == []
     tel = attempts(live.run_dir, 'telemetry')
@@ -222,13 +233,40 @@ def test_item1_live_telemetry_with_a_startup_skill_file_is_not_certified(live):
 
 
 def test_item1_live_telemetry_with_an_alternative_credential_source_is_not_certified(live):
+    """Council round 2, item 1: a credential store keyed by the account metadata of auth.json. The probe home keeps
+    the baseline's account metadata but its tokens are unaccepted; a CLI that looks credentials up by account (here:
+    a store outside CODEX_HOME holding the valid baseline document) still authenticates, the probe gets a reply, and
+    the route is never certified. No charged call follows the probe."""
+    store = live.tmp / 'account-keyed-store'
+    store.mkdir()
+    shutil.copyfile(live.base / 'auth.json', store / 'auth.json')
+
     def before(env, cwd, launch):
-        home = Path(env['CODEX_HOME'])
-        if not (home / 'auth.json').exists():  # the CLI finds credentials elsewhere although the home is empty
-            env['CODEX_HOME'] = str(live.run_dir / 'homes' / 'worker-0')
+        doc = json.loads((Path(env['CODEX_HOME']) / 'auth.json').read_text(encoding='utf-8'))
+        if doc['tokens']['access_token'].split('.')[2].startswith('scrambled'):
+            env['CODEX_HOME'] = str(store)  # credentials found by account, not from the prepared file
     live.before = before
     assert live.telemetry() == config.EXIT_TELEMETRY
     assert any('ended' in p for p in run.telemetry_failures(live.run_dir))
+    tel = attempts(live.run_dir, 'telemetry')
+    assert [a['role'] for a in tel] == ['probe'], 'no charged telemetry call after the failed probe'
+
+
+def test_item1_a_credential_keyed_by_a_worker_path_is_not_certified(live, monkeypatch):
+    """B4: `login status` at an emptied worker path that still reports logged in (a store keyed by the CODEX_HOME
+    path) fails certification, before and after the call."""
+    original = run.run_local
+
+    def run_local(argv, env, cwd, on_start=None, timeout=120):
+        code, out, err = original(argv, env, cwd, on_start, timeout)
+        if 'login' in argv and Path(env['CODEX_HOME']).name == 'worker-2' and \
+                not (Path(env['CODEX_HOME']) / 'auth.json').exists():
+            return 0, 'Logged in using ChatGPT\n', ''
+        return code, out, err
+    monkeypatch.setattr(run, 'run_local', run_local)
+    assert live.telemetry() == config.EXIT_TELEMETRY
+    rows = run.jsonl(live.run_dir / 'evidence' / 'telemetry.jsonl')
+    assert rows and any('worker path' in p for p in rows[-1]['problems'])
 
 
 # ======================================================================== item 2, RT1.2, C1: guards before state
@@ -268,9 +306,9 @@ def test_item2_a_features_probe_owns_its_slot_and_reconciles(live, monkeypatch):
         taken.append(slot)
         return slot
 
-    def prepare(self, slot, lock_timeout=None):
+    def prepare(self, slot, lock_timeout=None, scrambled=False):
         assert slot in taken, f'worker {slot} rebuilt without owning its slot'
-        return original_prepare(self, slot, lock_timeout)
+        return original_prepare(self, slot, lock_timeout, scrambled)
 
     monkeypatch.setattr(run.Slots, 'acquire', acquire)
     monkeypatch.setattr(isolation.Isolation, 'prepare', prepare)
@@ -446,7 +484,8 @@ def test_item4_a_crash_during_the_telemetry_call_keeps_it_charged_and_blocks_eva
     monkeypatch.setattr(run.TelemetryRun, 'after_group', original)
     assert live.cell('codex-materials-cold-A') == config.EXIT_TELEMETRY
     tel = attempts(live.run_dir, 'telemetry')
-    assert [a['outcome'] for a in tel] == ['auth_failure', 'interrupted']
+    # council round 2 (item 3, B3): the dead runner's call is judged from its raw stream, never lost as interrupted
+    assert [a['outcome'] for a in tel] == ['auth_failure', 'ok'] and tel[1]['recovered_from'] == 'raw_stream'
     assert len(run.jsonl(live.ledger)) == 2
 
 
@@ -495,9 +534,13 @@ def test_b1_a_cell_meeting_the_real_401_stream_stops_codex(tmp_path, monkeypatch
 
 
 def test_b1_a_signed_transport_notice_would_be_a_transport_event(monkeypatch):
+    """P1 (council round 2): a signed transport notice matches its complete message exactly; a prefix never does."""
     out = (HERE / 'fixtures' / 'exec-noauth2.out').read_text(encoding='utf-8')
     monkeypatch.setattr(config, 'SIGNED_TRANSPORT_NOTICES', ('Falling back from WebSockets to HTTPS transport.',
                                                              'Reconnecting... ', 'unexpected status 401'))
+    assert events.classify_stream(out)['verdict'] == 'uncertain', 'prefixes are never a transport exception'
+    messages = tuple(events.error_messages(out))
+    monkeypatch.setattr(config, 'SIGNED_TRANSPORT_NOTICES', messages)
     cls = events.classify_stream(out)
     assert cls['verdict'] == 'plain' and cls['transport_notices']
 
@@ -718,7 +761,7 @@ def test_item10_an_altered_admission_record_is_detected(tmp_path):
                                   'admission': {'status': 'accepted', 'reasons': []}}
     p.write_text(json.dumps(doc), encoding='utf-8')
     problems = scored_problems(tmp_path / 'run')[1]
-    assert any('admission record' in x for x in problems)
+    assert any('admission record' in x or 'bootstrap capture holds' in x for x in problems)
 
 
 def test_item10_a_frozen_input_changed_after_binding_is_detected(live, monkeypatch):

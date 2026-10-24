@@ -10,18 +10,24 @@
 Cells and allocations follow A4.5; isolation A4.2; tool events A4.3; capacity A4.4; bootstrap validity A4.6; usage
 A4.7; operations A4.8; Sonnet A4.9; stops A4.12. build-notes.md maps every clause to the code.
 
-Run state. Every physical call is one line in D/attempts.jsonl (append only, failures included), its complete prompt
-is D/prompts/<call id>.txt, its redacted raw output D/captures/<call id>.*, its parsed outcome
-D/cells/<cell>/calls/<call id>.json. Before a call starts, D/cells/<cell>/inflight/<call id>.json is written with the
-prepared authentication hash; right after the spawn it gains the child pid. A marker is removed only after the call's
-authentication was reconciled (A4.2). On resume, every marker of the run directory is recovered before anything else:
-a recorded child that is still running stops the resume, every Codex worker is inventoried and reconciled, and a
-marker without an attempt line becomes an interrupted attempt (it consumed its allowance; its batch may be retried
-only from the infrastructure reserve). A batch whose attempt ended with any terminal outcome is never sent again. A
+Run state. Every physical call is one line in D/attempts.jsonl (append only, failures included) with a globally
+unique attempt uid, its complete prompt is D/prompts/<call id>.txt, its sanitized output D/captures/<call id>.* with a
+per channel redaction record, its parsed outcome D/cells/<cell>/calls/<call id>.json. A launch group is staged (no
+charge written), then reserved as a whole: D/cells/<cell>/inflight/<call id>.json markers in phase `reserved`, then
+(live) one experiment ledger row per member. Before Popen a marker turns `spawning`, right after it `spawned` with
+the child pid; the child's stdout and stderr go to raw stream files in D/homes/raw-<slot>/ (the credential boundary).
+after_group writes the call record, the captures and the attempt row in that order, then marks the marker `recorded`;
+a marker is removed only after the call's authentication was reconciled (A4.2). On resume every marker is recovered
+before anything else (council round 2, item 3): a recorded child still running stops the resume; a `reserved` marker
+becomes a charged `not_launched` attempt; a pid-less `spawning` marker is ambiguous (kept, Codex stops, its batch is
+never resent); an orphan is judged from its committed capture or else its raw stream, and only without any stream is it
+`interrupted` with an uncertain verdict. A batch whose attempt ended with any terminal outcome is never sent again. A
 completed cell has D/cells/<cell>/DONE.json, a settled but incomplete one SETTLED.json; neither is ever rerun.
 
 One cell process at a time per run directory (council round 1, item 2): every cell, telemetry and features run holds
-an exclusive per cell lock and the experiment lock, both taken without waiting before any state is read.
+an exclusive per cell lock and the experiment lock, both taken without waiting before any state is read; live runs
+also hold the experiment lock beside the authoritative ledger (council round 2, item 9). Live cells and telemetry are
+launched detached (run_in_background), never in a foreground shell whose limit is below config.CALL_TIMEOUT_S.
 """
 from __future__ import annotations
 
@@ -49,7 +55,7 @@ if str(config.REPO / 'examples') not in sys.path:
 
 from . import bootstrap as bootstrap_mod  # noqa: E402
 from . import budget as budget_mod  # noqa: E402
-from . import events, isolation, prompts, quota, redact, rules, usage, workload  # noqa: E402
+from . import events, isolation, prompts, quota, redact, rules, rulings, usage, workload  # noqa: E402
 from . import fake_cli, tokenizer  # noqa: E402
 
 COMMAND = 'python -m bench.ozmap_rep.run cell {id}'
@@ -62,7 +68,7 @@ AUTH_FAILURE_RE = re.compile(r'status 401|401 Unauthorized|HTTP error: 401|Missi
                              r'sign in again|Not logged in|invalid_grant|token_expired|refresh_token_reused|'
                              r'Please log ?in|re-?authenticate', re.I)
 TERMINAL_OK = ('ok',)
-RETRYABLE = ('infrastructure_failure', 'interrupted')
+RETRYABLE = ('infrastructure_failure', 'interrupted', 'not_launched')
 TELEMETRY_SPEC = {'id': 'telemetry', 'command': None, 'backend': 'codex', 'workload': 'telemetry',
                   'wave': 'telemetry', 'arm': 'telemetry', 'allocation': 'telemetry', 'nominal_calls': 2,
                   'requires': []}
@@ -276,47 +282,135 @@ def freeze_sha256():
     return isolation.sha256_file(p) if p.exists() else None
 
 
+def experiment_id(ledger):
+    """The immutable experiment UUID, written once beside the experiment ledger (council round 2, item 9)."""
+    path = Path(ledger).parent / 'experiment-id.json'
+    doc = _read_json(path)
+    if isinstance(doc, dict) and doc.get('experiment_id'):
+        return doc['experiment_id']
+    import uuid
+    value = str(uuid.uuid4())
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(path, 'x', encoding='utf-8') as f:
+            f.write(json.dumps({'experiment_id': value, 'experiment': EXPERIMENT, 'created_at': _now()}))
+    except FileExistsError:
+        return (_read_json(path, {}) or {}).get('experiment_id') or value
+    return value
+
+
 def bind_identity(run_dir, opts, baseline_sha=None):
-    """Write D/experiment.json (mode, freeze identity, baseline lineage) before the first attempt; live runs also
-    archive the authorized freeze as D/freeze.json. Never rewritten."""
+    """Write D/experiment.json (mode, freeze identity, baseline lineage, immutable run and experiment UUIDs) before
+    the first attempt; live runs also archive the authorized freeze as D/freeze.json. Never rewritten."""
+    import uuid
     run_dir = Path(run_dir)
     path = run_dir / 'experiment.json'
     if path.exists():
         return _read_json(path)
-    doc = {'schema': 'ozmap-rep.experiment/1', 'experiment': EXPERIMENT, 'mode': opts.mode,
-           'run_dir': str(run_dir.resolve()), 'created_at': _now(),
+    doc = {'schema': 'ozmap-rep.experiment/2', 'experiment': EXPERIMENT, 'mode': opts.mode,
+           'run_dir': str(run_dir.resolve()), 'created_at': _now(), 'run_id': str(uuid.uuid4()),
+           'experiment_id': experiment_id(opts.live_ledger) if opts.mode == 'live' else None,
            'freeze_sha256': freeze_sha256() if opts.mode == 'live' else None,
            'baseline_auth_sha256': baseline_sha, 'live_ledger': str(opts.live_ledger) if opts.mode == 'live' else None,
            'simulation': opts.mode != 'live'}
+    if opts.mode == 'live':
+        try:
+            doc['baseline_tokens'] = isolation.token_hashes(Path(opts.baseline) / isolation.AUTH)
+        except isolation.IsolationError:
+            doc['baseline_tokens'] = None
     if opts.mode == 'live' and config.FREEZE_FILE.exists():
         shutil.copyfile(config.FREEZE_FILE, run_dir / 'freeze.json')
     _write_json(path, doc)
     return doc
 
 
-def ledger_problems(run_dir, ledger):
-    """The experiment ledger outside every run directory (RT1.5): every live charge ever made must be in this run
-    directory's attempts or in flight here, and no live charge may belong to another run directory."""
-    rows = jsonl(ledger)
-    if not rows:
-        return []
+def run_id(run_dir):
+    return ((_read_json(Path(run_dir) / 'experiment.json', {}) or {}).get('run_id'))
+
+
+def ledger_rows(ledger):
+    """(rows, problems) of the experiment ledger, parsed strictly: a torn or malformed line is an accounting problem,
+    an identical repeated event is idempotent, two different events with one attempt uid conflict (item 9)."""
+    path = Path(ledger)
+    if not path.exists():
+        return [], []
+    rows, problems, by_uid = [], [], {}
+    for n, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            row = json.loads(line)
+        except ValueError:
+            problems.append(f'experiment ledger line {n} is torn or malformed')
+            continue
+        if not isinstance(row, dict):
+            problems.append(f'experiment ledger line {n} is not an object')
+            continue
+        uid = row.get('attempt_uid')
+        if uid:
+            if uid in by_uid:
+                if _canon_row(by_uid[uid]) != _canon_row(row):
+                    problems.append(f'experiment ledger attempt {uid} is recorded twice with different content')
+                continue
+            by_uid[uid] = row
+        rows.append(row)
+    return rows, problems
+
+
+def _canon_row(row):
+    return json.dumps({k: v for k, v in row.items() if k != 'at'}, sort_keys=True)
+
+
+def predecessor_dirs(run_dir, ledger):
+    """Every other run directory the experiment ledger holds live calls of (superseded directories)."""
+    rows, _ = ledger_rows(ledger)
     here = str(Path(run_dir).resolve())
-    known = {a.get('call_id') for a in jsonl(Path(run_dir) / 'attempts.jsonl')}
-    known |= {(_read_json(p, {}) or {}).get('call_id') for p in Path(run_dir).glob('cells/*/inflight/*.json')}
-    problems = []
+    return sorted({r.get('run_dir') for r in rows if r.get('run_dir') and r.get('run_dir') != here})
+
+
+def ledger_problems(run_dir, ledger):
+    """The experiment ledger outside every run directory (RT1.5, council round 2 item 9): every live charge of this
+    run directory must be in its attempts or in flight here (by attempt uid), the ledger must parse, and live charges
+    of other run directories need a recorded disposition bound to the freeze."""
+    rows, problems = ledger_rows(ledger)
+    if not rows:
+        return problems
+    here = str(Path(run_dir).resolve())
+    attempts = jsonl(Path(run_dir) / 'attempts.jsonl')
+    known = {a.get('attempt_uid') or a.get('call_id') for a in attempts}
+    for p in Path(run_dir).glob('cells/*/inflight/*.json'):
+        m = _read_json(p, {}) or {}
+        known.add(m.get('attempt_uid') or m.get('call_id'))
     other = sorted({r.get('run_dir') for r in rows if r.get('run_dir') != here})
     disposition = (_read_json(config.FREEZE_FILE, {}) or {}).get('disposition')
     if other and not (disposition and Path(disposition).is_file()):
         problems.append(f'the experiment ledger holds live calls of other run directories: {other[:3]}')
-    missing = sorted(r.get('call_id') for r in rows if r.get('run_dir') == here and r.get('call_id') not in known)
+    missing = sorted(r.get('call_id') for r in rows if r.get('run_dir') == here
+                     and (r.get('attempt_uid') or r.get('call_id')) not in known)
     if missing:
         problems.append(f'live calls in the experiment ledger are missing from this run directory: {missing[:5]}')
     return problems
 
 
+def superseded_terminal_batches(run_dir, ledger, cell_id):
+    """(terminal batch keys, problems) of a cell in every superseded run directory: a replacement directory never
+    repeats a batch that ended terminally elsewhere, and missing predecessor evidence is a problem (item 9)."""
+    terminal, problems = set(), []
+    for d in predecessor_dirs(run_dir, ledger):
+        path = Path(d) / 'attempts.jsonl'
+        if not path.exists():
+            problems.append(f'predecessor run directory {d} has no readable attempts (evidence missing)')
+            continue
+        for a in jsonl(path):
+            if a.get('cell') == cell_id and a.get('outcome') not in RETRYABLE:
+                terminal.add(a.get('batch'))
+    return sorted(t for t in terminal if t), problems
+
+
 # ================================================================================================ processes
 
 _TLS = threading.local()
+ACTIVE_INVOCATIONS = set()
 
 
 def pid_alive(pid, created=None):
@@ -388,29 +482,103 @@ def _kill_tree(proc):
         pass
 
 
+class SpawnFailure(Exception):
+    """A child that was started but whose call cannot be settled normally (council round 2, item 3): its pid could
+    not be journaled, or waiting for it raised. `terminated` says whether termination of its process tree was
+    established; `raw` holds what its raw stream files contain when it was."""
+
+    def __init__(self, reason, terminated, pid=None, raw=None):
+        Exception.__init__(self, reason)
+        self.reason, self.terminated, self.pid, self.raw = reason, terminated, pid, raw
+
+
+def _wait_gone(proc, pid, seconds=60):
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        try:
+            if proc is not None and proc.poll() is None:
+                time.sleep(0.1)
+                continue
+        except OSError:
+            pass
+        if not pid_alive(pid):
+            return True
+        time.sleep(0.1)
+    return False
+
+
+def _read_raw(paths):
+    out = []
+    for p in paths:
+        try:
+            out.append(Path(p).read_bytes().decode('utf-8', 'replace'))
+        except OSError:
+            out.append('')
+    return out
+
+
 def spawn(run_dir, launch, stdin_text, env, cwd, external, timeout=config.CALL_TIMEOUT_S):
-    """Run one child; every spawn is logged in D/spawns.jsonl with whether it is an external model CLI. Right after
-    the process starts, the launching thread's on_start hook records its pid in the in-flight marker."""
+    """Run one child; every spawn is logged in D/spawns.jsonl with whether it is an external model CLI.
+
+    Council round 2 (items 3, B3): when the launching thread names a raw stream directory (_TLS.raw, inside D/homes,
+    the credential boundary), the child's stdout and stderr go to files there, not to pipes, so a runner that dies
+    leaves the complete stream for recovery. Right after the process starts, the thread's on_start hook journals its
+    pid in the in-flight marker; when that fails, or waiting for the child raises, its process tree is killed and
+    SpawnFailure says whether termination was established. Exceptions before the process exists propagate."""
     _append(run_dir, 'spawns.jsonl', {'exe': Path(launch[1] if not external else launch[0]).name,
                                       'external': bool(external), 'at': _now()})
+    raw = getattr(_TLS, 'raw', None)
     t0 = time.monotonic()
     start = _now()
-    proc = subprocess.Popen(launch, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            cwd=str(cwd), env=env)
+    files = []
+    if raw is not None:
+        Path(raw[0]).parent.mkdir(parents=True, exist_ok=True)
+        files = [open(raw[0], 'wb'), open(raw[1], 'wb')]
+    try:
+        proc = subprocess.Popen(launch, stdin=subprocess.PIPE,
+                                stdout=files[0] if files else subprocess.PIPE,
+                                stderr=files[1] if files else subprocess.PIPE, cwd=str(cwd), env=env)
+    except BaseException:
+        for f in files:
+            f.close()
+        raise
     hook = getattr(_TLS, 'on_start', None)
     if hook is not None:
-        with contextlib.suppress(Exception):
+        try:
             hook(proc.pid)
+        except BaseException as exc:  # noqa: BLE001  (the pid could not be journaled: kill and establish the end)
+            _kill_tree(proc)
+            gone = _wait_gone(proc, proc.pid)
+            for f in files:
+                f.close()
+            raise SpawnFailure(f'the child pid could not be journaled: {type(exc).__name__}', gone, proc.pid,
+                               _read_raw(raw) if raw and gone else None) from None
     timed_out = False
     try:
-        out, err = proc.communicate(stdin_text.encode('utf-8'), timeout=timeout)
-    except subprocess.TimeoutExpired:
-        timed_out = True
+        try:
+            out, err = proc.communicate(stdin_text.encode('utf-8'), timeout=timeout)
+        except subprocess.TimeoutExpired:
+            timed_out = True
+            _kill_tree(proc)
+            out, err = proc.communicate()
+    except SpawnFailure:
+        raise
+    except BaseException as exc:  # noqa: BLE001  (waiting raised with a child that may still run)
         _kill_tree(proc)
-        out, err = proc.communicate()
-    return {'stdout': out.decode('utf-8', 'replace'), 'stderr': err.decode('utf-8', 'replace'),
-            'exit_code': None if timed_out else proc.returncode, 'timed_out': timed_out,
-            'started_at': start, 'ended_at': _now(), 'elapsed_s': round(time.monotonic() - t0, 3)}
+        gone = _wait_gone(proc, proc.pid)
+        for f in files:
+            f.close()
+        raise SpawnFailure(f'waiting for the child raised {type(exc).__name__}', gone, proc.pid,
+                           _read_raw(raw) if raw and gone else None) from None
+    for f in files:
+        f.close()
+    if raw is not None:
+        stdout, stderr = _read_raw(raw)
+    else:
+        stdout, stderr = out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
+    return {'stdout': stdout, 'stderr': stderr, 'exit_code': None if timed_out else proc.returncode,
+            'timed_out': timed_out, 'started_at': start, 'ended_at': _now(),
+            'elapsed_s': round(time.monotonic() - t0, 3), 'pid': proc.pid}
 
 
 def run_local(argv, env, cwd, on_start=None, timeout=120):
@@ -461,11 +629,11 @@ class Slots:
         self.dir.mkdir(parents=True, exist_ok=True)
         self.held = {}
 
-    def acquire(self, exclude=(), timeout=120):
+    def acquire(self, exclude=(), timeout=120, only=None):
         end = time.monotonic() + timeout
         while True:
             for k in range(config.SLOTS):
-                if k in self.held or k in exclude:
+                if k in self.held or k in exclude or (only is not None and k != only):
                     continue
                 handle = open(self.dir / f'slot-{k}.lock', 'a+b')
                 if isolation._try_lock(handle):
@@ -535,36 +703,81 @@ class Executables:
         self.identity = None
 
     def verify(self):
-        """Hash the executable and every file beside it now; returns the problems against the frozen identity."""
-        ident = isolation.executable_identity(self.exe)
+        """Hash the executable and its explicit companion manifest now (council round 2, item 7); returns the problems
+        against the frozen identity and records the file sizes and times every later per child check compares."""
+        try:
+            ident = isolation.executable_identity(self.exe)
+        except OSError as exc:
+            self.identity = None
+            return [f'the executable cannot be inspected (fail closed): {type(exc).__name__}']
         self.identity, self.exe_sha256 = ident, ident['sha256']
-        want = self.frozen.get('identity') or {}
-        problems = []
-        if not want:
-            problems.append('no frozen executable identity')
+        problems = isolation.identity_problems(ident, self.frozen.get('identity'))
         if ident['sha256'] != self.frozen.get('exe_sha256'):
-            problems.append('executable hash differs from the frozen executable hash')
-        if want and ident['payload'] != want.get('payload'):
-            problems.append('launcher payload beside the executable differs from the frozen payload')
-        if want and not _same(ident['path'], want.get('path')):
-            problems.append('the resolved executable path differs from the frozen path')
+            problems.append('executable hash differs from the frozen executable sha256 field')
+        self.verified_stats = isolation.file_stats(isolation.identity_files(ident))
+        return sorted(set(problems))
+
+    def guard(self):
+        """The write guard over every manifest file (Windows), held from the group's verification until its children
+        have ended. Live mode requires it; fake mode records whether it was obtained."""
+        files = isolation.identity_files(self.identity) if self.identity else [Path(self.exe)]
+        return isolation.WriteGuard(files)
+
+    def recheck(self):
+        """The per child check immediately before Popen: the resolved path and the size and time of every manifest
+        file are those verified for the group (the write guard keeps their contents fixed in between)."""
+        if not self.identity:
+            return ['the executable was not verified for this launch group']
+        problems = []
+        if not _same(Path(self.exe).resolve(), self.identity['path']):
+            problems.append('the executable path resolves elsewhere than at verification')
+        now = isolation.file_stats(isolation.identity_files(self.identity))
+        if now != getattr(self, 'verified_stats', None):
+            problems.append('an executable manifest file changed after the launch group was verified')
         return problems
 
 
 # ================================================================================================ judging
 
 def _turn_usage(stdout):
-    found = None
-    for line in stdout.splitlines():
-        if not line.startswith('{'):
-            continue
-        try:
-            e = json.loads(line)
-        except ValueError:
-            continue
-        if isinstance(e, dict) and e.get('type') == 'turn.completed':
-            found = e.get('usage')
-    return found
+    """The usage of the stream's one turn.completed event; None (usage incomplete) when there is none or more than
+    one, so a second turn never hides the first turn's tokens (RT2.4)."""
+    found = events.turn_usages(stdout)
+    return found[0] if len(found) == 1 else None
+
+
+def account_usage(backend, usage_raw, reply, cache_certified, count=None):
+    """Every accounting field of one call derived from its captured usage with the frozen predicates (A4.7): the
+    decoded usage, the usage status, the reasoning issue, the additive tokens, the visible reply tokens and the
+    charged tokens. The runner, recovery and the scorer all use this function, so a recorded field that the capture
+    does not give is an artifact problem (council round 2, item 10). `count` counts visible reply tokens."""
+    if backend == 'codex':
+        visible = None
+        if isinstance(reply, str):
+            visible = (count or tokenizer.count)([reply])[0]
+        dec = usage.decode_codex_checked(usage_raw, cache_certified=cache_certified)
+        issue = None
+        if dec['status'] != 'incomplete':
+            issue = usage.reasoning_inclusion(usage_raw, visible)
+        status = dec['status']
+        if issue and status == 'complete':
+            status = 'unverified'
+        cache_write = isinstance(usage_raw, dict) and (usage_raw.get('cache_write_input_tokens') or 0) > 0
+        if status == 'complete' and cache_write:
+            status = 'unverified'
+            dec = dict(dec, problems=list(dec['problems']) + ['cache_write_input_tokens positive: its relation to '
+                                                              'input_tokens is uncertified'])
+        additive = usage.additive_tokens(usage_raw) if dec['status'] != 'incomplete' and \
+            dec.get('charged_tokens') is not None else None
+    else:
+        visible, issue = None, None
+        dec = usage.decode_sonnet(usage_raw)
+        status, additive = dec['status'], None
+        if dec['status'] != 'incomplete':
+            additive = usage_raw['input_tokens'] + usage_raw['cached_input_tokens'] + usage_raw['output_tokens']
+    return {'usage': dec, 'usage_status': status, 'reasoning_issue': issue, 'additive_tokens': additive,
+            'visible_tokens': visible, 'charged_tokens': dec.get('charged_tokens') or 0,
+            'cache_certified': cache_certified if backend == 'codex' else None}
 
 
 def auth_failure_detected(stdout, stderr):
@@ -654,15 +867,127 @@ def _home_shows_start(home, prepared_sha):
     return auth.exists() and prepared_sha is not None and isolation.sha256_file(auth) != prepared_sha
 
 
+def raw_paths(run_dir, slot, call_id):
+    d = Path(run_dir) / 'homes' / f'raw-{slot}'
+    return d / f'{call_id}.stdout', d / f'{call_id}.stderr'
+
+
+def capture_paths(run_dir, call_id):
+    d = Path(run_dir) / 'captures'
+    return d / f'{call_id}.stdout', d / f'{call_id}.stderr', d / f'{call_id}.meta.json'
+
+
+def write_captures(run_dir, call_id, stdout, stderr, meta):
+    """The sanitized capture of one call and its per channel redaction record (bytes, so the capture hashes exactly
+    like the text the call was judged on)."""
+    out, err, mp = capture_paths(run_dir, call_id)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(stdout.encode('utf-8'))
+    err.write_bytes(stderr.encode('utf-8'))
+    _write_json(mp, meta)
+
+
+def sanitize(stdout, stderr, secrets):
+    """(clean stdout, clean stderr, per channel redaction record) (council round 2, item 6)."""
+    clean_out, r1 = redact.redact(stdout or '', secrets)
+    clean_err, r2 = redact.redact(stderr or '', secrets)
+    rec = redact.channels(stdout=(stdout or '', clean_out, r1), stderr=(stderr or '', clean_err, r2))
+    return clean_out, clean_err, rec
+
+
+def attempt_row(marker, outcome, why, raw, cls, usage_raw, acct, redaction, fin, extra=None):
+    """The attempts.jsonl row of one judged call (after_group and recovery build it the same way)."""
+    base = {k: v for k, v in marker.items() if k not in ('phase', 'secret_fingerprints', 'mapping', 'ops')}
+    row = dict(base, outcome=outcome, why=why, exit_code=raw.get('exit_code'), timed_out=raw.get('timed_out'),
+               started_at=raw.get('started_at') or marker.get('started_at'), ended_at=raw.get('ended_at'),
+               elapsed_s=raw.get('elapsed_s'), stdout_sha256=prompts.sha256(raw['stdout']),
+               stderr_sha256=prompts.sha256(raw['stderr']), events={
+                   'verdict': cls['verdict'], 'efficiency_invalid': cls['efficiency_invalid'],
+                   'external_read': cls['external_read'], 'notices': len(cls['notices']),
+                   'tool_requests': cls['tool_requests'], 'tool_executions': cls['tool_executions'],
+                   'uncertain': cls['uncertain'][:20], 'turns': cls.get('turns'),
+                   'transport_notices': len(cls.get('transport_notices') or [])},
+               usage_raw=usage_raw, usage=acct['usage'], usage_status=acct['usage_status'],
+               reasoning_issue=acct['reasoning_issue'], visible_tokens=acct['visible_tokens'],
+               cache_certified=acct['cache_certified'], charged_tokens=acct['charged_tokens'],
+               additive_tokens=acct['additive_tokens'], redaction=redaction,
+               credential_disclosure=bool(redaction.get('redactions')),
+               auth=None if fin is None else {k: fin[k] for k in ('worker_auth_sha256', 'baseline_auth_sha256',
+                                                                   'auth_changed', 'auth_failure')},
+               runtime_files=None if fin is None else len(fin['runtime_files']))
+    row.update(extra or {})
+    return row
+
+
+def _recovered_call(m):
+    ids = list(m.get('job_ids') or [])
+    mapping = m.get('mapping') or dict(zip(prompts.packet_ids(len(ids)), ids))
+    return {'call_id': m.get('call_id'), 'jobs': [{'id': j} for j in ids], 'inp': {'mapping': mapping,
+                                                                                     'ops': m.get('ops')},
+            'bootstrap': bool(m.get('bootstrap'))}
+
+
+def not_launched_row(marker, reason):
+    """A reserved call proven never started (no Popen): it keeps its allocation debit, has zero model usage and no
+    capture (council round 2, B2, RT2.3)."""
+    base = {k: v for k, v in marker.items() if k not in ('phase', 'secret_fingerprints', 'mapping', 'ops')}
+    return dict(base, outcome='not_launched', why=reason, exit_code=None, timed_out=False, ended_at=_now(),
+                elapsed_s=0.0, usage_raw=None, usage={'status': 'not_launched', 'problems': []},
+                usage_status='not_launched', charged_tokens=0, additive_tokens=0, credential_disclosure=False,
+                events={'verdict': 'not_launched', 'uncertain': []}, auth=None, runtime_files=None)
+
+
+def _recover_stream(run_dir, m, secrets_now, recovered_at):
+    """(raw dict, redaction record, how) of an orphan from its durable stream, in order: committed captures, then the
+    raw stream files of its slot; (None, None, reason) when neither can be used. Raw streams are promoted only when
+    every secret fingerprint recorded at preparation is covered by the secrets available now; otherwise they stay
+    quarantined inside the credential boundary (council round 2, items 3 and 6)."""
+    cid = m.get('call_id')
+    slot = m.get('slot')
+    out_p, err_p, meta_p = capture_paths(run_dir, cid)
+    if out_p.exists() and err_p.exists():
+        meta = _read_json(meta_p, {}) or {}
+        raw = {'stdout': out_p.read_bytes().decode('utf-8', 'replace'),
+               'stderr': err_p.read_bytes().decode('utf-8', 'replace')}
+        rec = meta.get('redaction') or {'redactions': 0, 'kinds': []}
+        if isinstance(slot, int) and not isinstance(slot, bool):
+            raws = raw_paths(run_dir, slot, cid)
+            originals = _read_raw(raws) if raws[0].exists() else None
+            chans = rec.get('channels') or {}
+            if originals is not None and any(
+                    prompts.sha256(text) != (chans.get(ch) or {}).get('original_sha256')
+                    for ch, text in zip(('stdout', 'stderr'), originals)):
+                raw['raw_mismatch'] = True
+        return raw, rec, 'capture'
+    if isinstance(slot, int) and not isinstance(slot, bool):
+        r_out, r_err = raw_paths(run_dir, slot, cid)
+        if r_out.exists() or r_err.exists():
+            want = set(m.get('secret_fingerprints') or [])
+            have = {isolation.sha256_text(x) for x in secrets_now}
+            if want - have:
+                return None, None, 'raw stream quarantined: the prepared secrets are not all available to redact it'
+            stdout, stderr = _read_raw((r_out, r_err))
+            clean_out, clean_err, rec = sanitize(stdout, stderr, secrets_now)
+            return {'stdout': clean_out, 'stderr': clean_err}, rec, 'raw_stream'
+    return None, None, 'no capture and no raw stream'
+
+
 def recover_inflight(run_dir, opts, say=None, iso=None):
-    """Experiment wide recovery before anything else (council round 1, items 3 and B3). Every marker of the run
-    directory is either an orphan (no attempt line: the runner died with the call in flight) or a recorded call whose
-    reconciliation did not finish. A recorded child that is still running stops the resume and nothing is touched.
-    Every Codex worker of a marker is then inventoried (finish) and reconciled against the baseline generation it was
-    prepared from: one changed worker is propagated, more than one, an authentication failure or any ambiguity
-    stops Codex evaluation; the newer baseline is never replaced. Only then are orphans recorded as interrupted
-    attempts and the markers removed. Returns the recovery record."""
+    """Experiment wide recovery before anything else (council rounds 1 and 2, items 3, B3, RT2.1, 14). Each marker:
+
+    * a child recorded alive (pid and creation time) stops the resume; nothing is touched;
+    * `reserved` (no Popen was ever called): a `not_launched` attempt, charged, zero usage;
+    * `spawning` without a pid: the process identity is ambiguous; Codex stops, the marker, the home and any raw
+      stream are preserved and no attempt is written (the scorer reports the unrecovered marker);
+    * an orphan (no attempt row) of a started child: judged from its committed capture, else from its raw stream
+      files, exactly as after_group judges a call; the terminal outcome is kept and never resent. Only without any
+      usable stream is it `interrupted`, with the event verdict `uncertain` (no capture), which is leakage (P2);
+    * a recorded call whose reconciliation did not finish: reconciled.
+
+    Every Codex worker of a marker is inventoried and reconciled against the baseline generation it was prepared
+    from; open timing windows of dead invocations are closed with bounds. Returns the recovery record."""
     run_dir = Path(run_dir)
+    close_dead_windows(run_dir)
     markers = []
     for path in sorted(run_dir.glob('cells/*/inflight/*.json')):
         m = _read_json(path)
@@ -670,53 +995,134 @@ def recover_inflight(run_dir, opts, say=None, iso=None):
     if not markers:
         return None
     attempts = jsonl(run_dir / 'attempts.jsonl')
-    by_call = {a.get('call_id'): a for a in attempts if a.get('call_id')}
-    alive = [m for _, m in markers if m.get('call_id') not in by_call and pid_alive(m.get('pid'), m.get('pid_created'))]
+    by_key = {(a.get('attempt_uid') or a.get('call_id')): a for a in attempts}
+
+    def key(m):
+        return m.get('attempt_uid') or m.get('call_id')
+
+    alive = [m for _, m in markers if key(m) not in by_key and pid_alive(m.get('pid'), m.get('pid_created'))]
     if alive:
         raise Stop(config.EXIT_INTERRUPTED, 'calls recorded in flight are still running (pids '
                    f"{sorted(m.get('pid') for m in alive)}); resume after they have ended (nothing was touched)")
-    record = {'at': _now(), 'markers': [m.get('call_id') for _, m in markers], 'action': 'none', 'ambiguous': []}
-    fins = {}
-    codex = [(p, m) for p, m in markers if m.get('backend') == 'codex']
-    if codex:
-        iso = iso or isolation.Isolation(opts.baseline, run_dir, run_dir / 'evidence',
-                                         frozen_inventory=isolation.load_inventory(), base_env=opts.base_env)
-        workers, ambiguous = {}, []
-        for _, m in codex:
-            cid, slot = m.get('call_id'), m.get('slot')
-            if m.get('unreadable'):
-                ambiguous.append('an unreadable in-flight marker')
-                continue
-            if not isinstance(slot, int) or isinstance(slot, bool):
-                ambiguous.append(f'{cid}: no slot recorded')
-                continue
-            home = iso.home(slot)
-            orphan = cid not in by_call
-            if orphan and not m.get('pid'):
-                if _home_shows_start(home, m.get('prepared_sha') or iso.baseline_sha256()):
-                    ambiguous.append(f'{cid}: no child pid recorded, but the worker home shows a started CLI')
-                elif not home.exists():
-                    continue  # never prepared: nothing to reconcile
-            if slot in workers:
-                ambiguous.append(f'slot {slot}: more than one unreconciled marker')
-                continue
-            if not home.exists():
-                ambiguous.append(f'{cid}: worker home missing after a spawn')
-                continue
-            fin = iso.finish(slot, prepared_sha256=m.get('prepared_sha'))
-            fins[cid] = fin
-            row = by_call.get(cid) or {}
-            failure = row.get('outcome') == 'auth_failure' and m.get('role') != 'probe'
-            workers[slot] = {'sha256': fin['worker_auth_sha256'], 'prepared': m.get('prepared_sha'),
-                             'auth_failure': failure, 'call_id': cid}
+    now = _now()
+    record = {'at': now, 'markers': [m.get('call_id') for _, m in markers], 'action': 'none', 'ambiguous': [],
+              'recovered': {}}
+    iso = iso or isolation.Isolation(opts.baseline, run_dir, run_dir / 'evidence',
+                                     frozen_inventory=isolation.load_inventory(), base_env=opts.base_env)
+    keep = set()
+    ambiguous, other_ambiguous = [], []
+    for path, m in markers:
+        if m.get('unreadable'):
+            ambiguous.append('an unreadable in-flight marker')
+            keep.add(path)
+        elif m.get('marker') != 'probe' and m.get('phase') not in ('reserved', 'prepared') and not m.get('pid') \
+                and key(m) not in by_key:
+            # `spawning` (or a marker without a phase) and no journaled pid: the child may have started, and
+            # nothing can establish that it ended (council round 2, item 3)
+            (ambiguous if m.get('backend') == 'codex' else other_ambiguous).append(
+                f"{m.get('call_id')}: no journaled pid for a call that may have started (phase {m.get('phase')!r}); "
+                f"the marker, the worker home and any raw stream are kept")
+            keep.add(path)
+    record['kept'] = other_ambiguous
+    workers, fins = {}, {}
+    for path, m in markers:
+        if path in keep or m.get('backend') != 'codex':
+            continue
+        cid, slot = m.get('call_id'), m.get('slot')
+        if not isinstance(slot, int) or isinstance(slot, bool):
+            ambiguous.append(f'{cid}: no slot recorded')
+            keep.add(path)
+            continue
+        home = iso.home(slot)
+        if not home.exists():
+            if m.get('phase') in ('reserved', 'prepared'):
+                continue  # never started: nothing to reconcile
+            ambiguous.append(f'{cid}: worker home missing after a spawn')
+            continue
+        if slot in workers:
+            ambiguous.append(f'slot {slot}: more than one unreconciled marker')
+            continue
+        fin = iso.finish(slot, prepared_sha256=m.get('prepared_sha'))
+        fins[key(m)] = fin
+        row = by_key.get(key(m)) or {}
+        workers[slot] = {'sha256': fin['worker_auth_sha256'], 'prepared': m.get('prepared_sha'),
+                         'auth_failure': row.get('outcome') == 'auth_failure' and m.get('role') != 'probe',
+                         'call_id': cid, 'probe': m.get('role') == 'probe'}
+    secrets_now = redact.secrets_from_auth(Path(opts.baseline) / isolation.AUTH,
+                                           *[iso.home(s) / isolation.AUTH for s in range(config.SLOTS)])
+    quarantined = []
+    for path, m in markers:
+        if path in keep:
+            continue
+        cid = m.get('call_id')
+        if not cid or m.get('marker') == 'probe' or key(m) in by_key:
+            continue
+        fin = fins.get(key(m))
+        if m.get('phase') in ('reserved', 'prepared'):
+            row = not_launched_row(m, 'recovery: the call was reserved but never started (no Popen)')
+            _append(run_dir, 'attempts.jsonl', row)
+            record['recovered'][cid] = 'not_launched'
+            continue
+        raw, redaction, how = _recover_stream(run_dir, m, secrets_now, now)
+        if raw is None:
+            if how.startswith('raw stream quarantined'):
+                quarantined.append(cid)
+            row = dict({k: v for k, v in m.items() if k not in ('phase', 'secret_fingerprints', 'mapping', 'ops')},
+                       outcome='interrupted', ended_at=None, ended_at_upper=now, elapsed_s=None,
+                       usage_status='incomplete', charged_tokens=0, note='the runner ended while the call was in '
+                       f'flight; {how}', recovered_from=None,
+                       events={'verdict': 'uncertain', 'efficiency_invalid': True,
+                               'uncertain': [{'reason': f'possible launch without a capture: {how} (A4.3, P2)'}]},
+                       auth=None if fin is None else {k: fin[k] for k in ('worker_auth_sha256', 'baseline_auth_sha256',
+                                                                            'auth_changed', 'auth_failure')},
+                       runtime_files=None if fin is None else len(fin['runtime_files']))
+            _append(run_dir, 'attempts.jsonl', row)
+            record['recovered'][cid] = 'interrupted'
+            continue
+        raw.update(exit_code=None, timed_out=False, started_at=m.get('spawned_at') or m.get('started_at'),
+                   ended_at=None, elapsed_s=None)
+        judge = judge_codex if m.get('backend') == 'codex' else judge_sonnet
+        outcome, reply, usage_raw, cls, why = judge(raw)
+        c = _recovered_call(m)
+        output = CellRun.interpret(None, c, outcome, reply)
+        if m.get('cell') in ('telemetry', 'features'):
+            output['outcome'] = outcome
+        acct = account_usage(m.get('backend'), usage_raw, reply, usage.cache_certified_for_route()
+                             if m.get('backend') == 'codex' else None)
+        if how == 'raw_stream':
+            write_captures(run_dir, cid, raw['stdout'], raw['stderr'],
+                           {'call_id': cid, 'cell': m.get('cell'), 'redaction': redaction, 'recovered': True})
+        cell_dir = run_dir / 'cells' / str(m.get('cell'))
+        if not (cell_dir / 'calls' / f'{cid}.json').exists():
+            _write_json(cell_dir / 'calls' / f'{cid}.json', output)
+        row = attempt_row(m, output['outcome'], why, raw, cls, usage_raw, acct, redaction, fin,
+                          extra={'recovered_from': how, 'ended_at_upper': now,
+                                 'raw_mismatch': bool(raw.get('raw_mismatch')),
+                                 'note': 'recovered after the runner ended: exit code and end time unknown'})
+        if m.get('expected_outcome'):
+            row['expected_outcome'] = m['expected_outcome']
+        _append(run_dir, 'attempts.jsonl', row)
+        record['recovered'][cid] = output['outcome']
+        if outcome == 'auth_failure' and m.get('role') != 'probe':
+            for w in workers.values():
+                if w['call_id'] == cid:
+                    w['auth_failure'] = True
+        for p in raw_paths(run_dir, m.get('slot'), cid) if isinstance(m.get('slot'), int) else ():
+            with contextlib.suppress(OSError):
+                p.unlink()
+    if quarantined:
+        ambiguous.append(f'raw streams quarantined (redaction coverage not established): {quarantined[:5]}')
+    if any(m.get('backend') == 'codex' for _, m in markers) or ambiguous:
+        reconcile_workers = {s: w for s, w in workers.items() if not w.get('probe')}
         base = iso.baseline_sha256()
-        verdict = isolation.reconcile_generations(base, workers, ambiguous)
+        verdict = isolation.reconcile_generations(base, reconcile_workers, ambiguous)
         record.update(action=verdict['action'], ambiguous=ambiguous, baseline_auth_sha256=base,
                       workers={str(s): {k: w.get(k) for k in ('sha256', 'prepared', 'auth_failure', 'call_id')}
                                for s, w in workers.items()})
         if verdict['action'] == 'propagate':
             try:
                 iso.propagate(verdict['slot'], expected_baseline_sha256=workers[verdict['slot']]['prepared'])
+                lineage(run_dir, iso.baseline, 'propagated', slot=verdict['slot'])
             except isolation.IsolationError as exc:
                 verdict = {'action': 'stop_codex', 'reason': f'propagation refused: {exc}'}
                 record['action'] = 'stop_codex'
@@ -724,26 +1130,58 @@ def recover_inflight(run_dir, opts, say=None, iso=None):
             _write_json(run_dir / 'codex-stop.json', {'reason': 'recovery: ' + verdict.get('reason', ''),
                                                       'cell': None, 'at': _now()})
         _append(run_dir, 'evidence/auth-reconcile.jsonl', dict(record, recovery=True, reason=verdict.get('reason')))
-    attempts_now = {a.get('call_id') for a in jsonl(run_dir / 'attempts.jsonl')}
-    for _, m in markers:
-        cid = m.get('call_id')
-        if not cid or m.get('marker') == 'probe' or cid in attempts_now:
-            continue
-        fin = fins.get(cid)
-        row = {k: v for k, v in m.items() if k not in ('phase',)}
-        row.update(outcome='interrupted', ended_at=_now(), elapsed_s=None, usage_status='incomplete',
-                   charged_tokens=0, note='the runner ended while the call was in flight',
-                   auth=None if fin is None else {k: fin[k] for k in ('worker_auth_sha256', 'baseline_auth_sha256',
-                                                                        'auth_changed', 'auth_failure')},
-                   runtime_files=None if fin is None else len(fin['runtime_files']))
-        _append(run_dir, 'attempts.jsonl', row)
     _append(run_dir, 'evidence/recovery.jsonl', record)
     for path, _ in markers:
+        if path in keep:
+            continue
         with contextlib.suppress(OSError):
             path.unlink()
     if say:
-        say(f"recovered {len(markers)} in-flight marker(s): {record['action']}")
+        say(f"recovered {len(markers) - len(keep)} in-flight marker(s): {record['action']}"
+            + (f'; {len(keep)} kept (ambiguous)' if keep else ''))
     return record
+
+
+def lineage(run_dir, baseline, event, **extra):
+    """evidence/auth-lineage.jsonl: the baseline's token hashes (never the strings) at first dispatch, after every
+    propagation and whenever a gate sees a changed baseline (council round 2, RT2.6 and C2)."""
+    try:
+        hashes = isolation.token_hashes(Path(baseline) / isolation.AUTH)
+    except isolation.IsolationError:
+        hashes = None
+    row = dict(extra, event=event, at=_now(), tokens=hashes, **isolation.auth_record(baseline))
+    _append(run_dir, 'evidence/auth-lineage.jsonl', row)
+    return row
+
+
+# ------------------------------------------------------------------------------------------------ timing windows
+
+def _window_rows(run_dir, cid):
+    return jsonl(Path(run_dir) / 'cells' / cid / 'windows.jsonl')
+
+
+def close_dead_windows(run_dir):
+    """Close every timing window opened by an invocation that ended without closing it (council round 2, item 14):
+    the upper end bound is now (the recovery time), the lower end bound the last durable work timestamp of that
+    invocation (its attempts' ends or starts, else the window start). Never an exact end."""
+    run_dir = Path(run_dir)
+    for wfile in sorted(run_dir.glob('cells/*/windows.jsonl')):
+        cid = wfile.parent.name
+        rows = jsonl(wfile)
+        closed = {r.get('invocation') for r in rows if r.get('event') == 'close'}
+        for r in rows:
+            if r.get('event') != 'open' or r.get('invocation') in closed or r.get('invocation') in ACTIVE_INVOCATIONS:
+                continue
+            inv = r.get('invocation')
+            stamps = [r.get('started_at')]
+            for a in jsonl(run_dir / 'attempts.jsonl'):
+                if a.get('cell') == cid and str(a.get('group') or '').startswith(f'{inv}.'):
+                    stamps += [a.get('started_at'), a.get('ended_at')]
+            stamps = [s for s in stamps if _parse_time(s) is not None]
+            lower = max(stamps, key=_parse_time) if stamps else r.get('started_at')
+            _append(run_dir, f'cells/{cid}/windows.jsonl', {
+                'event': 'close', 'invocation': inv, 'reconstructed': True, 'ended_at': None,
+                'ended_at_lower': lower, 'ended_at_upper': _now(), 'ended': 'recovered'})
 
 
 # ================================================================================================ the cell runner
@@ -768,6 +1206,9 @@ class CellRun:
         self.budget_obj = None
         self.cache_certified = None
         self.role = 'call'
+        self.scrambled_probe = False
+        self.run_uid = None
+        self.expected = None
 
     # ------------------------------------------------------------------------------------------- state
 
@@ -782,22 +1223,36 @@ class CellRun:
 
     # ------------------------------------------------------------------------------------------- gates
 
+    def harvested_observations(self):
+        out = {}
+        for r in jsonl(self.run_dir / 'evidence' / 'quota-observations.jsonl'):
+            out.setdefault(r.get('attempt_uid') or r.get('call_id'), []).append(r)
+        return out
+
+    def experiment_attempts(self):
+        """The attempts of this run directory and (live) of every superseded run directory of the experiment."""
+        rows = list(jsonl(self.run_dir / 'attempts.jsonl'))
+        if self.opts.mode == 'live':
+            for d in predecessor_dirs(self.run_dir, self.opts.live_ledger):
+                rows += jsonl(Path(d) / 'attempts.jsonl')
+        return rows
+
     def codex_quota_gate(self):
-        g = quota.codex_gate(self.opts.sessions_dir)
-        if not g['ok'] or not config.QUOTA_FRESH_AFTER_LAST_CODEX_CALL:
-            return g
-        ends = [_parse_time(a.get('ended_at')) for a in jsonl(self.run_dir / 'attempts.jsonl')
-                if a.get('backend') == 'codex' and a.get('mode') == 'live' and a.get('ended_at')]
-        ends = [e for e in ends if e is not None]
-        if not ends:
-            return g
-        reading = quota.codex_reading_time(self.opts.sessions_dir)
-        if reading is None or reading <= max(ends):
-            return {'ok': False, 'percent': g['percent'],
-                    'reason': 'the Codex usage reading is older than the last Codex evaluation call (worker calls '
-                              'never update the owner session files): refresh it with a Codex session in the owner '
-                              'home, then resume (A4.12)'}
-        return g
+        """The P3 gate before every synchronized Codex dispatch group (council round 2, items 31, B8, RT2.5): every
+        completed live Codex call of the experiment covered by an observation with an event timestamp after it (or
+        its own rollout reading), the latest owner reading valid, the highest covering percentage below 80."""
+        return quota.coverage_gate(self.experiment_attempts(), self.opts.sessions_dir, self.harvested_observations(),
+                                   isolation.account_sha256(self.opts.baseline))
+
+    def owner_auth(self):
+        return isolation.owner_auth_paths(self.opts.base_env) if self.opts.mode == 'live' else []
+
+    def separation_gate(self):
+        """A4.2 (RT2.6): the baseline shares no token with the owner home or the runner's CODEX_HOME (live)."""
+        problems = isolation.token_separation_problems(self.opts.baseline, self.owner_auth())
+        if problems:
+            raise Stop(config.EXIT_AUTH_GATE, f'baseline token separation check failed (A4.2): {problems[:3]}; '
+                                              + isolation.LOGIN_HINT.format(baseline=self.opts.baseline))
 
     def gates(self):
         opts = self.opts
@@ -805,25 +1260,28 @@ class CellRun:
             raise Stop(config.EXIT_SAFETY_KILL, 'a safety kill is established for this run (A4.11); no further dispatch')
         if self.codex:
             gate = isolation.wave_gate(opts.baseline)
-            _append(self.run_dir, 'evidence/wave-gates.jsonl', {'cell': self.spec['id'], 'ok': gate['ok'],
-                                                               'exp': gate['exp'], 'hours_left': gate['hours_left'],
-                                                               'at': _now()})
+            record = isolation.auth_record(opts.baseline)
+            previous = [r for r in jsonl(self.run_dir / 'evidence' / 'wave-gates.jsonl') if r.get('auth_sha256')]
+            changed = bool(previous) and previous[-1].get('auth_sha256') != record['auth_sha256']
+            _append(self.run_dir, 'evidence/wave-gates.jsonl', dict(record, cell=self.spec['id'], ok=gate['ok'],
+                                                                    hours_left=gate['hours_left'],
+                                                                    baseline_changed=changed, at=_now()))
+            if changed and opts.mode == 'live':
+                lineage(self.run_dir, opts.baseline, 'observed_baseline_change', cell=self.spec['id'])
             if not gate['ok']:
                 raise Stop(config.EXIT_AUTH_GATE, 'baseline authentication gate failed (A4.2): ' + gate['reason'])
             problems = isolation.verify_baseline(opts.baseline, isolation.load_inventory())
             if problems:
                 raise Stop(config.EXIT_AUTH_GATE, f'baseline inventory check failed (A4.2): {problems[:5]}; '
                                                   f'reseed with: CODEX_HOME={opts.baseline} codex login')
+            if opts.mode == 'live':
+                self.separation_gate()
             if (self.run_dir / 'codex-stop.json').exists():
                 raise Stop(config.EXIT_AUTH_STOP, 'Codex evaluation is stopped for this run (A4.2 reconciliation)')
         if opts.mode == 'live':
             g = quota.claude_gate(opts.claude_percent)
             if not g['ok']:
                 raise Stop(config.EXIT_QUOTA, g['reason'])
-            if self.codex:
-                g = self.codex_quota_gate()
-                if not g['ok']:
-                    raise Stop(config.EXIT_QUOTA, g['reason'])
             if not _same(self.run_dir, live_run_dir()):
                 raise Stop(config.EXIT_IDENTITY, f'live cells run only in the frozen live run directory '
                                                  f'{live_run_dir()} (A4.1, A4.5); another directory needs a new '
@@ -831,6 +1289,12 @@ class CellRun:
             problems = ledger_problems(self.run_dir, opts.live_ledger)
             if problems:
                 raise Stop(config.EXIT_IDENTITY, f'experiment ledger check failed: {problems}')
+            if self.spec['arm'] != 'telemetry':
+                terminal, missing = superseded_terminal_batches(self.run_dir, opts.live_ledger, self.spec['id'])
+                if missing or terminal:
+                    raise Stop(config.EXIT_IDENTITY, f"{self.spec['id']}: a superseded run directory holds terminal "
+                                                     f'batches {terminal[:5]} or lacks evidence {missing[:2]}; a '
+                                                     f'replacement directory never repeats them (A4.3, item 9)')
             problems = verify_freeze()
             if problems:
                 raise Stop(config.EXIT_FREEZE, f'freeze verification failed (A4.1): {problems[:5]}')
@@ -856,19 +1320,23 @@ class CellRun:
         return [a for a in jsonl(self.run_dir / 'attempts.jsonl') if a.get('cell') == self.spec['id']]
 
     def budget(self):
-        """Every physical call of the run directory, plus (live) every charge of the experiment ledger."""
+        """Every physical call charged so far (council round 2, item 9, RT2.2). Fake: this run directory's attempts.
+        Live: the experiment ledger (every run directory) plus this run directory's attempts, deduplicated by the
+        attempt's globally unique uid, so no superseded call stops counting when a call id repeats."""
         b = budget_mod.Budget()
         seen = set()
-        rows = jsonl(self.run_dir / 'attempts.jsonl')
+        here = str(self.run_dir.resolve())
+        rows = [dict(a, run_dir=a.get('run_dir') or here) for a in jsonl(self.run_dir / 'attempts.jsonl')]
         if self.opts.mode == 'live':
-            rows = rows + jsonl(self.opts.live_ledger)
+            ledger, _ = ledger_rows(self.opts.live_ledger)
+            rows = ledger + rows
         for a in rows:
-            cid = a.get('call_id')
-            if cid in seen:
+            k = a.get('attempt_uid') or (a.get('run_dir'), a.get('call_id'))
+            if k in seen:
                 continue
-            seen.add(cid)
-            b._attempts.append({k: a.get(k) for k in ('backend', 'workload', 'allocation', 'reason', 'kind',
-                                                      'outcome')})
+            seen.add(k)
+            b._attempts.append({k2: a.get(k2) for k2 in ('backend', 'workload', 'allocation', 'reason', 'kind',
+                                                         'outcome')})
         return b
 
     # ------------------------------------------------------------------------------------------- calls
@@ -885,13 +1353,25 @@ class CellRun:
 
     def run_batches(self, batches, round_no, bootstrap=False, first_reason='nominal'):
         """Execute every batch (list of job lists) of one round; returns {batch key: call output}. Batches whose
-        latest attempt is terminal are taken from disk and never sent again."""
+        latest attempt is terminal are taken from disk and never sent again.
+
+        One launch group (council round 2, items 7, B2, RT2.3): verify the executable and its manifest and hold the
+        write guard; stage every member (no ledger charge); reserve the whole group under the experiment lock
+        (shared prerequisites revalidated, markers, then ledger rows) before any spawn; each child gets a final
+        check immediately before Popen; the guard is released when every child has ended."""
         prior = self.prior_attempts()
         results, pending = {}, []
+        kept = {(_read_json(p, {}) or {}).get('batch') for p in self.dir.glob('inflight/*.json')}
         for idx, jobs in enumerate(batches):
             key = self.batch_key(round_no, idx)
             mine = [a for a in prior if a.get('batch') == key]
             last = mine[-1] if mine else None
+            if key in kept:
+                # an ambiguous in-flight marker kept by recovery: the call may have run, so it is never resent
+                results[key] = {'outcome': 'interrupted', 'answers': {}, 'job_ids': [j['id'] for j in jobs]}
+                self.interrupted = self.interrupted or (config.EXIT_INTERRUPTED, f'{key}: an ambiguous in-flight '
+                                                        'marker is kept (process identity not established)')
+                continue
             if last is not None and last['outcome'] not in RETRYABLE:
                 results[key] = _read_json(self.dir / 'calls' / f"{last['call_id']}.json", {}) or {}
                 results[key].setdefault('outcome', last['outcome'])
@@ -906,47 +1386,64 @@ class CellRun:
             stop = self.stop_reason()
             if stop and not self.interrupted:
                 self.interrupted = stop
+            guard = None
             if not self.interrupted:
                 problems = self.exe.verify()
                 if problems:
                     raise Stop(config.EXIT_FREEZE, f'executable verification before the launch group failed (A4.2): '
                                                    f'{problems}')
-            for item in pending:
-                if len(group) >= config.SLOTS:
-                    waiting.append(item)
-                    continue
-                key, jobs, tries, reason = item
-                if self.opts.stop_after is not None and self.launched >= self.opts.stop_after:
-                    self.interrupted = (config.EXIT_INTERRUPTED, f'--stop-after {self.opts.stop_after} reached')
-                    waiting.append(item)
-                    continue
-                if self.interrupted:
-                    waiting.append(item)
-                    continue
-                if self.opts.mode == 'live' and self.codex:
-                    g = quota.codex_gate(self.opts.sessions_dir)
-                    if not g['ok']:
-                        self.interrupted = (config.EXIT_QUOTA, g['reason'])
+                guard = self.exe.guard().__enter__()
+                if self.opts.mode == 'live' and not guard.held:
+                    guard.__exit__(None, None, None)
+                    raise Stop(config.EXIT_FREEZE, f'the executable write guard could not be held (A4.2, item 7): '
+                                                   f'{guard.problems[:3] or ["no platform guard"]}')
+            try:
+                for item in pending:
+                    if len(group) >= config.SLOTS:
                         waiting.append(item)
                         continue
-                try:
-                    prepared = self.prepare_call(key, jobs, tries, reason, bootstrap)
-                except Stop:
-                    self.abandon(group)
-                    raise
-                if prepared is None:
-                    results[key] = {'outcome': 'budget_exhausted', 'answers': {}, 'job_ids': [j['id'] for j in jobs]}
-                    continue
-                group.append(prepared)
+                    key, jobs, tries, reason = item
+                    if self.opts.stop_after is not None and self.launched >= self.opts.stop_after:
+                        self.interrupted = (config.EXIT_INTERRUPTED, f'--stop-after {self.opts.stop_after} reached')
+                        waiting.append(item)
+                        continue
+                    if self.interrupted:
+                        waiting.append(item)
+                        continue
+                    try:
+                        prepared = self.prepare_call(key, jobs, tries, reason, bootstrap)
+                    except (Stop, isolation.IsolationError) as exc:
+                        self.abandon(group)
+                        if isinstance(exc, Stop):
+                            raise
+                        raise Stop(config.EXIT_INCOMPLETE, f'{key}: isolation error while preparing (A4.2): {exc}')
+                    if prepared is None:
+                        results[key] = {'outcome': 'budget_exhausted', 'answers': {},
+                                        'job_ids': [j['id'] for j in jobs]}
+                        continue
+                    group.append(prepared)
+                if group:
+                    try:
+                        self.reserve_group(group)
+                    except (Stop, isolation.IsolationError) as exc:
+                        self.abandon(group)
+                        if isinstance(exc, Stop):
+                            raise
+                        raise Stop(config.EXIT_INCOMPLETE, f'isolation error while reserving (A4.2): {exc}')
+                    threads = [threading.Thread(target=self.execute, args=(c,), daemon=True) for c in group]
+                    for t in threads:
+                        t.start()
+                    for t in threads:
+                        t.join()
+            finally:
+                if guard is not None:
+                    guard.__exit__(None, None, None)
             if group:
-                threads = [threading.Thread(target=self.execute, args=(c,), daemon=True) for c in group]
-                for t in threads:
-                    t.start()
-                for t in threads:
-                    t.join()
                 self.after_group(group)
             pending = []
             for c in group:
+                if c.get('unsettled'):
+                    continue
                 if c['outcome'] in RETRYABLE and not self.interrupted:
                     pending.append((c['batch'], c['jobs'], c['try'] + 1, 'infrastructure_retry'))
                 else:
@@ -956,7 +1453,10 @@ class CellRun:
                     results.setdefault(item[0], {'outcome': 'not_launched', 'answers': {},
                                                  'job_ids': [j['id'] for j in item[1]]})
                 for c in group:
-                    if c['outcome'] in RETRYABLE:
+                    if c.get('unsettled'):
+                        results.setdefault(c['batch'], {'outcome': 'interrupted', 'answers': {},
+                                                        'job_ids': [j['id'] for j in c['jobs']]})
+                    elif c['outcome'] in RETRYABLE:
                         results[c['batch']] = c['output']
                 break
             pending = waiting + pending
@@ -975,9 +1475,11 @@ class CellRun:
         return prepared['env']
 
     def prepare_call(self, key, jobs, tries, reason, bootstrap):
-        """Everything before the spawn, in the launching thread: the model input, the leak check, the slot, the
-        worker home reconstruction and launch verification (Codex), the budget charge (also in the experiment ledger
-        when live) and the in-flight marker. Returns None when the budget refuses the call."""
+        """Stage one call in the launching thread, before its group is reserved: the model input, the leak check, the
+        slot, the worker home reconstruction (under the authentication lock, after the token separation check) and
+        launch verification (Codex), and the in-memory budget charge. Nothing is written to the experiment ledger
+        and no in-flight marker exists yet. Returns None when the budget refuses the call."""
+        import uuid
         spec = self.spec
         call_id = f"{spec['id']}.{key}.t{tries}"
         inp = self.model_input(jobs, bootstrap)
@@ -992,13 +1494,21 @@ class CellRun:
         slot = self.slots.acquire()
         try:
             listing_before = workdir_before = None
+            secrets, fingerprints = set(), []
             if self.codex:
-                prepared = self.iso.prepare(slot)
+                try:
+                    prepared = self.iso.prepare(slot, scrambled=self.role == 'probe' and self.scrambled_probe)
+                except isolation.IsolationError as exc:
+                    if 'token separation' in str(exc):
+                        raise Stop(config.EXIT_AUTH_GATE, f'{call_id}: {exc}') from None
+                    raise
                 argv = isolation.codex_argv(self.exe.exe, config.CODEX_MODEL, config.CODEX_EFFORT,
                                             prepared['workdir'], self.exe.disable_args)
                 env, workdir, stdin = self.launch_env(prepared), prepared['workdir'], inp['stdin_codex']
                 problems = self.verify_codex_launch(argv, env, workdir)
                 prepared_sha = prepared['auth_sha256']
+                base_sha = prepared['baseline_auth_sha256']
+                secrets, fingerprints = prepared['secrets'], prepared['secret_fingerprints']
                 listing_before = sorted(os.listdir(env['CODEX_HOME']))
                 workdir_before = sorted(os.listdir(workdir))
             else:
@@ -1016,14 +1526,16 @@ class CellRun:
                                     f'{[str(p) for p in found + unreadable]}')
                 if self.exe.exe_sha256 != self.exe.frozen.get('exe_sha256'):
                     problems.append('executable hash differs from the frozen executable hash')
-                prepared_sha = None
+                prepared_sha = base_sha = None
             evidence = {'call_id': call_id, 'cell': spec['id'], 'slot': slot, 'argv_sha256': isolation.argv_sha256(argv),
                         'exe_sha256': self.exe.exe_sha256, 'exe_identity': self.exe.identity,
                         'frozen': {k: v for k, v in self.exe.frozen.items() if k != 'identity'},
                         'env_names': sorted(env), 'workdir': str(workdir), 'problems': problems,
                         'prompt_sha256': prompts.sha256(record), 'stdin_sha256': prompts.sha256(stdin), 'at': _now(),
                         'instruction_sources': [str(p) for p in isolation.instruction_sources(workdir)],
-                        'home_listing': listing_before, 'workdir_listing': workdir_before, 'role': self.role}
+                        'home_listing': listing_before, 'workdir_listing': workdir_before, 'role': self.role,
+                        'auth_source': {'store': 'file', 'home': 'worker', 'auth_sha256': prepared_sha}
+                        if self.codex else None}
             _write_json(self.run_dir / 'evidence' / 'launch' / f'{call_id}.json', evidence)
             if problems:
                 raise Stop(config.EXIT_INCOMPLETE, f'{call_id}: launch verification failed (A4.2): {problems}')
@@ -1035,9 +1547,6 @@ class CellRun:
                     self.iso.finish(slot, prepared_sha256=prepared_sha)
                 self.slots.release(slot)
                 return None
-            prompt_path = self.run_dir / 'prompts' / f'{call_id}.txt'
-            prompt_path.parent.mkdir(parents=True, exist_ok=True)
-            prompt_path.write_text(record, encoding='utf-8')
             self.launched += 1
             self.invocation_calls += 1
             n = len(self.prior_attempts()) + 1 + sum(1 for _ in self.dir.glob('inflight/*.json'))
@@ -1048,28 +1557,28 @@ class CellRun:
                 _write_json(self.exe.fakes['directives'] / f'slot-{slot}.json',
                             {'cell': spec['id'], 'n': n, 'call_id': call_id, 'fail': fail, 'refresh': refresh,
                              'bootstrap_ops': inp['ops'] if bootstrap else None})
-            marker = {'call_id': call_id, 'cell': spec['id'], 'backend': self.backend, 'workload': self.workload,
+            marker = {'call_id': call_id, 'attempt_uid': str(uuid.uuid4()), 'run_id': self.run_uid,
+                      'cell': spec['id'], 'backend': self.backend, 'workload': self.workload,
                       'wave': spec['wave'], 'arm': spec['arm'], 'allocation': spec['allocation'], 'batch': key,
                       'try': tries, 'reason': reason, 'kind': charged['kind'], 'slot': slot, 'mode': self.opts.mode,
-                      'group': self.current_group, 'marker': 'call', 'role': self.role, 'phase': 'prepared',
-                      'prepared_sha': prepared_sha, 'exe_sha256': self.exe.exe_sha256, 'pid': None,
-                      'started_at': _now(), 'job_ids': [j['id'] for j in jobs],
+                      'group': self.current_group, 'marker': 'call', 'role': self.role, 'phase': 'reserved',
+                      'prepared_sha': prepared_sha, 'baseline_sha_at_prepare': base_sha,
+                      'exe_sha256': self.exe.exe_sha256, 'pid': None,
+                      'started_at': _now(), 'job_ids': [j['id'] for j in jobs], 'mapping': inp['mapping'],
+                      'ops': inp['ops'], 'secret_fingerprints': fingerprints,
                       'records': {op: sum(1 for j in jobs if j['op'] == op) for op in sorted({j['op'] for j in jobs})},
                       'prompt_sha256': prompts.sha256(record), 'stdin_sha256': prompts.sha256(stdin),
                       'system_sha256': prompts.sha256(inp['system']), 'bootstrap': bootstrap}
-            _write_json(self.dir / 'inflight' / f'{call_id}.json', marker)
-            if self.opts.mode == 'live':
-                _append_file(self.opts.live_ledger, {'call_id': call_id, 'run_dir': str(self.run_dir.resolve()),
-                                                     'backend': self.backend, 'workload': self.workload,
-                                                     'allocation': spec['allocation'], 'reason': reason,
-                                                     'kind': charged['kind'], 'outcome': 'launched', 'at': _now()})
+            if getattr(self, 'expected', None) and self.spec['arm'] == 'telemetry':
+                marker['expected_outcome'] = self.expected
             launch = self.exe.prefix + list(argv) if self.opts.mode == 'fake' else list(argv)
             return {'call_id': call_id, 'batch': key, 'try': tries, 'jobs': jobs, 'inp': inp, 'slot': slot,
                     'launch': launch, 'env': env, 'workdir': workdir, 'stdin': stdin, 'marker': marker,
                     'prepared_sha': prepared_sha, 'bootstrap': bootstrap, 'outcome': None, 'output': None,
                     'role': self.role, 'home_listing_before': listing_before, 'workdir_listing_before': workdir_before,
-                    'instruction_sources': evidence['instruction_sources']}
-        except Stop:
+                    'instruction_sources': evidence['instruction_sources'], 'secrets': secrets, 'record': record,
+                    'auth_source': evidence['auth_source']}
+        except BaseException:
             if self.codex:
                 with contextlib.suppress(Exception):
                     self.iso.finish(slot)
@@ -1080,10 +1589,44 @@ class CellRun:
         return isolation.verify_launch(argv=argv, env=env, workdir=workdir, exe_sha256=self.exe.exe_sha256,
                                        frozen=self.exe.frozen)
 
+    def reserve_group(self, group):
+        """One durable reservation of a fully staged group before any spawn (council round 2, B2, RT2.3): under the
+        experiment lock the shared prerequisites are revalidated (stops, the baseline the members were prepared from,
+        token separation, the Codex quota observation), then every member's in-flight marker (phase `reserved`) and
+        prompt are written, then (live) its experiment ledger row. A crash after a marker leaves a `reserved` marker,
+        which recovery turns into a charged `not_launched` attempt and a ledger row."""
+        stop = self.stop_reason()
+        if stop:
+            raise Stop(stop[0], stop[1])
+        if self.codex:
+            now = self.iso.baseline_sha256()
+            if any(c['marker'].get('baseline_sha_at_prepare') != now for c in group):
+                raise Stop(config.EXIT_AUTH_STOP, 'the baseline changed while the launch group was prepared (a reseed '
+                                                  'or a propagation); nothing was launched (A4.2)')
+            if self.opts.mode == 'live':
+                self.separation_gate()
+                g = self.codex_quota_gate()
+                _append(self.run_dir, 'evidence/quota-gates.jsonl', dict(g, group=self.current_group, at=_now()))
+                if not g['ok']:
+                    raise Stop(config.EXIT_QUOTA, g['reason'])
+        for c in group:
+            prompt_path = self.run_dir / 'prompts' / f"{c['call_id']}.txt"
+            prompt_path.parent.mkdir(parents=True, exist_ok=True)
+            prompt_path.write_text(c['record'], encoding='utf-8')
+            _write_json(self.dir / 'inflight' / f"{c['call_id']}.json", c['marker'])
+        if self.opts.mode == 'live':
+            for c in group:
+                m = c['marker']
+                _append_file(self.opts.live_ledger, {
+                    'attempt_uid': m['attempt_uid'], 'run_id': m['run_id'], 'call_id': m['call_id'],
+                    'run_dir': str(self.run_dir.resolve()), 'backend': self.backend, 'workload': self.workload,
+                    'allocation': self.spec['allocation'], 'reason': m['reason'], 'kind': m['kind'],
+                    'cell': self.spec['id'], 'batch': m['batch'], 'outcome': 'reserved', 'at': _now()})
+
     def abandon(self, group):
-        """Calls prepared but never spawned (a later launch check failed): nothing reached a CLI, so their markers go
-        and their in-memory budget charges are never written; slots and worker homes are released. A live charge
-        already in the experiment ledger stays there (it is counted, conservatively)."""
+        """Calls staged but never reserved (a later member or a shared prerequisite failed): nothing reached a CLI and
+        nothing was written to the experiment ledger, so their markers and prompts go, their in-memory charges are
+        dropped with this invocation, and slots and worker homes are released (council round 2, B2, RT2.3)."""
         for c in group:
             with contextlib.suppress(OSError):
                 (self.dir / 'inflight' / f"{c['call_id']}.json").unlink()
@@ -1094,100 +1637,117 @@ class CellRun:
                     self.iso.finish(c['slot'], prepared_sha256=c['prepared_sha'])
             self.slots.release(c['slot'])
 
+    def _write_marker(self, c):
+        _write_json(self.dir / 'inflight' / f"{c['call_id']}.json", c['marker'])
+
     def _mark_spawned(self, c, pid):
         c['marker'].update(pid=pid, pid_created=process_created(pid), phase='spawned', spawned_at=_now())
-        _write_json(self.dir / 'inflight' / f"{c['call_id']}.json", c['marker'])
+        self._write_marker(c)
+
+    def final_check(self, c):
+        """The per child check immediately before Popen (items 7 and 3): the executable and its manifest are those
+        verified for the group, the worker home holds exactly auth.json and the working directory is empty."""
+        problems = list(self.exe.recheck())
+        if self.codex:
+            home = Path(c['env'].get('CODEX_HOME') or '')
+            if not home.is_dir() or sorted(os.listdir(home)) != [isolation.AUTH]:
+                problems.append('the worker home no longer holds exactly auth.json')
+        if not Path(c['workdir']).is_dir() or os.listdir(c['workdir']):
+            problems.append('the working directory is no longer empty')
+        return problems
 
     def execute(self, c):
         _TLS.on_start = lambda pid: self._mark_spawned(c, pid)
+        _TLS.raw = tuple(str(p) for p in raw_paths(self.run_dir, c['slot'], c['call_id']))
         try:
-            c['raw'] = spawn(self.run_dir, c['launch'], c['stdin'], c['env'], c['workdir'],
-                             external=self.opts.mode == 'live')
-        except Exception as exc:  # noqa: BLE001  (any spawn failure is recorded, never lost with its marker)
-            c['raw'] = {'stdout': '', 'stderr': f'spawn failed: {type(exc).__name__}', 'exit_code': None,
-                        'timed_out': False, 'started_at': _now(), 'ended_at': _now(), 'elapsed_s': 0.0}
+            problems = self.final_check(c)
+            if problems:
+                c['not_launched'] = f'final check before the spawn failed: {problems}'
+                return
+            try:
+                c['marker'].update(phase='spawning', spawning_at=_now())
+                self._write_marker(c)
+            except Exception as exc:  # noqa: BLE001  (no Popen yet: established not launched)
+                c['not_launched'] = f'the spawning marker could not be written: {type(exc).__name__}'
+                return
+            try:
+                c['raw'] = spawn(self.run_dir, c['launch'], c['stdin'], c['env'], c['workdir'],
+                                 external=self.opts.mode == 'live')
+            except SpawnFailure as exc:
+                if exc.terminated:
+                    out, err = exc.raw if exc.raw else ('', '')
+                    c['raw'] = {'stdout': out, 'stderr': err + f'\n[harness] {exc.reason}', 'exit_code': None,
+                                'timed_out': False, 'started_at': c['marker'].get('spawning_at'), 'ended_at': _now(),
+                                'elapsed_s': None}
+                    c['spawn_failure'] = exc.reason
+                else:
+                    c['unsettled'] = exc.reason
+            except Exception as exc:  # noqa: BLE001  (Popen raised: no process exists)
+                c['not_launched'] = f'the child could not be started: {type(exc).__name__}'
         finally:
             _TLS.on_start = None
+            _TLS.raw = None
 
     def secrets(self, c):
+        """The credential strings to redact: those prepared for the call (kept in memory since preparation), the
+        worker's auth.json now and the baseline now, so a refresh or a reseed never loses an emitted token."""
         if not self.codex:
             return set()
-        return redact.secrets_from_auth(self.opts.baseline / isolation.AUTH, self.iso.home(c['slot']) / isolation.AUTH,
-                                        c['env'].get('CODEX_HOME') and Path(c['env']['CODEX_HOME']) / isolation.AUTH)
+        return set(c.get('secrets') or ()) | redact.secrets_from_auth(
+            self.opts.baseline / isolation.AUTH, self.iso.home(c['slot']) / isolation.AUTH,
+            c['env'].get('CODEX_HOME') and Path(c['env']['CODEX_HOME']) / isolation.AUTH)
 
     def after_group(self, group):
-        """Judge every call of a finished launch group on its redacted output, record its attempt, then reconcile
-        authentication (A4.2). Slots and in-flight markers are released only after the reconciliation, so a runner
-        that dies before it leaves the markers for recovery."""
+        """Judge every call of a finished launch group on its sanitized output, record it, then reconcile
+        authentication (A4.2). Per call, in this order (recovery relies on it): sanitize with the prepared and current
+        secrets, judge, inventory and harvest the worker home, write the parsed call record, the captures with their
+        per channel redaction record, the attempt row, then mark the marker `recorded` and delete the raw stream.
+        Slots and markers are released only after the reconciliation. An unsettled child (termination not
+        established) keeps its marker, its home and its raw stream, and stops Codex."""
         judged = []
         for c in group:
+            if c.get('unsettled'):
+                continue
+            if c.get('not_launched'):
+                row = not_launched_row(c['marker'], c['not_launched'])
+                _append(self.run_dir, 'attempts.jsonl', row)
+                c['outcome'], c['row'] = 'not_launched', row
+                c['output'] = {'outcome': 'not_launched', 'answers': {}, 'job_ids': [j['id'] for j in c['jobs']],
+                               'call_id': c['call_id']}
+                continue
             raw = dict(c['raw'])
-            secrets = self.secrets(c)
-            raw['stdout'], r1 = redact.redact(raw['stdout'], secrets)
-            raw['stderr'], r2 = redact.redact(raw['stderr'], secrets)
-            c['raw'], c['redaction'] = raw, redact.merge(r1, r2)
+            raw['stdout'], raw['stderr'], c['redaction'] = sanitize(raw.get('stdout'), raw.get('stderr'),
+                                                                    self.secrets(c))
+            c['raw'] = raw
             judged.append((c,) + tuple((judge_codex if self.codex else judge_sonnet)(raw)))
         replies = [r for _, o, r, *_ in judged if isinstance(r, str)]
-        counts = iter(tokenizer.count(replies)) if self.codex and replies else iter(())
+        counts = dict(zip(replies, tokenizer.count(replies))) if self.codex and replies else {}
         workers = {}
         for c, outcome, reply, usage_raw, cls, why in judged:
-            visible = next(counts) if self.codex and isinstance(reply, str) else None
             fin = None
             if self.codex:
                 fin = self.iso.finish(c['slot'], auth_failure=outcome == 'auth_failure',
                                       prepared_sha256=c['prepared_sha'])
                 c['fin'] = fin
-                workers[c['slot']] = {'sha256': fin['worker_auth_sha256'], 'prepared': c['prepared_sha'],
-                                      'auth_failure': fin['auth_failure'] and c.get('role') != 'probe',
-                                      'call_id': c['call_id']}
+                for obs in fin.get('quota_observations') or []:
+                    _append(self.run_dir, 'evidence/quota-observations.jsonl',
+                            dict(obs, attempt_uid=c['marker']['attempt_uid'], call_id=c['call_id']))
+                if c.get('role') != 'probe':
+                    workers[c['slot']] = {'sha256': fin['worker_auth_sha256'], 'prepared': c['prepared_sha'],
+                                          'auth_failure': fin['auth_failure'], 'call_id': c['call_id']}
             output = self.interpret(c, outcome, reply)
             outcome = output['outcome']
-            if self.codex:
-                dec = usage.decode_codex_checked(usage_raw, cache_certified=self.cache_certified)
-                issue = None
-                if dec['status'] != 'incomplete':
-                    issue = usage.reasoning_inclusion(usage_raw, visible)
-                status = dec['status']
-                if issue and status == 'complete':
-                    status = 'unverified'
-                if status == 'complete' and isinstance(usage_raw, dict) and \
-                        (usage_raw.get('cache_write_input_tokens') or 0) > 0:
-                    status = 'unverified'
-                    dec = dict(dec, problems=list(dec['problems']) + ['cache_write_input_tokens positive: its '
-                                                                      'relation to input_tokens is uncertified'])
-                additive = usage.additive_tokens(usage_raw) if dec['status'] not in ('incomplete',) and \
-                    dec.get('charged_tokens') is not None else None
-            else:
-                dec = usage.decode_sonnet(usage_raw)
-                issue, status, additive = None, dec['status'], None
-                if dec['status'] != 'incomplete':
-                    additive = usage_raw['input_tokens'] + usage_raw['cached_input_tokens'] + usage_raw['output_tokens']
-            captures = self.run_dir / 'captures'
-            captures.mkdir(parents=True, exist_ok=True)
-            # bytes, so the capture hashes exactly like the text the attempt was judged on (no newline translation)
-            (captures / f"{c['call_id']}.stdout").write_bytes(c['raw']['stdout'].encode('utf-8'))
-            (captures / f"{c['call_id']}.stderr").write_bytes(c['raw']['stderr'].encode('utf-8'))
-            marker = {k: v for k, v in c['marker'].items() if k != 'phase'}
-            row = dict(marker, outcome=outcome, why=why, exit_code=c['raw']['exit_code'],
-                       timed_out=c['raw']['timed_out'], started_at=c['raw']['started_at'],
-                       ended_at=c['raw']['ended_at'], elapsed_s=c['raw']['elapsed_s'],
-                       stdout_sha256=prompts.sha256(c['raw']['stdout']),
-                       stderr_sha256=prompts.sha256(c['raw']['stderr']), events={
-                           'verdict': cls['verdict'], 'efficiency_invalid': cls['efficiency_invalid'],
-                           'external_read': cls['external_read'], 'notices': len(cls['notices']),
-                           'tool_requests': cls['tool_requests'], 'tool_executions': cls['tool_executions'],
-                           'uncertain': cls['uncertain'][:20],
-                           'transport_notices': len(cls.get('transport_notices') or [])},
-                       usage_raw=usage_raw, usage=dec, usage_status=status, reasoning_issue=issue,
-                       visible_tokens=visible, cache_certified=self.cache_certified if self.codex else None,
-                       charged_tokens=dec.get('charged_tokens') or 0, additive_tokens=additive,
-                       redaction=c['redaction'], credential_disclosure=bool(c['redaction']['redactions']),
-                       auth=None if fin is None else {k: fin[k] for k in ('worker_auth_sha256', 'baseline_auth_sha256',
-                                                                           'auth_changed', 'auth_failure')},
-                       runtime_files=None if fin is None else len(fin['runtime_files']))
-            if c.get('expected_outcome'):
-                row['expected_outcome'] = c['expected_outcome']
+            acct = account_usage(self.backend, usage_raw, reply, self.cache_certified,
+                                 count=lambda texts: [counts.get(t) for t in texts])
+            if c.get('spawn_failure'):
+                why = (why + '; ' if why else '') + c['spawn_failure']
             _write_json(self.dir / 'calls' / f"{c['call_id']}.json", output)
+            write_captures(self.run_dir, c['call_id'], c['raw']['stdout'], c['raw']['stderr'],
+                           {'call_id': c['call_id'], 'cell': self.spec['id'], 'redaction': c['redaction'],
+                            'attempt_uid': c['marker']['attempt_uid']})
+            row = attempt_row(c['marker'], outcome, why, c['raw'], cls, usage_raw, acct, c['redaction'], fin)
+            if c['marker'].get('expected_outcome'):
+                row['expected_outcome'] = c['marker']['expected_outcome']
             _append(self.run_dir, 'attempts.jsonl', row)
             if self.opts.mode == 'fake':
                 rec = _read_json(self.exe.fakes['records'] / f"{c['call_id']}.json")
@@ -1197,23 +1757,47 @@ class CellRun:
                            'workdir_listing': [], 'env_names': [], 'stdin_sha256': prompts.sha256(c['stdin'])}
                 _append(self.run_dir, 'fake_calls.jsonl', rec)
             c['marker']['phase'] = 'recorded'
-            _write_json(self.dir / 'inflight' / f"{c['call_id']}.json", c['marker'])
+            self._write_marker(c)
+            for p in raw_paths(self.run_dir, c['slot'], c['call_id']):
+                with contextlib.suppress(OSError):
+                    p.unlink()
             c['outcome'], c['output'], c['row'] = outcome, output, row
+        failures = [c for c in group if c.get('spawn_failure') or c.get('unsettled')]
         try:
             if self.codex and workers:
                 self.reconcile(workers)
+            for c in group:
+                if c.get('not_launched') and self.codex:
+                    with contextlib.suppress(Exception):
+                        self.iso.finish(c['slot'], prepared_sha256=c['prepared_sha'])
             # markers go only once the group is reconciled; a runner that dies before keeps them for recovery
             for c in group:
+                if c.get('unsettled'):
+                    continue
                 with contextlib.suppress(OSError):
                     (self.dir / 'inflight' / f"{c['call_id']}.json").unlink()
         finally:
             for c in group:
                 self.slots.release(c['slot'])
+        for c in failures:
+            reason = f"{c['call_id']}: {c.get('unsettled') or c.get('spawn_failure')}"
+            if c.get('unsettled'):
+                reason += ' (termination of the child not established; its marker, home and raw stream are kept)'
+            if self.codex:
+                self.codex_stop(reason)
+            else:
+                self.interrupted = (config.EXIT_INTERRUPTED, reason)
+        not_launched = [c for c in group if c.get('not_launched')]
+        if not_launched and not self.interrupted:
+            why = not_launched[0]['not_launched']
+            code = config.EXIT_FREEZE if 'executable' in why else config.EXIT_INCOMPLETE
+            self.interrupted = (code, f"{not_launched[0]['call_id']}: not launched: {why}")
 
     def reconcile(self, workers):
         """A4.2 after every call, failures included: each worker is compared with the baseline generation it was
         prepared from; one changed worker is propagated under the lock against that generation, anything else that
-        changed authentication, or any authentication failure, stops Codex evaluation."""
+        changed authentication, or any authentication failure, stops Codex evaluation. Probe homes (scrambled
+        tokens) never take part: they are never propagated."""
         base = self.iso.baseline_sha256()
         verdict = isolation.reconcile_generations(base, workers)
         row = {'cell': self.spec['id'], 'baseline_auth_sha256': base, 'action': verdict['action'],
@@ -1225,6 +1809,9 @@ class CellRun:
         if verdict['action'] == 'propagate':
             try:
                 self.iso.propagate(verdict['slot'], expected_baseline_sha256=workers[verdict['slot']]['prepared'])
+                if self.opts.mode == 'live':
+                    lineage(self.run_dir, self.opts.baseline, 'propagated', slot=verdict['slot'],
+                            cell=self.spec['id'])
             except isolation.IsolationError as exc:
                 row.update(action='stop_codex', reason=f'propagation refused: {exc}')
                 self.codex_stop(f'propagation refused: {exc}')
@@ -1240,9 +1827,9 @@ class CellRun:
         self.interrupted = (config.EXIT_AUTH_STOP, 'Codex evaluation stopped (A4.2): ' + reason)
 
     def interpret(self, c, outcome, reply):
-        """The parsed output of one call: answers keyed by job id (and, for a bootstrap, the proposed rules). A
-        bootstrap whose envelope parses but whose answers are malformed or incomplete is `malformed_answers`: a
-        completion failure (A4.6); its proposals stay observations."""
+        """The parsed output of one call: answers keyed by job id (and, for a bootstrap, the proposed rules with the
+        exact proposal bytes cut from the reply). A bootstrap whose envelope parses but whose answers are malformed or
+        incomplete is `malformed_answers`: a completion failure (A4.6); its proposals stay observations."""
         out = {'outcome': outcome, 'answers': {}, 'failed': {}, 'job_ids': [j['id'] for j in c['jobs']],
                'call_id': c['call_id'], 'rejection': None}
         if outcome != 'ok':
@@ -1405,9 +1992,18 @@ class CellRun:
             return config.EXIT_USAGE
         self.run_dir.mkdir(parents=True, exist_ok=True)
         try:
-            with exclusive(self.run_dir / 'locks' / f"cell-{spec['id']}.lock"), \
-                    exclusive(self.run_dir / 'locks' / 'experiment.lock'):
-                return self._guarded()
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(exclusive(self.run_dir / 'locks' / f"cell-{spec['id']}.lock"))
+                stack.enter_context(exclusive(self.run_dir / 'locks' / 'experiment.lock'))
+                if opts.mode == 'live':
+                    # one experiment lock beside the authoritative ledger (council round 2, item 9): runners of an
+                    # old and a new run directory can never reserve independently
+                    stack.enter_context(exclusive(Path(opts.live_ledger).parent / 'experiment.lock'))
+                ACTIVE_INVOCATIONS.add(self.invocation)
+                try:
+                    return self._guarded()
+                finally:
+                    ACTIVE_INVOCATIONS.discard(self.invocation)
         except Busy as exc:
             self.say(f"{spec['id']}: another runner is active in this run directory ({exc}); no call made")
             return config.EXIT_BUSY
@@ -1457,8 +2053,12 @@ class CellRun:
         self.cache_certified = usage.cache_certified_for_route() if self.codex else None
         if self.codex:
             self.iso = isolation.Isolation(opts.baseline, self.run_dir, self.run_dir / 'evidence',
-                                           frozen_inventory=isolation.load_inventory(), base_env=opts.base_env)
-        bind_identity(self.run_dir, opts, self.iso.baseline_sha256() if self.iso else None)
+                                           frozen_inventory=isolation.load_inventory(), base_env=opts.base_env,
+                                           owner_auth=self.owner_auth())
+        bound = bind_identity(self.run_dir, opts, self.iso.baseline_sha256() if self.iso else None)
+        self.run_uid = (bound or {}).get('run_id')
+        if self.codex and opts.mode == 'live' and not (self.run_dir / 'evidence' / 'auth-lineage.jsonl').exists():
+            lineage(self.run_dir, opts.baseline, 'first_dispatch', cell=spec['id'])
         if self.codex and opts.mode == 'live' and spec['arm'] != 'telemetry':
             try:
                 self.record_features()
@@ -1481,11 +2081,19 @@ class CellRun:
                 if self.codex else None, 'at': _now()})
         return self._run_locked(spec, opts)
 
-    def _window(self, started, t0, ended_how):
-        """A work window: real submission to resolution time of this invocation's work on the cell, local work
-        (preparation, parsing, admission, rule execution, audits, delivery) and launch skew included (item 14)."""
-        row = {'invocation': self.invocation, 'started_at': started, 'ended_at': _now(),
-               'elapsed_s': round(time.monotonic() - t0, 3), 'calls': self.invocation_calls, 'ended': ended_how}
+    def _window_open(self):
+        """Durably open this invocation's timing window before any work (council round 2, item 14)."""
+        self._t0, self._started = time.monotonic(), _now()
+        _append(self.run_dir, f"cells/{self.spec['id']}/windows.jsonl",
+                {'event': 'open', 'invocation': self.invocation, 'started_at': self._started, 'pid': os.getpid()})
+
+    def _window(self, ended_how):
+        """Close the work window after the result delivery boundary (result.json and DONE or SETTLED written): real
+        submission to resolution time of this invocation's work on the cell, local work (preparation, parsing,
+        admission, rule execution, audits, delivery) and launch skew included (item 14)."""
+        row = {'event': 'close', 'invocation': self.invocation, 'started_at': self._started, 'ended_at': _now(),
+               'elapsed_s': round(time.monotonic() - self._t0, 3), 'calls': self.invocation_calls,
+               'ended': ended_how}
         _append(self.run_dir, f"cells/{self.spec['id']}/windows.jsonl", row)
         return row
 
@@ -1505,22 +2113,26 @@ class CellRun:
         return self.run_BC()
 
     def _run_locked(self, spec, opts):
-        t0, started = time.monotonic(), _now()
+        self._window_open()
         try:
             result = self.arm()
         except Stop as stop:
-            self._window(started, t0, 'stopped')
             self.state('incomplete', reason=stop.reason)
+            self._window('stopped')
             self.say(f"{spec['id']}: {stop.reason}")
             return stop.code
-        window = self._window(started, t0, 'returned')
-        result.update(cell=spec['id'], spec=spec, mode=opts.mode, last_window=window)
+        result.update(cell=spec['id'], spec=spec, mode=opts.mode)
         exhausted = [k for k, v in result.get('batches', {}).items() if v in ('budget_exhausted',)]
         killed = self.rule_errors(result)
         _write_json(self.dir / 'result.json', result)
         if killed:
             _write_json(self.run_dir / 'safety-kill.json', {'cell': spec['id'], 'rule_errors': len(killed),
                                                             'jobs': killed[:20], 'at': _now()})
+        code = self._settle(spec, opts, result, exhausted, killed)
+        self._window('returned')
+        return code
+
+    def _settle(self, spec, opts, result, exhausted, killed):
         if self.interrupted:
             code, reason = self.interrupted
             self.state('interrupted', reason=reason)
@@ -1565,45 +2177,93 @@ class CellRun:
 
     def worker_probe(self, name, args):
         """A local CLI command (no model request) with a reconstructed worker home, owning its slot, recorded by an
-        in-flight marker and reconciled like a call (council C2). Returns (exit code, stdout, stderr)."""
+        in-flight marker and reconciled like a call (council C2). Its output is redacted with the secrets prepared
+        for it, and its error channels are inspected BEFORE reconciliation: an authentication failure is sticky, stops
+        Codex and is never propagated (council round 2, items 5 and 6). Returns (exit code, stdout, stderr, finish)."""
         slot = self.slots.acquire()
         try:
-            prepared = self.iso.prepare(slot)
+            try:
+                prepared = self.iso.prepare(slot)
+            except isolation.IsolationError as exc:
+                raise Stop(config.EXIT_AUTH_GATE if 'token separation' in str(exc) else config.EXIT_INCOMPLETE,
+                           f'{name} probe: {exc}') from None
             marker, path, on_start = self.probe_marker(name, slot, prepared['auth_sha256'])
             problems = self.exe.verify()
             if problems:
                 raise Stop(config.EXIT_FREEZE, f'executable verification before {name} failed: {problems}')
+            secrets = set(prepared['secrets'])
             try:
-                code, out, err = run_local([self.exe.exe, *self.exe.disable_args, *args] if name == 'features'
-                                           else [self.exe.exe, *args], prepared['env'], prepared['workdir'], on_start)
+                code, out, err = run_local([self.exe.exe, *config.ROUTE_SECURITY_ARGS, *self.exe.disable_args, *args]
+                                           if name == 'features' else [self.exe.exe, *config.ROUTE_SECURITY_ARGS[:2],
+                                                                       *args],
+                                           prepared['env'], prepared['workdir'], on_start)
             finally:
-                fin = self.iso.finish(slot, prepared_sha256=prepared['auth_sha256'])
-                self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
-                                       'auth_failure': False, 'call_id': marker['call_id']}})
-                with contextlib.suppress(OSError):
-                    path.unlink()
-            secrets = redact.secrets_from_auth(self.opts.baseline / isolation.AUTH)
-            out, _ = redact.redact(out, secrets)
-            err, _ = redact.redact(err, secrets)
+                secrets |= redact.secrets_from_auth(self.iso.home(slot) / isolation.AUTH,
+                                                    self.opts.baseline / isolation.AUTH)
+                fin = None
+            out, r1 = redact.redact(out, secrets)
+            err, r2 = redact.redact(err, secrets)
+            failure = auth_failure_detected(out, err)
+            if name == 'login' and login_state(out + '\n' + err) != 'logged_in':
+                failure = True
+            fin = self.iso.finish(slot, auth_failure=failure, prepared_sha256=prepared['auth_sha256'])
+            self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
+                                   'auth_failure': failure, 'call_id': marker['call_id']}})
+            if r1.get('redactions') or r2.get('redactions'):
+                _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
+                        {'probe': name, 'cell': self.spec['id'], 'redaction': redact.merge(r1, r2), 'at': _now()})
+            with contextlib.suppress(OSError):
+                path.unlink()
             return code, out, err, fin
         finally:
             self.slots.release(slot)
 
     def record_features(self):
         """A4.2: before each wave, the effective features from `codex features list` with a reconstructed worker
-        home and the frozen disable options (a local command; no model request)."""
-        code, out, _, fin = self.worker_probe('features', ['features', 'list'])
-        rows = {}
+        home and the frozen disable options (a local command; no model request). Council round 2 (item 5, C3): the
+        command must succeed and give a structurally valid inventory (one row per feature, no duplicate, a boolean
+        state), every frozen disable option must be listed and off except the recorded `stays_enabled` features,
+        skip_host_skill_discovery must be on, and no authentication failure may appear; otherwise the cell is refused
+        before any charged call."""
+        code, out, err, fin = self.worker_probe('features', ['features', 'list'])
+        rows, problems, dup = {}, [], []
         for line in out.splitlines():
             parts = line.split()
-            if len(parts) >= 3 and parts[-1] in ('true', 'false'):
-                rows[parts[0]] = parts[-1] == 'true'
-        argv = [*self.exe.disable_args, 'features', 'list']
+            if not parts:
+                continue
+            if len(parts) < 3 or parts[-1] not in ('true', 'false'):
+                problems.append(f'unparseable features line: {line[:80]!r}')
+                continue
+            if parts[0] in rows:
+                dup.append(parts[0])
+            rows[parts[0]] = parts[-1] == 'true'
+        expected_on = set((_read_json(config.CLI_FLAGS_FILE, {}) or {}).get('stays_enabled') or {})
+        if code != 0:
+            problems.append(f'features list exited {code}')
+        if not rows:
+            problems.append('features list gave no feature inventory')
+        if dup:
+            problems.append(f'duplicate feature names: {sorted(set(dup))[:5]}')
+        flags = self.exe.disable_args
+        disabled = [flags[i + 1] for i in range(len(flags) - 1) if flags[i] == '--disable']
+        missing = sorted(n for n in disabled if n not in rows)
+        if rows and missing:
+            problems.append(f'disabled features missing from the inventory: {missing[:5]}')
+        enabled = sorted(k for k in disabled if rows.get(k))
+        if sorted(set(enabled) - expected_on):
+            extra = sorted(set(enabled) - expected_on)
+            problems.append(f'features still enabled beyond the frozen expectation: {extra}')
+        if rows and rows.get('skip_host_skill_discovery') is not True:
+            problems.append('skip_host_skill_discovery is not enabled')
+        if auth_failure_detected(out, err):
+            problems.append('features list reported an authentication failure')
+        argv = [*config.ROUTE_SECURITY_ARGS, *self.exe.disable_args, 'features', 'list']
         _write_json(self.run_dir / 'evidence' / f"features-{self.spec['id']}.json",
                     {'cell': self.spec['id'], 'argv_sha256': hashlib.sha256(json.dumps(argv).encode()).hexdigest(),
-                     'exit_code': code, 'features': rows, 'enabled_tool_features':
-                         sorted(k for k in config.DISABLE_FEATURES if rows.get(k)),
-                     'runtime_files': fin['runtime_files'], 'at': _now()})
+                     'exit_code': code, 'features': rows, 'enabled_tool_features': enabled, 'ok': not problems,
+                     'problems': problems, 'runtime_files': fin['runtime_files'], 'at': _now()})
+        if problems:
+            raise Stop(config.EXIT_FREEZE, f'features record invalid before any charged call (A4.2): {problems[:5]}')
 
 
 def _canon(value):
@@ -1643,24 +2303,30 @@ def telemetry_problems(run_dir):
 
 class TelemetryRun(CellRun):
     """The A4.2 telemetry certificate, through the same reservation, isolation, capture, reconciliation and stop
-    machinery as evaluation calls (council round 1, items 1 and 4, B4), on its own telemetry allocation:
+    machinery as evaluation calls (council rounds 1 and 2, items 1, 4, 33, B1, B4), on its own telemetry allocation:
 
-    1. `login status` with an empty CODEX_HOME (local, no model request): must say not logged in.
+    1. `login status` at each of the four worker paths, emptied (local, no model request): must say not logged in,
+       so no credential is keyed by a worker path.
     2. `login status` with a reconstructed worker home (local): must say logged in.
-    3. the frozen exec argv with an empty CODEX_HOME (a charged telemetry call): must end in an authentication
-       failure without a reply or usage, so the exec route has no credential source but CODEX_HOME.
-    4. the frozen exec argv with a reconstructed worker home on a neutral one job packet (a charged telemetry call):
-       must deliver a plain reply; its startup runtime files are inventoried by name.
-    5. `login status` with an empty CODEX_HOME again: the call left no credential in an OS store.
+    3. the frozen exec argv at a worker path whose auth.json keeps the baseline's account metadata but carries
+       tokens no server accepts (a charged telemetry call): must end in an authentication failure without a reply or
+       usage, so no credential store keyed by account data from auth.json supplies credentials. Its startup runtime
+       inventory (names and hashes) is the local preflight of the next step.
+    4. preflight: when that inventory holds an instruction bearing file the approved startup manifest does not list by
+       path and hash (P5), the telemetry refuses before the charged worker call.
+    5. the frozen exec argv with a reconstructed worker home on a neutral one job packet (a charged telemetry call):
+       must deliver a plain reply; its runtime files are inventoried by name and hash.
+    6. `login status` at the four emptied worker paths again: the call left no credential keyed by a worker path.
     The certificate is published (evidence/telemetry.jsonl, telemetry.json) only after the call was reconciled."""
 
     def __init__(self, opts):
         CellRun.__init__(self, dict(TELEMETRY_SPEC), opts)
-        self.probe_home = None
         self.expected = 'ok'
         self.last_call = {}
         self.last_fin = None
+        self.probe_fin = None
         self.reconciled_all = True
+        self.scrambled_probe = True
 
     def _preflight(self):
         if self.opts.mode != 'live':
@@ -1677,68 +2343,55 @@ class TelemetryRun(CellRun):
     def charge(self, reason):
         return self.budget_obj.charge('codex', 'telemetry', 'telemetry', reason='nominal', outcome='launched')
 
-    def launch_env(self, prepared):
-        if self.role == 'probe':
-            return isolation.child_env(self.probe_home, self.opts.base_env)
-        return prepared['env']
-
-    def verify_codex_launch(self, argv, env, workdir):
-        if self.role != 'probe':
-            return CellRun.verify_codex_launch(self, argv, env, workdir)
-        problems = list(isolation.argv_check(argv))
-        if isolation.argv_sha256(argv) != self.exe.frozen.get('argv_sha256'):
-            problems.append('argument hash differs from the frozen argument hash')
-        if self.exe.exe_sha256 != self.exe.frozen.get('exe_sha256'):
-            problems.append('executable hash differs from the frozen executable hash')
-        if os.listdir(self.probe_home):
-            problems.append('the probe home is not empty')
-        if os.listdir(workdir):
-            problems.append('working directory is not empty')
-        found, unreadable = isolation.instruction_scan(workdir)
-        if found or unreadable:
-            problems.append('instruction files or unreadable locations reachable')
-        return problems
-
     def interpret(self, c, outcome, reply):
         out = CellRun.interpret(self, c, outcome, reply)
         out['outcome'] = outcome
         return out
 
-    def fresh_probe_home(self):
-        home = self.run_dir / 'homes' / 'probe-empty'
-        shutil.rmtree(home, ignore_errors=True)
-        home.mkdir(parents=True)
-        self.probe_home = home
-        return home
-
-    def empty_login(self):
-        home = self.fresh_probe_home()
+    def worker_path_logins(self):
+        """`login status` at every worker path with the path emptied (B4), each under its own slot, so no child uses
+        the directory; the directory is emptied again afterwards. Local commands, no model request."""
+        out = {}
         problems = self.exe.verify()
         if problems:
             raise Stop(config.EXIT_FREEZE, f'executable verification failed: {problems}')
-        code, out, err = run_local([self.exe.exe, 'login', 'status'], isolation.child_env(home, self.opts.base_env),
-                                   self.run_dir)
-        listing = sorted(p.relative_to(home).as_posix() for p in home.rglob('*'))
-        shutil.rmtree(home, ignore_errors=True)
-        return login_state(out + '\n' + err), listing
+        for k in range(config.SLOTS):
+            slot = self.slots.acquire(only=k)
+            try:
+                home = self.iso.empty_home(k)
+                code, o, e = run_local([self.exe.exe, *config.ROUTE_SECURITY_ARGS[:2], 'login', 'status'],
+                                       isolation.child_env(home, self.opts.base_env), self.run_dir)
+                out[str(k)] = login_state(o + '\n' + e)
+                self.iso.empty_home(k)
+            finally:
+                self.slots.release(slot)
+        return out
 
     def arm(self):
-        doc = {'schema': 'ozmap-rep.telemetry/2', 'at': _now(), 'login_status': {}, 'problems': []}
-        doc['login_status']['empty_home_before'], doc['probe_home_files_before'] = self.empty_login()
+        doc = {'schema': 'ozmap-rep.telemetry/3', 'at': _now(), 'login_status': {}, 'problems': []}
+        doc['login_status']['worker_paths_before'] = self.worker_path_logins()
         code, out, err, _ = self.worker_probe('login', ['login', 'status'])
         doc['login_status']['worker_home'] = login_state(out + '\n' + err)
         self.role, self.expected = 'probe', 'auth_failure'
-        self.fresh_probe_home()
         probe = self.run_batches([[{'id': 'telemetry-j00', 'op': 'telemetry'}]], 1)
         probe_out = probe.get(self.batch_key(1, 0), {})
         probe_row = next((a for a in reversed(self.prior_attempts()) if a.get('batch') == self.batch_key(1, 0)), {})
-        files = sorted(p.relative_to(self.probe_home).as_posix() for p in self.probe_home.rglob('*'))
-        shutil.rmtree(self.probe_home, ignore_errors=True)
-        doc['exec_probe_empty_home'] = {'outcome': probe_out.get('outcome'), 'call_id': probe_row.get('call_id'),
-                                        'reply': bool(probe_out.get('answers')),
-                                        'usage_present': probe_row.get('usage_raw') is not None,
-                                        'probe_home_files_after': files}
-        if probe_out.get('outcome') == 'auth_failure' and not self.interrupted:
+        pfin = self.probe_fin or {}
+        doc['exec_probe'] = {'outcome': probe_out.get('outcome'), 'call_id': probe_row.get('call_id'),
+                             'reply': bool(probe_out.get('answers')),
+                             'usage_present': probe_row.get('usage_raw') is not None, 'home': 'worker',
+                             'account_metadata_kept': True, 'runtime_files': pfin.get('runtime_files'),
+                             'runtime_hashes': pfin.get('runtime_hashes'),
+                             'auth_rewritten': pfin.get('auth_changed')}
+        startup = isolation.startup_instruction_files(pfin.get('runtime_files') or [], pfin.get('runtime_hashes'))
+        if probe_out.get('outcome') != 'auth_failure':
+            doc['problems'].append('the exec probe with unaccepted tokens did not end in an authentication failure; '
+                                   'the telemetry call was not made')
+        elif startup:
+            doc['problems'].append(f'preflight: the startup inventory of the frozen argv holds instruction bearing '
+                                   f'files the approved startup manifest does not list: {startup[:10]}; the charged '
+                                   f'telemetry call was not made (B1, P5)')
+        elif not self.interrupted:
             self.role, self.expected = 'call', 'ok'
             call = self.run_batches([[{'id': 'telemetry-j00', 'op': 'telemetry'}]], 2)
             call_out = call.get(self.batch_key(2, 0), {})
@@ -1749,17 +2402,18 @@ class TelemetryRun(CellRun):
                            'home_listing_before': self.last_call.get('home_listing_before'),
                            'workdir_listing_before': self.last_call.get('workdir_listing_before'),
                            'instruction_sources': self.last_call.get('instruction_sources'),
-                           'runtime_files': fin.get('runtime_files'), 'usage_status': row.get('usage_status'),
-                           'auth_changed': fin.get('auth_changed')}
-            doc['login_status']['empty_home_after'], _ = self.empty_login()
-        else:
-            doc['problems'].append('the empty home exec probe did not end in an authentication failure; the '
-                                   'telemetry call was not made')
+                           'auth_source': self.last_call.get('auth_source'),
+                           'argv_sha256': (_read_json(self.run_dir / 'evidence' / 'launch' /
+                                                      f"{row.get('call_id')}.json", {}) or {}).get('argv_sha256'),
+                           'runtime_files': fin.get('runtime_files'), 'runtime_hashes': fin.get('runtime_hashes'),
+                           'usage_status': row.get('usage_status'), 'auth_changed': fin.get('auth_changed')}
+            doc['login_status']['worker_paths_after'] = self.worker_path_logins()
         doc['reconciled'] = not (self.run_dir / 'codex-stop.json').exists() and self.reconciled_all
         clean = doc.get('call') or {}
-        doc['auth_read_from_codex_home'] = (doc['login_status'].get('empty_home_before') == 'not_logged_in'
+        befores = doc['login_status'].get('worker_paths_before') or {}
+        doc['auth_read_from_codex_home'] = (bool(befores) and all(v == 'not_logged_in' for v in befores.values())
                                             and doc['login_status'].get('worker_home') == 'logged_in'
-                                            and doc['exec_probe_empty_home']['outcome'] == 'auth_failure')
+                                            and doc['exec_probe']['outcome'] == 'auth_failure')
         doc['sandbox_clean_home'] = (clean.get('home_listing_before') == [isolation.AUTH]
                                      and clean.get('stream_verdict') == 'plain' and clean.get('outcome') == 'ok')
         doc['problems'] += isolation.telemetry_certificate(doc)
@@ -1787,6 +2441,8 @@ class TelemetryRun(CellRun):
         for c in group:
             if c.get('role') == 'call':
                 self.last_fin = c.get('fin')
+            elif c.get('role') == 'probe':
+                self.probe_fin = c.get('fin')
 
     def _run_locked(self, spec, opts):
         failures = telemetry_failures(self.run_dir)
@@ -1824,8 +2480,15 @@ def features(opts) -> int:
     def arm():
         run.record_features()
         return {'answers': {}, 'batches': {}, 'telemetry': True}
+    def locked(spec, o):
+        try:
+            arm()
+        except Stop as stop:
+            run.say(f'features: {stop.reason}')
+            return stop.code
+        return config.EXIT_OK
     run.arm = arm
-    run._run_locked = lambda spec, o: (arm(), config.EXIT_OK)[1]
+    run._run_locked = locked
     return run.run()
 
 
@@ -1870,7 +2533,14 @@ def freeze_record(base_env=None):
            'interpreter': sys.executable, 'live_run_dir': str(live_run_dir()),
            'signed_exceptions': {'transport_notices': list(config.SIGNED_TRANSPORT_NOTICES),
                                  'omitted_disables': dict(config.SIGNED_OMITTED_DISABLES),
-                                 'startup_files': list(config.SIGNED_STARTUP_FILES)}}
+                                 'cli_notices': list(config.SIGNED_CLI_NOTICES),
+                                 'cli_notice_event_keys': config.SIGNED_CLI_NOTICE_EVENT_KEYS and
+                                 sorted(config.SIGNED_CLI_NOTICE_EVENT_KEYS),
+                                 'cli_notice_id_re': config.SIGNED_CLI_NOTICE_ID_RE,
+                                 'startup_manifest_sha256': isolation.sha256_file(config.STARTUP_MANIFEST_FILE)
+                                 if config.STARTUP_MANIFEST_FILE.exists() else None,
+                                 'rulings': rulings.record()},
+           'route_security_args': list(config.ROUTE_SECURITY_ARGS)}
     for name, backend in (('codex', 'codex'), ('claude', 'sonnet')):
         exe = shutil.which(name, path=env.get('PATH'))
         if exe:
@@ -1893,7 +2563,7 @@ def verify_freeze():
     problems = [f'{k} changed' for k in sorted(set(frozen.get('files', {})) | set(now['files']))
                 if frozen.get('files', {}).get(k) != now['files'].get(k)]
     for key in ('registry_manifest_sha256', 'disable_options', 'workload_sha256', 'classification_sha256',
-                'tokenizer', 'interpreter', 'live_run_dir', 'signed_exceptions'):
+                'tokenizer', 'interpreter', 'live_run_dir', 'signed_exceptions', 'route_security_args'):
         if frozen.get(key) != now.get(key):
             problems.append(f'{key} changed')
     if (frozen.get('codex') or {}).get('version') != config.CODEX_CLI_VERSION:
@@ -1908,15 +2578,29 @@ def verify_freeze():
             problems.append(f'{backend} launcher payload changed')
         if f.get('version') != n.get('version'):
             problems.append(f'{backend} version changed')
+        if isolation.identity_problems(n.get('identity') or {}, f.get('identity') or {}) and n.get('identity'):
+            problems.append(f'{backend} executable identity (companion manifest or launcher targets) changed')
+    if frozen.get('disposition'):
+        d = Path(frozen['disposition'])
+        if not d.is_file() or isolation.sha256_file(d) != frozen.get('disposition_sha256'):
+            problems.append('the recorded disposition changed or is missing since the freeze')
     tok = now.get('tokenizer') or {}
     if not tok.get('vocabulary_ok'):
         problems.append('the pinned tokenizer vocabulary is unavailable')
+    problems += [f'freeze readiness: {p}' for p in rulings.readiness_problems(now.get('disable_options'))]
     return problems
 
 
 def freeze_command(new_run_dir=None, disposition=None):
-    """Write freeze.json. Refused once a live run is bound to the current freeze (A4.1: the freeze cannot be replaced
-    after dispatch), unless a new, unused live run directory and a recorded council disposition are named."""
+    """Write freeze.json. Refused (exit 14) while a pending ruling slot is unsettled or the configuration does not
+    match the rulings (council round 2, B1: a freeze and a telemetry run certain to fail would spend telemetry calls
+    and block the run directory for good). Refused once a live run is bound to the current freeze (A4.1: the freeze
+    cannot be replaced after dispatch), unless a new, unused live run directory and a recorded council disposition
+    are named; the disposition is hashed into the freeze."""
+    ready = rulings.readiness_problems()
+    if ready:
+        print('refused: the freeze is not ready (B1): ' + '; '.join(ready), file=sys.stderr)
+        return config.EXIT_FREEZE
     target = live_run_dir()
     bound = (target / 'experiment.json').exists() or bool(jsonl(config.LIVE_LEDGER_DEFAULT))
     if bound:
@@ -1931,6 +2615,7 @@ def freeze_command(new_run_dir=None, disposition=None):
     if new_run_dir:
         rec['live_run_dir'] = str(Path(new_run_dir).resolve())
         rec['disposition'] = str(disposition)
+        rec['disposition_sha256'] = isolation.sha256_file(disposition)
     _write_json(config.FREEZE_FILE, rec)
     print(f'wrote {config.FREEZE_FILE} ({len(rec["files"])} files)')
     return 0

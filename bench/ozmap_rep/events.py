@@ -10,6 +10,11 @@ Council round 1 (items 11, RT1.3, B1): tool items are aggregated over every even
 evidence is never erased by a later event; a tool event without a usable item id is its own item and at least
 uncertain; a top level `error` event is uncertain unless a signed ruling names it (config.SIGNED_TRANSPORT_NOTICES,
 empty until one is signed); a non empty stdout line that is not a JSON event is uncertain.
+
+Council round 2: more than one `turn.started` or `turn.completed` in one exec stream is uncertain (RT2.4); signed
+transport notices match the complete message only, and only in a stream without any tool item (P1); a signed CLI
+notice (P4) is an `item.completed` error item matching the approved outer schema, item schema, identifier syntax and
+complete message exactly, inactive until both signatories approve the annex (config.SIGNED_CLI_NOTICES).
 """
 from __future__ import annotations
 
@@ -77,8 +82,25 @@ def _id_of(item):
 
 
 def _signed_transport(message):
+    """P1: a complete signed transport message, matched exactly (no prefix, no variable part)."""
     notices = tuple(config.SIGNED_TRANSPORT_NOTICES)
-    return bool(notices) and isinstance(message, str) and message.startswith(notices)
+    return bool(notices) and isinstance(message, str) and message in notices
+
+
+def signed_cli_notice(event):
+    """P4: an `item.completed` event whose keys are exactly the approved outer schema, with an error item of exactly
+    {id, type, message}, an identifier matching the approved syntax and a message equal to a signed notice. Always
+    False until config.SIGNED_CLI_NOTICES, SIGNED_CLI_NOTICE_EVENT_KEYS and SIGNED_CLI_NOTICE_ID_RE are all set."""
+    import re
+    notices = tuple(config.SIGNED_CLI_NOTICES)
+    keys, id_re = config.SIGNED_CLI_NOTICE_EVENT_KEYS, config.SIGNED_CLI_NOTICE_ID_RE
+    if not notices or not keys or not id_re or not isinstance(event, dict):
+        return False
+    item = event.get('item')
+    return (event.get('type') == 'item.completed' and set(event) == set(keys) and isinstance(item, dict)
+            and set(item) == {'id', 'type', 'message'} and item.get('type') == 'error'
+            and isinstance(item.get('id'), str) and re.fullmatch(id_re, item['id']) is not None
+            and isinstance(item.get('message'), str) and item['message'] in notices)
 
 
 def _transport_item(event):
@@ -94,6 +116,8 @@ def classify_stream(stdout) -> dict:
     notices, requests, executions, uncertain, top_errors, transport = [], [], [], [], [], []
     tools, types_by_id, order = {}, {}, []
     anonymous = 0
+    turns = {'turn.started': 0, 'turn.completed': 0}
+    transport_lines = []
     for n, line in enumerate((stdout or '').splitlines()):
         if not line.strip():
             continue
@@ -110,12 +134,15 @@ def classify_stream(stdout) -> dict:
             continue
         kind = event.get('type')
         if kind in TURN_EVENTS:
+            if kind in turns:
+                turns[kind] += 1
             continue
         if kind == 'error':
             message = event.get('message')
             top_errors.append(str(message)[:300])
             if set(event) == {'type', 'message'} and _signed_transport(message):
                 transport.append(message[:300])
+                transport_lines.append(n)
             else:
                 uncertain.append({'line': n, 'reason': 'top level error event outside any signed exception'})
             continue
@@ -132,8 +159,11 @@ def classify_stream(stdout) -> dict:
         if itype == 'error':
             if codex_cli_adapter.notice(event):
                 notices.append(item['message'])
+            elif signed_cli_notice(event):
+                notices.append(item['message'])
             elif _transport_item(event):
                 transport.append(item['message'][:300])
+                transport_lines.append(n)
             else:
                 uncertain.append({'line': n, 'reason': 'error item outside the plain CLI notice exception'})
             continue
@@ -165,6 +195,12 @@ def classify_stream(stdout) -> dict:
             requests.append(row)
         else:
             uncertain.append(dict(row, reason='tool item without a decisive final status'))
+    for kind, count in sorted(turns.items()):
+        if count > 1:
+            uncertain.append({'reason': f'more than one {kind} in one exec stream ({count})'})
+    if transport_lines and order:
+        uncertain.extend({'line': n, 'reason': 'transport notice in a stream that holds a tool item (P1)'}
+                         for n in transport_lines)
     if executions:
         verdict = 'executed'
     elif uncertain:
@@ -176,7 +212,22 @@ def classify_stream(stdout) -> dict:
     return {'verdict': verdict, 'efficiency_invalid': verdict in ('executed', 'uncertain'), 'counts_as_call': True,
             'answers_accepted': verdict == 'plain', 'external_read': verdict == 'executed', 'notices': notices,
             'tool_requests': requests, 'tool_executions': executions, 'uncertain': uncertain,
-            'transport_errors': top_errors, 'transport_notices': transport}
+            'transport_errors': top_errors, 'transport_notices': transport, 'turns': turns}
+
+
+def turn_usages(stdout) -> list:
+    """The usage object of every turn.completed event of a stream, in order (RT2.4)."""
+    out = []
+    for line in (stdout or '').splitlines():
+        if not line.startswith('{'):
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(event, dict) and event.get('type') == 'turn.completed':
+            out.append(event.get('usage'))
+    return out
 
 
 def error_messages(stdout) -> list:
@@ -232,4 +283,4 @@ def classify_claude(data) -> dict:
     return {'verdict': verdict, 'efficiency_invalid': verdict in ('executed', 'uncertain'), 'counts_as_call': True,
             'answers_accepted': verdict == 'plain', 'external_read': False, 'notices': [],
             'tool_requests': denials, 'tool_executions': [], 'uncertain': other, 'transport_errors': [],
-            'transport_notices': []}
+            'transport_notices': [], 'turns': {}}

@@ -36,7 +36,13 @@ DISABLE_FEATURES = ('plugins', 'apps', 'memories', 'hooks', 'multi_agent', 'skil
                     'browser_use_full_cdp_access', 'in_app_browser', 'code_mode_host', 'remote_plugin',
                     'plugin_sharing', 'recommended_plugins', 'skill_mcp_dependency_install', 'tool_suggest',
                     'tool_call_mcp_elicitation', 'sleep_tool', 'multi_agent_v2', 'shell_snapshot',
-                    'workspace_dependencies')
+                    'workspace_dependencies', 'secret_auth_storage')
+# Council round 2 (items 1, B4, 33; joint decision of the round 2 deadlock): the route security arguments that follow
+# the effort argument on every Codex argv. `cli_auth_credentials_store="file"` selects auth.json under CODEX_HOME as
+# the only credential store and `skip_host_skill_discovery` turns host skill discovery off (P5); both were accepted by
+# codex-cli 0.160.0 in local commands (cli-flags.json, route_security_options). `secret_auth_storage` is disabled
+# with the tool features above.
+ROUTE_SECURITY_ARGS = ['-c', 'cli_auth_credentials_store="file"', '--enable', 'skip_host_skill_discovery']
 PROJECT_DOC_OPTION = 'project_doc_max_bytes'
 PROJECT_DOC_ARG = 'project_doc_max_bytes=0'
 CLI_FLAGS_FILE = HERE / 'cli-flags.json'
@@ -104,20 +110,36 @@ EXIT_IDENTITY, EXIT_BUSY, EXIT_SAFETY_KILL, EXIT_CLASSIFICATION = 15, 16, 17, 18
 LIVE_RUN_DIR_DEFAULT = RUNS_DEFAULT / 'replication'
 LIVE_LEDGER_DEFAULT = RUNS_DEFAULT / 'live-calls.jsonl'
 
-# Signed exceptions (council round 1). Each entry needs a prospective signed ruling (Astra A and Opus B) named in
-# build-notes.md before the freeze; all are empty until then, which is the strict reading of A4.2 and A4.3.
-# Top level error events and error items whose message starts with one of these are transport events, not tool
-# activity (B1 part b). Empty: every such event is uncertain.
+# Signed exceptions (council rounds 1 and 2). Each entry needs a prospective ruling signed by Astra A and Opus B before
+# the freeze; all are empty until then, which is the strict reading of A4.2 and A4.3. The round 2 deadlock texts P1 to
+# P5 are signed by Astra A only (council-build-deadlock-r2-joint.md section 3) and bind after Opus B confirms them by
+# diff; freeze_command refuses until every slot in REQUIRED_RULINGS names its countersigned file (rulings.py).
+#
+# P1 (A4.3): complete transport event messages (exact match, never a prefix) that are transport events when the stream
+# holds no tool item. Astra's P1: empty for codex-cli 0.160.0; every reconnect or fallback event is uncertain.
 SIGNED_TRANSPORT_NOTICES = ()
-# Disable options that may be left out of the frozen argv, with the signed document that authorizes it (item 8).
+# P4 (A4.3, A4.2): complete CLI notice messages (exact match) of an `item.completed` error item. Inactive until the
+# outer event fixture (SIGNED_CLI_NOTICE_EVENT_KEYS) and the identifier syntax (SIGNED_CLI_NOTICE_ID_RE) are approved
+# by both signatories; the candidate text is archived in build-notes.md (Fable F6).
+SIGNED_CLI_NOTICES = ()
+SIGNED_CLI_NOTICE_EVENT_KEYS = None
+SIGNED_CLI_NOTICE_ID_RE = None
+P4_CANDIDATE_NOTICE = ('Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; '
+                       'enable `features.code_mode_host` and install `codex-code-mode-host`.')
+# Disable options that may be left out of the frozen argv, with the signed document that authorizes it (item 8). The
+# joint decision keeps code_mode_host disabled, so this stays empty.
 SIGNED_OMITTED_DISABLES = {}
-# Runtime files the CLI writes into CODEX_HOME at startup that the telemetry certificate may accept as not being
-# effective instruction sources (item 1). Empty: any instruction bearing startup file blocks certification.
-SIGNED_STARTUP_FILES = ()
-# Instruction bearing runtime file patterns (relative to CODEX_HOME) inspected by the telemetry certificate.
+# P5 (A4.2): the approved startup manifest (exact canonical relative paths with sha256, file type, origin and role),
+# approved by both signatories before the freeze. Absent: no startup file is accepted.
+STARTUP_MANIFEST_FILE = HERE / 'startup-manifest.json'
+# Instruction bearing runtime file patterns (relative to CODEX_HOME) inspected by the telemetry certificate. A file
+# matching one is accepted only when its path and sha256 are in the approved startup manifest.
 INSTRUCTION_BEARING = ('AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', '*.md', 'skills/*', 'skills/**/*',
                        'memories/*', 'rules/*', 'prompts/*', 'plugins/*', 'hooks/*', 'instructions*')
-
-# Live Codex stop freshness (A4.12, council C4 and RT1.6 interim): a live Codex cell launches only when the newest
-# owner session file holding a rate limit reading is newer than the end of the last Codex evaluation attempt.
-QUOTA_FRESH_AFTER_LAST_CODEX_CALL = True
+# B1 (freeze refusal): the ruling slots that must be settled before `run freeze`, each as
+# {'path': <repo relative ruling file>, 'sha256': <hash of the exact countersigned bytes>}. Empty until signed.
+REQUIRED_RULINGS = ('P1', 'P2', 'P3', 'P4', 'P5', 'D1')
+SIGNED_RULINGS = {}
+# P3 (A4.12): worker calls keep `--ephemeral`: A4.2 names it in the frozen arguments and the blind acceptance suite
+# tests it. Omitting it needs P3 countersigned by Opus B, which only permits it with a certified persistence and
+# harvest lifecycle. Isolation.finish harvests the quota metadata of any worker rollout before the home is emptied.

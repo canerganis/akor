@@ -88,3 +88,19 @@ def merge(*records) -> dict:
         out['kinds'] |= set((r or {}).get('kinds', ()))
     out['kinds'] = sorted(out['kinds'])
     return out
+
+
+def channels(**named) -> dict:
+    """The per channel redaction record of one call (council round 2, item 6): for each channel (original text,
+    clean text, redact() record) its own original and sanitized sha256, redaction count and kinds, plus the totals.
+    The original hash is kept for every channel, so a raw stream can be matched against it later."""
+    out = {'redactions': 0, 'kinds': set(), 'channels': {}}
+    for name, (original, clean, rec) in sorted(named.items()):
+        rec = rec or {}
+        out['channels'][name] = {'original_sha256': hashlib.sha256((original or '').encode('utf-8')).hexdigest(),
+                                 'sanitized_sha256': hashlib.sha256((clean or '').encode('utf-8')).hexdigest(),
+                                 'redactions': int(rec.get('redactions', 0)), 'kinds': list(rec.get('kinds', ()))}
+        out['redactions'] += int(rec.get('redactions', 0))
+        out['kinds'] |= set(rec.get('kinds', ()))
+    out['kinds'] = sorted(out['kinds'])
+    return out

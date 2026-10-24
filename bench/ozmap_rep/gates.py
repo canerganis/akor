@@ -31,7 +31,14 @@ def _ratio(num, den):
     return num / den
 
 
-def _span(cell):
+def _span(cell, side='exact'):
+    """A cell's makespan for a comparison (council round 2, item 14). A window closed by recovery has only bounds,
+    so the arm under test uses its upper bound and the reference arm its lower bound: lengthening a reference window
+    never helps the arm under test. Exact windows give equal bounds."""
+    if side == 'test' and cell.get('makespan_upper_s') is not None:
+        return _F(cell['makespan_upper_s'])
+    if side == 'ref' and cell.get('makespan_lower_s') is not None:
+        return _F(cell['makespan_lower_s'])
     return _F(cell['makespan_s'])
 
 
@@ -90,8 +97,9 @@ def materials_gate(summary, backend) -> dict:
         return {'pass': False, 'inconclusive': True, 'checks': {}, 'validity_problems': ['missing cells'],
                 'ratios': {'cold_tokens': None, 'cold_makespan': None, 'warm_tokens': None, 'warm_makespan': None}}
     ca, cc, wa, wc = (cells[k] for k in keys)
-    ratios = {'cold_tokens': _ratio(_tpc(cc), _tpc(ca)), 'cold_makespan': _ratio(_span(cc), _span(ca)),
-              'warm_tokens': _ratio(_tpc(wc), _tpc(wa)), 'warm_makespan': _ratio(_span(wc), _span(wa))}
+    ratios = {'cold_tokens': _ratio(_tpc(cc), _tpc(ca)), 'cold_makespan': _ratio(_span(cc, 'test'), _span(ca, 'ref')),
+              'warm_tokens': _ratio(_tpc(wc), _tpc(wa)),
+              'warm_makespan': _ratio(_span(wc, 'test'), _span(wa, 'ref'))}
     checks = {'cold_correctness_preserved': int(cc['correct']) >= int(ca['correct']),
               'warm_correctness_preserved': int(wc['correct']) >= int(wa['correct']),
               'cold_tokens_at_most_0.75': ratios['cold_tokens'] is not None and ratios['cold_tokens'] <= Fraction(3, 4),
@@ -111,7 +119,7 @@ def boolq_gate(summary) -> dict:
     a, c = cells[keys[0]], cells[keys[1]]
     err_a, err_c = int(a['jobs']) - int(a['correct']), int(c['jobs']) - int(c['correct'])
     ratios = {'tokens': _ratio(Fraction(int(c['tokens'])), Fraction(int(a['tokens']))),
-              'makespan': _ratio(_span(c), _span(a))}
+              'makespan': _ratio(_span(c, 'test'), _span(a, 'ref'))}
     checks = {'no_added_gold_errors': err_c <= err_a,
               'tokens_at_most_1.10': ratios['tokens'] is not None and ratios['tokens'] <= Fraction(11, 10),
               'makespan_at_most_1.10': ratios['makespan'] is not None and ratios['makespan'] <= Fraction(11, 10)}
@@ -126,10 +134,10 @@ def pooling_gate(summary) -> dict:
                 'ratios': {'tokens': None, 'makespan': None}}
     b, c = cells[keys[0]], cells[keys[1]]
     ratios = {'tokens': _ratio(Fraction(int(c['tokens'])), Fraction(int(b['tokens']))),
-              'makespan': _ratio(_span(c), _span(b))}
+              'makespan': _ratio(_span(c, 'test'), _span(b, 'ref'))}
     checks = {'tokens_below_B': int(c['tokens']) < int(b['tokens']),
               'correctness_not_worse': int(c['correct']) >= int(b['correct']),
-              'makespan_not_worse': _span(c) <= _span(b)}
+              'makespan_not_worse': _span(c, 'test') <= _span(b, 'ref')}
     return _result(keys, cells, checks, _validity(summary, 'codex', 'materials'), ratios, safety_kill(summary))
 
 
@@ -182,11 +190,11 @@ def magnitude(summary, backend) -> dict:
     if _incomplete(a) or _incomplete(c) or int(a['correct']) != int(c['correct']) or not int(c['correct']):
         return base
     tpc_a, tpc_c = _tpc(a), _tpc(c)
-    if tpc_c in (None, 0) or _span(c) == 0:
+    if tpc_c in (None, 0) or _span(c, 'test') == 0:
         return base
     token_ratio = tpc_a / tpc_c
-    makespan_ratio = _span(a) / _span(c)
-    direction = tpc_c <= tpc_a / 2 and _span(c) <= _span(a) * Fraction(9, 10)
+    makespan_ratio = _span(a, 'ref') / _span(c, 'test')
+    direction = tpc_c <= tpc_a / 2 and _span(c, 'test') <= _span(a, 'ref') * Fraction(9, 10)
     missed = []
     if token_ratio < PILOT_TOKENS:
         missed.append('tokens')

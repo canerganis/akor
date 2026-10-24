@@ -43,6 +43,7 @@
   "multi_agent_v2",
   "shell_snapshot",
   "workspace_dependencies",
+  "secret_auth_storage",
   "project_doc_max_bytes"
  ],
  "unsupported": {},
@@ -59,5 +60,20 @@
  ],
  "disabled_with_notice": {
   "code_mode_host": "accepted and disabled (council round 1, item 8: every available disable option is used). With it disabled every exec emits the error item 'Code Mode is unavailable because code-mode host is disabled...' (id, type, message), which is not a frozen KNOWN_NOTICE: A4.3 classifies every such call as uncertain until a prospective signed ruling defines the allowed feature state and the treatment of that notice. The notice exception is not broadened here."
+ },
+ "route_security_options": {
+  "verified_at": "2026-10-24T20:20:00Z",
+  "method": "local commands only, no model request: `codex --disable secret_auth_storage --enable skip_host_skill_discovery -c cli_auth_credentials_store=\"file\" features list` and `codex -c cli_auth_credentials_store=\"file\" login status` with an empty temporary CODEX_HOME (council round 2 implementer; Fable F1 to F3 reproduced)",
+  "accepted": [
+   "-c cli_auth_credentials_store=\"file\"",
+   "--enable skip_host_skill_discovery",
+   "--disable secret_auth_storage"
+  ],
+  "observed": {
+   "secret_auth_storage": "stable false (disabled)",
+   "skip_host_skill_discovery": "under development true (enabled)",
+   "login status": "Not logged in",
+   "home after both commands": "empty"
+  }
  }
 }

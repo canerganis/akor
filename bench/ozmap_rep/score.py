@@ -32,9 +32,11 @@ from pathlib import Path
 import sys
 
 from . import bootstrap, config, gates, prompts, rules, workload
+from . import events as events_mod
 from .run import _read_json, cell_specs, jsonl
 
 SCHEMA = 'ozmap-rep/1'
+RETRYABLE_OUTCOMES = ('infrastructure_failure', 'interrupted', 'not_launched')
 NON_EVALUATION = ('telemetry', 'features')
 
 
@@ -53,6 +55,76 @@ def _groups_makespan(attempts):
 
 def _windows(run_dir, cid):
     return jsonl(Path(run_dir) / 'cells' / cid / 'windows.jsonl')
+
+
+def _t(value):
+    from .run import _parse_time
+    return _parse_time(value)
+
+
+def _union(intervals):
+    total, cur = 0.0, None
+    for start, end in sorted(intervals):
+        if cur is None or start > cur[1]:
+            if cur is not None:
+                total += (cur[1] - cur[0]).total_seconds()
+            cur = [start, end]
+        else:
+            cur[1] = max(cur[1], end)
+    if cur is not None:
+        total += (cur[1] - cur[0]).total_seconds()
+    return total
+
+
+def _window_spans(run_dir, ids, rows):
+    """The gated makespan of a cell (council round 2, item 14): the union of its work windows (each opened before
+    the invocation's work and closed after its result was delivered; overlapping windows merge, never sum), with a
+    lower and an upper bound when a window was closed by recovery. Every attempt must start inside a window; an open
+    window without a close, a missing window or an attempt outside every window makes the evidence incomplete."""
+    exact, lower, upper, problems = [], [], [], []
+    bounded = False
+    for cid in ids:
+        rows_w = _windows(run_dir, cid)
+        opens = {r.get('invocation'): r for r in rows_w if r.get('event') == 'open'}
+        closes = {r.get('invocation'): r for r in rows_w if r.get('event') == 'close'}
+        for inv, o in opens.items():
+            start = _t(o.get('started_at'))
+            c = closes.get(inv)
+            if start is None or c is None:
+                problems.append(f'{cid}: a work window without a close ({inv})')
+                continue
+            if c.get('reconstructed'):
+                lo, hi = _t(c.get('ended_at_lower')), _t(c.get('ended_at_upper'))
+                if lo is None or hi is None or lo < start or hi < lo:
+                    problems.append(f'{cid}: a recovered work window without consistent bounds ({inv})')
+                    continue
+                bounded = True
+                lower.append((start, lo))
+                upper.append((start, hi))
+                exact.append((start, hi))
+            else:
+                end = _t(c.get('ended_at'))
+                if end is None or end < start:
+                    problems.append(f'{cid}: a work window with an inconsistent end ({inv})')
+                    continue
+                exact.append((start, end))
+                lower.append((start, end))
+                upper.append((start, end))
+        legacy = [r for r in rows_w if r.get('event') is None]
+        if legacy:
+            problems.append(f'{cid}: work windows without open and close records')
+    if rows and not exact:
+        problems.append('no work window covers the cell')
+    for a in rows:
+        st = _t(a.get('started_at'))
+        if st is None or not any(s <= st <= e for s, e in upper):
+            problems.append(f"{a.get('call_id')}: the attempt is outside every work window")
+    out = {'exact': _union(exact) if exact else None, 'lower': _union(lower) if lower else None,
+           'upper': _union(upper) if upper else None, 'problems': problems,
+           'timing': 'bounded' if bounded else 'exact'}
+    if out['exact'] is None:
+        out['exact'] = 0.0
+    return out
 
 
 def _attempt_ops_tokens(a, field='charged_tokens'):
@@ -83,16 +155,22 @@ def _norm_sha(path):
 
 # ------------------------------------------------------------------------------------------------- artifact chain
 
-def _rejudge(run_dir, a):
-    """Problems found by deriving an attempt's outcome, usage and answers again from its capture."""
-    from . import run as run_mod
-    run_dir = Path(run_dir)
-    cid = a['call_id']
-    problems = []
-    out_path, err_path = run_dir / 'captures' / f'{cid}.stdout', run_dir / 'captures' / f'{cid}.stderr'
+def _capture_text(run_dir, cid):
+    out_path, err_path = Path(run_dir) / 'captures' / f'{cid}.stdout', Path(run_dir) / 'captures' / f'{cid}.stderr'
     if not out_path.exists() or not err_path.exists():
-        return [f'{cid}: capture missing']
-    stdout, stderr = out_path.read_bytes().decode('utf-8'), err_path.read_bytes().decode('utf-8')
+        return None
+    return out_path.read_bytes().decode('utf-8'), err_path.read_bytes().decode('utf-8')
+
+
+def _derive(run_dir, a):
+    """(problems, derived) of one attempt from its capture: the judged outcome, reply, usage and verdict."""
+    from . import run as run_mod
+    cid = a['call_id']
+    text = _capture_text(run_dir, cid)
+    if text is None:
+        return [f'{cid}: capture missing'], None
+    stdout, stderr = text
+    problems = []
     if prompts.sha256(stdout) != a.get('stdout_sha256'):
         problems.append(f'{cid}: stdout capture does not hash to its attempt')
     if a.get('stderr_sha256') is not None and prompts.sha256(stderr) != a.get('stderr_sha256'):
@@ -100,14 +178,46 @@ def _rejudge(run_dir, a):
     raw = {'stdout': stdout, 'stderr': stderr, 'exit_code': a.get('exit_code'), 'timed_out': a.get('timed_out')}
     judge = run_mod.judge_codex if a.get('backend') == 'codex' else run_mod.judge_sonnet
     outcome, reply, usage_raw, cls, _ = judge(raw)
+    return problems, {'outcome': outcome, 'reply': reply, 'usage_raw': usage_raw, 'cls': cls}
+
+
+ACCOUNTING_FIELDS = ('usage', 'usage_status', 'reasoning_issue', 'additive_tokens', 'charged_tokens',
+                     'cache_certified', 'visible_tokens')
+
+
+def _rejudge(run_dir, a, derived=None, counts=None, live=False, proposals=None):
+    """Problems found by deriving an attempt's outcome, verdict, every accounting field (council round 2, item 10:
+    decoded usage, usage status, reasoning certification, additive and charged tokens, cache certification) and its
+    answers and bootstrap proposals again from its capture, with the frozen predicates evaluated by the scorer."""
+    from . import run as run_mod
+    from . import usage as usage_mod
+    run_dir = Path(run_dir)
+    cid = a['call_id']
+    if derived is None:
+        problems, derived = _derive(run_dir, a)
+    else:
+        problems, derived = derived
+    if derived is None:
+        return problems
+    problems = list(problems)
+    outcome, reply, usage_raw, cls = derived['outcome'], derived['reply'], derived['usage_raw'], derived['cls']
     want = a.get('outcome')
-    derived = ('ok' if want in ('malformed', 'malformed_reply', 'malformed_answers') else want)
-    if outcome != derived:
+    derived_outcome = ('ok' if want in ('malformed', 'malformed_reply', 'malformed_answers') else want)
+    if outcome != derived_outcome:
         problems.append(f'{cid}: the capture judges {outcome!r}, the attempt says {want!r}')
     if cls['verdict'] != (a.get('events') or {}).get('verdict'):
         problems.append(f'{cid}: the capture event verdict differs from the attempt')
     if _canon(usage_raw) != _canon(a.get('usage_raw')):
         problems.append(f'{cid}: the attempt usage does not derive from the capture')
+    certified = usage_mod.cache_certified_for_route() if a.get('backend') == 'codex' else None
+    count = (lambda texts: [(counts or {}).get(t) for t in texts]) if counts is not None else None
+    if live and a.get('backend') == 'codex' and isinstance(reply, str) and (counts or {}).get(reply) is None:
+        problems.append(f'{cid}: the pinned tokenizer is unavailable to the scorer; reasoning certification cannot be '
+                        f'reproduced')
+    acct = run_mod.account_usage(a.get('backend'), usage_raw, reply, certified, count=count)
+    for field in ACCOUNTING_FIELDS:
+        if _canon(acct[field]) != _canon(a.get(field)):
+            problems.append(f'{cid}: {field} does not derive from the capture with the frozen predicates')
     call = _read_json(run_dir / 'cells' / a.get('cell', '') / 'calls' / f'{cid}.json')
     if call is None:
         problems.append(f'{cid}: parsed call record missing')
@@ -123,33 +233,60 @@ def _rejudge(run_dir, a):
     text = reply
     if a.get('bootstrap'):
         try:
-            text, _ = prompts.parse_bootstrap(reply, prompts.bootstrap_config(a.get('workload'))['ops'])
+            text, proposed = prompts.parse_bootstrap(reply, prompts.bootstrap_config(a.get('workload'))['ops'])
         except prompts.Malformed:
-            text = None
+            text, proposed = None, None
+        if _canon(proposed) != _canon(call.get('rules')):
+            problems.append(f'{cid}: the recorded bootstrap proposals are not the bytes the capture holds')
+        if proposals is not None:
+            proposals[cid] = proposed
     answers = prompts.parse_answers(text, mapping)[0] if isinstance(text, str) else {}
     if _canon(answers) != _canon(call.get('answers') or {}):
         problems.append(f'{cid}: the recorded answers do not derive from the capture')
     return problems
 
 
-def _rule_asts(results, prefix):
+
+def _rule_asts(results, prefix, boot_props=None):
+    """The admitted rule ASTs of a backend, taken from the capture derived bootstrap proposals (item 10) when they
+    are known; a result.json AST that differs from the captured proposal is never used."""
     boot = results.get(f'{prefix}-bootstrap') or {}
+    props = (boot_props or {}).get(f'{prefix}-bootstrap')
     out = {}
     for op, row in (boot.get('rules') or {}).items():
         if row.get('proposed') and (row.get('admission') or {}).get('status') == 'accepted' and row.get('ast_b64'):
+            if props is not None:
+                entry = (props or {}).get(op) or {}
+                if entry.get('ast_b64') != row.get('ast_b64'):
+                    continue
             out[op] = base64.b64decode(row['ast_b64'])
     return out
 
 
-def _cell_chain(run_dir, cid, spec, results, calls_ok):
-    """Problems of a cell's answers against the calls that produced them, the bootstrap and the rules."""
+def _model_answers(run_dir, cid, calls_ok):
+    """{job id: (answer, call id)} of every verified call record of a cell."""
+    out = {}
+    for p in sorted((Path(run_dir) / 'cells' / cid / 'calls').glob('*.json')):
+        if p.stem not in calls_ok:
+            continue
+        rec = _read_json(p, {}) or {}
+        for jid, v in (rec.get('answers') or {}).items():
+            out[jid] = (v, p.stem)
+    return out
+
+
+def _cell_chain(run_dir, cid, spec, results, calls_ok, boot_props=None):
+    """Problems of a cell's answers against the calls that produced them, the bootstrap and the rules; the bootstrap
+    admission records are reproduced from the capture derived proposal bytes; audit dispositions are derived again
+    from the verified audit calls, and no rule answer may come from an operation whose audit disagreed or stayed
+    inconclusive (council round 2, item 10)."""
     run_dir = Path(run_dir)
     problems = []
     res = results.get(cid) or {}
     prefix = f"{spec['backend']}-{spec['workload']}"
     jobs = {j['id']: j for j in workload.jobs_for(spec['workload'], spec['wave'])} if spec['arm'] != 'telemetry' \
         else {}
-    asts = _rule_asts(results, prefix) if spec['workload'] == 'materials' else {}
+    asts = _rule_asts(results, prefix, boot_props) if spec['workload'] == 'materials' else {}
     cache = {}
     for jid, row in (res.get('answers') or {}).items():
         src, call_id = row.get('source'), row.get('call_id')
@@ -174,16 +311,56 @@ def _cell_chain(run_dir, cid, spec, results, calls_ok):
                 problems.append(f'{cid}/{jid}: the rule answer is not what the admitted rule gives')
         else:
             problems.append(f'{cid}/{jid}: unknown answer source {src!r}')
+    if spec['arm'] in ('B', 'C') and res.get('audits') is not None:
+        model = _model_answers(run_dir, cid, calls_ok)
+        bad_ops = set()
+        for jid, disposition in sorted((res.get('audits') or {}).items()):
+            job = jobs.get(jid)
+            op = (job or {}).get('op')
+            if job is None or op not in asts:
+                problems.append(f'{cid}/{jid}: an audit of a job without an admitted rule')
+                continue
+            value, _ = rules.apply(op, asts[op], job['text'])
+            again = 'inconclusive' if jid not in model else \
+                'agree' if _canon(model[jid][0]) == _canon(value) else 'disagree'
+            if again != disposition:
+                problems.append(f'{cid}/{jid}: the audit disposition {disposition!r} is not reproduced ({again!r})')
+            if again != 'agree':
+                bad_ops.add(op)
+        for jid, row in (res.get('answers') or {}).items():
+            if row.get('source') == 'rule' and (jobs.get(jid) or {}).get('op') in bad_ops:
+                problems.append(f'{cid}/{jid}: a rule answer of an operation whose audit did not agree')
     if spec['arm'] == 'bootstrap':
+        props = (boot_props or {}).get(cid)
         for op, row in (res.get('rules') or {}).items():
             adm = row.get('admission') or {}
             if not row.get('proposed') or adm.get('status') in (None, 'not_evaluated') or \
                     spec['workload'] != 'materials':
                 continue
+            entry = (props or {}).get(op) if props is not None else None
+            if props is not None and (entry or {}).get('ast_b64') != row.get('ast_b64'):
+                problems.append(f'{cid}/{op}: the admitted proposal is not the bytes the bootstrap capture holds')
+                continue
             again = rules.summary(rules.admit(op, base64.b64decode(row.get('ast_b64') or '')))
             if again.get('status') != adm.get('status'):
                 problems.append(f'{cid}/{op}: the admission record is not reproduced ({again.get("status")} vs '
                                 f'{adm.get("status")})')
+    return problems
+
+
+def _launch_problems(run_dir, a, bound):
+    """Item 10: a live Codex attempt's launch identity against the freeze bound to the run."""
+    launch = _read_json(Path(run_dir) / 'evidence' / 'launch' / f"{a['call_id']}.json") or {}
+    codex = (bound or {}).get('codex') or {}
+    problems = []
+    if launch.get('exe_sha256') != codex.get('exe_sha256'):
+        problems.append(f"{a['call_id']}: the launched executable is not the run bound freeze's")
+    if launch.get('argv_sha256') != codex.get('argv_sha256'):
+        problems.append(f"{a['call_id']}: the launch argv is not the run bound freeze's")
+    ident = launch.get('exe_identity') or {}
+    want = codex.get('identity') or {}
+    if (ident.get('payload') or {}) != (want.get('payload') or {}) or ident.get('targets') != want.get('targets'):
+        problems.append(f"{a['call_id']}: the launched companion manifest is not the run bound freeze's")
     return problems
 
 
@@ -237,6 +414,8 @@ def score_run(run_dir, write=False) -> dict:
         ev = a.get('events') or {}
         if ev.get('verdict') in ('executed', 'uncertain'):
             leakage.append(f"{a['call_id']}: tool event verdict {ev['verdict']} (A4.3)")
+        if a.get('raw_mismatch'):
+            leakage.append(f"{a['call_id']}: the recovered capture differs from the raw stream (uncertain, A4.3)")
         if (a.get('usage') or {}).get('status') == 'invalid':
             accounting.append(f"{a['call_id']}: usage invalid ({'; '.join(a['usage'].get('problems') or [])})")
         if a.get('backend') == 'codex' and not _evidence_ok(run_dir, a):
@@ -259,7 +438,7 @@ def score_run(run_dir, write=False) -> dict:
     for a in all_attempts:
         cid = a.get('call_id')
         seen[cid] = seen.get(cid, 0) + 1
-        if a.get('outcome') not in ('infrastructure_failure', 'interrupted'):
+        if a.get('outcome') not in ('infrastructure_failure', 'interrupted', 'not_launched'):
             key = (a.get('cell'), a.get('batch'))
             terminal[key] = terminal.get(key, 0) + 1
     accounting += [f'{cid}: call id recorded {n} times' for cid, n in sorted(seen.items(), key=str) if n > 1]
@@ -276,13 +455,61 @@ def score_run(run_dir, write=False) -> dict:
     if markers:
         accounting.append(f'unrecovered in-flight markers (charged calls without attempts): {markers[:5]}')
     ledger_path = experiment.get('live_ledger')
+    experiment_view = None
     if ledger_path:
+        from .run import ledger_rows, predecessor_dirs
         here = str(run_dir.resolve())
-        known = {a.get('call_id') for a in all_attempts}
-        lost = sorted(r.get('call_id') for r in jsonl(ledger_path)
-                      if r.get('run_dir') == here and r.get('call_id') not in known)
+        rows_l, bad_lines = ledger_rows(ledger_path)
+        accounting += bad_lines
+        known = {a.get('attempt_uid') or a.get('call_id') for a in all_attempts}
+        lost = sorted(r.get('call_id') for r in rows_l
+                      if r.get('run_dir') == here and (r.get('attempt_uid') or r.get('call_id')) not in known)
         if lost:
             accounting.append(f'experiment ledger calls missing from the run directory: {lost[:5]}')
+        # experiment wide (item 9, RT2.2): every allocation and the telemetry cap over every run directory
+        totals = {}
+        for r in rows_l:
+            k = (r.get('backend'), r.get('workload'), r.get('allocation'), r.get('kind'))
+            totals[k] = totals.get(k, 0) + 1
+        for (b, w, al, kind), n in sorted(totals.items(), key=str):
+            nominal = config.ALLOCATIONS.get(f'{b}/{w}', {}).get(al)
+            if kind == 'nominal' and nominal is not None and n > nominal:
+                accounting.append(f'experiment ledger: {b}/{w} {al}: {n} nominal calls above the allocation {nominal}')
+            if kind == 'reserve' and n > config.RESERVE_PER_ALLOCATION:
+                accounting.append(f'experiment ledger: {b}/{w} {al}: {n} reserve calls above the reserve')
+        for b, cap in config.EVAL_CAPS.items():
+            tel = sum(n for (bb, _, _, kind), n in totals.items() if bb == b and kind == 'telemetry')
+            if tel > cap['telemetry']:
+                accounting.append(f'experiment ledger: {b} telemetry calls {tel} above the cap {cap["telemetry"]}')
+        # prior invalidating evidence is never omitted by changing directories (item 9)
+        predecessors = predecessor_dirs(run_dir, ledger_path)
+        for d in predecessors:
+            prev = Path(d)
+            if not (prev / 'attempts.jsonl').exists():
+                accounting.append(f'predecessor run directory {d}: attempts missing (evidence withheld)')
+                continue
+            for a in jsonl(prev / 'attempts.jsonl'):
+                if a.get('cell') in NON_EVALUATION:
+                    continue
+                ev = a.get('events') or {}
+                if ev.get('verdict') in ('executed', 'uncertain') or a.get('raw_mismatch'):
+                    leakage.append(f"superseded {prev.name}: {a.get('call_id')}: tool event verdict "
+                                   f"{ev.get('verdict')} (A4.3)")
+            for p in sorted((prev / 'captures').glob('*.stdout')) if (prev / 'captures').exists() else []:
+                meta = _read_json(p.with_name(p.stem + '.meta.json'), {}) or {}
+                if meta.get('cell') in NON_EVALUATION:
+                    continue
+                v = events_mod.classify_stream(p.read_bytes().decode('utf-8', 'replace'))['verdict'] \
+                    if not str(meta.get('cell', '')).startswith('sonnet') else None
+                if v in ('executed', 'uncertain'):
+                    leakage.append(f'superseded {prev.name}: {p.stem}: capture verdict {v} (A4.3)')
+            if (prev / 'codex-stop.json').exists():
+                isolation_problems.append(f'superseded {prev.name}: Codex evaluation was stopped (A4.2)')
+            if (prev / 'safety-kill.json').exists():
+                accounting.append(f'superseded {prev.name}: a safety kill was established (A4.11)')
+        experiment_view = {'ledger_calls': len(rows_l), 'predecessors': predecessors,
+                           'by_allocation': {'/'.join(str(x) for x in k): n for k, n in sorted(totals.items(),
+                                                                                              key=str)}}
 
     for p in sorted((run_dir / 'prompts').glob('*.txt')) if (run_dir / 'prompts').exists() else []:
         if prompts.learner_prompt_leaks(p.read_text(encoding='utf-8'), admission):
@@ -290,6 +517,7 @@ def score_run(run_dir, write=False) -> dict:
     if (run_dir / 'codex-stop.json').exists():
         isolation_problems.append('Codex evaluation stopped by authentication reconciliation (A4.2)')
     live = experiment.get('mode') == 'live'
+    live_mode = live
     if live:
         from .run import telemetry_problems
         tel = telemetry_problems(run_dir)
@@ -301,29 +529,68 @@ def score_run(run_dir, write=False) -> dict:
                 continue
             if cid not in gates_ok:
                 isolation_problems.append(f'{cid}: no passing wave gate record')
-            if not (run_dir / 'evidence' / f'features-{cid}.json').exists():
+            feat = _read_json(run_dir / 'evidence' / f'features-{cid}.json')
+            if not feat:
                 isolation_problems.append(f'{cid}: no features record')
+            elif feat.get('ok') is not True:
+                isolation_problems.append(f'{cid}: the features record did not pass (A4.2)')
+            bound_freeze = _read_json(run_dir / 'freeze.json', {}) or {}
             for a in rows:
-                if a.get('outcome') != 'interrupted' and not a.get('auth'):
+                if a.get('outcome') not in ('not_launched',):
+                    isolation_problems += _launch_problems(run_dir, a, bound_freeze)
+                if a.get('outcome') not in ('interrupted', 'not_launched') and not a.get('auth'):
                     isolation_problems.append(f"{a['call_id']}: no authentication record")
 
     # artifact chain (item 10)
-    verified = set()
+    verified, proposals, derived = set(), {}, {}
     for a in all_attempts:
-        if a.get('outcome') == 'interrupted':
+        has_capture = _capture_text(run_dir, a['call_id']) is not None
+        if a.get('outcome') == 'not_launched' or (a.get('outcome') == 'interrupted' and not has_capture):
             continue
-        found = _rejudge(run_dir, a)
+        derived[a['call_id']] = _derive(run_dir, a)
+    replies = sorted({d[1]['reply'] for d in derived.values() if d[1] and isinstance(d[1]['reply'], str)
+                      and d[1]['reply']})
+    from . import tokenizer as tokenizer_mod
+    counts = dict(zip(replies, tokenizer_mod.count(replies))) if replies else {}
+    for a in all_attempts:
+        if a['call_id'] not in derived:
+            continue
+        found = _rejudge(run_dir, a, derived=derived[a['call_id']], counts=counts, live=live_mode,
+                         proposals=proposals)
         artifact += found
         if not found:
             verified.add(a['call_id'])
-    recorded = {a.get('call_id') for a in all_attempts}
+    # Every capture is judged, interrupted and recovered attempts included (council round 2, RT2.1): execution or
+    # uncertainty in any captured evaluation stream is leakage, whatever its attempt row says.
+    recorded = {a.get('call_id'): a for a in all_attempts}
     if (run_dir / 'captures').exists():
         for p in sorted((run_dir / 'captures').glob('*.stdout')):
-            if p.stem not in recorded:
+            row = recorded.get(p.stem)
+            meta = _read_json(p.with_name(p.stem + '.meta.json'), {}) or {}
+            if row is None:
                 artifact.append(f'{p.stem}: a capture without an attempt line')
+            cell = (row or {}).get('cell') or meta.get('cell')
+            if cell in NON_EVALUATION:
+                continue
+            backend = (row or {}).get('backend') or (specs.get(cell) or {}).get('backend', 'codex')
+            if backend != 'codex':
+                continue
+            verdict = events_mod.classify_stream(p.read_bytes().decode('utf-8', 'replace'))['verdict']
+            if verdict in ('executed', 'uncertain'):
+                note = f'{p.stem}: captured stream verdict {verdict} (A4.3)'
+                if not any(x.startswith(f'{p.stem}: tool event verdict {verdict}') for x in leakage):
+                    leakage.append(note)
+    boot_props = {}
+    for cid, spec in specs.items():
+        if spec['arm'] == 'bootstrap':
+            done = [a for a in by_cell[cid] if a.get('outcome') not in RETRYABLE_OUTCOMES]
+            if done and done[-1]['call_id'] in proposals:
+                boot_props[cid] = proposals[done[-1]['call_id']]
+            elif done:
+                boot_props[cid] = {}
     for cid, spec in specs.items():
         if results.get(cid):
-            artifact += _cell_chain(run_dir, cid, spec, results, verified)
+            artifact += _cell_chain(run_dir, cid, spec, results, verified, boot_props)
     freeze_problems = _freeze_problems(run_dir, experiment) if live else []
     interrupted = sorted(cid for cid, st in states.items() if st == 'interrupted')
 
@@ -394,7 +661,8 @@ def score_run(run_dir, write=False) -> dict:
                 for op, t in _attempt_ops_tokens(a, field).items():
                     ops[op if op in ops else sorted(ops)[0]][target] += t
         tokens = sum(int(a.get('charged_tokens') or 0) for a in rows)
-        usage_ok = bool(rows) and all(a.get('usage_status') == 'complete' for a in rows)
+        used = [a for a in rows if a.get('outcome') != 'not_launched']
+        usage_ok = bool(used) and all(a.get('usage_status') == 'complete' for a in used)
         state = states[main]
         for cid in ids[1:]:
             if states[cid] != 'complete':
@@ -403,19 +671,21 @@ def score_run(run_dir, write=False) -> dict:
         evidence = 'complete' if evidence_ok else 'incomplete'
         if any(cid in sim_cells for cid in ids):
             evidence = 'simulation'
-        windows = [w for cid in ids for w in _windows(run_dir, cid)]
-        if windows:
-            makespan = sum(float(w.get('elapsed_s') or 0.0) for w in windows)
-        else:
-            makespan = sum(_groups_makespan(by_cell[cid]) for cid in ids)
-            if rows:
-                evidence = 'incomplete' if evidence == 'complete' else evidence
+        span = _window_spans(run_dir, ids, rows)
+        makespan, lower, upper = span['exact'], span['lower'], span['upper']
+        if span['problems']:
+            if evidence == 'complete':
+                evidence = 'incomplete'
+            makespan = makespan if makespan is not None else sum(_groups_makespan(by_cell[cid]) for cid in ids)
         child = sum(_groups_makespan(by_cell[cid]) for cid in ids)
         return {'jobs': len(jobs), 'correct': correct, 'unresolved': unresolved, 'tokens': tokens,
                 'additive_tokens': sum(int(a.get('additive_tokens') or 0) for a in rows),
                 'makespan_s': round(makespan, 3), 'child_makespan_s': round(child, 3),
+                'makespan_lower_s': None if lower is None else round(lower, 3),
+                'makespan_upper_s': None if upper is None else round(upper, 3),
+                'timing': span['timing'], 'timing_problems': span['problems'][:5],
                 'usage': 'complete' if usage_ok else 'incomplete'
-                if any(a.get('usage_status') == 'incomplete' for a in rows) or not rows else 'unverified',
+                if any(a.get('usage_status') == 'incomplete' for a in used) or not used else 'unverified',
                 'evidence': evidence, 'state': state, 'rule_errors': rule_errors,
                 'unresolved_audits': len(open_audits),
                 'physical_calls': len(rows), 'rule_answers': sum(1 for r in answers.values()
@@ -435,7 +705,8 @@ def score_run(run_dir, write=False) -> dict:
             base = {'jobs': sum(ops[op]['jobs'] for op in sub), 'correct': sum(ops[op]['correct'] for op in sub),
                     'unresolved': sum(ops[op]['unresolved'] for op in sub),
                     'unresolved_audits': sum(ops[op]['unresolved_audits'] for op in sub),
-                    'makespan_s': c['makespan_s'], 'usage': c['usage'], 'state': c['state'],
+                    'makespan_s': c['makespan_s'], 'makespan_lower_s': c['makespan_lower_s'],
+                    'makespan_upper_s': c['makespan_upper_s'], 'usage': c['usage'], 'state': c['state'],
                     'evidence': c['evidence']}
             rk = f"{spec['backend']}/{spec['wave']}/{spec['arm']}"
             r_cells[rk] = dict(base, tokens=sum(ops[op]['tokens'] for op in sub))
@@ -474,7 +745,8 @@ def score_run(run_dir, write=False) -> dict:
                   'isolation_events': len(jsonl(run_dir / 'evidence' / 'isolation.jsonl')),
                   'launch_records': len(list((run_dir / 'evidence' / 'launch').glob('*.json')))
                   if (run_dir / 'evidence' / 'launch').exists() else 0,
-                  'artifact_chain_verified_calls': len(verified), 'experiment': experiment or None}
+                  'artifact_chain_verified_calls': len(verified), 'experiment': experiment or None,
+                  'experiment_ledger': experiment_view}
     from . import usage as usage_mod
     from .budget import PrepLedger
     prep = dict(_read_json(run_dir / 'preparation.json', {}) or {})
@@ -499,6 +771,7 @@ def score_run(run_dir, write=False) -> dict:
               'cell_states': dict(sorted(states.items())),
               'sensitivity': {k: {'charged_tokens': c['tokens'], 'additive_tokens': c['additive_tokens']}
                               for k, c in cells.items()},
+              'unknown_usage_observation': _unknown_usage_observation(specs, by_cell),
               'sensitivity_gates': {'materials': {b: {k: g[k] for k in ('pass', 'ratios')}
                                                   for b, g in sensitivity_gates['materials'].items()},
                                     'boolq': {k: sensitivity_gates['boolq'][k] for k in ('pass', 'ratios')},
@@ -516,6 +789,30 @@ def score_run(run_dir, write=False) -> dict:
                                              encoding='utf-8')
         (run_dir / 'report.md').write_text(render_md(report), encoding='utf-8')
     return report
+
+
+def _unknown_usage_observation(specs, by_cell):
+    """P2 (A4.7, A4.11): a labeled sensitivity calculation, never an established bound and never consulted by the
+    gates. For each cell whose usage is incomplete, the charged tokens with each attempt of unknown usage counted as
+    the input tokens of the next attempt of the same batch with zero output (the joint decision's hypothetical
+    substitution). Dependent token comparisons stay inconclusive whatever it shows."""
+    out = {}
+    for cid, spec in specs.items():
+        rows = by_cell.get(cid) or []
+        unknown = [a for a in rows if a.get('outcome') != 'not_launched' and a.get('usage_status') == 'incomplete']
+        if not unknown:
+            continue
+        extra = 0
+        for a in unknown:
+            later = [b for b in rows if b.get('batch') == a.get('batch') and (b.get('try') or 0) > (a.get('try') or 0)
+                     and isinstance(b.get('usage_raw'), dict)]
+            extra += int(later[0]['usage_raw'].get('input_tokens') or 0) if later else 0
+        known = sum(int(a.get('charged_tokens') or 0) for a in rows)
+        key = f"{spec['backend']}/{spec['workload']}/{spec['wave']}/{spec['arm']}"
+        out[key] = {'attempts_with_unknown_usage': len(unknown), 'known_charged_tokens': known,
+                    'hypothetical_tokens': known + extra,
+                    'label': 'hypothetical substitution, not an established bound (P2); never used by any gate'}
+    return out
 
 
 def _fmt(x, nd=3):

@@ -269,7 +269,10 @@ def effort_arg(effort) -> str:
 
 
 def codex_argv(exe, model, effort, workdir, disable_options=()) -> list:
-    return [str(exe), *config.FROZEN_ARGS, str(workdir), '-m', model, '-c', effort_arg(effort), *disable_options, '-']
+    """The canonical argv: the frozen head, the numbered working directory, model and effort, the route security
+    arguments (file credential store, host skill discovery off), the disable options and stdin."""
+    return [str(exe), *config.FROZEN_ARGS, str(workdir), '-m', model, '-c', effort_arg(effort),
+            *config.ROUTE_SECURITY_ARGS, *disable_options, '-']
 
 
 def plan_disable_options(supported) -> tuple:
@@ -306,7 +309,11 @@ def argv_check(argv) -> list:
     rest = argv[i + 1:]
     if rest[:4] != ['-m', config.CODEX_MODEL, '-c', effort_arg(config.CODEX_EFFORT)]:
         problems.append('model or effort differs from the frozen route')
-    tail = rest[4:]
+    security = list(config.ROUTE_SECURITY_ARGS)
+    if rest[4:4 + len(security)] != security:
+        problems.append('the route security arguments (file credential store, host skill discovery off) are missing '
+                        'or differ')
+    tail = rest[4 + len(security):]
     if not tail or tail[-1] != '-':
         problems.append('prompt must come from stdin (-) as the last argument')
     options = tail[:-1]
@@ -408,25 +415,368 @@ def env_selection_problems(env, home) -> list:
     return sorted(set(problems))
 
 
-def executable_identity(exe) -> dict:
-    """The executable that will actually run, hashed now: its resolved path, its SHA256 and the SHA256 of its launcher
-    payload, every file beside it named after it or loaded by it (codex-code-mode-host.exe, libraries). Council round 1, item 7: computed
-    before every launch group, never cached from runner start."""
-    real = Path(exe).resolve()
-    payload = {}
+WRAPPER_SUFFIXES = ('.cmd', '.bat', '.ps1', '.sh')
+_WRAPPER_TARGET_RE = re.compile(r'(?:%~dp0|%dp0%|\$basedir|\$\{basedir\}|\$PSScriptRoot)[\\/]+'
+                                r'([^"\'\s%$]+?\.(?:js|mjs|cjs|exe|py))', re.I)
+PACKAGE_MARKERS = ('codex-package.json', 'package.json')
+TREE_LIMIT = 20000
+
+
+def _head(path, n=4096):
+    with open(path, 'rb') as f:
+        return f.read(n)
+
+
+def _is_text(path):
+    try:
+        head = _head(path)
+    except OSError:
+        return False
+    if b'\0' in head:
+        return False
+    try:
+        head.decode('utf-8')
+    except UnicodeDecodeError:
+        return False
+    return True
+
+
+def _package_root(path, depth=4):
+    for d in list(Path(path).parents)[:depth]:
+        if any((d / m).is_file() for m in PACKAGE_MARKERS):
+            return d
+    return None
+
+
+def _tree(root, skip=None):
+    """{relative posix path: sha256 or None (unreadable)} of every file under root."""
+    out = {}
+    root = Path(root)
+    for p in sorted(root.rglob('*')):
+        if len(out) >= TREE_LIMIT:
+            out['<tree limit reached>'] = None
+            break
+        if skip is not None and p == skip:
+            continue
+        try:
+            if not p.is_file():
+                continue
+            out[p.relative_to(root).as_posix()] = sha256_file(p)
+        except OSError:
+            out[p.relative_to(root).as_posix()] = None
+    return out
+
+
+def _siblings(real):
     stem = real.stem.lower()
+    payload = {}
     try:
         siblings = sorted(p for p in real.parent.iterdir() if p.is_file() and p != real
                           and (p.name.lower().startswith((stem + '-', stem + '_', stem + '.'))
                                or p.suffix.lower() in ('.dll', '.so', '.dylib', '.node')))
     except OSError:
-        siblings = []
+        return {'<directory unreadable>': None}
     for p in siblings:
         try:
             payload[p.name] = sha256_file(p)
         except OSError:
             payload[p.name] = None
-    return {'path': str(real), 'sha256': sha256_file(real), 'payload': payload}
+    return payload
+
+
+def wrapper_targets(path):
+    """The files a launcher script starts (npm style shims: `%~dp0\\..\\x.js`, `$basedir/../x.js`), resolved."""
+    try:
+        text = Path(path).read_text(encoding='utf-8', errors='replace')
+    except OSError:
+        return None
+    found = []
+    for m in _WRAPPER_TARGET_RE.finditer(text):
+        target = (Path(path).parent / m.group(1).replace('\\', '/')).resolve()
+        if target not in found:
+            found.append(target)
+    return found
+
+
+def executable_identity(exe) -> dict:
+    """The executable that will actually run, hashed now, with its explicit companion manifest (council round 2,
+    item 7):
+
+    * a native binary inside a package (a parent holding codex-package.json or package.json, as the standalone
+      codex-cli 0.160.0 install `packages/standalone/current/{bin,codex-resources,codex-path}`): every file of the
+      package, the code mode host, the command runner and the sandbox helper included;
+    * a native binary outside a package: the files beside it named after it or loaded by it, plus `codex-resources`;
+    * a launcher script (`.cmd`, `.bat`, `.ps1`, `.sh` or a shebang file): every target it starts, each with its own
+      package tree; a launcher whose target cannot be determined fails closed;
+    * any other script (the harness fakes): the files beside it named after it.
+
+    Unreadable members are listed in `unreadable`, which blocks dispatch."""
+    real = Path(exe).resolve()
+    out = {'path': str(real), 'sha256': sha256_file(real), 'kind': None, 'payload': {}, 'targets': [],
+           'unreadable': []}
+    text = _is_text(real)
+    shebang = False
+    if text:
+        try:
+            shebang = _head(real, 2) == b'#!'
+        except OSError:
+            shebang = False
+    if not text:
+        root = _package_root(real)
+        if root is not None:
+            out['kind'], out['package_root'] = 'native_package', str(root)
+            out['payload'] = _tree(root, skip=real)
+        else:
+            out['kind'] = 'native'
+            out['payload'] = _siblings(real)
+            res = real.parent.parent / 'codex-resources'
+            if res.is_dir():
+                out['payload'].update({f'../codex-resources/{k}': v for k, v in _tree(res).items()})
+    elif real.suffix.lower() in WRAPPER_SUFFIXES or (shebang and real.suffix.lower() != '.py'):
+        out['kind'] = 'wrapper'
+        targets = wrapper_targets(real)
+        if not targets:
+            out['unreadable'].append('launcher target cannot be determined')
+        for t in targets or []:
+            entry = {'path': str(t), 'sha256': None, 'package': {}}
+            try:
+                entry['sha256'] = sha256_file(t)
+            except OSError:
+                out['unreadable'].append(f'launcher target {t}')
+            root = _package_root(t)
+            if root is not None:
+                entry['package_root'] = str(root)
+                entry['package'] = _tree(root)
+            out['targets'].append(entry)
+    else:
+        out['kind'] = 'script'
+        out['payload'] = _siblings(real)
+    out['unreadable'] += sorted(k for k, v in out['payload'].items() if v is None)
+    for t in out['targets']:
+        out['unreadable'] += sorted(f"{t['path']}: {k}" for k, v in t.get('package', {}).items() if v is None)
+    return out
+
+
+def identity_files(ident) -> list:
+    """Every file of an identity: the executable, its payload and its launcher targets with their packages."""
+    paths = [Path(ident['path'])]
+    root = ident.get('package_root')
+    base = Path(root) if root else Path(ident['path']).parent
+    for rel in ident.get('payload') or {}:
+        if not rel.startswith('<'):
+            paths.append((base / rel).resolve())
+    for t in ident.get('targets') or []:
+        paths.append(Path(t['path']))
+        troot = t.get('package_root')
+        for rel in t.get('package') or {}:
+            if troot and not rel.startswith('<'):
+                paths.append(Path(troot) / rel)
+    seen, out = set(), []
+    for p in paths:
+        if str(p) not in seen:
+            seen.add(str(p))
+            out.append(p)
+    return out
+
+
+def identity_problems(ident, want) -> list:
+    """Differences of a current identity from the frozen one; [] when they agree."""
+    want = want or {}
+    if not want:
+        return ['no frozen executable identity']
+    problems = []
+    if ident.get('sha256') != want.get('sha256'):
+        problems.append('executable hash differs from the frozen executable hash')
+    if (ident.get('payload') or {}) != (want.get('payload') or {}):
+        problems.append('launcher payload (companion manifest) differs from the frozen payload')
+
+    def strip(ts):
+        return [{k: t.get(k) for k in ('path', 'sha256', 'package')} for t in ts or []]
+    if strip(ident.get('targets')) != strip(want.get('targets')):
+        problems.append('launcher target or its package differs from the frozen identity')
+    try:
+        if Path(ident['path']).resolve() != Path(want.get('path') or '').resolve():
+            problems.append('the resolved executable path differs from the frozen path')
+    except (OSError, ValueError):
+        problems.append('the resolved executable path differs from the frozen path')
+    if ident.get('unreadable'):
+        problems.append(f"executable manifest members could not be inspected (fail closed): {ident['unreadable'][:5]}")
+    return problems
+
+
+def file_stats(paths) -> dict:
+    out = {}
+    for p in paths:
+        try:
+            st = os.stat(p)
+            out[str(p)] = [st.st_size, st.st_mtime_ns]
+        except OSError:
+            out[str(p)] = None
+    return out
+
+
+class WriteGuard:
+    """Platform enforcement against substitution between verification and execution (council round 2, item 7): on
+    Windows every manifest file is opened with share mode FILE_SHARE_READ only, so nothing can write, rename or
+    delete it while the guard is held (from the launch group's verification until its children have ended). Children
+    may still read and execute the files. On other platforms there is no such guard and `held` stays False."""
+
+    def __init__(self, paths):
+        self.paths = [Path(p) for p in paths]
+        self.handles = []
+        self.held = False
+        self.problems = []
+        self._k32 = None
+
+    def __enter__(self):
+        if os.name != 'nt':
+            return self
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+        k32.CreateFileW.restype = wintypes.HANDLE
+        k32.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                                    wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+        k32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        self._k32 = k32
+        invalid = wintypes.HANDLE(-1).value
+        for p in self.paths:
+            # GENERIC_READ, FILE_SHARE_READ, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL
+            h = k32.CreateFileW(str(p), 0x80000000, 0x00000001, None, 3, 0x80, None)
+            if not h or h == invalid:
+                self.problems.append(f'{p.name}: write guard not obtained (error {ctypes.get_last_error()})')
+                continue
+            self.handles.append(h)
+        self.held = not self.problems
+        return self
+
+    def __exit__(self, *exc):
+        for h in self.handles:
+            self._k32.CloseHandle(h)
+        self.handles = []
+        self.held = False
+        return False
+
+
+def token_hashes(path) -> dict:
+    """SHA256 of each token string of an auth.json (access, refresh, id, API key), never the strings; {} when the
+    file is absent. Raises IsolationError when it exists but cannot be read (never treated as different)."""
+    path = Path(path)
+    if not path.exists():
+        return {}
+    doc = _read_auth(path)
+    if doc is None:
+        raise IsolationError(f'{path.parent.name}/{path.name} exists but cannot be read as an auth document')
+    tokens = doc.get('tokens') if isinstance(doc.get('tokens'), dict) else {}
+    out = {}
+    for key in ('access_token', 'refresh_token', 'id_token'):
+        value = tokens.get(key)
+        if isinstance(value, str) and value:
+            out[key] = sha256_text(value)
+    if isinstance(doc.get('OPENAI_API_KEY'), str) and doc['OPENAI_API_KEY']:
+        out['api_key'] = sha256_text(doc['OPENAI_API_KEY'])
+    return out
+
+
+def owner_auth_paths(base_env=None) -> list:
+    """The owner's Codex authentication files the baseline must never share a token with (A4.2, RT2.6): the owner
+    home and the runner's CODEX_HOME when it is set."""
+    env = os.environ if base_env is None else base_env
+    paths = [Path.home() / '.codex' / AUTH]
+    value = next((v for k, v in env.items() if k.upper() == 'CODEX_HOME'), None)
+    if value:
+        paths.append(Path(value) / AUTH)
+    out = []
+    for p in paths:
+        try:
+            r = p.resolve()
+        except OSError:
+            r = p
+        if r not in out:
+            out.append(r)
+    return out
+
+
+def token_separation_problems(baseline, others) -> list:
+    """A4.2 (RT2.6): the baseline must share no access or refresh token (or API key) with the owner's authentication.
+    Hash comparison only. An unreadable owner or baseline document, or a baseline that is itself an owner path, is a
+    problem (never treated as different)."""
+    problems = []
+    base_path = Path(baseline) / AUTH
+    try:
+        base_real = base_path.resolve()
+    except OSError:
+        base_real = base_path
+    try:
+        mine = token_hashes(base_path)
+    except IsolationError as exc:
+        return [str(exc)]
+    for other in others or ():
+        other = Path(other)
+        try:
+            if other.resolve() == base_real:
+                problems.append('the baseline auth.json is an owner authentication path')
+                continue
+        except OSError:
+            pass
+        try:
+            theirs = token_hashes(other)
+        except IsolationError as exc:
+            problems.append(str(exc))
+            continue
+        shared = sorted(k for k in mine if k in ('access_token', 'refresh_token', 'api_key') and k in theirs
+                        and mine[k] == theirs[k])
+        if shared:
+            problems.append(f'the baseline shares {shared} with the owner authentication {other.parent.name}/'
+                            f'{other.name} (A4.2: seed it by an owner login, never by copying the owner auth.json)')
+    return problems
+
+
+def account_sha256(baseline):
+    """SHA256 of the ChatGPT account id of the baseline (tokens.account_id or the id or access token claim), or None.
+    Used to attribute quota observations to the baseline account (P3)."""
+    doc = _read_auth(Path(baseline) / AUTH) or {}
+    tokens = doc.get('tokens') if isinstance(doc.get('tokens'), dict) else {}
+    value = tokens.get('account_id')
+    if not isinstance(value, str) or not value:
+        value = None
+        for key in ('id_token', 'access_token'):
+            tok = tokens.get(key)
+            if not (isinstance(tok, str) and tok.count('.') == 2):
+                continue
+            try:
+                part = tok.split('.')[1]
+                claims = json.loads(base64.urlsafe_b64decode(part + '=' * (-len(part) % 4)).decode('utf-8'))
+            except (ValueError, UnicodeError, TypeError):
+                continue
+            if not isinstance(claims, dict):
+                continue
+            auth = claims.get('https://api.openai.com/auth')
+            cand = auth.get('chatgpt_account_id') if isinstance(auth, dict) else None
+            cand = cand or claims.get('chatgpt_account_id')
+            if isinstance(cand, str) and cand:
+                value = cand
+                break
+    return sha256_text(value) if value else None
+
+
+def scrambled_auth(doc) -> dict:
+    """A copy of an auth document whose access and refresh tokens no server accepts: the access token keeps its JWT
+    header and claims (so the CLI does not refresh it on age) with a random signature, the refresh token is random.
+    Account metadata (auth_mode, account id, id token) is kept, so a credential store keyed by account data from
+    auth.json would still find credentials (council round 2, item 1)."""
+    out = json.loads(json.dumps(doc))
+    tokens = out.get('tokens') if isinstance(out.get('tokens'), dict) else {}
+    access = tokens.get('access_token')
+    if isinstance(access, str) and access.count('.') == 2:
+        head, claims, _ = access.split('.')
+        tokens['access_token'] = '.'.join([head, claims, 'scrambled' + os.urandom(16).hex()])
+    elif access is not None:
+        tokens['access_token'] = 'scrambled' + os.urandom(16).hex()
+    if 'refresh_token' in tokens:
+        tokens['refresh_token'] = 'scrambled-' + os.urandom(24).hex()
+    out['tokens'] = tokens
+    return out
 
 
 def telemetry_checks(evidence) -> list:
@@ -446,52 +796,88 @@ def _matches(rel, patterns):
     return any(fnmatch.fnmatchcase(rel, pat) or fnmatch.fnmatchcase(Path(rel).name, pat) for pat in patterns)
 
 
-def startup_instruction_files(runtime_files) -> list:
-    """Runtime files written by the CLI that could carry instructions (names only), less the signed exceptions."""
-    return sorted(rel for rel in (runtime_files or ())
-                  if _matches(rel, config.INSTRUCTION_BEARING) and not _matches(rel, config.SIGNED_STARTUP_FILES))
+def startup_manifest(path=None) -> dict:
+    """The approved startup manifest (P5): {canonical relative path: entry with sha256, type, origin, role}. Empty
+    when the file is absent or malformed (nothing is accepted then)."""
+    path = Path(path or config.STARTUP_MANIFEST_FILE)
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return {}
+    out = {}
+    for e in (doc.get('files') or []) if isinstance(doc, dict) else []:
+        if isinstance(e, dict) and isinstance(e.get('path'), str) and isinstance(e.get('sha256'), str):
+            out[e['path']] = e
+    return out
+
+
+def startup_instruction_files(runtime_files, hashes=None) -> list:
+    """Runtime files written by the CLI that could carry instructions, less those whose exact path AND sha256 are in
+    the approved startup manifest (P5: names alone never qualify)."""
+    manifest = startup_manifest()
+    hashes = hashes or {}
+    out = []
+    for rel in runtime_files or ():
+        if not _matches(rel, config.INSTRUCTION_BEARING):
+            continue
+        entry = manifest.get(rel)
+        if entry is not None and hashes.get(rel) is not None and hashes.get(rel) == entry.get('sha256'):
+            continue
+        out.append(rel)
+    return sorted(out)
 
 
 def telemetry_certificate(evidence) -> list:
-    """Council round 1, item 1: certification from evidence tied to the pinned execution path, never from the two
-    booleans alone. Everything is metadata (no token text).
+    """Council rounds 1 and 2 (items 1, 33, B4): certification from evidence tied to the pinned execution path,
+    never from the two booleans alone. Everything is metadata (no token text).
 
-    Authentication: the frozen exec argv with an empty CODEX_HOME ended in an authentication failure without a reply
-    or usage (no alternative credential source on the exec route); `login status` with an empty home reported not
-    logged in before and after the call (the call left no credential in an OS store) and logged in with the worker
-    home. Instructions: the worker home held exactly auth.json at launch, the working directory was empty, no
-    instruction file was reachable, the stream was plain, and no instruction bearing file appeared among the runtime
-    files written at startup (less config.SIGNED_STARTUP_FILES). Lifecycle: the call was reconciled before the
-    certificate was published."""
+    Authentication: `login status` at every one of the four worker paths, each emptied, reported not logged in before
+    the exec probe and after the call (no credential keyed by a worker path, none left behind); `login status` with
+    the reconstructed worker home reported logged in; the frozen exec argv at a worker path whose auth.json keeps the
+    baseline's account metadata but holds tokens no server accepts ended in an authentication failure without a
+    reply or usage (no credential store keyed by account data from auth.json); the telemetry call ran the frozen argv
+    with the file credential store at a worker home prepared from the baseline. Instructions: the worker home held
+    exactly auth.json at launch, the working directory was empty, no instruction file was reachable, the stream was
+    plain, and no instruction bearing runtime file appeared, in the probe or after the call, that the approved startup
+    manifest does not list by path and hash. Lifecycle: the call was reconciled before the certificate was published.
+    The evidence annexes (D1 attribution, P5 effective context) are freeze prerequisites (rulings.py)."""
     ev = evidence or {}
     problems = list(telemetry_checks(ev))
-    probe = ev.get('exec_probe_empty_home') if isinstance(ev.get('exec_probe_empty_home'), dict) else {}
+    probe = ev.get('exec_probe') if isinstance(ev.get('exec_probe'), dict) else {}
     if probe.get('outcome') != 'auth_failure' or probe.get('reply') or probe.get('usage_present') is not False:
-        problems.append('the exec route with an empty CODEX_HOME did not end in an authentication failure without a '
-                        'reply or usage (an alternative credential source is not excluded)')
+        problems.append('the exec route with unaccepted tokens in auth.json did not end in an authentication failure '
+                        'without a reply or usage (an alternative credential source is not excluded)')
+    if probe.get('home') != 'worker' or probe.get('account_metadata_kept') is not True:
+        problems.append('the exec probe did not run at a worker path with the account metadata of the baseline')
     status = ev.get('login_status') if isinstance(ev.get('login_status'), dict) else {}
-    for key in ('empty_home_before', 'empty_home_after'):
-        if status.get(key) != 'not_logged_in':
-            problems.append(f'login status with an empty home ({key}) did not report not logged in')
+    for key in ('worker_paths_before', 'worker_paths_after'):
+        states = status.get(key)
+        if not isinstance(states, dict) or sorted(states) != [str(k) for k in range(config.SLOTS)] or \
+                any(v != 'not_logged_in' for v in states.values()):
+            problems.append(f'login status at every emptied worker path ({key}) did not report not logged in')
     if status.get('worker_home') != 'logged_in':
         problems.append('login status with the reconstructed worker home did not report logged in')
     call = ev.get('call') if isinstance(ev.get('call'), dict) else {}
     if call.get('outcome') != 'ok' or call.get('stream_verdict') != 'plain':
         problems.append('the telemetry call with the reconstructed worker home did not deliver a plain reply')
+    source = call.get('auth_source') if isinstance(call.get('auth_source'), dict) else {}
+    if source.get('store') != 'file' or source.get('home') != 'worker' or not source.get('auth_sha256'):
+        problems.append('the telemetry call did not run with the file credential store at a prepared worker home')
     if call.get('home_listing_before') != [AUTH]:
         problems.append('the worker home did not hold exactly auth.json at launch')
     if call.get('workdir_listing_before') != []:
         problems.append('the working directory was not empty at launch')
     if call.get('instruction_sources') != []:
         problems.append('instruction files or unreadable locations were reachable from the working directory')
-    runtime = call.get('runtime_files')
-    if not isinstance(runtime, list):
-        problems.append('no runtime file inventory after the call')
-    else:
-        found = startup_instruction_files(runtime)
+    for name, block in (('call', call), ('exec probe', probe)):
+        runtime = block.get('runtime_files')
+        if not isinstance(runtime, list):
+            problems.append(f'no runtime file inventory after the {name}')
+            continue
+        found = startup_instruction_files(runtime, block.get('runtime_hashes'))
         if found:
-            problems.append('instruction bearing files were written at startup and no signed ruling accepts them: '
-                            f'{found[:10]}')
+            problems.append(f'instruction bearing files were written at startup ({name}) and the approved startup '
+                            f'manifest does not list them by path and hash: {found[:10]}')
     if ev.get('reconciled') is not True:
         problems.append('the telemetry call was not reconciled before certification')
     return problems
@@ -551,15 +937,19 @@ def reconcile_generations(baseline_sha256, workers, ambiguous=()) -> dict:
 # --------------------------------------------------------------------------------------------------- Isolation
 
 class Isolation:
-    """Worker homes root/homes/worker-<k>, empty working directories root/work/slot-<k>, hash-only evidence."""
+    """Worker homes root/homes/worker-<k>, empty working directories root/work/slot-<k>, hash-only evidence.
 
-    def __init__(self, baseline, root, evidence, lock=None, frozen_inventory=None, base_env=None):
+    owner_auth: the owner authentication files the baseline may share no token with (A4.2, RT2.6); checked under the
+    authentication lock immediately before every worker reconstruction. Fake mode passes none."""
+
+    def __init__(self, baseline, root, evidence, lock=None, frozen_inventory=None, base_env=None, owner_auth=None):
         self.baseline = Path(baseline)
         self.root = Path(root)
         self.evidence = Path(evidence)
         self.lock = Path(lock) if lock is not None else self.baseline.parent / (self.baseline.name + '.auth.lock')
         self.frozen_inventory = list(frozen_inventory or [])
         self.base_env = dict(os.environ if base_env is None else base_env)
+        self.owner_auth = list(owner_auth or [])
         self._log_lock = threading.Lock()
         self.evidence.mkdir(parents=True, exist_ok=True)
 
@@ -568,6 +958,10 @@ class Isolation:
 
     def workdir(self, slot) -> Path:
         return self.root / 'work' / f'slot-{slot}'
+
+    def raw_dir(self, slot) -> Path:
+        """Raw child streams of the slot (council round 2, B3): inside D/homes, the credential boundary."""
+        return self.root / 'homes' / f'raw-{slot}'
 
     def _log(self, record):
         record = dict(record, at=now_iso())
@@ -580,15 +974,30 @@ class Isolation:
         path = self.baseline / AUTH
         return sha256_file(path) if path.exists() else None
 
-    def prepare(self, slot, lock_timeout=None) -> dict:
+    def prepare(self, slot, lock_timeout=None, scrambled=False) -> dict:
         """Rebuild the worker home (auth.json only, copied from the baseline) and empty the working directory, under
-        the authentication lock. Logs hashes only."""
+        the authentication lock, after the token separation check. With scrambled=True the home gets the baseline
+        document with unaccepted tokens (the telemetry probe of item 1). Logs hashes only; the returned `secrets`
+        (the credential strings of the prepared and the baseline document) stay in memory for redaction."""
+        from . import redact
         home, work = self.home(slot), self.workdir(slot)
         with auth_lock(self.lock, timeout=lock_timeout):
+            if self.owner_auth:
+                problems = token_separation_problems(self.baseline, self.owner_auth)
+                if problems:
+                    raise IsolationError(f'token separation check failed (A4.2): {problems[:3]}; '
+                                         + LOGIN_HINT.format(baseline=self.baseline))
             source = self.baseline / AUTH
             if not source.is_file():
                 raise IsolationError('baseline auth.json is missing')
             data = source.read_bytes()
+            base_digest = hashlib.sha256(data).hexdigest()
+            secrets = redact.secrets_from_auth(source)
+            if scrambled:
+                doc = _read_auth(source)
+                if doc is None:
+                    raise IsolationError('baseline auth.json unreadable')
+                data = json.dumps(scrambled_auth(doc)).encode('utf-8')
             shutil.rmtree(home, ignore_errors=True)
             if home.exists():
                 raise IsolationError(f'worker home {home.name} could not be removed')
@@ -599,24 +1008,45 @@ class Isolation:
                 raise IsolationError(f'working directory {work.name} could not be emptied')
             work.mkdir(parents=True)
             digest = hashlib.sha256(data).hexdigest()
-        self._log({'event': 'prepare', 'slot': slot, 'baseline_auth_sha256': digest, 'worker_auth_sha256': digest,
-                   'home_listing': sorted(os.listdir(home)), 'workdir_listing': sorted(os.listdir(work))})
+            secrets |= redact.secrets_from_auth(home / AUTH)
+        self._log({'event': 'prepare', 'slot': slot, 'baseline_auth_sha256': base_digest, 'worker_auth_sha256': digest,
+                   'scrambled': bool(scrambled), 'home_listing': sorted(os.listdir(home)),
+                   'workdir_listing': sorted(os.listdir(work))})
         return {'slot': slot, 'home': str(home), 'workdir': str(work), 'env': child_env(home, self.base_env),
-                'auth_sha256': digest}
+                'auth_sha256': digest, 'baseline_auth_sha256': base_digest, 'secrets': secrets,
+                'secret_fingerprints': sorted(sha256_text(x) for x in secrets), 'scrambled': bool(scrambled)}
+
+    def empty_home(self, slot) -> Path:
+        """The worker path emptied (no auth.json), for the login status checks at the actual worker paths (B4)."""
+        home = self.home(slot)
+        shutil.rmtree(home, ignore_errors=True)
+        if home.exists():
+            raise IsolationError(f'worker home {home.name} could not be emptied')
+        home.mkdir(parents=True)
+        return home
 
     def finish(self, slot, auth_failure=False, prepared_sha256=None) -> dict:
-        """Inventory every generated runtime file in the worker home (names only), compare the worker auth.json hash
-        with the baseline, then remove the runtime state (everything except auth.json)."""
+        """Inventory every generated runtime file in the worker home (names and sha256), harvest the quota metadata of
+        any session rollout (P3: account hash, CLI version, last rate limit reading with its event timestamp; never the
+        rollout content), compare the worker auth.json hash with the baseline, then remove the runtime state
+        (everything except auth.json)."""
+        from . import quota
         home = self.home(slot)
         worker = home / AUTH
         worker_sha = sha256_file(worker) if worker.exists() else None
         base_sha = prepared_sha256 or self.baseline_sha256()
-        runtime = []
+        runtime, hashes, observations = [], {}, []
         if home.exists():
             for p in sorted(home.rglob('*')):
                 rel = p.relative_to(home).as_posix()
                 if rel != AUTH and p.is_file():
                     runtime.append(rel)
+                    try:
+                        hashes[rel] = sha256_file(p)
+                    except OSError:
+                        hashes[rel] = None
+            for p in sorted((home / 'sessions').rglob('*.jsonl')) if (home / 'sessions').is_dir() else []:
+                observations += quota.harvest_rollout(p)
             for p in list(home.iterdir()):
                 if p.name == AUTH:
                     continue
@@ -628,8 +1058,10 @@ class Isolation:
                     except OSError:
                         pass
         out = {'slot': slot, 'worker_auth_sha256': worker_sha, 'baseline_auth_sha256': base_sha,
-               'auth_changed': worker_sha != base_sha, 'auth_failure': bool(auth_failure), 'runtime_files': runtime}
-        self._log(dict(out, event='finish', runtime_file_count=len(runtime)))
+               'auth_changed': worker_sha != base_sha, 'auth_failure': bool(auth_failure), 'runtime_files': runtime,
+               'runtime_hashes': hashes, 'quota_observations': observations}
+        self._log(dict({k: v for k, v in out.items() if k not in ('runtime_hashes', 'quota_observations')},
+                       event='finish', runtime_file_count=len(runtime), quota_observations=len(observations)))
         return out
 
     def propagate(self, slot, lock_timeout=30.0, expected_baseline_sha256=None) -> dict:

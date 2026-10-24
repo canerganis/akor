@@ -102,11 +102,38 @@ def local_command(argv, home):
         return 0 if authed else 1
     if 'features' in argv and 'list' in argv:
         disabled = {argv[i + 1] for i, a in enumerate(argv[:-1]) if a == '--disable'}
-        for name in ('plugins', 'apps', 'memories', 'hooks', 'unified_exec', 'code_mode_host', 'shell_tool'):
+        enabled = {argv[i + 1] for i, a in enumerate(argv[:-1]) if a == '--enable'}
+        for name in CFG['features']:
             on = name == 'unified_exec' or name not in disabled
             sys.stdout.write(f'{name:<40} stable             {str(on).lower()}\n')
+        on = 'skip_host_skill_discovery' in enabled
+        sys.stdout.write(f'{"skip_host_skill_discovery":<40} under development  {str(on).lower()}\n')
         return 0
     return None
+
+
+def accepted(home):
+    """The fake server's view of the home's credentials: tokens it never issued (a scrambled signature) fail."""
+    try:
+        with open(os.path.join(home, 'auth.json'), encoding='utf-8') as f:
+            doc = json.load(f)
+    except (OSError, ValueError):
+        return False
+    token = (doc.get('tokens') or {}).get('access_token') or ''
+    return not (token.count('.') == 2 and token.split('.')[2].startswith('scrambled'))
+
+
+def write_rollout(home, directive):
+    """Without --ephemeral the pinned CLI persists a session rollout in CODEX_HOME (P3, Fable F7 and F8)."""
+    now = datetime.datetime.now(datetime.timezone.utc)
+    stamp = now.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    folder = os.path.join(home, 'sessions', now.strftime('%Y'), now.strftime('%m'), now.strftime('%d'))
+    os.makedirs(folder, exist_ok=True)
+    rows = [{'timestamp': stamp, 'type': 'session_meta', 'payload': {'cli_version': '0.160.0'}},
+            {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'token_count', 'rate_limits': {
+                'primary': {'used_percent': 10.0, 'window_minutes': 10080}}}}]
+    with open(os.path.join(folder, 'rollout-fake.jsonl'), 'w', encoding='utf-8') as f:
+        f.write('\n'.join(json.dumps(r) for r in rows) + '\n')
 
 
 def main():
@@ -118,7 +145,7 @@ def main():
     stdin = sys.stdin.buffer.read()
     workdir = argv[argv.index('-C') + 1] if '-C' in argv else os.getcwd()
     directive = directive_for(workdir)
-    if not (home and os.path.isfile(os.path.join(home, 'auth.json'))):
+    if not (home and os.path.isfile(os.path.join(home, 'auth.json'))) or not accepted(home):
         out = [{'type': 'thread.started', 'thread_id': 'fake-noauth'}, {'type': 'turn.started'},
                {'type': 'error', 'message': 'Reconnecting... 1/5 (' + NO_AUTH + ')'},
                {'type': 'turn.failed', 'error': {'message': NO_AUTH}}]
@@ -135,6 +162,8 @@ def main():
     reply = reply_for(text, directive)
     if directive.get('refresh') and home:
         refresh(home)
+    if '--ephemeral' not in argv and home:
+        write_rollout(home, directive)
     vis = visible(reply)
     usage = {'input_tokens': max(1, len(text) // 4), 'cached_input_tokens': 0,
              'output_tokens': vis + __REASONING__, 'reasoning_output_tokens': __REASONING__}
@@ -187,7 +216,8 @@ def build(run_dir, answers) -> dict:
     table = root / 'answers.json'
     table.write_text(json.dumps(answers, sort_keys=True), encoding='utf-8')
     cfg = json.dumps({'repo': str(config.REPO), 'directives': str(root / 'directives'),
-                      'records': str(root / 'records'), 'answers': str(table)})
+                      'records': str(root / 'records'), 'answers': str(table),
+                      'features': list(config.DISABLE_FEATURES)})
     paths = {}
     for name, template in (('codex', CODEX), ('claude', CLAUDE)):
         source = template.replace('__CFG__', repr(cfg)).replace('__REASONING__', str(FAKE_REASONING))

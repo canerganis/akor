@@ -36,6 +36,11 @@ itself never needs tiktoken in the calling interpreter (see A4.7 below).
 None. No acceptance test was found to contradict Amendment 4, so `disputes.md` was not created. Round 1: no council
 blocker was judged wrong, so `disputes.md` still does not exist (see the round 1 section).
 
+Round 2: `disputes.md` now holds two entries. D-R2-1: the red team test RT2.1 asserts a resend of a call whose capture
+shows execution, which blocker 3, the joint decision and A4.3 forbid (its leakage assertion holds). D-R2-2: the joint
+decision drops `--ephemeral`, which the normative A4.2 argument list and the blind acceptance suite keep; it stays
+until Opus B rules on P3.
+
 ## Clause map (A4.x to code)
 
 Paths are relative to `bench/ozmap_rep/`. Line numbers are those of commit 4839d99; after the council round 1 fixes the function names are authoritative and the round 1 section at the end of this file supersedes any row it contradicts.
@@ -298,3 +303,93 @@ New exit codes (harness additions to INTERFACE.md): 15 run identity or directory
 
 Astra 8 of 20, Opus 16 of 40, Fable 1 of 4, Sonnet 1 of 40 (ledger sums, this implementer included). Evaluation calls
 so far: 0 Codex, 0 Sonnet. Driver quota at the start of this step: Claude weekly all models 65%.
+
+
+## Council build round 2 fixes (2026-10-24)
+
+Implementer: one fresh Opus workflow subagent (claude-opus-5-5), logged in call-ledger.jsonl as role
+`implementer-council-r2-fixes`. It made no model call and no Codex model call. The only CLI commands it ran were local:
+`codex --disable secret_auth_storage --enable skip_host_skill_discovery -c cli_auth_credentials_store="file" features
+list` and `codex -c cli_auth_credentials_store="file" login status` with an empty temporary CODEX_HOME (Fable F1 to F3
+reproduced; the home stayed empty), and `codex --version` while the new write guard held every file of the pinned
+package (the binary launched; a write to it was refused). Inputs: the round 2 reviews (council-build-opus-r2.md,
+council-build-astra-r2.md, council-build-redteam-r2.md), the joint decision council-build-deadlock-r2-joint.md and the
+two co-solver files. The sealed reviewer ASTs were not read.
+
+### Test results after the fixes
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 532 passed, 1 failed: the disputed red team test RT2.1 (disputes.md D-R2-1) |
+| blind acceptance tests alone (`bench/ozmap_rep/acceptance`, unedited) | 288 passed |
+| red team tests (`bench/ozmap_rep/redteam`, unedited) | 21 passed, RT2.1 failed on its three disputed assertions only; its leakage assertion holds |
+| new regressions `bench/ozmap_rep/tests/test_council_r2.py` | 59 passed |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls, within every A4.4 bound, report with 0 leakage, 0 accounting failures, 0 artifact problems |
+
+Harness tests of round 1 changed where round 2 changed the semantics they pinned (all in `tests/`, none in
+`acceptance/` or `redteam/`): the certificate fixture uses the new telemetry evidence; the account keyed credential
+store replaces the empty home detour; the Live fixture's owner reading carries an event timestamp; the telemetry crash
+test now expects the call judged from its raw stream; the signed transport notice test checks exact matching; the
+dead runner test uses a spawned marker with a journaled pid (a pid-less marker is now ambiguous).
+
+### Blocker dispositions
+
+| id | disposition | where | tests (`tests/test_council_r2.py` unless named) |
+|---|---|---|---|
+| 1, B4 | The argv carries `-c cli_auth_credentials_store="file"` and `--enable skip_host_skill_discovery` (config.ROUTE_SECURITY_ARGS, required by `argv_check`); `secret_auth_storage` is disabled. Telemetry runs `login status` at all four worker paths, emptied, before the exec probe and after the call, and replaces the empty home exec probe by a probe at a worker path whose auth.json keeps the baseline's account metadata with tokens no server accepts (`isolation.scrambled_auth`): a credential store keyed by account data from auth.json would answer it. The certificate requires all eight statuses not logged in, that probe ending in an authentication failure, and the call's recorded file store at a prepared worker home. Telemetry stays at two charged calls per attempt. Attribution by implementation analysis or an access trace (D1) is a freeze prerequisite (rulings.py), not a runtime predicate | `TelemetryRun`, `isolation.telemetry_certificate` | `test_item1_an_argv_without_the_file_credential_store_is_refused`; r1 file: `test_item1_live_telemetry_with_an_alternative_credential_source_is_not_certified` (account keyed store), `test_item1_a_credential_keyed_by_a_worker_path_is_not_certified` |
+| 3, B3, RT2.1 | Raw stdout and stderr go to `D/homes/raw-<slot>/` files (the credential boundary). Markers move `reserved`, `spawning` (before Popen), `spawned` (pid and creation time), `recorded`. after_group writes the call record, the captures with a per channel redaction record, the attempt row, then `recorded`, then deletes the raw files. Recovery judges an orphan from its capture, else its raw stream (promoted only when every prepared secret fingerprint is covered, else quarantined and Codex stops), keeps the terminal outcome and never resends it; only without a stream is it `interrupted` with an uncertain verdict. A pid journal failure or an exception while waiting kills the process tree; with termination established the call is judged from its raw stream and Codex stops; without it the marker, home and raw stream stay, the attempt is not recorded, Codex stops and the batch is never resent. A pid-less marker that may have started is ambiguous. The scorer judges every capture | `spawn`, `CellRun.execute`, `after_group`, `recover_inflight`, `score_run` | `test_item3_a_crash_between_capture_call_record_and_attempt_row_never_resends` (ok, refused, executed at two crash points), `test_b3_an_orphan_without_any_stream_is_uncertain_leakage`, `test_item3_a_pid_journal_failure_stops_codex_and_records_the_terminated_child`, `test_item3_a_communicate_exception_with_a_live_child_keeps_the_home_and_stops_codex`, `test_item3_a_spawning_marker_without_pid_is_kept_and_its_batch_never_resent` |
+| 5, C3 | `worker_probe` inspects the probe's error channels (and, for `login status`, the login state) before reconciliation; an authentication failure is sticky and stops Codex, nothing is propagated. `record_features` requires exit 0, a structurally valid inventory (no duplicate, boolean states), every frozen disable option listed and off except `stays_enabled`, `skip_host_skill_discovery` on, and no authentication failure; otherwise exit 14 before any charged call; the record carries `ok`, which the scorer requires | `worker_probe`, `record_features`, `score_run` | `test_item5_a_features_auth_failure_with_changed_worker_auth_stops_codex_and_keeps_the_baseline`, `test_item5_a_failed_or_empty_features_response_blocks_launch` |
+| 6, C5 | The prepared credential strings stay in memory from preparation (`Isolation.prepare` returns them; only their sha256 fingerprints reach the marker) and are united with the worker's and the baseline's current ones; sanitizing happens before reconciliation; `redact.channels` keeps a record per channel with original and sanitized sha256; probe output is redacted with its prepared secrets and disclosures are logged; Sonnet captures go through the generic patterns | `CellRun.secrets`, `run.sanitize`, `redact.channels` | `test_item6_a_prepared_opaque_refresh_token_is_redacted_after_a_refresh_and_a_reseed`, `test_item6_redaction_keeps_a_record_per_channel` |
+| 7 | `isolation.executable_identity` records an explicit companion manifest: for the standalone 0.160.0 install every file of the package root (`codex-package.json`: bin/codex.exe, bin/codex-code-mode-host.exe, codex-resources/*, codex-path/rg.exe; 44 files besides codex.exe), for a launcher script its parsed targets and their package trees (fail closed when no target is found), for anything else the files named after it. Every launch group is verified once and the Windows write guard (`isolation.WriteGuard`, FILE_SHARE_READ only) is held over every manifest file until the group's children have ended; live mode refuses without it; each child gets a final check (path and size and time of every manifest file) immediately before Popen and a mismatch records `not_launched` and stops with exit 14 | `Executables.verify`, `guard`, `recheck`, `CellRun.final_check` | `test_item7_an_executable_changed_after_group_verification_before_a_spawn_is_refused`, `test_item7_the_write_guard_blocks_substitution_while_a_group_runs`, `test_item7_a_wrapper_target_changed_in_a_subdirectory_is_refused`, `test_item7_the_native_package_manifest_lists_every_companion` |
+| 9, RT2.2 | `experiment.json` carries immutable `run_id` and `experiment_id` UUIDs (the experiment id is written once beside the ledger); every reservation gets an `attempt_uid`. The live budget counts the experiment ledger (every run directory) plus this directory's attempts, deduplicated by attempt uid. Live runners also hold `experiment.lock` beside the ledger. The ledger parses strictly (torn lines, conflicting duplicates). A replacement directory refuses a cell whose batches ended terminally in a superseded directory or whose predecessor evidence is missing (telemetry excepted). The freeze hashes the disposition. The scorer reports ledger totals per allocation and the telemetry cap over all directories and imports superseded leakage, stops and safety kills | `CellRun.budget`, `ledger_rows`, `superseded_terminal_batches`, `freeze_command`, `score_run` | `test_item9_migration_after_a_telemetry_failure_keeps_every_old_and_new_call_counted`, `test_item9_a_replacement_directory_never_repeats_a_terminal_batch`, `test_item9_competing_runners_of_old_and_new_directories_cannot_reserve_independently`, `test_item9_a_torn_ledger_line_is_an_accounting_failure`; red team RT2.2 |
+| B2, RT2.3 | A group is staged without any charge, then reserved as a whole under the locks: shared prerequisites revalidated (stops, the baseline each member was prepared from, token separation, the Codex quota gate), markers in phase `reserved`, then the ledger rows. `IsolationError` is caught with `Stop`. A member failing its final check after the reservation gets a charged `not_launched` row with zero usage; a `reserved` marker found by recovery becomes one too | `run_batches`, `reserve_group`, `abandon` | `test_b2_a_third_member_failing_verification_leaves_no_ledger_row`, `test_b2_a_reserved_marker_becomes_a_charged_not_launched_attempt`; red team RT2.3 |
+| 10 | The scorer derives every accounting field again from the capture with the frozen predicates (`run.account_usage`, shared with the runner and recovery: decoded usage, usage status, reasoning issue with the pinned tokenizer, additive and charged tokens, cache certification evaluated by the scorer, visible tokens), compares bootstrap proposals byte for byte with the capture, takes admitted ASTs and reproduces admission from the capture derived bytes, derives audit dispositions again from verified calls and refuses rule answers of an operation whose audit did not agree, and compares each live Codex launch identity (executable, argv, companion manifest) with the run bound freeze | `score._rejudge`, `_cell_chain`, `_launch_problems` | `test_item10_an_altered_accounting_field_alone_withholds_claims` (six fields), `test_item10_an_altered_bootstrap_proposal_is_detected`, `test_item10_an_altered_audit_disposition_is_detected`, `test_item10_a_launch_identity_differing_from_the_bound_freeze_withholds_claims` |
+| 14 | `windows.jsonl` holds an `open` row before any work and a `close` row after the result delivery boundary (result.json and DONE or SETTLED written). Recovery closes an open window of a dead invocation with `ended_at_lower` (its last durable work timestamp) and `ended_at_upper` (the recovery time), never an exact end. The scorer takes the union of windows (overlaps merge), gives lower and upper makespans, and makes the evidence incomplete for an unclosed window or an attempt outside every window. Gates use the upper bound for the arm under test and the lower bound for the reference arm (warm: `upper(C) <= 0.9 * lower(A)`; magnitude: `lower(A) / upper(C)`) | `CellRun._window_open`, `_window`, `close_dead_windows`, `score._window_spans`, `gates._span` | `test_item14_a_crash_before_the_window_closes_keeps_the_work_in_the_gated_makespan`, `test_item14_an_attempt_outside_every_window_makes_the_cell_incomplete` |
+| 31, B8, RT2.5 | P3 implemented except the dropped flag (disputes.md D-R2-2): the owner reading is the last rate_limits object of the newest session file, validated after selection (no fallback), finite, in [0, 100], not a boolean, not future dated, not another account; its EVENT timestamp is the only freshness evidence. Before every synchronized Codex dispatch group, telemetry included, every completed live Codex call of the experiment must be covered by its own harvested rollout reading or an owner reading timestamped after its end; the highest covering percentage must be below 80. The telemetry probe with unaccepted tokens needs no coverage (it cannot authenticate as the account). Worker rollouts are harvested by `Isolation.finish` (metadata only) | `quota.coverage_gate`, `CellRun.codex_quota_gate`, `reserve_group` | `test_item31_*` (unrelated events, malformed latest reading, other account, crossing 80 between groups, own rollout coverage, probe exemption); red team RT2.5 |
+| 32, B5 | P1 (Astra, operative): `SIGNED_TRANSPORT_NOTICES` stays empty and matching is exact, never a prefix, and never in a stream with a tool item. P4: `code_mode_host` stays disabled; `events.signed_cli_notice` accepts only an `item.completed` event with exactly the approved outer keys, an error item of exactly {id, type, message}, an identifier matching the approved syntax and the complete approved message; inactive until `SIGNED_CLI_NOTICES`, `SIGNED_CLI_NOTICE_EVENT_KEYS` and `SIGNED_CLI_NOTICE_ID_RE` are filled from the approved annex. The candidate message is archived as `config.P4_CANDIDATE_NOTICE` (Fable F6) | `events.classify_stream`, `config` | `test_item32_*`, `test_b5_transport_notices_never_match_a_prefix_and_never_with_a_tool_item` |
+| 33, B6 | P5 (Astra, operative): `--enable skip_host_skill_discovery` on the argv; startup files are accepted only by exact path AND sha256 from the approved manifest `bench/ozmap_rep/startup-manifest.json` (absent: nothing accepted); `Isolation.finish` hashes every runtime file; the certificate checks the probe and the call inventories. The effective context evidence (D2) is a freeze prerequisite | `isolation.startup_instruction_files`, `startup_manifest`, `TelemetryRun.arm` | `test_item33_startup_files_need_an_approved_manifest_entry_by_path_and_hash`; r1 file: `test_item1_live_telemetry_with_a_startup_skill_file_is_not_certified` |
+| B1 | `rulings.py`: `freeze_command` refuses with exit 14 until every slot of `config.REQUIRED_RULINGS` (P1, P2, P3, P4, P5, D1) names a ruling file whose exact bytes hash to the recorded value and carry both signatures, and the configuration matches (the P4 notice predicate active while `code_mode_host` is disabled, an approved startup manifest present). `verify_freeze` repeats the readiness check, so live cells refuse too; `freeze.json` binds the ruling files, the CLI notice slots, the startup manifest hash and the route security arguments. Telemetry refuses the charged worker call when the probe's startup inventory holds an instruction bearing file the manifest does not list | `rulings.py`, `freeze_command`, `verify_freeze`, `TelemetryRun.arm` | `test_b1_*` |
+| B7 | P2 (Astra, operative): unknown usage stays incomplete; a possible launch without a usable stream is uncertain and leakage; a proven not launched call has zero usage. The report carries `unknown_usage_observation`, labeled a hypothetical substitution and never read by `gates.evaluate` | `score._unknown_usage_observation` | `test_b3_an_orphan_without_any_stream_is_uncertain_leakage` |
+| RT2.4 | More than one `turn.started` or `turn.completed` makes the stream uncertain, and `_turn_usage` returns no usage (incomplete); the scorer inherits both | `events.classify_stream`, `run._turn_usage` | `test_rt2_4_two_turns_are_uncertain_and_their_usage_incomplete`; red team RT2.4 |
+| RT2.6 | SHA256 of the baseline's access and refresh tokens (and API key) against the owner's `~/.codex/auth.json` and the runner's CODEX_HOME: at every Codex cell gate, before every group reservation and under the authentication lock before every worker reconstruction (live). Equal hashes, an unreadable owner document or a baseline at an owner path refuse with exit 11 and `CODEX_HOME=~/.ozmap_rep/baseline codex login`. `evidence/auth-lineage.jsonl` records token hashes at first dispatch, after every propagation and on every observed baseline change; wave gate rows carry hash, last_refresh and exp (C2) | `isolation.token_separation_problems`, `CellRun.separation_gate`, `run.lineage` | `test_rt2_6_*`; red team RT2.6 |
+
+CHANGE items adopted: C1 (isolation errors become a stop with an INTERFACE.md code), C2, C3, C5. Not adopted in this
+step: C4 (per job added errors for the correctness gates), Astra 15 (completion by job coverage), 21 (Sonnet
+contradictions behind missing counters) and 22 (preparation breakdowns); none is a blocker and each keeps its round 2
+text for the next round.
+
+### Readings where A4 is silent (the stricter validity reading)
+
+Readings 1 to 8 of round 1 stand, with these changes and additions.
+
+1. Reading 2 (spawn exceptions) is now implemented as stated: an exception after the child exists never makes a call
+   retryable; Codex stops. An exception before Popen (no process) is a proven `not_launched`, retryable only from the
+   reserve.
+2. Reading 7 (replacement directories): a replacement directory never repeats a batch that ended terminally in a
+   superseded directory; carrying terminal outcomes into the new directory is not implemented, so such a cell is
+   refused there (exit 15). Telemetry is the exception, because certifying the new directory is the purpose of the
+   migration; its cap counts over every directory.
+3. Reading 8 (launcher payload) is replaced by the explicit manifest of item 7.
+4. `--ephemeral` stays (A4.2 text and the acceptance suite over the joint decision, disputes.md D-R2-2).
+5. Quota coverage for the first Codex group of an experiment is vacuous: the latest owner reading needs only a valid
+   percentage below 80 then, with or without a timestamp. Every later group needs coverage by event timestamps.
+6. A pid-less Sonnet marker that may have started is kept and its batch is never resent, without stopping Codex.
+7. The token separation check compares access and refresh tokens and API keys, not id tokens (an owner login always
+   issues new access and refresh tokens; id token equality alone proves nothing).
+8. A recovered capture that differs from its raw stream file is uncertain and enters leakage.
+
+### Pending rulings and evidence (the freeze refuses until they are settled)
+
+`python -m bench.ozmap_rep.run freeze` refuses today with these readiness problems (rulings.readiness_problems):
+P1, P2, P3, P4, P5 and D1 are not settled (the texts in the joint decision section 3 are signed by Astra A only and
+need Opus B confirmation by diff, then their files and hashes go into `config.SIGNED_RULINGS`); the P4 notice
+predicate is inactive while `code_mode_host` is disabled (it needs the archived outer event fixture and identifier
+syntax approved by both signatories); there is no approved startup manifest (P5; D4 decides whether it comes from a pre
+freeze no auth exec probe with the final argv or from the stop, approve and refreeze path). D1 needs implementation
+analysis or a credential access trace of the pinned binary; D2 needs proof that the rollout records the complete
+effective request; D3, D5 and D6 are for Opus B as written in the joint decision.
+
+### Preparation calls after this step
+
+Astra 11 of 20, Opus 22 of 40, Fable 2 of 4, Sonnet 1 of 40 (ledger sums, this implementer included). Evaluation calls
+so far: 0 Codex, 0 Sonnet. Driver quota at the start of this step: Claude weekly all models 68%; Codex primary 41%.

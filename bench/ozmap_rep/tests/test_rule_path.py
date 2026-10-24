@@ -105,11 +105,12 @@ def test_scorer_counts_rule_answers_and_no_safety_kill_for_a_correct_rule(tmp_pa
 def test_dead_runner_in_flight_call_is_recorded_once_and_retried_from_the_reserve(tmp_path):
     assert go(tmp_path, 'codex-materials-cold-A', stop_after=1) == config.EXIT_INTERRUPTED
     cell_dir = tmp_path / 'run' / 'cells' / 'codex-materials-cold-A'
-    # simulate a runner that died after launching the second batch: a marker without an attempt line
+    # simulate a runner that died after launching the second batch: a spawned marker (its pid journaled, the child
+    # gone) without an attempt line and without any stream (council round 2: such a call is uncertain, P2)
     marker = {'call_id': 'codex-materials-cold-A.r1.b01.t0', 'cell': 'codex-materials-cold-A', 'backend': 'codex',
               'workload': 'materials', 'wave': 'cold', 'arm': 'A', 'allocation': 'cold_A', 'batch': 'r1.b01',
-              'try': 0, 'reason': 'nominal', 'kind': 'nominal', 'slot': 1, 'mode': 'fake', 'group': 'dead.g1',
-              'started_at': '2026-10-24T00:00:00Z', 'job_ids': [], 'records': {}}
+              'try': 0, 'reason': 'nominal', 'kind': 'nominal', 'slot': 0, 'mode': 'fake', 'group': 'dead.g1',
+              'phase': 'spawned', 'pid': 999991, 'started_at': '2026-10-24T00:00:00Z', 'job_ids': [], 'records': {}}
     (cell_dir / 'inflight').mkdir(exist_ok=True)
     (cell_dir / 'inflight' / 'codex-materials-cold-A.r1.b01.t0.json').write_text(json.dumps(marker), encoding='utf-8')
     assert go(tmp_path, 'codex-materials-cold-A') == 0
