@@ -597,6 +597,7 @@ class InputPolicyTests(unittest.TestCase):
 # ------------------------------------------------------------------------------------------- --learn (step 4)
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'examples'))
+import base64  # noqa: E402
 import os  # noqa: E402
 import re  # noqa: E402
 import subprocess  # noqa: E402
@@ -716,9 +717,16 @@ sys.stdout.write(json.dumps({'reply': reply, 'usage': {'input_tokens': 100, 'out
 """
 
 
+def boot_paths(paths, n, seed=20261024):
+    """The bootstrap paths the host's frozen assignment picks (one producer, n jobs, seeded by dataset id)."""
+    return set(rp.bootstrap_assignment({'x': sorted(paths)}, seed, n, 1)['x'])
+
+
 class LearnTests(unittest.TestCase):
+    """--learn as a thin client of oz_host (arm C, one producer), through the real bootstrap_shim.CallableShim."""
+
     def setUp(self):
-        temp = tempfile.TemporaryDirectory()
+        temp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         self.addCleanup(temp.cleanup)
         self.root = Path(temp.name) / 'ws'
         initialize(self.root)
@@ -733,6 +741,7 @@ class LearnTests(unittest.TestCase):
     def lengths(self, n, folder='refs', start=0, missing=()):
         self.files({f'f{i:03d}.txt': (f'width={i} mm' if i in missing else f'length={i}.5{i % 10} mm; n=3')
                     for i in range(start, start + n)}, folder)
+        return [f'{folder}/f{i:03d}.txt' for i in range(start, start + n)]
 
     def learn(self, model, pattern='refs/*.txt', op='e', **kw):
         kw.setdefault('allow_experimental', True)
@@ -779,7 +788,6 @@ class LearnTests(unittest.TestCase):
         old, new = results
         self.assertEqual(text(mask(old['rows'])), text(mask(new['rows'])))
         self.assertEqual(text(old['requests']), text(new['requests']))
-        # The copied ownership record makes the second run a resumed submission; everything else is identical.
         self.assertEqual((old['receipt']['resumed'], new['receipt']['resumed']), (False, True))
         strip = lambda r: {k: v for k, v in r.items() if k not in ('seconds', 'resumed')}
         self.assertEqual(text(strip(old['receipt'])), text(strip(new['receipt'])))
@@ -788,19 +796,23 @@ class LearnTests(unittest.TestCase):
         self.assertEqual(line(head, old['receipt']), line(current, new['receipt']))
 
     def test_bootstrap_admits_and_later_jobs_are_rule_hits_at_zero_model_calls(self):
-        self.lengths(12)
+        paths = self.lengths(12)
         model = Model({'e': FIELD})
         first = self.learn(model)
         receipt = first['receipt']
         self.assertEqual(receipt['learn']['bootstrap']['status'], 'ok')
         self.assertEqual(receipt['learn']['admission']['status'], 'accepted')
         self.assertEqual(len(model.bootstraps()), 1)
-        self.assertEqual([r['phase'] for r in first['rows']], ['bootstrap'] * 4 + ['rule'] * 8)
+        boot = boot_paths(paths, 4)
+        self.assertEqual({r['path'] for r in first['rows'] if r['phase'] == 'bootstrap'}, boot)
+        self.assertEqual([r['phase'] for r in first['rows'] if r['path'] not in boot], ['rule'] * 8)
         self.assertEqual({r['call_kind'] for r in first['rows'] if r['phase'] == 'bootstrap'}, {'bootstrap'})
-        self.assertEqual(receipt['calls_by_kind']['bootstrap']['new_calls'], 1)
-        self.assertEqual(receipt['calls_by_kind']['residual']['new_calls'], 0)
+        self.assertEqual(receipt['calls_by_kind']['bootstrap']['calls'], 1)
+        self.assertEqual(receipt['calls_by_kind']['fallback']['calls'], 0)
         self.assertEqual(receipt['learn']['audits']['selected'], 8)
-        # A new wave: no new bootstrap, every job is a rule hit; the only calls carry the blind audits.
+        self.assertEqual(receipt['learn']['evidence'], 'complete')
+        self.assertTrue(receipt['learn']['efficiency_valid'])
+        # A new wave: no new bootstrap, every job is a rule hit; the only call carries the 32 blind audits.
         self.lengths(40, folder='more', start=100)
         model2 = Model({'e': 'none'})
         second = self.learn(model2, pattern='more/*.txt')
@@ -809,19 +821,20 @@ class LearnTests(unittest.TestCase):
         self.assertEqual([r['value'] for r in rows], [f'{i}.5{i % 10} mm' for i in range(100, 140)])
         self.assertEqual(model2.bootstraps(), [])
         kinds = receipt['calls_by_kind']
-        self.assertEqual((kinds['bootstrap']['new_calls'], kinds['residual']['new_calls']), (0, 0))
-        self.assertGreaterEqual(kinds['audit']['new_calls'], 1)
-        self.assertEqual(receipt['learn']['audits'], {'selected': 32, 'agree': 32, 'disagree': 0, 'inconclusive': 0,
-                                                      'seed': 20261024})
+        self.assertEqual((kinds['bootstrap']['calls'], kinds['fallback']['calls'], kinds['audit']['calls']),
+                         (0, 0, 1))
+        self.assertEqual(receipt['learn']['audits'], {'selected': 32, 'agree': 32, 'disagree': 0,
+                                                      'inconclusive': 0, 'seed': 20261024})
         self.assertEqual(sum(len(r['ids']) for r in model2.seen), 32)
-        self.assertEqual({c['kind'] for c in receipt['call_ledger']}, {'audit'})
+        self.assertEqual(receipt['calls'], 1)
         self.assertEqual(receipt['accepted_by_source'], {'model': 0, 'memo': 0, 'rule': 40})
         self.assertIn('gold', receipt['correctness'])
         self.assertTrue(all(r['rule']['provenance'] == 'rule_provenance/1' for r in rows))
+        self.assertTrue(all(r['audit'] is None or r['audit']['verdict'] == 'agree' for r in rows))
         # Resuming the same wave makes no call at all.
         again = self.learn(Model({'e': 'none'}), pattern='more/*.txt')
         self.assertEqual((again['receipt']['calls'], again['receipt']['learn']['rule_hits']), (0, 40))
-        self.assertEqual(again['rows'], rows)
+        self.assertEqual([dict(r, rule=None) for r in again['rows']], [dict(r, rule=None) for r in rows])
 
     def test_a_rejected_candidate_sends_every_job_to_the_model(self):
         self.lengths(10)
@@ -835,38 +848,50 @@ class LearnTests(unittest.TestCase):
         self.assertEqual({r['source'] for r in result['rows']}, {'model'})
         self.assertEqual(self.store().rules()[0]['status'], 'rejected')
 
-    def test_abstain_falls_back_to_the_model(self):
-        self.lengths(12, missing={5, 9})
+    def test_abstain_falls_back_and_the_model_answer_meets_the_same_checks(self):
+        paths = self.lengths(12, missing={5, 9})
+        boot = boot_paths(paths, 4)
         result = self.learn(Model({'e': FIELD}))
         by = {r['path']: r for r in result['rows']}
-        for name in ('refs/f005.txt', 'refs/f009.txt'):
-            self.assertEqual((by[name]['source'], by[name]['phase'], by[name]['fallback_reason'], by[name]['value']),
-                             ('model', 'fallback', 'abstain:missing', 'unknown'))
-            self.assertEqual(by[name]['call_kind'], 'residual')
-        self.assertEqual(result['receipt']['learn']['abstains'], 2)
-        self.assertEqual(result['receipt']['learn']['rule_hits'], 6)
+        abstained = [p for p in ('refs/f005.txt', 'refs/f009.txt') if p not in boot]
+        self.assertTrue(abstained)
+        for name in abstained:
+            row = by[name]
+            self.assertEqual((row['source'], row['phase'], row['fallback_reason'], row['call_kind']),
+                             ('model', 'fallback', 'abstain:missing', 'fallback'))
+            # The model's "unknown" is not a quoted span of the input: not accepted (blocker 2).
+            self.assertEqual(row['status'], 'failed')
+            self.assertIn('check_failed:registry:span:quoted_span@1', row['error'])
+        self.assertEqual(result['receipt']['learn']['abstains'], len(abstained))
+        self.assertEqual(result['receipt']['learn']['rule_hits'], 8 - len(abstained))
 
     def test_a_failing_consumer_check_falls_back(self):
         fmt = {'lang': 'oz-rule/1', 'expr': ['fmt', ['num', ['field', 'length'], 'mm'], 2, 'mm']}
-        self.files({'a.txt': 'length=1.11 mm', 'b.txt': 'length=2.22 mm', 'c.txt': 'length=3.33 mm',
-                    'd.txt': 'length=4.44 mm', 'e.txt': 'length=12.5 mm', 'f.txt': 'length=7.00 mm'})
-        result = self.learn(Model({'e': fmt}))
+        names = {'a.txt': 'length=1.11 mm', 'b.txt': 'length=2.22 mm', 'c.txt': 'length=3.33 mm',
+                 'd.txt': 'length=4.44 mm', 'e.txt': 'length=12.5 mm', 'f.txt': 'length=7.00 mm'}
+        self.files(names)
+        boot = boot_paths(['refs/' + n for n in names], 1)
+        result = self.learn(Model({'e': fmt}), bootstrap_size=1)
         by = {r['path']: r for r in result['rows']}
+        target = 'refs/e.txt'
+        self.assertNotIn(target, boot)
         # fmt gives "12.50 mm", which is not a quoted span of "length=12.5 mm": the registry check fails.
-        self.assertEqual(by['refs/e.txt']['fallback_reason'], 'check_failed:quoted_span@1')
-        self.assertEqual((by['refs/e.txt']['source'], by['refs/e.txt']['value']), ('model', '12.5 mm'))
-        self.assertEqual(by['refs/f.txt']['source'], 'rule')
+        self.assertEqual(by[target]['fallback_reason'], 'check_failed:registry:span:quoted_span@1')
+        self.assertEqual((by[target]['source'], by[target]['value']), ('model', '12.5 mm'))
+        self.assertEqual({by[p]['source'] for p in by if p not in boot | {target}}, {'rule'})
         self.assertEqual(result['receipt']['learn']['check_failures'], 1)
 
     def test_a_failing_map_check_falls_back(self):
-        self.lengths(6)
+        paths = self.lengths(6)
         pinned = [{'check': 'max_bytes', 'bytes': 9}]  # '"2.52 mm"' fits, '"12.52 mm"' does not
-        self.files({'z.txt': 'length=12.52 mm'})
+        self.files({'q4.txt': 'length=12.52 mm'})
+        boot = boot_paths(paths + ['refs/q4.txt'], 4)
+        self.assertNotIn('refs/q4.txt', boot)
         result = self.learn(Model({'e': FIELD}), checks=pinned)
         by = {r['path']: r for r in result['rows']}
-        self.assertEqual(by['refs/z.txt']['fallback_reason'], 'check_failed:max_bytes@1')
-        self.assertNotEqual(by['refs/z.txt']['status'], 'accepted')  # the model answer fails the same map check
-        self.assertEqual(by['refs/f005.txt']['source'], 'rule')
+        self.assertEqual(by['refs/q4.txt']['fallback_reason'], 'check_failed:map:0:max_bytes@1')
+        self.assertNotEqual(by['refs/q4.txt']['status'], 'accepted')  # the model answer fails the same map check
+        self.assertEqual({by[p]['source'] for p in paths if p not in boot}, {'rule'})
 
     def test_provenance_recheck_failure_blocks_every_commit(self):
         self.lengths(8)
@@ -884,20 +909,20 @@ class LearnTests(unittest.TestCase):
         self.assertEqual(self.store().results(), [])
         self.assertEqual({r['source'] for r in result['rows']}, {'model'})
 
-    def test_audit_disagreement_quarantines_the_rule_and_later_jobs_fall_back(self):
-        self.lengths(12)
-        boot = {f'length={i}.5{i % 10} mm; n=3' for i in range(4)}
+    def test_audit_disagreement_quarantines_and_undelivered_rows_fall_back(self):
+        paths = self.lengths(12)
+        boot = {f'length={i}.5{i % 10} mm; n=3' for i in range(12) if f'refs/f{i:03d}.txt' in boot_paths(paths, 4)}
         model = Model({'e': FIELD}, answer=lambda t: extract(t) if t in boot else 'different')
         first = self.learn(model)
         learn = first['receipt']['learn']
         self.assertEqual(learn['audits']['disagree'], 8)
         self.assertTrue(learn['quarantined'])
         self.assertEqual(learn['rule']['status_at_end'], 'quarantined')
-        # Emitted rule rows stay as recorded.
-        self.assertEqual(sum(1 for r in first['rows'] if r['source'] == 'rule'), 8)
-        self.assertEqual({r['audit']['verdict'] for r in first['rows'] if r['source'] == 'rule'}, {'disagree'})
+        # Rule 8: none of the wave's rule rows had been delivered, so all of them fall back to the model.
+        self.assertEqual(learn['rule_hits'], 0)
+        self.assertEqual(learn['fallback_reasons'], {'commit_refused:quarantined': 8})
         store = self.store()
-        self.assertEqual(len(store.results()), 8)
+        self.assertEqual(store.results(), [])
         self.assertEqual(store.rules()[0]['status'], 'quarantined')
         self.assertEqual(store.rules()[0]['quarantine']['model_value'], '"different"')
         # A later wave falls back entirely and never bootstraps again.
@@ -920,9 +945,11 @@ class LearnTests(unittest.TestCase):
         audit_ids = {a['audit_job'] for a in audits}
         self.assertFalse(audit_ids & originals)
         self.assertTrue(all(len(a) == 53 and a.startswith('j') for a in audit_ids))
-        packets = [r for r in model.seen if set(r['ids']) & audit_ids]
-        self.assertTrue(packets)
+        packets = [r for r in model.seen if bootstrap_shim.INSTRUCTION not in r['system']]
+        self.assertEqual([len(p['ids']) for p in packets], [6])
         for packet in packets:
+            self.assertFalse(set(packet['ids']) & originals)
+            self.assertTrue(all(len(i) == 53 for i in packet['ids']))
             text = packet['system'] + packet['prompt']
             self.assertNotIn('alpha', text)
             self.assertNotIn('beta', text)
@@ -936,33 +963,26 @@ class LearnTests(unittest.TestCase):
             {'host': 'oz-bootstrap/1', 'answers': reply, 'rules': {'e': FIELD}}) + '\n```')
         result = self.learn(model)
         learn = result['receipt']['learn']
-        self.assertEqual((learn['bootstrap']['status'], learn['bootstrap']['envelope']), ('failed', 'malformed'))
+        self.assertEqual(learn['bootstrap']['status'], 'failed')
+        self.assertTrue(learn['bootstrap']['envelope'].startswith('envelope_malformed'))
+        self.assertFalse(learn['efficiency_valid'])
         self.assertEqual(len(model.bootstraps()), 1)
         self.assertEqual(learn['rule_hits'], 0)
-        self.assertIn('bootstrap_malformed', self.store().rules()[0]['admission']['reasons'])
-        kinds = result['receipt']['calls_by_kind']
-        self.assertEqual((kinds['bootstrap']['calls'], kinds['bootstrap']['failed_calls']), (1, 1))
-        self.assertEqual(kinds['bootstrap']['usage'], 'complete')
-        # The bootstrap jobs are retried by an ordinary passthrough call (tagged residual), never from the envelope.
+        self.assertIn('bootstrap_failed', self.store().rules()[0]['admission']['reasons'])
+        # A2.1: the bootstrap jobs keep the failure; no ordinary retry answers them, every call is a bootstrap call.
         boot_rows = [r for r in result['rows'] if r['phase'] == 'bootstrap']
-        self.assertEqual({(r['status'], r['call_kind']) for r in boot_rows}, {('accepted', 'residual')})
+        self.assertEqual(len(boot_rows), 4)
+        self.assertEqual({(r['status'], r['call_kind']) for r in boot_rows}, {('failed', 'bootstrap')})
+        self.assertEqual([len(r['ids']) for r in model.seen if bootstrap_shim.INSTRUCTION not in r['system']], [4])
 
-    def test_rule_results_never_enter_memo_storage(self):
-        self.lengths(12)
+    def test_learn_refuses_memo_storage(self):
+        self.lengths(4)
         memo = MemoStore(self.root / 'memo.sqlite')
         self.addCleanup(memo.close)
-        result = self.learn(Model({'e': FIELD}), memo={'store': memo, 'namespace': 'ns', 'ops': ['e']})
-        rule_ids = {r['id'] for r in result['rows'] if r['source'] == 'rule'}
-        self.assertEqual(len(rule_ids), 8)
-        jobs = set()
-        for entry in memo.entries():
-            provenance = entry['provenance']
-            jobs.add((json.loads(provenance) if isinstance(provenance, str) else provenance)['job'])
-        self.assertFalse(jobs & rule_ids)
-        audit_ids = {a['audit_job'] for a in result['audits']}
-        boot_ids = {r['id'] for r in result['rows'] if r['phase'] == 'bootstrap'}
-        self.assertEqual(jobs, audit_ids | boot_ids)
-        self.assertEqual(result['receipt']['accepted_by_source']['memo'], 0)
+        model = Model({'e': FIELD})
+        with self.assertRaisesRegex(Error, 'memo'):
+            self.learn(model, memo={'store': memo, 'namespace': 'ns', 'ops': ['e']})
+        self.assertEqual(model.seen, [])
 
     def test_boolq_is_ineligible_end_to_end(self):
         self.files({f'p{i}.txt': f'passage about {i}' for i in range(8)})
@@ -976,6 +996,7 @@ class LearnTests(unittest.TestCase):
         self.assertEqual(learn['admission']['reasons'], ['ineligible'])
         self.assertEqual((learn['rule_hits'], learn['fallback']), (0, 4))
         self.assertEqual({r['source'] for r in result['rows']}, {'model'})
+        self.assertEqual({r['status'] for r in result['rows']}, {'accepted'})
         self.assertIsNone(self.store().active(learn['binding_key']))
 
     def test_learn_refuses_before_dispatch_without_registry_seed_identity_or_shim(self):
@@ -991,7 +1012,7 @@ class LearnTests(unittest.TestCase):
         self.assertEqual(model.seen, [])
 
     def test_cli_learn_through_the_shim_script(self):
-        self.lengths(10)
+        paths = self.lengths(10)
         (self.root / 'real.py').write_text(REAL_SCRIPT, encoding='utf-8')
         adapter = self.root / 'learn_adapter.json'
         adapter.write_text(json.dumps({'argv': [sys.executable, str(REPO / 'examples' / 'bootstrap_shim.py'),
@@ -1002,24 +1023,28 @@ class LearnTests(unittest.TestCase):
         manifest.write_text(json.dumps(learn_manifest(route)), encoding='utf-8')
         out = self.root / 'results.jsonl'
         stdout, stderr = io.StringIO(), io.StringIO()
+        before = dict(os.environ)
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             code = main(['refs/*.txt', '--ask', 'Extract the length.', '--op', 'e', '--workspace', str(self.root),
                          '--adapter', str(adapter), '--model', 'm-test', '--effort', 'low', '--allow-experimental',
                          '--learn', '--registry', str(manifest), '--audit-seed', '7', '--bootstrap-size', '4',
                          '--out', str(out)])
         self.assertEqual(code, 0, stderr.getvalue())
+        self.assertEqual(dict(os.environ), before)
         line = stdout.getvalue()
         self.assertIn('learn=on bootstrap=ok rule=admitted rule_hits=6', line)
         self.assertIn('bootstrap_calls=1', line)
         rows = [json.loads(x) for x in out.read_text(encoding='utf-8').splitlines()]
-        self.assertEqual([r['source'] for r in rows], ['model'] * 4 + ['rule'] * 6)
+        boot = boot_paths(paths, 4, seed=7)
+        self.assertEqual([r['source'] for r in rows], ['model' if r['path'] in boot else 'rule' for r in rows])
         audits = (self.root / 'results.audits.jsonl').read_text(encoding='utf-8').splitlines()
         self.assertEqual(len(audits), 6)
-        side = list((self.root / 'do').glob('*/bootstrap/1.json'))
+        side = [f for f in (self.root / 'map' / 'host' / 'bootstrap').glob('*/side/*.json')
+                if not f.name.endswith(('.config.json', '.capture.json'))]
         self.assertEqual(len(side), 1)
         record = json.loads(side[0].read_text(encoding='utf-8'))
         self.assertEqual(record['status'], 'ok')
-        self.assertEqual(record['rules']['e']['ast'], json.dumps(FIELD, separators=(',', ':')))
+        self.assertEqual(base64.b64decode(record['rules']['e']['ast_b64']).decode('utf-8'), json.dumps(FIELD))
         # Without --registry the learn run refuses before any call.
         stdout, stderr = io.StringIO(), io.StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):

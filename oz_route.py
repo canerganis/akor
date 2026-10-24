@@ -58,11 +58,43 @@ def _load(adapter: Path) -> dict:
     return spec
 
 
+def _declared_data(path: Path) -> list:
+    """Data files a Python source declares as executable inputs: a module-level literal tuple or list
+    OZ_ROUTE_DATA of paths relative to the source's directory (for example the pinned spec text a wrapper loads).
+    Read from the syntax tree, never imported. A declared file that does not exist blocks the route (Error)."""
+    try:
+        tree = ast.parse(path.read_bytes())
+    except (OSError, SyntaxError, ValueError):
+        return []
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(isinstance(t, ast.Name) and t.id == 'OZ_ROUTE_DATA'
+                                                for t in node.targets):
+            try:
+                value = ast.literal_eval(node.value)
+            except ValueError:
+                raise Error(f'{path.name}: OZ_ROUTE_DATA must be a literal tuple or list of paths') from None
+            if not isinstance(value, (list, tuple)) or any(not isinstance(v, str) or not v for v in value):
+                raise Error(f'{path.name}: OZ_ROUTE_DATA must be a literal tuple or list of paths')
+            found = []
+            for rel in value:
+                item = (path.parent / rel).resolve()
+                if not item.is_file():
+                    raise Error(f'{path.name}: declared route data file {rel} does not exist')
+                found.append(item)
+            return found
+    return []
+
+
 def _local_imports(path: Path, seen: set) -> None:
-    """Add to seen every sibling .py module the file imports (transitively), so a wrapper adapter hashes the adapter
-    it imports as well (for example claude_map_adapter.py imports the frozen claude_cli_adapter.py)."""
+    """Add to seen every sibling .py module the file imports (transitively) and every data file it declares in
+    OZ_ROUTE_DATA, so a wrapper adapter hashes the adapter it imports and the pinned text it loads as well (for example
+    claude_map_adapter.py imports the frozen claude_cli_adapter.py)."""
     if path.suffix != '.py':
         return
+    for item in _declared_data(path):
+        if item not in seen:
+            seen.add(item)
+            _local_imports(item, seen)
     try:
         tree = ast.parse(path.read_bytes())
     except (OSError, SyntaxError, ValueError):
@@ -82,8 +114,9 @@ def _local_imports(path: Path, seen: set) -> None:
 
 def source_manifest(adapter: Path) -> list:
     """[[path, sha256 of the file bytes], ...] ordered by path, for the argv entries (after the program) that name an
-    existing file relative to the adapter's directory, plus the sibling modules those Python files import (transitively).
-    The path is relative to that directory when inside it."""
+    existing file relative to the adapter's directory, plus the sibling modules those Python files import (transitively)
+    and the data files they declare in OZ_ROUTE_DATA. The path is relative to that directory (a file outside it keeps a
+    relative path with ".." parts, so the hash does not depend on where the checkout is)."""
     adapter = Path(adapter).resolve()
     base = adapter.parent
     files = set()
@@ -98,7 +131,10 @@ def source_manifest(adapter: Path) -> list:
         try:
             name = path.relative_to(base).as_posix()
         except ValueError:
-            name = path.as_posix()
+            try:
+                name = os.path.relpath(path, base).replace(os.sep, '/')
+            except ValueError:
+                name = path.as_posix()
         entries[name] = hashlib.sha256(path.read_bytes()).hexdigest()
     return [[name, entries[name]] for name in sorted(entries)]
 

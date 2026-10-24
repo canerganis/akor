@@ -9,26 +9,26 @@ derive from the relative path and the work, so resubmitting the same map resumes
 Results are JSONL, one line per job in input order. "accepted" means the job passed its pinned host checks (or, with
 none, only the wire format); it is never a claim that the value is correct.
 
---learn (build step 4; off by default, and with it off every request, row and receipt is exactly as before). It needs
---registry MANIFEST (an owner-approved oz_registry manifest whose operation ID is --op), --audit-seed N and an adapter
-wrapped by examples/bootstrap_shim.py (bootstrap_claude_adapter.json or bootstrap_codex_adapter.json). The flow:
- 1. Bootstrap. When the rule store (oz_rulephase, <workspace>/map/rules.sqlite) has no entry for the full bindings, the
-    first --bootstrap-size valid jobs (default: one packet, max_jobs_per_call or the workspace batch size, at most 64)
-    form one oz_do request run with OZ_BOOTSTRAP set; the shim makes exactly one physical call carry the bootstrap
-    instruction, returns the envelope's answers as the ordinary reply and writes the proposed rules to a side file
-    keyed by the call's receipt. Each candidate is admitted through the registry (oz_registry resolve + oz_rule.admit)
-    and recorded admitted or rejected. A malformed envelope is a failed bootstrap: no rule, no repair; the worker's
-    ordinary retry of those jobs is a passthrough call tagged residual.
- 2. Rule phase (D1). For every other valid job an admitted rule is evaluated on the job's resolved input; a value that
-    passes every pinned consumer check (registry and --check) is committed in the rule store by adopt_rule, which
-    re-evaluates the exact AST bytes and re-validates admission, bindings and quarantine state in the same
-    transaction. Those rows read source "rule" and make no call; they never pass through oz_do, so never reach memo
-    storage. An abstain, a failed or inconclusive check or a refused commit falls back to the model.
- 3. Residual and audits. Fallback jobs plus min(32, covered) blind audit jobs (own D8 identities linked to the
-    originals; the packet carries only the instruction and the input) run through ordinary oz_do requests, audits in
-    the same calls. A disagreement quarantines the rule for future jobs; emitted rule rows stay as recorded.
-Every physical call is tagged bootstrap, residual or audit in rows (call_kind) and in the receipt (calls_by_kind,
-call_ledger). The receipt keeps runtime acceptance (accepted_by_checks) apart from correctness, which needs gold.
+--learn (off by default, and with it off every request, row and receipt is exactly as before) is a thin single-user
+client of oz_host.ArmHost (arm C with one producer; docs/design/ozmap-2026-10-24/amendment-2-and-step6-architecture.md).
+It needs --registry MANIFEST (an owner-approved oz_registry manifest whose operation ID is --op), --audit-seed N and an
+adapter wrapped by examples/bootstrap_shim.py. The host state lives in <workspace>/map/host (experiment store, spool,
+ledgers) and <workspace>/map/rules.sqlite (rule store); oz_do runs stay under <workspace>/do/. The flow:
+ 1. Bootstrap. When the rule store has no entry for the full bindings, the first --bootstrap-size valid jobs (by the
+    seeded frozen assignment; default one packet, at most 64) form one batch. Only that batch's child gets
+    OZ_BOOTSTRAP_ATTEMPT and OZ_BOOTSTRAP_DIR; the shim carries the bootstrap instruction in exactly that one call and
+    writes the side file with the exact AST bytes. The candidate is admitted through the registry from those bytes. A
+    failed bootstrap is recorded as failed: no rule, no replacement answers, efficiency invalid (A2.1).
+ 2. Rule phase (D1). Every other valid job is evaluated with the admitted rule; a value with complete passing
+    evidence for every applicable pinned check (registry consumer checks and --check) is staged and settled by
+    adopt_rule after the wave's audits; a missing or inconclusive check makes the job await verification (never
+    accepted); an abstain, a failing check or a refused commit falls back to the model.
+ 3. Fallback and audits. Fallback jobs plus min(32, covered) blind audits (selection on the dataset ids, here the
+    paths, persisted before dispatch) run in shared batches through the spool. A disagreement quarantines the rule; the
+    rows of that wave not yet delivered fall back (rule 8). Model answers settle through the same settlement record.
+ 4. A later invocation reuses the rule (warm) only while every earlier audit of it is conclusive.
+Rows carry phase and call_kind (bootstrap, fallback, audit); the receipt keeps the host report, the call ledger and
+runtime acceptance (accepted_by_checks) apart from correctness, which needs gold.
 
 oz-rule/1 amendment 1 (D2, D7, D8, D9):
  * D2: oz_map itself reads each file (containment and size checks included), removes exactly one terminal CRLF, else
@@ -41,8 +41,8 @@ oz-rule/1 amendment 1 (D2, D7, D8, D9):
    "j" and a reference by "r" plus the lowercase unpadded base32 of SHA256(canonical(identity tuple)): 53 characters,
    so chunk boundaries never define identity, and name collisions are detected. Every row keeps producer, submission,
    logical job, request, reference mapping and a nullable physical call ID.
- * Rule results (step 4) are settled outside oz_do, in the rule store, so a rule result can never reach memo storage
-   (the earlier `rule:` skip inside oz_do's memo publish is dropped; oz_do is frozen and stays untouched).
+ * Rule results are settled outside oz_do, in the rule store, so a rule result can never reach memo storage; --learn
+   refuses memo options altogether (pilot configuration).
  * D9: a file that cannot be read or is empty or oversized becomes a failed row; valid siblings still run. A job over
    the input token budget is isolated as a failed row. A pathlike --ask value that names no file fails before dispatch.
 """
@@ -450,9 +450,9 @@ def run(pattern: str, *, op_text: str, op: str = OP, goal: str = GOAL, checks=No
 # --------------------------------------------------------------------------------------------- --learn (step 4)
 
 SHIM = 'bootstrap_shim.py'
-CALL_KINDS = ('bootstrap', 'residual', 'audit')
-CORRECTNESS = ('not assessed: accepted means runtime acceptance (pinned checks, and for rule rows rule provenance); '
-               'audits measure agreement with a blind model answer, not gold correctness')
+CALL_KINDS = ('bootstrap', 'fallback', 'audit')
+CORRECTNESS = ('not assessed: accepted means runtime acceptance (every applicable pinned check, and for rule rows '
+               'rule provenance); audits measure agreement with a blind model answer, not gold correctness')
 
 
 def is_bootstrap_adapter(adapter) -> bool:
@@ -467,77 +467,12 @@ def is_bootstrap_adapter(adapter) -> bool:
     return getattr(adapter, 'bootstrap_shim', False) is True
 
 
-def audit_names(producer: str, submission: str, op: str, path: str, original: str) -> tuple:
-    """(job name, reference name) of the blind audit of one covered job: a distinct D8 identity linked to the
-    original job name. Same 53-character form as every other name."""
-    return (_name('j', ['audit', producer, submission, op, path, original]),
-            _name('r', ['audit-ref', producer, submission, op, path, original]))
-
-
-def _gate(batch, *, root, adapter, model, allow_experimental, options) -> None:
-    """The size gate of run(), for the requests of one learn phase, before that phase dispatches anything."""
-    sizes = sorted({n for r in batch for n in do(r, workspace=root, adapter=adapter, plan_only=True,
-                                                 **options)['plan']['packets']})
-    kinds = {n: 'experimental' if n in options.get('experimental_sizes', ()) else size_profile(model, n, CELLS)
-             for n in sizes}
-    refused = [n for n, kind in kinds.items() if kind == 'unsupported']
-    if refused:
-        raise Error(f'packet sizes {refused} are unsupported for model {model!r} (failed size gate); nothing was run')
-    experimental = [n for n, kind in kinds.items() if kind == 'experimental']
-    if experimental and not allow_experimental:
-        raise Error(f'packet sizes {experimental} are experimental for model {model!r} (no passed size gate); '
-                    'pass --allow-experimental to run them. Nothing was run')
-
-
-def _call_table(run: Path) -> dict:
-    """call_id -> {receipt, jobs, outcome, usage} from the run's call ledger (call_start carries the job map)."""
-    calls = {}
-    file = run / 'calls.jsonl'
-    for line in (file.read_text(encoding='utf-8').splitlines() if file.exists() else ()):
-        try:
-            record = json.loads(line)
-        except ValueError:
-            continue
-        entry = calls.setdefault(record.get('call_id'), {'receipt': record.get('batch_id'), 'jobs': [
-            m.get('inbox_job_id') for m in record.get('job_map') or [] if isinstance(m, dict)], 'outcome': None,
-            'usage': None})
-        if record.get('event') != 'call_start':
-            raw = (record.get('usage') or {}).get('raw')
-            entry['outcome'] = record.get('outcome')
-            entry['usage'] = raw if isinstance(raw, dict) else None
-    return calls
-
-
-def _model_row(base, result, request, index, job, path, receipt, root, calls, op) -> dict:
-    """One row for a job that went through oz_do: the same fields and branches as run()."""
-    outcome = result['jobs'][job[0]]
-    line = dict(base, id=job[0], request=index, request_id=result['run']['request_id'], path=path,
-                status=outcome['status'], logical_job={'op': op, 'path': path},
-                reference={'name': job[2], 'path': path, 'input': receipt}, call_id=calls.get(job[0]))
-    if outcome['status'] == 'unresolved' and outcome.get('reason') == 'input_budget':
-        line['status'] = 'failed'
-        line['error'] = (f"input_budget: this job alone exceeds max_input_tokens "
-                         f"{outcome.get('max_input_tokens')}; raise --max-input-tokens")
-        line['source'] = 'model'
-    elif outcome['status'] == 'accepted':
-        if 'value_file' in outcome:
-            line['value'] = loads((root / outcome['value_file']).read_text(encoding='utf-8'))
-        else:
-            line['value'] = outcome['value']
-        memo = (outcome.get('evidence') or {}).get('memo_entry')
-        line['source'] = 'memo' if memo else 'model'
-    else:
-        line['error'] = _error(outcome)
-        line['source'] = 'model'
-    return line
-
-
 def _learn_run(pattern: str, *, op_text, op, goal, checks, model, effort, workspace, adapter, allow_experimental,
                producer, new_submission, identity, limits, clock, rule_registry, audit_seed, bootstrap_size,
                rule_store, rule_hooks, **options) -> dict:
-    """run() with --learn: bootstrap, admission, rule phase, residual plus audits (module docstring)."""
-    import oz_rulephase as rp
-    from oz_accept import pin
+    """run() with --learn: a thin single-user client of oz_host.ArmHost (arm C with one producer)."""
+    import oz_host
+    import oz_spool
 
     started = clock()
     root = Path(workspace).resolve()
@@ -563,359 +498,157 @@ def _learn_run(pattern: str, *, op_text, op, goal, checks, model, effort, worksp
     if not is_bootstrap_adapter(adapter):
         raise Error('--learn needs an adapter wrapped by examples/bootstrap_shim.py (for example '
                     'examples/bootstrap_claude_adapter.json); this adapter cannot carry the bootstrap')
-    hooks = dict(rule_hooks or {})
+    if options.get('memo') is not None:
+        raise Error('--learn runs with exact-result memo disabled (pilot configuration; a memo-served audit is '
+                    'inconclusive and invalidates efficiency)')
+    unknown = set(options) - {'experimental_sizes', 'route', 'registry'}
+    if unknown:
+        raise Error('--learn does not take ' + ', '.join(sorted(unknown)))
     space = Workspace(root)
-    registry = options.get('registry') or REGISTRY
     worker = identity['worker_hash']
-    if 'route' not in options:
-        options['route'] = identity['do_route']
-    receipts, invalid, texts = {}, {}, {}
+    receipts, invalid, raws = {}, {}, {}
     for path in paths:
         try:
-            receipts[path], texts[path] = read_input(path, root)
+            receipts[path] = read_input(path, root)[0]
+            raws[path] = (root / path).read_bytes().decode('utf-8')
         except Error as exc:
             invalid[path] = str(exc)
-    pinned = list(pin(specs, registry)) if specs else []
-    map_contract = hashlib.sha256(canonical({'op': op, 'op_text': op_text, 'goal': goal, 'checks': pinned,
-                                             'profile': PROFILE}).encode('utf-8')).hexdigest()
-    store = rp.RuleStore(Path(rule_store) if rule_store is not None else root / 'map' / 'rules.sqlite')
-    try:
-        learner = rp.Learner(store, rule_registry, op, worker_hash=worker, map_contract=map_contract,
-                             map_input_policy=INPUT_POLICY)
-        per_call = limits.get('max_jobs_per_call') or space.config['batch_size']
-        size = bootstrap_size or min(int(per_call), 64)
-        context = hashlib.sha256(canonical({'op': op, 'op_text': op_text, 'goal': goal, 'checks': specs,
-                                            'model': model, 'effort': effort, 'worker_hash': worker,
-                                            'input_policy': INPUT_POLICY, 'profile': PROFILE,
-                                            'learn': {'binding_key': learner.key, 'audit_seed': audit_seed,
-                                                      'bootstrap_size': size, 'glob': pattern}}).encode('utf-8')
-                                 ).hexdigest()
-        key = lambda path: canonical([op, path])
-        owner = Ownership(root).issue(producer, context, {key(p): receipts[p]['raw_sha256'] if p in receipts else None
-                                                          for p in paths}, new=new_submission)
-        for path in [p for p in receipts if key(p) in owner['changed']]:
-            del receipts[path]
-            invalid[path] = ('payload_changed: this input differs from the one first sent under this submission; '
-                             'pass --new-submission to send it as a new job')
-        valid = [p for p in paths if p in receipts]
-        names = names_for(paths, op, owner['producer'], owner['submission'])
-        base = {'producer': owner['producer'], 'submission': owner['submission'], 'worker_hash': worker}
-        return _learn_phases(rp, store, learner, paths=paths, valid=valid, invalid=invalid, receipts=receipts,
-                             texts=texts, names=names, base=base, owner=owner, op=op, op_text=op_text, goal=goal,
-                             checks=checks, pinned=pinned, model=model, root=root, adapter=adapter,
-                             allow_experimental=allow_experimental, limits=limits, size=size, audit_seed=audit_seed,
-                             hooks=hooks, options=options, space=space, registry=registry, started=started,
-                             clock=clock)
-    finally:
-        store.close()
-
-
-def _learn_phases(rp, store, learner, *, paths, valid, invalid, receipts, texts, names, base, owner, op, op_text,
-                  goal, checks, pinned, model, root, adapter, allow_experimental, limits, size, audit_seed, hooks,
-                  options, space, registry, started, clock) -> dict:
-    producer, submission = owner['producer'], owner['submission']
-    run_dirs, done = [], {}
-    fresh = {'calls': 0, 'failed_calls': 0, 'tokens': 0}
-    cumulative = {'calls': 0, 'failed_calls': 0, 'tokens': 0}
-    coverage, cumulative_coverage = set(), set()
-    side_receipts = {}  # run dir -> {receipt: side record}
-    sent = []
-    index = [0]
-
-    def dispatch(request, env=None):
-        normal = normalize(request, allow=root, config=space.config, registry=registry)
-        run_dir = root / 'do' / normal['request_id']
-        before = _ledger(run_dir)
-        if env:
-            with _environ(**env):
-                result = do(request, workspace=root, adapter=adapter, allow=root, **options)
-        else:
-            result = do(request, workspace=root, adapter=adapter, allow=root, **options)
-        delta = _delta(before, _ledger(root / result['run']['run_dir']))
-        for name in fresh:
-            fresh[name] += delta[name]
-        coverage.add(delta['usage'])
-        accounting = result['accounting']
-        cumulative['calls'] += accounting['calls']
-        cumulative['failed_calls'] += accounting['failed_calls']
-        cumulative['tokens'] += accounting['tokens']['input_tokens'] + accounting['tokens']['output_tokens']
-        cumulative_coverage.add(accounting['usage_coverage'])
-        run_dirs.append((root / result['run']['run_dir'], before))
-        position = index[0]
-        index[0] += 1
-        return result, position
-
-    # 1. Bootstrap: only when the store has no entry for these bindings (or this submission already started one).
-    learn = {'eligible': learner.eligible, 'binding_key': learner.key, 'operation': op, 'audit_seed': audit_seed,
-             'bootstrap': {'status': 'not_needed', 'jobs': 0, 'size': size}}
-    if learner.ineligible_reason:
-        learn['ineligible'] = learner.ineligible_reason
-    record = store.bootstrap(producer, submission, learner.key)
-    boot = list(record['paths']) if record else valid[:size] if valid and not store.rules(learner.key) else []
-    boot_texts = dict(texts)
-    for path in boot:
-        if path in receipts:
-            continue
-        if path in paths:
-            raise Error(f'bootstrap input {path} changed or became unreadable since this submission started; '
-                        'pass --new-submission')
-        # A bootstrap job outside this expansion: its request is rebuilt exactly (it resumes with no call), but it
-        # gets no row in this invocation.
+    per_call = limits.get('max_jobs_per_call') or space.config['batch_size']
+    size = bootstrap_size or min(int(per_call), 64)
+    context = hashlib.sha256(canonical({'op': op, 'op_text': op_text, 'goal': goal, 'checks': specs, 'model': model,
+                                        'effort': effort, 'worker_hash': worker, 'input_policy': INPUT_POLICY,
+                                        'profile': PROFILE, 'learn': {'audit_seed': audit_seed,
+                                                                      'bootstrap_size': size, 'glob': pattern,
+                                                                      'host': 'oz.host/1'}}).encode('utf-8')).hexdigest()
+    key = lambda path: canonical([op, path])
+    owner = Ownership(root).issue(producer, context, {key(p): receipts[p]['raw_sha256'] if p in receipts else None
+                                                      for p in paths}, new=new_submission)
+    for path in [p for p in receipts if key(p) in owner['changed']]:
+        del receipts[path]
+        invalid[path] = ('payload_changed: this input differs from the one first sent under this submission; '
+                         'pass --new-submission to send it as a new job')
+    valid = [p for p in paths if p in receipts]
+    base = {'producer': owner['producer'], 'submission': owner['submission'], 'worker_hash': worker}
+    launcher = (oz_host.ChildLauncher(adapter) if isinstance(adapter, (str, Path))
+                else oz_host.InProcessLauncher(adapter))
+    store_path = Path(rule_store) if rule_store is not None else root / 'map' / 'rules.sqlite'
+    report, host_rows, audits, attempts, before = None, {}, [], [], set()
+    learn = {'operation': op, 'audit_seed': audit_seed, 'bootstrap': {'status': 'not_needed', 'jobs': 0, 'size': size},
+             'rule': {'id': None, 'status_at_end': None}, 'rule_hits': 0, 'fallback': 0, 'abstains': 0,
+             'check_failures': 0, 'commit_refusals': 0, 'fallback_reasons': {},
+             'audits': {'selected': 0, 'agree': 0, 'disagree': 0, 'inconclusive': 0, 'seed': audit_seed},
+             'quarantined': False, 'efficiency_valid': False, 'evidence': 'incomplete',
+             'incomplete': ['no valid input']}
+    if valid:
+        host = oz_host.ArmHost(arm='C', backend='w' + worker[:24], experiment_dir=root / 'map' / 'host',
+                               launcher=launcher, op=op, op_text=op_text, model=model, effort=effort,
+                               identity=identity, goal=goal, checks=specs, registry=rule_registry, seed=audit_seed,
+                               producers_expected=1, bootstrap_per_producer=min(size, len(valid)),
+                               allow_experimental=allow_experimental,
+                               experimental_sizes=options.get('experimental_sizes', ()), limits=limits,
+                               do_workspace=root, rule_store=store_path, max_wait=0.0, hooks=rule_hooks)
         try:
-            boot_texts[path] = read_input(path, root)[1]
-        except Error:
-            raise Error(f'bootstrap input {path} is no longer readable; pass --new-submission') from None
-    if boot:
-        names = dict(names, **{p: (job_name(producer, submission, op, p), ref_name(producer, submission, p))
-                               for p in boot if p not in names})
-        [request] = requests(boot, op=op, text=op_text, goal=goal, names=names, texts=boot_texts, checks=checks,
-                             model=model, allow_experimental=allow_experimental,
-                             limits=dict(limits, max_jobs_per_call=len(boot)))
-        _gate([request], root=root, adapter=adapter, model=model, allow_experimental=allow_experimental,
-              options=options)
-        normal = normalize(request, allow=root, config=space.config, registry=registry)
-        if record is None:
-            # Recorded before the call, so a resumed submission rebuilds exactly this bootstrap request.
-            record = store.record_bootstrap(producer, submission, learner.key, normal['request_id'], boot)
-        sent.append(request)
-        side_dir = root / 'do' / normal['request_id'] / 'bootstrap'
-        side_dir.mkdir(parents=True, exist_ok=True)
-        config_file = side_dir / 'config.json'
-        if not config_file.exists():
-            config = learner.bootstrap_config(side_dir)
-            temp = side_dir / ('config-' + uuid.uuid4().hex + '.tmp')
-            temp.write_text(json.dumps(config, ensure_ascii=False, sort_keys=True), encoding='utf-8')
-            os.replace(temp, config_file)
-        result, position = dispatch(request, env={'OZ_BOOTSTRAP': str(config_file)})
-        run_dir = root / result['run']['run_dir']
-        table = _call_table(run_dir)
-        by_receipt = {entry['receipt']: call for call, entry in table.items()}
-        sides = rp.read_side_files(side_dir)
-        side_receipts[run_dir] = {s['receipt']: s for s in sides}
-        provenance = {'producer': producer, 'submission': submission, 'request_id': result['run']['request_id'],
-                      'run_dir': result['run']['run_dir'], 'config_sha256': hashlib.sha256(
-                          config_file.read_bytes()).hexdigest()}
-        if sides:
-            for side in sides:
-                learner.admit_side(side, source=f"{result['run']['request_id']}:{side['receipt']}:{op}",
-                                   provenance=dict(provenance, receipt=side['receipt'],
-                                                   call_id=by_receipt.get(side['receipt']), side_file=side['file'],
-                                                   raw_reply_sha256=side.get('raw_reply_sha256'),
-                                                   status=side.get('status')))
-        elif (side_dir / 'attempted').exists():
-            learner.admit_side(None, source=f"{result['run']['request_id']}:missing:{op}", provenance=provenance)
-        side = sides[0] if sides else None
-        learn['bootstrap'] = {'status': 'failed' if side is None or side.get('status') != 'ok' else 'ok',
-                              'envelope': side.get('status') if side else 'missing', 'jobs': len(boot), 'size': size,
-                              'request_id': result['run']['request_id'],
-                              'receipt': side['receipt'] if side else None,
-                              'call_id': by_receipt.get(side['receipt']) if side else None}
-        calls = _call_ids(run_dir, {job[0] for job in request['jobs']})
-        by_ref = {names[p][1]: p for p in boot}
-        for job in request['jobs']:
-            path = by_ref[job[2]]
-            if path in receipts:
-                done[path] = dict(_model_row(base, result, request, position, job, path, receipts[path], root, calls,
-                                             op), phase='bootstrap')
-
-    # 2. Rule phase (D1): every other valid job; a committed rule result is kept as recorded.
-    entries = store.rules(learner.key)
-    rule = store.active(learner.key)
-    learn['rule'] = ({'id': rule['id'], 'ast_sha256': rule['ast_sha256'], 'status_at_start': 'admitted'} if rule else
-                     {'id': None, 'status_at_start': entries[-1]['status'] if entries else 'none'})
-    admission = next((e['admission'] for e in reversed(entries)), None)
-    if admission is not None:
-        learn['admission'] = {k: admission.get(k) for k in ('status', 'reasons', 'coverage', 'covered_errors')}
-    without = ('no_admitted_rule' if not entries else 'quarantined' if any(e['status'] == 'quarantined' for e in entries)
-               else 'rule_rejected')
-    fallback, covered, reasons = [], {}, {}
-    boot_set = set(boot)
-    for path in valid:
-        if path in boot_set:
+            before = {a['attempt_id'] for a in host.ledger.attempts()}
+            jobs = [{'key': p, 'op': op, 'text': raws[p], 'dataset_id': p} for p in valid]
+            try:
+                host.submit(owner['producer'], owner['submission'], jobs, wave=owner['submission'])
+            except oz_spool.SubmissionConflict:
+                raise Error('this submission was started with another file set; pass --new-submission') from None
+            report = host.run_wave(owner['submission'], learn=True)
+            host_rows = {r['key']: r for r in host.collect(owner['producer'], owner['submission'])}
+            audits = host.store.audits(oz_host.rp.wave_id(host.backend, host.workload, owner['submission']))
+            attempts = host.ledger.attempts()
+            learner, store = host.learner, host.store
+            entries = store.rules(learner.key)
+            rule_ids = sorted({r['rule']['id'] for r in host_rows.values() if r.get('rule')})
+            active = store.rule(rule_ids[0]) if rule_ids else (store.active(learner.key) or
+                                                              (entries[-1] if entries else None))
+            learn.update(eligible=learner.eligible, binding_key=learner.key)
+            if learner.ineligible_reason:
+                learn['ineligible'] = learner.ineligible_reason
+            boot = report['bootstrap']
+            if boot:
+                found = host.experiment.bootstrap(host.backend, host.workload) or {}
+                side = (found.get('record') or {}).get('side')
+                learn['bootstrap'] = {'status': boot['status'], 'envelope': (side or {}).get('reason') or
+                                      ('ok' if side else 'missing'),
+                                      'jobs': sum(1 for r in host_rows.values() if r['phase'] == 'bootstrap'),
+                                      'size': size, 'attempt_id': boot['attempt_id'], 'imported': boot['imported'],
+                                      'efficiency_valid': boot['efficiency_valid']}
+            learn['rule'] = ({'id': active['id'], 'ast_sha256': active['ast_sha256'], 'status_at_end': active['status']}
+                             if active else {'id': None, 'status_at_end': None})
+            admission = next((e['admission'] for e in reversed(entries)), None)
+            if admission is not None:
+                learn['admission'] = {k: admission.get(k) for k in ('status', 'reasons', 'coverage', 'covered_errors')}
+            reasons = report['fallback_reasons']
+            learn.update({
+                'rule_hits': report['rule_hits'], 'fallback': report['fallback'], 'abstains': report['abstains'],
+                'check_failures': sum(n for r, n in reasons.items() if str(r).startswith('check_')),
+                'commit_refusals': sum(n for r, n in reasons.items() if str(r).startswith('commit_refused:')),
+                'fallback_reasons': reasons,
+                'audits': dict({k: report['audits'][k] for k in ('selected', 'agree', 'disagree', 'inconclusive')},
+                               seed=audit_seed, **({'pending': report['audits']['pending']}
+                                                   if report['audits']['pending'] else {})),
+                'quarantined': report['quarantined'], 'efficiency_valid': report['efficiency_valid'],
+                'evidence': report['evidence'], 'incomplete': report['incomplete']})
+        finally:
+            host.close()
+    audit_of = {a['original_job']: a for a in audits}
+    rows = []
+    for path in paths:
+        if path not in host_rows:
+            message = invalid.get(path, 'not delivered')
+            text = message if message.startswith('payload_changed') else f'input_invalid: {message}'
+            rows.append(dict(base, id=job_name(owner['producer'], owner['submission'], op, path), request=None,
+                             request_id=None, path=path, status='failed', error=text, source='model',
+                             logical_job={'op': op, 'path': path},
+                             reference={'name': None, 'path': path, 'input': None}, call_id=None, phase='input',
+                             call_kind=None))
             continue
-        job = names[path][0]
-        owner_row = {'producer': producer, 'submission': submission, 'operation': op, 'path': path}
-        present = store.result(job)
-        if present is not None:
-            covered[path] = present
-            continue
-        if rule is None:
-            fallback.append(path)
-            reasons[path] = without
-            continue
-        decision = learner.attempt(rule, job=job, text=texts[path], resolved_sha256=receipts[path]['resolved_sha256'],
-                                   op_text=op_text, map_pinned=pinned, owner=owner_row,
-                                   evaluate=hooks.get('evaluate', rp.oz_rule.evaluate),
-                                   before_commit=hooks.get('before_commit'))
-        if decision['decision'] == 'rule':
-            covered[path] = decision['row']
+        h = host_rows[path]
+        line = dict(base, id=h['id'], request=None, request_id=h.get('request_id'), path=path, status=h['status'],
+                    source=h['source'], logical_job={'op': op, 'path': path},
+                    reference={'name': 'r' + h['id'][1:], 'path': path, 'input': receipts[path]},
+                    call_id=h.get('call_id'), phase=h['phase'], call_kind=h.get('call_kind'))
+        if h['status'] == 'accepted':
+            line['value'] = loads(h['value_text'])
         else:
-            fallback.append(path)
-            reasons[path] = decision['reason']
-
-    # 3. Audits: one persisted blind selection per wave and rule, riding in the residual calls.
-    selected = []
-    for rule_id in sorted({row['rule'] for row in covered.values()}):
-        mine = [p for p, row in covered.items() if row['rule'] == rule_id]
-        wave = store.wave(producer, submission, rule_id, audit_seed, mine)
-        selected += [(p, rule_id) for p in wave['selected']]
-    audit_of = {}
-    rnames, rtexts, keys = {}, {}, []
-    taken = {n for pair in names.values() for n in pair}
-    for path in fallback:
-        keys.append(path)
-        rnames[path], rtexts[path] = names[path], texts[path]
-    for path, rule_id in selected:
-        pair = audit_names(producer, submission, op, path, names[path][0])
-        if pair[0] in taken or pair[1] in taken:
-            raise Error(f'identity name collision on audit of {path}')
-        taken.update(pair)
-        slot = 'audit:' + path
-        keys.append(slot)
-        rnames[slot], rtexts[slot] = pair, texts[path]
-        audit_of[pair[0]] = {'path': path, 'rule': rule_id, 'original': names[path][0]}
-    residual = requests(keys, op=op, text=op_text, goal=goal, names=rnames, texts=rtexts, checks=checks,
-                        model=model, allow_experimental=allow_experimental, limits=limits) if keys else []
-    sent.extend(residual)
-    fallback_of = {names[p][0]: p for p in fallback}
-    if residual:
-        _gate(residual, root=root, adapter=adapter, model=model, allow_experimental=allow_experimental,
-              options=options)
-    audits = []
-    for request in residual:
-        result, position = dispatch(request)
-        run_dir = root / result['run']['run_dir']
-        calls = _call_ids(run_dir, {job[0] for job in request['jobs']})
-        for job in request['jobs']:
-            if job[0] in audit_of:
-                info = audit_of[job[0]]
-                path = info['path']
-                line = _model_row(base, result, request, position, job, path, receipts[path], root, calls, op)
-                rule_value = covered[path]['value']
-                existing = store.audit(job[0])
-                if existing is not None:
-                    verdict, detail, model_value = existing['verdict'], existing['detail'], existing['model_value']
-                elif line['status'] == 'unresolved':
-                    # Not settled yet (deadline, quota, budget): nothing is recorded, a resumed run decides it.
-                    verdict, detail, model_value = 'pending', line.get('error') or line['status'], None
-                elif line['status'] != 'accepted':
-                    verdict, detail, model_value = 'inconclusive', line.get('error') or line['status'], None
-                elif line['source'] == 'memo':
-                    verdict, detail, model_value = 'inconclusive', 'memo: no blind model answer', None
-                else:
-                    model_value = rp.value_text_of(line['value'])
-                    verdict = 'agree' if model_value == rule_value else 'disagree'
-                    detail = None
-                record = {'audit_job': job[0], 'original_job': info['original'], 'rule': info['rule'],
-                          'producer': producer, 'submission': submission, 'path': path, 'verdict': verdict,
-                          'rule_value': rule_value, 'model_value': model_value, 'detail': detail,
-                          'call_id': line['call_id'], 'request_id': result['run']['request_id']}
-                quarantined = False
-                if existing is None and verdict != 'pending':
-                    if verdict == 'disagree':
-                        quarantined = store.quarantine(info['rule'], {'audit_job': job[0], 'path': path,
-                                                                      'rule_value': rule_value,
-                                                                      'model_value': model_value}, record)
-                    else:
-                        store.record_audit(record)
-                audits.append(dict(record, row=line, quarantined_now=quarantined))
-            else:
-                path = fallback_of[job[0]]
-                done[path] = dict(_model_row(base, result, request, position, job, path, receipts[path], root,
-                                             calls, op), phase='fallback', fallback_reason=reasons[path])
-
-    # 4. Call tags (accounting hooks for step 6): every physical call is bootstrap, residual or audit.
-    audit_jobs = set(audit_of)
-    ledger, kinds = [], {}
-    for run_dir, before in run_dirs:
-        sides = side_receipts.get(run_dir, {})
-        for call, entry in _call_table(run_dir).items():
-            if entry['receipt'] in sides:
-                kind = 'bootstrap'
-            elif entry['jobs'] and all(j in audit_jobs for j in entry['jobs']):
-                kind = 'audit'
-            else:
-                kind = 'residual'
-            usage = entry['usage'] or {}
-            tokens = (usage['input_tokens'] + usage['output_tokens']
-                      if {'input_tokens', 'output_tokens'} <= set(usage) else None)
-            kinds[call] = kind
-            ledger.append({'call_id': call, 'kind': kind, 'run_dir': run_dir.relative_to(root).as_posix(),
-                           'receipt': entry['receipt'], 'jobs': len(entry['jobs']),
-                           'audit_jobs': sum(1 for j in entry['jobs'] if j in audit_jobs),
-                           'outcome': entry['outcome'], 'tokens': tokens, 'new': call not in before})
-    by_kind = {k: {'calls': 0, 'new_calls': 0, 'tokens': 0, 'new_tokens': 0, 'failed_calls': 0,
-                   'usage': 'n/a'} for k in CALL_KINDS}
-    for entry in ledger:
-        slot = by_kind[entry['kind']]
-        slot['calls'] += 1
-        slot['new_calls'] += entry['new']
-        slot['failed_calls'] += entry['outcome'] not in ('ok', 'job_error')
-        slot['tokens'] += entry['tokens'] or 0
-        slot['new_tokens'] += (entry['tokens'] or 0) if entry['new'] else 0
-        known = entry['tokens'] is not None
-        slot['usage'] = ('complete' if known else 'none') if slot['usage'] == 'n/a' else \
-            slot['usage'] if slot['usage'] == ('complete' if known else 'none') else 'partial'
-    for line in list(done.values()) + [a['row'] for a in audits]:
-        line['call_kind'] = kinds.get(line['call_id'])
-    for audit in audits:
-        audit['call_kind'] = kinds.get(audit['call_id'])
-
-    # 5. Rows in input order; rule rows carry source "rule", no call and the rule identity.
-    audit_by_path = {a['path']: a for a in audits}
-    for path, row in covered.items():
-        audit = audit_by_path.get(path)
-        line = dict(base, id=names[path][0], request=None, request_id=None, path=path, status='accepted',
-                    value=loads(row['value']), source='rule', logical_job={'op': op, 'path': path},
-                    reference={'name': names[path][1], 'path': path, 'input': receipts[path]}, call_id=None,
-                    phase='rule', call_kind=None,
-                    rule={'id': row['rule'], 'type': row['type'], 'steps': row['steps'],
-                          'ast_sha256': row['provenance']['ast_sha256'], 'binding_key': row['binding_key'],
-                          'checks': [f"{c['check']}@{c['version']}:{c['verdict']}" for c in row['checks']],
-                          'provenance': row['provenance']['check']},
-                    audit=None if audit is None else {'job': audit['audit_job'], 'verdict': audit['verdict'],
-                                                      'call_id': audit['call_id']})
-        done[path] = line
-
-    def failed_row(path, message):
-        text = message if message.startswith('payload_changed') else f'input_invalid: {message}'
-        return dict(base, id=names[path][0], request=None, request_id=None, path=path, status='failed',
-                    error=text, source='model', logical_job={'op': op, 'path': path},
-                    reference={'name': names[path][1], 'path': path, 'input': None}, call_id=None, phase='input',
-                    call_kind=None)
-
-    rows = [done[p] if p in done else failed_row(p, invalid[p]) for p in paths]
-    final = store.rule(learn['rule']['id']) if learn['rule']['id'] is not None else None
-    verdicts = [a['verdict'] for a in audits]
-    learn.update({
-        'rule_hits': sum(1 for r in rows if r['source'] == 'rule'),
-        'fallback': len(fallback),
-        'abstains': sum(1 for p in fallback if reasons[p].startswith('abstain:')),
-        'check_failures': sum(1 for p in fallback if reasons[p].startswith('check_')),
-        'commit_refusals': sum(1 for p in fallback if reasons[p].startswith('commit_refused:')),
-        'fallback_reasons': {r: sum(1 for p in fallback if reasons[p] == r) for r in sorted(set(reasons.values()))},
-        'audits': {'selected': len(selected), 'agree': verdicts.count('agree'),
-                   'disagree': verdicts.count('disagree'), 'inconclusive': verdicts.count('inconclusive'),
-                   **({'pending': verdicts.count('pending')} if 'pending' in verdicts else {}), 'seed': audit_seed},
-        'quarantined': bool(final and final['status'] == 'quarantined'),
-    })
-    if final is not None:
-        learn['rule']['status_at_end'] = final['status']
+            line['error'] = h.get('error')
+        if h.get('fallback_reason') is not None:
+            line['fallback_reason'] = h['fallback_reason']
+        if h['source'] == 'rule':
+            audit = audit_of.get(h['id'])
+            line['rule'] = h['rule']
+            line['audit'] = None if audit is None else {'job': audit['audit_job'], 'verdict': audit['verdict'],
+                                                        'call_id': audit['call_id']}
+        rows.append(line)
     accepted = sum(1 for r in rows if r['status'] == 'accepted')
+    ledger = [{'attempt_id': a['attempt_id'], 'round': a['round'], 'kinds': a['kinds'], 'jobs': len(a['records']),
+               'state': a['state'], 'call_ids': a['call_ids'], 'bucket': a['bucket'], 'wave': a['wave'],
+               'new': a['attempt_id'] not in before} for a in attempts]
+    new_calls = [c for a in attempts if a['attempt_id'] not in before for c in a['calls'] if c]
+    all_calls = [c for a in attempts for c in a['calls'] if c]
+    by_kind = (report or {}).get('calls', {}).get('by_kind', {})
+    every = oz_host._tokens(all_calls)
     receipt = dict(base, jobs=len(rows), accepted_by_checks=accepted, failed=len(rows) - accepted,
                    invalid_inputs=len(invalid), resumed=owner['resumed'], input_policy=INPUT_POLICY,
-                   calls=fresh['calls'], failed_calls=fresh['failed_calls'], tokens=fresh['tokens'],
-                   usage=_coverage(coverage), scope='this invocation',
-                   cumulative=dict(cumulative, usage=cumulative_coverage.pop() if len(cumulative_coverage) == 1
-                                   else 'partial' if cumulative_coverage else 'n/a',
-                                   scope='all invocations of these runs'),
-                   requests=len(run_dirs), seconds=round(clock() - started, 3),
-                   checks='pinned' if checks else 'none', learn=learn, calls_by_kind=by_kind, call_ledger=ledger,
+                   calls=len(new_calls),
+                   failed_calls=sum(1 for c in new_calls if c['outcome'] not in ('ok', 'job_error')),
+                   tokens=oz_host._tokens(new_calls)['tokens'], usage=oz_host._tokens(new_calls)['usage'],
+                   scope='this invocation',
+                   cumulative={'calls': len(all_calls), 'tokens': every['tokens'], 'usage': every['usage'],
+                               'failed_calls': sum(1 for c in all_calls if c['outcome'] not in ('ok', 'job_error')),
+                               'scope': 'every wave of this host'},
+                   requests=len([a for a in ledger if a['new']]), seconds=round(clock() - started, 3),
+                   checks='pinned' if checks else 'none', learn=learn,
+                   calls_by_kind={k: {'calls': by_kind.get(k, {}).get('calls', 0),
+                                      'jobs': by_kind.get(k, {}).get('jobs', 0)} for k in CALL_KINDS},
+                   call_ledger=ledger,
                    accepted_by_source={s: sum(1 for r in rows if r['status'] == 'accepted' and r['source'] == s)
                                        for s in ('model', 'memo', 'rule')},
-                   correctness=CORRECTNESS)
-    return {'rows': rows, 'receipt': receipt, 'requests': sent, 'learn': True,
-            'audits': [{k: v for k, v in a.items() if k != 'row'} for a in audits]}
+                   correctness=CORRECTNESS, host=report)
+    return {'rows': rows, 'receipt': receipt, 'requests': [], 'learn': True,
+            'audits': [dict(a) for a in audits]}
 
 
 def write_rows(rows: list, out: Path) -> None:
@@ -943,8 +676,9 @@ def receipt_line(receipt: dict, out, learn=False) -> str:
                  f"rule_hits={info['rule_hits']} fallback={info['fallback']} abstains={info['abstains']} "
                  f"check_failures={info['check_failures']} audits={audits['selected']} "
                  f"(agree={audits['agree']} disagree={audits['disagree']} inconclusive={audits['inconclusive']}) "
-                 f"quarantined={'yes' if info['quarantined'] else 'no'} "
-                 + ' '.join(f"{k}_calls={kinds[k]['new_calls']}" for k in CALL_KINDS))
+                 f"quarantined={'yes' if info['quarantined'] else 'no'} evidence={info['evidence']} "
+                 f"efficiency={'valid' if info['efficiency_valid'] else 'invalid'} "
+                 + ' '.join(f"{k}_calls={kinds[k]['calls']}" for k in CALL_KINDS))
         return text
     return text + (' learn=requested (no rule phase ran)' if learn else '')
 
@@ -1019,12 +753,20 @@ def command(args) -> int:
         learning.update(audit_seed=args.audit_seed, bootstrap_size=args.bootstrap_size)
     elif not args.learn and (args.registry or args.audit_seed is not None or args.bootstrap_size is not None):
         raise Error('--registry, --audit-seed and --bootstrap-size need --learn')
-    with _environ(OZ_MODEL=args.model, OZ_EFFORT=args.effort):
-        identity = build_route(adapter, model=args.model, effort=args.effort)
-        result = run(args.glob, op_text=text, op=args.op, goal=goal, checks=checks, model=args.model,
-                     effort=args.effort, workspace=args.workspace, adapter=adapter, plan_only=args.plan,
-                     learn=args.learn, allow_experimental=args.allow_experimental, producer=args.producer,
-                     new_submission=args.new_submission, identity=identity, limits=limits, **learning)
+    kwargs = dict(op_text=text, op=args.op, goal=goal, checks=checks, model=args.model, effort=args.effort,
+                  workspace=args.workspace, adapter=adapter, plan_only=args.plan, learn=args.learn,
+                  allow_experimental=args.allow_experimental, producer=args.producer,
+                  new_submission=args.new_submission, limits=limits, **learning)
+    if args.learn and not args.plan:
+        # The host gives every child its own env (oz_host.child_env); this process's environment stays untouched.
+        import oz_host
+        identity = build_route(adapter, model=args.model, effort=args.effort,
+                               env=oz_host.child_env(model=args.model, effort=args.effort))
+        result = run(args.glob, identity=identity, **kwargs)
+    else:
+        with _environ(OZ_MODEL=args.model, OZ_EFFORT=args.effort):
+            identity = build_route(adapter, model=args.model, effort=args.effort)
+            result = run(args.glob, identity=identity, **kwargs)
     if args.plan:
         print(dumps({'schema': 'oz.map.plan/1',
                      'learn': 'on (the plan lists the requests without rule coverage)' if args.learn else 'off',

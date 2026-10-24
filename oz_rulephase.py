@@ -1,39 +1,57 @@
-"""oz-rule/1 rule phase for `oz map --learn` (build step 4): rule store, admission of bootstrap candidates, D1 rule
-adoption, fallback decisions, blind audits and quarantine. Standard library only, no model calls.
+"""oz-rule/1 rule phase (build step 4, revised after council 2): rule store, authoritative job settlement, admission of
+exact bootstrap AST bytes, D1 rule adoption, evaluation-wave audits, quarantine and the shared experiment store.
+Standard library only, no model calls.
 
-Normative texts: docs/design/brainstorm-2026-10-24/05-joint-record.md (sections 2 to 6),
-docs/design/ozmap-2026-10-24/oz-rule-1-spec.md and oz-rule-1-amendment-1.md (D1, D2, D6 to D9 here).
+Normative texts: docs/design/brainstorm-2026-10-24/05-joint-record.md (sections 2 to 6), oz-rule-1-spec.md,
+oz-rule-1-amendment-1.md (D1 to D9) and docs/design/ozmap-2026-10-24/amendment-2-and-step6-architecture.md with
+council2-astra.md (blockers 1, 2, 3, 8 and the rulings).
 
-Rule store. Its own SQLite file (never the memo store), <workspace>/map/rules.sqlite by default. A rule row holds the
-operation, the full bindings and their key, the immutable candidate AST bytes and SHA256 (NULL for "none" or a failed
-bootstrap), the status admitted / rejected / quarantined, the complete admission response and the provenance (producer,
-submission, bootstrap run, receipt, physical call ID, side file and envelope hashes). Triggers make every column but
-the status immutable, and the status can only move admitted -> quarantined. The key covers (D7 and D2): the registry's
-contract, check, permission, dataset, input policy and worker hashes, the interpreter version (oz-rule/1 plus the
-SHA256 of oz_rule.py), the map's own input policy, the map worker_hash (the full route) and the map contract (operation,
-instruction, goal and pinned map checks). A rule is reused only under an identical key.
+Rule store (one SQLite file per arm host, never the memo store).
+  rules        operation, full bindings and key, the EXACT admitted AST bytes and SHA256, status admitted / rejected /
+               quarantined, the complete admission response and provenance. Every column but the status is immutable,
+               the status only moves admitted -> quarantined, rows are never deleted; an idempotent insert with a
+               different payload raises.
+  settlements  the authoritative per-job settlement record (blocker 1): immutable payload, binding and required-check
+               hashes, an execution generation, a state open / awaiting_verification / settled and exactly one winner,
+               rule or model. Opening a job again validates its identity; a mismatch raises. A settled row never
+               changes again.
+  emissions    every value ever produced for a job (rule or model), with its check evidence and outcome: settled,
+               refused, awaiting_verification, failed. Never updated or deleted: the history of earlier emissions.
+  results      the rule-winner rows (adopt_rule), immutable.
+  decisions    one line per rule-phase decision (rule, staged, awaiting_verification, fallback and its reason).
+  audits       one row per blind audit job: wave, original job, frozen dataset id, the rule's value and the verdict
+               pending -> agree / disagree / inconclusive (inconclusive may still resolve on the reserve retry). A
+               disagreement quarantines the rule in the same transaction.
 
-Rule results. A covered job is committed in the rule store's own `results` table by adopt_rule (D1), never through
-oz_do, so a rule result can never reach memo storage. In one IMMEDIATE transaction the host re-reads the rule row,
-requires status admitted, the same binding key and the same AST hash, re-hashes the job's resolved input against its
-receipt, re-evaluates the exact stored AST bytes (rule_provenance/1) and requires status value with an identical type
-and canonical value; only then the row is inserted. Every pinned consumer check (the registry's and the map's
---check specs) must have passed before; an inconclusive check is not a pass. Any other outcome is a fallback to the
-model through ordinary oz_do. Every decision is recorded in `decisions`.
+Settlement boundary (blocker 2). A job opens with the list of every applicable pinned check: the registry's consumer
+checks and the map's --check specs (identities "registry:<id>:<name>@<v>" and "map:<k>:<name>@<v>"). settle_model and
+adopt_rule themselves compare the supplied evidence with that list inside the committing IMMEDIATE transaction: a
+missing or inconclusive verdict makes the job awaiting_verification (never accepted), a failing verdict refuses it,
+and only complete passing evidence settles it. The caller is not trusted. The generation fences stale executions: a
+settlement must name the job's current generation, and claim() increments it (a resumed host claims again, so an
+older in-flight execution can no longer settle). The first valid settlement wins; any later one is kept as a refused
+emission.
 
-Audits. Per wave (one producer submission) the host selects min(32, covered) covered jobs uniformly without
-replacement: covered jobs ordered by SHA256(canonical([seed, logical path])), the first k taken (a seeded random
-permutation that is identical for every arm given the same dataset paths and seed). The selection is persisted once.
-An audit job has its own delivery identity (D8) linked to the original; its packet carries only the instruction and
-the job's input text, never the rule's answer. A disagreement quarantines the rule atomically together with the audit
-record; results already emitted stay recorded. READING: an audit whose model job did not end accepted, or was
-answered from memo storage, is "inconclusive" (no blind model answer exists), counted and reported, and does not
-quarantine.
+Exact AST bytes (ruling, implementer reading 2). The shim's side file carries each AST as ast_b64, its SHA256 and
+length. decode_ast decodes strictly, requires the length, at most 2,048 bytes, the hash and valid UTF-8; admission,
+storage and every re-evaluation use exactly those bytes.
+
+Experiment store (one SQLite file per experiment directory, shared by the B and C hosts of every backend):
+  assignments  the frozen bootstrap assignment per (backend, workload): exactly 16 dataset ids from each of the 4
+               producers, chosen by seeded hash order of the frozen dataset ids (never by arrival).
+  bootstraps   one claim and one immutable record per (backend, workload): answers by dataset id, the raw side file,
+               the attempt ledger entry, the status and efficiency_valid. Recorded once, imported by B and C, never
+               re-learned. A2.1: a failed bootstrap records its failure; no replacement answers, no revision.
+  audit_waves  per evaluation wave (wave id = canonical([backend, workload, wave])) and rule (its AST SHA256): the
+               complete eligible population of frozen dataset ids and the min(32, covered) selection, persisted before
+               any audit dispatch. A second arm reads the same row, so B and C audit identical dataset ids.
 
 READING notes are marked "READING" below.
 """
 from __future__ import annotations
 
+import base64
+import binascii
 import hashlib
 import json
 from pathlib import Path
@@ -44,19 +62,24 @@ from oz import Error
 import oz_accept
 from oz_batch import J
 import oz_registry
-from oz_registry import RegistryError, canonical, digest
+from oz_registry import CheckUnavailable, RegistryError, canonical, digest
 import oz_rule
 
-SCHEMA_VERSION = 'oz.rulestore/1'
+SCHEMA_VERSION = 'oz.rulestore/2'
+EXPERIMENT_SCHEMA = 'oz.experiment/1'
+RECORD_SCHEMA = 'oz.bootstrap.record/1'
+CONFIG_SCHEMA = 'oz.bootstrap.config/2'
+SIDE_SCHEMA = 'oz.bootstrap.side/2'
 AUDIT_SAMPLE = 32
-SPEC_PATH = Path(__file__).resolve().parent / 'docs' / 'design' / 'ozmap-2026-10-24' / 'oz-rule-1-spec.md'
-SPEC_START, SPEC_END = '`oz-rule/1` is an opt-in', '**Evaluation and admission.**'
-# The language part of the normative spec (representation, types, text and numbers, failure and bounds); worked ASTs,
-# conformance vectors and admission text are excluded so no designer-written rule for the pilot operations is shown.
-SPEC_EXCERPT_SHA256 = '563b6e32846fbd5a151cbca4ca2dc2bdf0019454ff3e5454a51244b3ca1fefc2'
+MAX_AST_BYTES = 2048
+BOOTSTRAP_PER_PRODUCER = 16
+BOOTSTRAP_PRODUCERS = 4
+# READING (ruling 5): oz_rule.py imports only the standard library and holds every evaluation semantic, so its source
+# hash identifies the interpreter.
 INTERPRETER = {'lang': oz_rule.LANG,
                'source_sha256': hashlib.sha256(Path(oz_rule.__file__).read_bytes()).hexdigest()}
 STATUSES = ('admitted', 'rejected', 'quarantined')
+VERDICTS = ('pending', 'agree', 'disagree', 'inconclusive')
 
 SCHEMA = '''
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -71,7 +94,29 @@ CREATE TRIGGER IF NOT EXISTS rules_immutable BEFORE UPDATE OF id, binding_key, o
 CREATE TRIGGER IF NOT EXISTS rules_status BEFORE UPDATE OF status ON rules
     WHEN NOT (OLD.status = 'admitted' AND NEW.status = 'quarantined')
     BEGIN SELECT RAISE(ABORT, 'a rule status only moves from admitted to quarantined'); END;
+CREATE TRIGGER IF NOT EXISTS rules_quarantine BEFORE UPDATE OF quarantined_at, quarantine ON rules
+    WHEN OLD.status = 'quarantined' BEGIN SELECT RAISE(ABORT, 'quarantine metadata is immutable'); END;
 CREATE TRIGGER IF NOT EXISTS rules_keep BEFORE DELETE ON rules BEGIN SELECT RAISE(ABORT, 'rules are kept'); END;
+CREATE TABLE IF NOT EXISTS settlements(
+    job TEXT PRIMARY KEY, payload_sha256 TEXT NOT NULL, bindings_sha256 TEXT NOT NULL, required TEXT NOT NULL,
+    generation INTEGER NOT NULL, state TEXT NOT NULL CHECK(state IN ('open','awaiting_verification','settled')),
+    winner TEXT CHECK(winner IN ('rule','model')), emission INTEGER, opened_at REAL NOT NULL, settled_at REAL,
+    CHECK((state = 'settled') = (winner IS NOT NULL)));
+CREATE TRIGGER IF NOT EXISTS settlements_identity BEFORE UPDATE OF job, payload_sha256, bindings_sha256, required,
+    opened_at ON settlements BEGIN SELECT RAISE(ABORT, 'settlement identity is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS settlements_final BEFORE UPDATE ON settlements WHEN OLD.state = 'settled'
+    BEGIN SELECT RAISE(ABORT, 'a settled job never changes'); END;
+CREATE TRIGGER IF NOT EXISTS settlements_keep BEFORE DELETE ON settlements
+    BEGIN SELECT RAISE(ABORT, 'settlements are kept'); END;
+CREATE TABLE IF NOT EXISTS emissions(
+    seq INTEGER PRIMARY KEY, job TEXT NOT NULL, generation INTEGER NOT NULL,
+    source TEXT NOT NULL CHECK(source IN ('rule','model')), phase TEXT NOT NULL, type TEXT, value TEXT NOT NULL,
+    checks TEXT NOT NULL, outcome TEXT NOT NULL CHECK(outcome IN ('settled','refused','awaiting_verification','failed')),
+    reason TEXT, rule INTEGER, call_id TEXT, at REAL NOT NULL);
+CREATE TRIGGER IF NOT EXISTS emissions_immutable BEFORE UPDATE ON emissions
+    BEGIN SELECT RAISE(ABORT, 'emissions are history'); END;
+CREATE TRIGGER IF NOT EXISTS emissions_keep BEFORE DELETE ON emissions
+    BEGIN SELECT RAISE(ABORT, 'emissions are history'); END;
 CREATE TABLE IF NOT EXISTS results(
     job TEXT PRIMARY KEY, rule INTEGER NOT NULL REFERENCES rules(id), binding_key TEXT NOT NULL,
     producer TEXT NOT NULL, submission TEXT NOT NULL, operation TEXT NOT NULL, path TEXT NOT NULL,
@@ -79,19 +124,45 @@ CREATE TABLE IF NOT EXISTS results(
     checks TEXT NOT NULL, provenance TEXT NOT NULL, at REAL NOT NULL);
 CREATE TRIGGER IF NOT EXISTS results_immutable BEFORE UPDATE ON results
     BEGIN SELECT RAISE(ABORT, 'rule results are immutable'); END;
+CREATE TRIGGER IF NOT EXISTS results_keep BEFORE DELETE ON results
+    BEGIN SELECT RAISE(ABORT, 'rule results are kept'); END;
 CREATE TABLE IF NOT EXISTS decisions(
     seq INTEGER PRIMARY KEY, job TEXT NOT NULL, rule INTEGER, decision TEXT NOT NULL, reason TEXT, at REAL NOT NULL);
-CREATE TABLE IF NOT EXISTS bootstraps(
-    producer TEXT NOT NULL, submission TEXT NOT NULL, binding_key TEXT NOT NULL, request_id TEXT NOT NULL,
-    paths TEXT NOT NULL, at REAL NOT NULL, PRIMARY KEY(producer, submission, binding_key));
-CREATE TABLE IF NOT EXISTS waves(
-    producer TEXT NOT NULL, submission TEXT NOT NULL, rule INTEGER NOT NULL, covered_sha256 TEXT NOT NULL,
-    seed INTEGER NOT NULL, covered TEXT NOT NULL, selected TEXT NOT NULL, at REAL NOT NULL,
-    PRIMARY KEY(producer, submission, rule, covered_sha256));
 CREATE TABLE IF NOT EXISTS audits(
-    audit_job TEXT PRIMARY KEY, original_job TEXT NOT NULL, rule INTEGER NOT NULL, producer TEXT NOT NULL,
-    submission TEXT NOT NULL, path TEXT NOT NULL, verdict TEXT NOT NULL, rule_value TEXT NOT NULL, model_value TEXT,
-    detail TEXT, call_id TEXT, request_id TEXT, at REAL NOT NULL)
+    audit_job TEXT PRIMARY KEY, wave_id TEXT NOT NULL, original_job TEXT NOT NULL, rule INTEGER NOT NULL,
+    producer TEXT NOT NULL, submission TEXT NOT NULL, dataset_id TEXT NOT NULL, rule_value TEXT NOT NULL,
+    verdict TEXT NOT NULL CHECK(verdict IN ('pending','agree','disagree','inconclusive')), model_value TEXT,
+    detail TEXT, call_id TEXT, attempt_id TEXT, created_at REAL NOT NULL, decided_at REAL);
+CREATE TRIGGER IF NOT EXISTS audits_identity BEFORE UPDATE OF audit_job, wave_id, original_job, rule, producer,
+    submission, dataset_id, rule_value, created_at ON audits BEGIN SELECT RAISE(ABORT, 'audit identity is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS audits_verdict BEFORE UPDATE OF verdict ON audits
+    WHEN NOT (OLD.verdict = 'pending' OR (OLD.verdict = 'inconclusive' AND NEW.verdict IN ('agree','disagree')))
+    BEGIN SELECT RAISE(ABORT, 'an audit verdict only moves from pending (or inconclusive, on its retry)'); END;
+CREATE TRIGGER IF NOT EXISTS audits_keep BEFORE DELETE ON audits BEGIN SELECT RAISE(ABORT, 'audits are kept'); END
+'''
+
+EXPERIMENT_TABLES = '''
+CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS assignments(
+    backend TEXT NOT NULL, workload TEXT NOT NULL, assignment TEXT NOT NULL, sha256 TEXT NOT NULL, at REAL NOT NULL,
+    PRIMARY KEY(backend, workload));
+CREATE TRIGGER IF NOT EXISTS assignments_frozen BEFORE UPDATE ON assignments
+    BEGIN SELECT RAISE(ABORT, 'a bootstrap assignment is frozen'); END;
+CREATE TABLE IF NOT EXISTS bootstraps(
+    backend TEXT NOT NULL, workload TEXT NOT NULL, owner TEXT NOT NULL,
+    state TEXT NOT NULL CHECK(state IN ('claimed','recorded')), record TEXT, sha256 TEXT, claimed_at REAL NOT NULL,
+    recorded_at REAL, PRIMARY KEY(backend, workload));
+CREATE TRIGGER IF NOT EXISTS bootstraps_final BEFORE UPDATE ON bootstraps WHEN OLD.state = 'recorded'
+    BEGIN SELECT RAISE(ABORT, 'a bootstrap record is immutable'); END;
+CREATE TRIGGER IF NOT EXISTS bootstraps_keep BEFORE DELETE ON bootstraps
+    BEGIN SELECT RAISE(ABORT, 'bootstrap records are kept'); END;
+CREATE TABLE IF NOT EXISTS audit_waves(
+    wave_id TEXT NOT NULL, rule_sha256 TEXT NOT NULL, seed INTEGER NOT NULL, population TEXT NOT NULL,
+    population_sha256 TEXT NOT NULL, selection TEXT NOT NULL, at REAL NOT NULL, PRIMARY KEY(wave_id, rule_sha256));
+CREATE TRIGGER IF NOT EXISTS audit_waves_frozen BEFORE UPDATE ON audit_waves
+    BEGIN SELECT RAISE(ABORT, 'an audit wave is frozen'); END;
+CREATE TRIGGER IF NOT EXISTS audit_waves_keep BEFORE DELETE ON audit_waves
+    BEGIN SELECT RAISE(ABORT, 'audit waves are kept'); END
 '''
 
 
@@ -99,16 +170,15 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode('utf-8')).hexdigest()
 
 
-def spec_excerpt(path: Path = SPEC_PATH) -> str:
-    """The oz-rule/1 language specification excerpt shown in the bootstrap, verified against its pinned SHA256."""
-    try:
-        text = Path(path).read_bytes().decode('utf-8').replace('\r\n', '\n')
-        excerpt = text[text.index(SPEC_START):text.index(SPEC_END)].rstrip()
-    except (OSError, UnicodeError, ValueError):
-        raise Error(f'cannot read the oz-rule/1 specification excerpt from {path}') from None
-    if sha256_text(excerpt) != SPEC_EXCERPT_SHA256:
-        raise Error('the oz-rule/1 specification excerpt changed; refusing to bootstrap with an unpinned spec')
-    return excerpt
+def spec_excerpt(path=None) -> str:
+    """Obsolete (amendment A2.2): the shim loads and verifies the pinned effective excerpt itself
+    (docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt). Kept as a delegating alias."""
+    import sys
+    examples = str(Path(__file__).resolve().parent / 'examples')
+    if examples not in sys.path:
+        sys.path.insert(0, examples)
+    import bootstrap_shim
+    return bootstrap_shim.spec_excerpt(path)
 
 
 def map_inputs(op_text: str, text: str):
@@ -122,37 +192,138 @@ def value_text_of(value) -> str:
     return dumps(value, ensure_ascii=False, separators=(',', ':'))
 
 
-def audit_order(paths, seed: int) -> list:
-    """The seeded uniform permutation of the covered paths used for audit selection."""
-    return sorted(paths, key=lambda p: (hashlib.sha256(canonical([int(seed), p])).hexdigest(), p))
+def wave_id(backend: str, workload: str, wave: str) -> str:
+    """The evaluation-wave identity: canonical([backend, workload, wave]) as text."""
+    return canonical([backend, workload, wave]).decode('utf-8')
 
 
-def select_audits(paths, seed: int, k: int = AUDIT_SAMPLE) -> list:
-    """min(k, len(paths)) paths, uniformly without replacement for the frozen seed (READING: a hash permutation, so
-    the selection never depends on Python's random module or on delivery identities)."""
+def audit_order(ids, seed: int) -> list:
+    """The seeded uniform permutation of frozen dataset ids used for audit selection."""
+    return sorted(ids, key=lambda p: (hashlib.sha256(canonical([int(seed), p])).hexdigest(), p))
+
+
+def select_audits(ids, seed: int, k: int = AUDIT_SAMPLE) -> list:
+    """min(k, len(ids)) distinct ids, uniformly without replacement for the frozen seed (READING: a hash permutation
+    of the frozen dataset ids, so the selection never depends on Python's random module or delivery identities)."""
     if type(seed) is not int or isinstance(seed, bool):
         raise Error('the audit seed must be an integer')
-    return audit_order(sorted(set(paths)), seed)[:min(k, len(set(paths)))]
+    ids = sorted(set(ids))
+    return audit_order(ids, seed)[:min(k, len(ids))]
+
+
+def bootstrap_assignment(producers: dict, seed: int, per_producer: int = BOOTSTRAP_PER_PRODUCER,
+                         expected: int = BOOTSTRAP_PRODUCERS) -> dict:
+    """{producer: [per_producer dataset ids]} chosen by seeded hash order of each producer's frozen dataset ids.
+    Exactly `expected` producers, each with at least per_producer distinct ids, else Error."""
+    if type(seed) is not int or isinstance(seed, bool):
+        raise Error('the bootstrap seed must be an integer')
+    if len(producers) != expected:
+        raise Error(f'the bootstrap needs exactly {expected} producers, got {len(producers)}')
+    out = {}
+    for producer in sorted(producers):
+        ids = sorted(set(producers[producer]))
+        if len(ids) < per_producer:
+            raise Error(f'producer {producer} has {len(ids)} jobs; the bootstrap needs {per_producer} from each')
+        order = sorted(ids, key=lambda d: (hashlib.sha256(canonical([int(seed), 'bootstrap', d])).hexdigest(), d))
+        out[producer] = order[:per_producer]
+    every = [d for ids in out.values() for d in ids]
+    if len(set(every)) != len(every):
+        raise Error('bootstrap dataset ids must be distinct across producers')
+    return out
+
+
+def decode_ast(entry) -> tuple:
+    """(exact AST bytes, None) or (None, reason) for one side-file rule entry
+    {"none": true} | {"ast_b64", "ast_sha256", "bytes"}."""
+    if entry == {'none': True}:
+        return None, 'none_proposed'
+    if not isinstance(entry, dict) or set(entry) != {'ast_b64', 'ast_sha256', 'bytes'}:
+        return None, 'side_file_malformed'
+    if not isinstance(entry['ast_b64'], str) or type(entry['bytes']) is not int:
+        return None, 'side_file_malformed'
+    try:
+        data = base64.b64decode(entry['ast_b64'].encode('ascii'), validate=True)
+    except (binascii.Error, ValueError, UnicodeError):
+        return None, 'ast_b64_invalid'
+    if len(data) != entry['bytes']:
+        return None, 'ast_length_mismatch'
+    if len(data) > MAX_AST_BYTES:
+        return None, 'ast_too_large'
+    if hashlib.sha256(data).hexdigest() != entry['ast_sha256']:
+        return None, 'side_file_hash_mismatch'
+    try:
+        data.decode('utf-8', 'strict')
+    except UnicodeError:
+        return None, 'ast_invalid_unicode'
+    return data, None
+
+
+def evidence_problem(required, checks) -> tuple:
+    """(None, None) when checks carry exactly one passing verdict for every required identity. Otherwise
+    ("awaiting_verification", detail) for a missing, unknown or inconclusive verdict and ("failed", detail) for a
+    failing one. The adoption boundary calls this itself; it never trusts the caller's summary."""
+    if not isinstance(checks, list) or any(not isinstance(c, dict) for c in checks):
+        return 'awaiting_verification', 'evidence_malformed'
+    ids = [c.get('id') for c in checks]
+    if len(set(ids)) != len(ids):
+        return 'awaiting_verification', 'evidence_duplicate'
+    failed = [c['id'] for c in checks if c.get('verdict') == 'fail']
+    if failed:
+        return 'failed', 'check_failed:' + ','.join(map(str, failed))
+    missing = [r for r in required if r not in ids]
+    if missing:
+        return 'awaiting_verification', 'evidence_missing:' + ','.join(missing)
+    unknown = [i for i in ids if i not in required]
+    if unknown:
+        return 'awaiting_verification', 'evidence_unknown:' + ','.join(map(str, unknown))
+    unsure = [c['id'] for c in checks if c.get('verdict') != 'pass']
+    if unsure:
+        return 'awaiting_verification', 'check_inconclusive:' + ','.join(unsure)
+    return None, None
+
+
+class _Tx:
+    def __init__(self, db):
+        self.db = db
+
+    def __enter__(self):
+        self.db.execute('BEGIN IMMEDIATE')
+        return self.db
+
+    def __exit__(self, kind, *_):
+        if kind is None:
+            self.db.commit()
+        else:
+            self.db.rollback()
+
+
+def _connect(path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    db = sqlite3.connect(str(path), timeout=30, isolation_level=None, check_same_thread=False)
+    db.row_factory = sqlite3.Row
+    db.execute('PRAGMA journal_mode=WAL')
+    db.execute('PRAGMA synchronous=FULL')
+    return db
+
+
+def _init(db, schema: str, version: str, path):
+    with _Tx(db):
+        for statement in schema.split(';\n'):
+            if statement.strip():
+                db.execute(statement)
+        db.execute('INSERT OR IGNORE INTO meta VALUES (?, ?)', ('schema', version))
+    if db.execute("SELECT value FROM meta WHERE key='schema'").fetchone()[0] != version:
+        raise Error(f'{path} is not an {version} store')
 
 
 class RuleStore:
-    """The rule store. One connection, autocommit off by hand (BEGIN IMMEDIATE for every write)."""
+    """The arm host's rule store. One connection, every write in BEGIN IMMEDIATE."""
 
     def __init__(self, path, *, clock=time.time):
         self.path = Path(path)
-        self.path.parent.mkdir(parents=True, exist_ok=True)
         self.clock = clock
-        self.db = sqlite3.connect(str(self.path), timeout=10, isolation_level=None)
-        self.db.row_factory = sqlite3.Row
-        self.db.execute('PRAGMA journal_mode=WAL')
-        self.db.execute('PRAGMA synchronous=FULL')
-        with self.transaction():
-            for statement in SCHEMA.split(';\n'):
-                if statement.strip():
-                    self.db.execute(statement)
-            self.db.execute('INSERT OR IGNORE INTO meta VALUES (?, ?)', ('schema', SCHEMA_VERSION))
-        if self.db.execute("SELECT value FROM meta WHERE key='schema'").fetchone()[0] != SCHEMA_VERSION:
-            raise Error(f'{self.path} is not an {SCHEMA_VERSION} rule store')
+        self.db = _connect(self.path)
+        _init(self.db, SCHEMA, SCHEMA_VERSION, self.path)
 
     def close(self):
         self.db.close()
@@ -163,22 +334,8 @@ class RuleStore:
     def __exit__(self, *_):
         self.close()
 
-    class _Tx:
-        def __init__(self, db):
-            self.db = db
-
-        def __enter__(self):
-            self.db.execute('BEGIN IMMEDIATE')
-            return self.db
-
-        def __exit__(self, kind, *_):
-            if kind is None:
-                self.db.commit()
-            else:
-                self.db.rollback()
-
     def transaction(self):
-        return self._Tx(self.db)
+        return _Tx(self.db)
 
     # ------------------------------------------------------------------------------------------------ rules
 
@@ -210,31 +367,135 @@ class RuleStore:
 
     def add_rule(self, *, binding_key: str, operation: str, bindings: dict, ast: bytes | None, status: str,
                  admission: dict, provenance: dict, source: str) -> int:
-        """Record one candidate outcome; idempotent on source (the bootstrap call and operation)."""
+        """Record one candidate outcome. Idempotent on source; a different payload for the same source raises."""
         if status not in ('admitted', 'rejected'):
             raise Error('a new rule is admitted or rejected')
         if status == 'admitted' and ast is None:
             raise Error('an admitted rule needs its AST bytes')
+        ast_hash = hashlib.sha256(ast).hexdigest() if ast is not None else None
         with self.transaction() as db:
-            row = db.execute('SELECT id FROM rules WHERE source=?', (source,)).fetchone()
+            row = db.execute('SELECT * FROM rules WHERE source=?', (source,)).fetchone()
             if row is not None:
-                return row[0]
+                if (row['binding_key'], row['ast_sha256'], row['operation']) != (binding_key, ast_hash, operation) or \
+                        (row['status'] == 'rejected') != (status == 'rejected'):
+                    raise Error(f'rule source {source} already holds a different candidate')
+                return row['id']
             cur = db.execute('INSERT INTO rules(binding_key, operation, bindings, ast, ast_sha256, status, admission, '
                              'provenance, source, at) VALUES (?,?,?,?,?,?,?,?,?,?)',
                              (binding_key, operation, canonical(bindings).decode('utf-8'),
-                              sqlite3.Binary(ast) if ast is not None else None,
-                              hashlib.sha256(ast).hexdigest() if ast is not None else None, status,
+                              sqlite3.Binary(ast) if ast is not None else None, ast_hash, status,
                               J(admission), J(provenance), source, self.clock()))
             return cur.lastrowid
 
-    def quarantine(self, rule_id: int, reason: dict, audit: dict | None = None) -> bool:
-        """Atomically move an admitted rule to quarantined (with the audit record that caused it). True if it moved."""
+    def quarantine(self, rule_id: int, reason: dict) -> bool:
+        """Atomically move an admitted rule to quarantined. True if it moved."""
         with self.transaction() as db:
-            if audit is not None:
-                self._insert_audit(db, audit)
-            cur = db.execute("UPDATE rules SET status='quarantined', quarantined_at=?, quarantine=? "
-                             "WHERE id=? AND status='admitted'", (self.clock(), J(reason), rule_id))
-            return cur.rowcount == 1
+            return self._quarantine(db, rule_id, reason)
+
+    def _quarantine(self, db, rule_id, reason) -> bool:
+        cur = db.execute("UPDATE rules SET status='quarantined', quarantined_at=?, quarantine=? "
+                         "WHERE id=? AND status='admitted'", (self.clock(), J(reason), rule_id))
+        return cur.rowcount == 1
+
+    def reusable(self, rule_id: int) -> tuple:
+        """(True, None) when the rule is admitted and every audit of it is conclusive; else (False, reason).
+        Pending or inconclusive audits block warm reuse until resolved (council 2, ruling 4 and Opus B5)."""
+        rule = self.rule(rule_id)
+        if rule is None or rule['status'] != 'admitted':
+            return False, 'not_admitted' if rule is None or rule['status'] != 'quarantined' else 'quarantined'
+        open_ = self.db.execute("SELECT verdict, COUNT(*) FROM audits WHERE rule=? AND verdict IN "
+                                "('pending','inconclusive') GROUP BY verdict", (rule_id,)).fetchall()
+        if open_:
+            return False, 'audit_unresolved:' + ','.join(f'{v}={n}' for v, n in open_)
+        return True, None
+
+    # ------------------------------------------------------------------------------------------ settlements
+
+    def settlement(self, job: str) -> dict | None:
+        row = self.db.execute('SELECT * FROM settlements WHERE job=?', (job,)).fetchone()
+        return None if row is None else dict(row, required=json.loads(row['required']))
+
+    def open_job(self, job: str, *, payload_sha256: str, bindings_sha256: str, required) -> dict:
+        """Open (or, on resume, validate) the authoritative settlement record. A different identity raises."""
+        required = sorted(required)
+        with self.transaction() as db:
+            row = db.execute('SELECT * FROM settlements WHERE job=?', (job,)).fetchone()
+            if row is None:
+                db.execute("INSERT INTO settlements(job, payload_sha256, bindings_sha256, required, generation, state, "
+                           "opened_at) VALUES (?,?,?,?,0,'open',?)",
+                           (job, payload_sha256, bindings_sha256, J(required), self.clock()))
+            elif (row['payload_sha256'], row['bindings_sha256'], json.loads(row['required'])) != \
+                    (payload_sha256, bindings_sha256, required):
+                raise Error(f'settlement identity of job {job} changed (payload, bindings or required checks); '
+                            'refusing to resume it under the old identity')
+        return self.settlement(job)
+
+    def claim(self, job: str) -> int | None:
+        """A new execution generation for an unsettled job (fences every older execution), or None if settled."""
+        with self.transaction() as db:
+            cur = db.execute("UPDATE settlements SET generation=generation+1 WHERE job=? AND state!='settled'", (job,))
+            if cur.rowcount != 1:
+                return None
+            return db.execute('SELECT generation FROM settlements WHERE job=?', (job,)).fetchone()[0]
+
+    def _authority(self, db, job, generation, payload_sha256, bindings_sha256):
+        """The settlement row if this execution may settle the job, else a refusal reason."""
+        row = db.execute('SELECT * FROM settlements WHERE job=?', (job,)).fetchone()
+        if row is None:
+            return None, 'not_opened'
+        if (row['payload_sha256'], row['bindings_sha256']) != (payload_sha256, bindings_sha256):
+            return None, 'identity_mismatch'
+        if row['state'] == 'settled':
+            return None, 'already_settled:' + row['winner']
+        if row['generation'] != generation:
+            return None, 'stale_generation'
+        return row, None
+
+    def _emit(self, db, *, job, generation, source, phase, type_, value, checks, outcome, reason=None, rule=None,
+              call_id=None) -> int:
+        return db.execute('INSERT INTO emissions(job, generation, source, phase, type, value, checks, outcome, reason, '
+                          'rule, call_id, at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+                          (job, generation, source, phase, type_, value, J(checks), outcome, reason, rule, call_id,
+                           self.clock())).lastrowid
+
+    def emissions(self, job: str | None = None) -> list:
+        rows = (self.db.execute('SELECT * FROM emissions ORDER BY seq') if job is None else
+                self.db.execute('SELECT * FROM emissions WHERE job=? ORDER BY seq', (job,)))
+        return [dict(r, checks=json.loads(r['checks'])) for r in rows]
+
+    def settle_model(self, job: str, *, generation: int, payload_sha256: str, bindings_sha256: str, value_text: str,
+                     checks: list, phase: str = 'fallback', call_id=None, before_commit=None) -> tuple:
+        """Settle a model answer. ("settled", emission) | ("awaiting_verification", detail) | ("failed", detail) |
+        ("refused", reason). The evidence is judged here against the job's required checks."""
+        with self.transaction() as db:
+            if before_commit is not None:
+                before_commit(db)
+            row, refused = self._authority(db, job, generation, payload_sha256, bindings_sha256)
+            emit = dict(job=job, generation=generation, source='model', phase=phase, type_=None, value=value_text,
+                        checks=checks, call_id=call_id)
+            if row is None:
+                self._emit(db, outcome='refused', reason=refused, **emit)
+                return 'refused', refused
+            kind, detail = evidence_problem(json.loads(row['required']), checks)
+            if kind == 'failed':
+                self._emit(db, outcome='failed', reason=detail, **emit)
+                return 'failed', detail
+            if kind == 'awaiting_verification':
+                self._emit(db, outcome='awaiting_verification', reason=detail, **emit)
+                db.execute("UPDATE settlements SET state='awaiting_verification' WHERE job=?", (job,))
+                return 'awaiting_verification', detail
+            seq = self._emit(db, outcome='settled', **emit)
+            db.execute("UPDATE settlements SET state='settled', winner='model', emission=?, settled_at=? WHERE job=?",
+                       (seq, self.clock(), job))
+            return 'settled', seq
+
+    def mark_awaiting(self, job: str, *, generation: int, source: str, value_text: str, type_, checks, reason, rule=None,
+                      phase='rule') -> None:
+        """Record a value whose checks are not all available: the job awaits verification, nothing is accepted."""
+        with self.transaction() as db:
+            self._emit(db, job=job, generation=generation, source=source, phase=phase, type_=type_, value=value_text,
+                       checks=checks, outcome='awaiting_verification', reason=reason, rule=rule)
+            db.execute("UPDATE settlements SET state='awaiting_verification' WHERE job=? AND state!='settled'", (job,))
 
     # ---------------------------------------------------------------------------------------------- results
 
@@ -259,32 +520,53 @@ class RuleStore:
         return [dict(r) for r in self.db.execute('SELECT * FROM decisions ORDER BY seq')]
 
     def adopt_rule(self, *, rule: dict, binding_key: str, job: str, text: str, resolved_sha256: str, first: dict,
-                   checks: list, owner: dict, evaluate=oz_rule.evaluate, before_commit=None) -> tuple:
-        """D1 adoption in one IMMEDIATE transaction. Returns ("adopted", row), ("present", row) for a job already
-        committed, or ("refused", reason) with nothing written. first is the evaluation the checks judged."""
+                   checks: list, owner: dict, generation: int, payload_sha256: str, bindings_sha256: str,
+                   evaluate=oz_rule.evaluate, before_commit=None) -> tuple:
+        """D1 adoption and settlement in one IMMEDIATE transaction. Returns ("adopted", row), ("present", row) for a
+        job this rule already won, ("awaiting_verification", detail) or ("refused", reason). In the same transaction:
+        settlement authority (identity, generation, not settled), rule admitted (not quarantined), bindings, AST bytes
+        and hash, resolved input hash, complete passing evidence for every required check, and the re-evaluation of
+        the exact admitted bytes (rule_provenance/1) with an identical type and canonical value."""
+        value = oz_rule.canonical_value_text(first) or ''
         with self.transaction() as db:
             if before_commit is not None:
                 before_commit(db)
             present = db.execute('SELECT job FROM results WHERE job=?', (job,)).fetchone()
             if present is not None:
                 return 'present', None
+            emit = dict(job=job, generation=generation, source='rule', phase='rule', type_=first.get('type'),
+                        value=value, checks=checks, rule=rule['id'])
+
+            def refuse(reason):
+                self._emit(db, outcome='refused', reason=reason, **emit)
+                return 'refused', reason
+
+            settlement, refused = self._authority(db, job, generation, payload_sha256, bindings_sha256)
+            if settlement is None:
+                return refuse(refused)
             row = self._rule(db.execute('SELECT * FROM rules WHERE id=?', (rule['id'],)).fetchone())
             if row is None or row['status'] != 'admitted':
-                return 'refused', 'quarantined' if row is not None and row['status'] == 'quarantined' else 'not_admitted'
+                return refuse('quarantined' if row is not None and row['status'] == 'quarantined' else 'not_admitted')
             if row['binding_key'] != binding_key or rule['binding_key'] != binding_key:
-                return 'refused', 'binding_changed'
+                return refuse('binding_changed')
             ast = row['ast']
             if (ast is None or hashlib.sha256(ast).hexdigest() != row['ast_sha256']
                     or row['ast_sha256'] != rule['ast_sha256'] or row['admission'].get('ast_hash') != row['ast_sha256']):
-                return 'refused', 'ast_changed'
+                return refuse('ast_changed')
             if sha256_text(text) != resolved_sha256:
-                return 'refused', 'input_changed'
+                return refuse('input_changed')
+            kind, detail = evidence_problem(json.loads(settlement['required']), checks)
+            if kind == 'failed':
+                return refuse(detail)
+            if kind == 'awaiting_verification':
+                self._emit(db, outcome='awaiting_verification', reason=detail, **emit)
+                db.execute("UPDATE settlements SET state='awaiting_verification' WHERE job=?", (job,))
+                return 'awaiting_verification', detail
             # rule_provenance/1: the exact admitted AST bytes, re-evaluated against this job's resolved input.
             again = evaluate(ast, text)
             if (not isinstance(again, dict) or again.get('status') != 'value' or again.get('type') != first['type']
-                    or oz_rule.canonical_value_text(again) != oz_rule.canonical_value_text(first)):
-                return 'refused', 'provenance_failed'
-            value = oz_rule.canonical_value_text(first)
+                    or oz_rule.canonical_value_text(again) != value):
+                return refuse('provenance_failed')
             provenance = {'check': 'rule_provenance/1', 'ast_sha256': row['ast_sha256'], 'steps': again['steps'],
                           'interpreter': INTERPRETER, 'reevaluated': True}
             db.execute('INSERT INTO results(job, rule, binding_key, producer, submission, operation, path, '
@@ -292,76 +574,74 @@ class RuleStore:
                        (job, row['id'], binding_key, owner['producer'], owner['submission'], owner['operation'],
                         owner['path'], resolved_sha256, first['type'], value, first['steps'], J(checks),
                         J(provenance), self.clock()))
+            seq = self._emit(db, outcome='settled', **emit)
+            db.execute("UPDATE settlements SET state='settled', winner='rule', emission=?, settled_at=? WHERE job=?",
+                       (seq, self.clock(), job))
         return 'adopted', self.result(job)
 
-    # ---------------------------------------------------------------------------------- bootstrap and waves
+    # ------------------------------------------------------------------------------------------------ audits
 
-    def bootstrap(self, producer: str, submission: str, binding_key: str) -> dict | None:
-        row = self.db.execute('SELECT * FROM bootstraps WHERE producer=? AND submission=? AND binding_key=?',
-                              (producer, submission, binding_key)).fetchone()
-        return None if row is None else dict(row, paths=json.loads(row['paths']))
-
-    def record_bootstrap(self, producer: str, submission: str, binding_key: str, request_id: str, paths) -> dict:
+    def add_audits(self, audits) -> None:
+        """Persist pending audit rows before dispatch (idempotent; a different identity for the same job raises)."""
+        keys = ('wave_id', 'original_job', 'rule', 'producer', 'submission', 'dataset_id', 'rule_value')
         with self.transaction() as db:
-            db.execute('INSERT OR IGNORE INTO bootstraps VALUES (?,?,?,?,?,?)',
-                       (producer, submission, binding_key, request_id, J(list(paths)), self.clock()))
-        return self.bootstrap(producer, submission, binding_key)
+            for a in audits:
+                row = db.execute('SELECT * FROM audits WHERE audit_job=?', (a['audit_job'],)).fetchone()
+                if row is not None:
+                    if tuple(row[k] for k in keys) != tuple(a[k] for k in keys):
+                        raise Error(f"audit {a['audit_job']} already exists with a different identity")
+                    continue
+                db.execute("INSERT INTO audits(audit_job, wave_id, original_job, rule, producer, submission, dataset_id, "
+                           "rule_value, verdict, created_at) VALUES (?,?,?,?,?,?,?,?,'pending',?)",
+                           (a['audit_job'], *[a[k] for k in keys], self.clock()))
 
-    def wave(self, producer: str, submission: str, rule: int, seed: int, covered) -> dict:
-        """The persisted audit selection for this wave, made once from the covered paths and the seed. A wave is one
-        producer submission's covered set under one rule: resuming it returns the same selection (no new audit job),
-        and the seed of a submission is frozen once its first wave is drawn."""
-        covered = sorted(set(covered))
-        key = sha256_text(J(covered))
+    def decide_audit(self, audit_job: str, verdict: str, *, model_value=None, detail=None, call_id=None,
+                     attempt_id=None) -> dict:
+        """Move a pending (or inconclusive) audit to its verdict; a disagreement quarantines the rule in the same
+        transaction. Returns {"changed", "quarantined_now", "audit"}."""
+        if verdict not in VERDICTS[1:]:
+            raise Error('an audit verdict is agree, disagree or inconclusive')
+        quarantined = False
         with self.transaction() as db:
-            earlier = db.execute('SELECT seed FROM waves WHERE producer=? AND submission=? AND rule=? LIMIT 1',
-                                 (producer, submission, rule)).fetchone()
-            if earlier is not None and earlier[0] != seed:
-                raise Error(f'this submission was audited with seed {earlier[0]}; the seed is frozen')
-            find = ('SELECT * FROM waves WHERE producer=? AND submission=? AND rule=? AND covered_sha256=?',
-                    (producer, submission, rule, key))
-            row = db.execute(*find).fetchone()
+            row = db.execute('SELECT * FROM audits WHERE audit_job=?', (audit_job,)).fetchone()
             if row is None:
-                db.execute('INSERT INTO waves VALUES (?,?,?,?,?,?,?,?)',
-                           (producer, submission, rule, key, seed, J(covered), J(select_audits(covered, seed)),
-                            self.clock()))
-                row = db.execute(*find).fetchone()
-        out = dict(row)
-        out['covered'], out['selected'] = json.loads(out['covered']), json.loads(out['selected'])
-        return out
-
-    @staticmethod
-    def _insert_audit(db, audit: dict) -> None:
-        db.execute('INSERT OR IGNORE INTO audits VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-                   (audit['audit_job'], audit['original_job'], audit['rule'], audit['producer'], audit['submission'],
-                    audit['path'], audit['verdict'], audit['rule_value'], audit.get('model_value'),
-                    audit.get('detail'), audit.get('call_id'), audit.get('request_id'), time.time()))
-
-    def record_audit(self, audit: dict) -> None:
-        with self.transaction() as db:
-            self._insert_audit(db, audit)
+                raise Error(f'unknown audit {audit_job}')
+            movable = row['verdict'] == 'pending' or (row['verdict'] == 'inconclusive' and verdict != 'inconclusive')
+            if movable:
+                db.execute('UPDATE audits SET verdict=?, model_value=?, detail=?, call_id=?, attempt_id=?, decided_at=? '
+                           'WHERE audit_job=?', (verdict, model_value, detail, call_id, attempt_id, self.clock(),
+                                                 audit_job))
+                if verdict == 'disagree':
+                    quarantined = self._quarantine(db, row['rule'], {
+                        'audit_job': audit_job, 'dataset_id': row['dataset_id'], 'rule_value': row['rule_value'],
+                        'model_value': model_value})
+        return {'changed': movable, 'quarantined_now': quarantined, 'audit': self.audit(audit_job)}
 
     def audit(self, audit_job: str) -> dict | None:
         row = self.db.execute('SELECT * FROM audits WHERE audit_job=?', (audit_job,)).fetchone()
         return None if row is None else dict(row)
 
-    def audits(self) -> list:
-        return [dict(r) for r in self.db.execute('SELECT * FROM audits ORDER BY rowid')]
+    def audits(self, wave: str | None = None) -> list:
+        rows = (self.db.execute('SELECT * FROM audits ORDER BY rowid') if wave is None else
+                self.db.execute('SELECT * FROM audits WHERE wave_id=? ORDER BY rowid', (wave,)))
+        return [dict(r) for r in rows]
 
 
 class Learner:
-    """One operation's learning context: verified registry package (or its ineligibility), full bindings and key."""
+    """One operation's learning context: verified registry package (or its ineligibility), full bindings and key,
+    and the list of every applicable pinned check."""
 
     def __init__(self, store: RuleStore, registry, operation: str, *, worker_hash: str, map_contract: str,
-                 map_input_policy: str):
+                 map_input_policy: str, map_pinned=()):
         if not isinstance(registry, oz_registry.Registry):
             raise Error('--learn needs an owner-approved oz_registry.Registry (--registry MANIFEST)')
         if not isinstance(worker_hash, str) or len(worker_hash) != 64:
             raise Error('--learn needs the full worker identity (worker_hash); a model label is not enough (D7)')
         self.store, self.registry, self.operation = store, registry, operation
         self.worker_hash = worker_hash
-        manifest_ops = registry._manifest['operations']
-        if operation not in manifest_ops:
+        self.map_pinned = list(map_pinned)
+        manifest = registry._manifest
+        if operation not in manifest['operations']:
             raise Error(f'operation {operation!r} is not in the registry; --learn needs a registered operation')
         self.package, self.eligible, self.ineligible_reason = None, True, None
         try:
@@ -372,7 +652,7 @@ class Learner:
             # The resolver verified every hash before it judged eligibility; the bootstrap still runs (it measures the
             # learning attempt) and any candidate is rejected as ineligible.
             self.eligible, self.ineligible_reason = False, str(exc)
-        op = manifest_ops[operation]
+        op = manifest['operations'][operation]
         self.contract = self.package.contract if self.package else op['contract']
         registry_bindings = (self.package.bindings if self.package else
                              {'contract_hash': op['contract_hash'], 'check_hash': op['check_hash'],
@@ -383,43 +663,78 @@ class Learner:
         if policy.get('terminal_newline') != 'strip_one' or policy.get('text_ref') != 0:
             raise Error('the registry input policy must strip one terminal newline from text reference 0, as oz map '
                         'resolves inputs (D2)')
+        self.consumer = [(cid, manifest['checks'][cid]['definition']) for cid in op['checks']
+                         if manifest['checks'][cid]['definition']['kind'] == oz_registry.CONSUMER]
         self.bindings = {'operation_id': operation, 'registry': dict(registry_bindings), 'interpreter': INTERPRETER,
                          'map_input_policy': map_input_policy, 'worker_hash': worker_hash, 'map_contract': map_contract}
         self.key = digest(self.bindings)
 
-    def bootstrap_config(self, side_dir: Path) -> dict:
-        return {'schema': 'oz.bootstrap.config/1', 'side_dir': str(side_dir), 'ops': [self.operation],
-                'contracts': {self.operation: self.contract}, 'eligibility': {self.operation: self.eligible},
-                'spec': spec_excerpt(), 'binding_key': self.key}
+    @property
+    def required(self) -> list:
+        """Every applicable pinned check identity: registry consumer checks and map --check specs."""
+        return sorted([f"registry:{cid}:{d['name']}@{d['version']}" for cid, d in self.consumer]
+                      + [f"map:{k}:{s['check']}@{s['version']}" for k, s in enumerate(self.map_pinned)])
+
+    def evidence(self, value_text: str, text: str, op_text: str) -> list:
+        """One verdict per required check for this value on this job's resolved input."""
+        out = []
+        value = json.loads(value_text)
+        for cid, d in self.consumer:
+            try:
+                ok = self.registry.runner.run(d['name'], d['version'], d['params'], value, text)
+                verdict = 'pass' if ok is True else 'fail'
+            except CheckUnavailable:
+                verdict = 'inconclusive'
+            except Exception:
+                verdict = 'inconclusive'
+            out.append({'id': f"registry:{cid}:{d['name']}@{d['version']}", 'check': d['name'],
+                        'version': d['version'], 'verdict': verdict, 'source': 'registry'})
+        if self.map_pinned:
+            for k, v in enumerate(oz_accept.run_checks(value_text, map_inputs(op_text, text), self.map_pinned)):
+                out.append({'id': f"map:{k}:{v['check']}@{v['version']}", 'check': v['check'], 'version': v['version'],
+                            'verdict': v['verdict'], 'source': 'map'})
+        return out
+
+    def bootstrap_config(self) -> dict:
+        """The shim's oz.bootstrap.config/2 for this operation (exactly these keys)."""
+        return {'schema': CONFIG_SCHEMA, 'ops': [self.operation], 'contracts': {self.operation: self.contract},
+                'eligibility': {self.operation: self.eligible}}
 
     def admit_side(self, side: dict | None, *, source: str, provenance: dict) -> int:
-        """Record the bootstrap outcome for the operation: admitted, or rejected with the reason. Idempotent."""
+        """Record the bootstrap outcome for the operation from the shim's side file (oz.bootstrap.side/2): admitted,
+        or rejected with the reason. The exact decoded ast_b64 bytes are admitted and stored. Idempotent."""
         ast, status = None, 'rejected'
         if side is None:
             admission = {'status': 'rejected', 'reasons': ['bootstrap_missing']}
-        elif side.get('status') != 'ok':
+        elif side.get('schema') != SIDE_SCHEMA:
+            admission = {'status': 'rejected', 'reasons': ['side_file_schema']}
+        elif side.get('status') != 'ok' or side.get('envelope_ok') is not True:
             admission = {'status': 'rejected', 'reasons': ['bootstrap_' + str(side.get('status'))],
                          'detail': side.get('reason')}
         else:
-            proposal = (side.get('rules') or {}).get(self.operation)
-            if proposal == 'none' or proposal is None:
-                admission = {'status': 'rejected', 'reasons': ['none_proposed']}
+            entry = (side.get('rules') or {}).get(self.operation)
+            ast, why = decode_ast(entry)
+            if ast is None:
+                admission = {'status': 'rejected', 'reasons': [why]}
             else:
-                ast = proposal['ast'].encode('utf-8')
-                if hashlib.sha256(ast).hexdigest() != proposal['ast_sha256']:
-                    ast, admission = None, {'status': 'rejected', 'reasons': ['side_file_hash_mismatch']}
-                else:
-                    admission = self.registry.admit(ast, self.operation, {'worker_hash': self.worker_hash})
-                    if (admission['status'] == 'accepted' and self.eligible
-                            and admission.get('bindings') == self.bindings['registry']
-                            and admission.get('ast_hash') == hashlib.sha256(ast).hexdigest()):
-                        status = 'admitted'
+                admission = self.registry.admit(ast, self.operation, {'worker_hash': self.worker_hash})
+                if (admission['status'] == 'accepted' and self.eligible
+                        and admission.get('bindings') == self.bindings['registry']
+                        and admission.get('ast_hash') == hashlib.sha256(ast).hexdigest()):
+                    status = 'admitted'
+                elif admission['status'] == 'accepted':
+                    admission = dict(admission, status='rejected', reasons=['binding_or_hash_mismatch'])
+                if status == 'rejected':
+                    ast = ast if admission.get('ast_hash') else None
         return self.store.add_rule(binding_key=self.key, operation=self.operation, bindings=self.bindings, ast=ast,
                                    status=status, admission=admission, provenance=provenance, source=source)
 
-    def attempt(self, rule: dict, *, job: str, text: str, resolved_sha256: str, op_text: str, map_pinned,
-                owner: dict, evaluate=oz_rule.evaluate, before_commit=None) -> dict:
-        """One job's rule decision: {"decision": "rule", "row"} or {"decision": "fallback", "reason"}. Recorded."""
+    def attempt(self, rule: dict, *, job: str, text: str, resolved_sha256: str, op_text: str, owner: dict,
+                generation: int, payload_sha256: str, bindings_sha256: str, stage: bool = False,
+                evaluate=oz_rule.evaluate, before_commit=None) -> dict:
+        """One job's rule decision, recorded: {"decision": "rule", "row"} (settled now), {"decision": "staged",
+        "first", "checks"} (complete passing evidence; committed later by commit()), {"decision":
+        "awaiting_verification", "reason"} or {"decision": "fallback", "reason"}."""
         def fallback(reason):
             self.store.decide(job, rule['id'], 'fallback', reason)
             return {'decision': 'fallback', 'reason': reason}
@@ -433,33 +748,129 @@ class Learner:
         if not isinstance(first, dict) or first.get('status') != 'value':
             return fallback('abstain:' + str((first or {}).get('reason')))
         value_text = oz_rule.canonical_value_text(first)
-        verdicts = [dict(v, source='registry') for v in self.package.run_checks(value_text, text)]
-        for v in oz_accept.run_checks(value_text, map_inputs(op_text, text), map_pinned):
-            verdicts.append({'id': None, 'check': v['check'], 'version': v['version'], 'verdict': v['verdict'],
-                             'source': 'map'})
-        failed = [v for v in verdicts if v['verdict'] != 'pass']
-        if failed:
-            kind = 'check_failed' if any(v['verdict'] == 'fail' for v in failed) else 'check_inconclusive'
-            return fallback(kind + ':' + ','.join(f"{v['check']}@{v['version']}" for v in failed))
-        state, detail = self.store.adopt_rule(rule=rule, binding_key=self.key, job=job, text=text,
-                                              resolved_sha256=resolved_sha256, first=first, checks=verdicts,
-                                              owner=owner, evaluate=evaluate, before_commit=before_commit)
+        checks = self.evidence(value_text, text, op_text)
+        kind, detail = evidence_problem(self.required, checks)
+        if kind == 'failed':
+            return fallback(detail.replace('check_failed:', 'check_failed:', 1))
+        if kind == 'awaiting_verification':
+            self.store.mark_awaiting(job, generation=generation, source='rule', value_text=value_text,
+                                     type_=first['type'], checks=checks, reason=detail, rule=rule['id'])
+            self.store.decide(job, rule['id'], 'awaiting_verification', detail)
+            return {'decision': 'awaiting_verification', 'reason': detail}
+        staged = {'decision': 'staged', 'rule': rule, 'job': job, 'text': text, 'resolved_sha256': resolved_sha256,
+                  'first': first, 'checks': checks, 'owner': owner, 'generation': generation,
+                  'payload_sha256': payload_sha256, 'bindings_sha256': bindings_sha256}
+        if stage:
+            self.store.decide(job, rule['id'], 'staged', None)
+            return staged
+        return self.commit(staged, evaluate=evaluate, before_commit=before_commit)
+
+    def commit(self, staged: dict, *, evaluate=oz_rule.evaluate, before_commit=None) -> dict:
+        """Settle a staged rule value through adopt_rule (which re-checks everything in the committing transaction)."""
+        rule, job = staged['rule'], staged['job']
+        state, detail = self.store.adopt_rule(
+            rule=rule, binding_key=self.key, job=job, text=staged['text'], resolved_sha256=staged['resolved_sha256'],
+            first=staged['first'], checks=staged['checks'], owner=staged['owner'], generation=staged['generation'],
+            payload_sha256=staged['payload_sha256'], bindings_sha256=staged['bindings_sha256'], evaluate=evaluate,
+            before_commit=before_commit)
         if state == 'refused':
-            return fallback('commit_refused:' + detail)
+            self.store.decide(job, rule['id'], 'fallback', 'commit_refused:' + detail)
+            return {'decision': 'fallback', 'reason': 'commit_refused:' + detail}
+        if state == 'awaiting_verification':
+            self.store.decide(job, rule['id'], 'awaiting_verification', detail)
+            return {'decision': 'awaiting_verification', 'reason': detail}
         self.store.decide(job, rule['id'], 'rule', None)
         return {'decision': 'rule', 'row': self.store.result(job), 'resumed': state == 'present'}
 
 
-def read_side_files(side_dir: Path) -> list:
-    """The bootstrap side records in a side directory (one per physical bootstrap call), by receipt."""
-    out = []
-    for file in sorted(Path(side_dir).glob('*.json')) if Path(side_dir).is_dir() else ():
-        if file.name == 'config.json':
-            continue
-        try:
-            record = json.loads(file.read_text(encoding='utf-8'))
-        except (OSError, ValueError):
-            continue
-        if isinstance(record, dict) and record.get('schema') == 'oz.bootstrap.side/1':
-            out.append(dict(record, file=file.name))
-    return out
+class ExperimentStore:
+    """Shared experiment state for every arm host of one experiment directory: frozen bootstrap assignments, the one
+    bootstrap record per (backend, workload), and the persisted audit populations and selections."""
+
+    def __init__(self, path, *, clock=time.time):
+        self.path = Path(path)
+        self.clock = clock
+        self.db = _connect(self.path)
+        _init(self.db, EXPERIMENT_TABLES, EXPERIMENT_SCHEMA, self.path)
+
+    def close(self):
+        self.db.close()
+
+    def assignment(self, backend: str, workload: str, producers: dict, seed: int, *,
+                   per_producer: int = BOOTSTRAP_PER_PRODUCER, expected: int = BOOTSTRAP_PRODUCERS) -> dict:
+        """The frozen {producer: [dataset ids]} bootstrap assignment; the first call persists it, every later call
+        must derive the identical one (else Error: the frozen assignment does not match these producers)."""
+        made = bootstrap_assignment(producers, seed, per_producer, expected)
+        text = J(made)
+        with _Tx(self.db) as db:
+            row = db.execute('SELECT assignment FROM assignments WHERE backend=? AND workload=?',
+                             (backend, workload)).fetchone()
+            if row is None:
+                db.execute('INSERT INTO assignments VALUES (?,?,?,?,?)',
+                           (backend, workload, text, sha256_text(text), self.clock()))
+            elif json.loads(row[0]) != made:
+                raise Error(f'the frozen bootstrap assignment of {backend}/{workload} does not match these producers')
+        return made
+
+    def bootstrap(self, backend: str, workload: str) -> dict | None:
+        row = self.db.execute('SELECT * FROM bootstraps WHERE backend=? AND workload=?', (backend, workload)).fetchone()
+        if row is None:
+            return None
+        out = dict(row)
+        out['record'] = json.loads(out['record']) if out['record'] else None
+        return out
+
+    def claim_bootstrap(self, backend: str, workload: str, owner: str) -> tuple:
+        """("run", row) when this owner claimed it now, ("resume", row) when this owner claimed it before without a
+        record, ("wait", row) when another owner holds the claim, ("import", row) when it is recorded. There is no
+        time-based takeover; one claim per (backend, workload), ever."""
+        with _Tx(self.db) as db:
+            row = db.execute('SELECT * FROM bootstraps WHERE backend=? AND workload=?', (backend, workload)).fetchone()
+            if row is None:
+                db.execute("INSERT INTO bootstraps(backend, workload, owner, state, claimed_at) VALUES (?,?,?,'claimed',?)",
+                           (backend, workload, owner, self.clock()))
+                state = 'run'
+            elif row['state'] == 'recorded':
+                state = 'import'
+            else:
+                state = 'resume' if row['owner'] == owner else 'wait'
+        return state, self.bootstrap(backend, workload)
+
+    def record_bootstrap(self, backend: str, workload: str, owner: str, record: dict) -> dict:
+        """Write the immutable bootstrap record once (only by the claim owner)."""
+        text = J(dict(record, schema=RECORD_SCHEMA))
+        with _Tx(self.db) as db:
+            row = db.execute('SELECT * FROM bootstraps WHERE backend=? AND workload=?', (backend, workload)).fetchone()
+            if row is None or row['owner'] != owner:
+                raise Error(f'bootstrap {backend}/{workload} is not claimed by {owner}')
+            if row['state'] == 'recorded':
+                if row['record'] != text:
+                    raise Error(f'bootstrap {backend}/{workload} is already recorded differently')
+            else:
+                db.execute("UPDATE bootstraps SET state='recorded', record=?, sha256=?, recorded_at=? "
+                           'WHERE backend=? AND workload=?', (text, sha256_text(text), self.clock(), backend, workload))
+        return self.bootstrap(backend, workload)
+
+    def audit_wave(self, wave: str, rule_sha256: str, seed: int, population) -> dict:
+        """The persisted population and selection of one evaluation wave and rule. The first arm persists it; a later
+        arm gets the same selection, with "mismatch" true when its own population differs (evidence is then
+        incomplete; READING: the persisted selection still binds, restricted by the caller to its own population)."""
+        population = sorted(set(population))
+        text = J(population)
+        selection = select_audits(population, seed)
+        with _Tx(self.db) as db:
+            row = db.execute('SELECT * FROM audit_waves WHERE wave_id=? AND rule_sha256=?', (wave, rule_sha256)).fetchone()
+            if row is None:
+                db.execute('INSERT INTO audit_waves VALUES (?,?,?,?,?,?,?)',
+                           (wave, rule_sha256, seed, text, sha256_text(text), J(selection), self.clock()))
+                row = db.execute('SELECT * FROM audit_waves WHERE wave_id=? AND rule_sha256=?',
+                                 (wave, rule_sha256)).fetchone()
+        if row['seed'] != seed:
+            raise Error(f'wave {wave} was selected with seed {row["seed"]}; the seed is frozen')
+        return {'wave_id': wave, 'rule_sha256': rule_sha256, 'seed': row['seed'],
+                'population': json.loads(row['population']), 'selection': json.loads(row['selection']),
+                'mismatch': row['population_sha256'] != sha256_text(text)}
+
+    def waves(self) -> list:
+        return [dict(r, population=json.loads(r['population']), selection=json.loads(r['selection']))
+                for r in self.db.execute('SELECT * FROM audit_waves ORDER BY rowid')]

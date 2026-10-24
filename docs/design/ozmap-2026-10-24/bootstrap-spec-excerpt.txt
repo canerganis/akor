@@ -1,0 +1,84 @@
+oz-rule/1 effective language semantics. This text applies amendment 1 (D2 to D5) and amendment 2 to the oz-rule/1 specification. MUST, MUST NOT and MAY are normative.
+
+oz-rule/1 is an opt-in, deterministic language for computing one complete job result.
+
+Representation and types. An AST has exactly this shape:
+
+{"lang":"oz-rule/1","expr":NODE}
+
+JSON MUST use valid UTF-8, without BOM, duplicate object keys, trailing content or unpaired surrogates. Unknown tags, extra elements and extra keys are invalid. Types are string, decimal, bool and list<string>. There is no implicit conversion, null, variable binding or reference.
+
+The following table defines every node. X, Y, C, A and B denote child nodes. Lowercase parameters are literal JSON values. Variadic nodes accept zero or more children.
+
+| Exact node shape | Types and semantics |
+|---|---|
+| ["s",s] | Literal string |
+| ["d",s] | Decimal literal parsed from string |
+| ["bool",b] | Literal JSON boolean |
+| ["input"] | Own input text as string |
+| ["field",key] | Extract exact string value |
+| ["split",X,separator] | String → list; literal, nonempty separator; retain empty pieces |
+| ["at",X,index] | List → string; nonnegative integer index; missing index abstains |
+| ["num",X,unit] | String → decimal; exact unit parsing |
+| ["add",X,Y] | Decimal addition |
+| ["sub",X,Y] | Decimal subtraction |
+| ["fmt",X,places,unit] | Decimal → formatted string |
+| ["eq",X,Y] | Matching scalar types → bool |
+| ["le",X,Y] | Decimals → bool, inclusive comparison |
+| ["if",C,A,B] | Boolean condition; evaluate only selected branch |
+| ["require",C,X] | Boolean condition; false abstains; true evaluates X |
+| ["lookup",X,[[key,value],...]] | String → string; exact match; absent key abstains |
+| ["list",X,...] | String children → list |
+| ["cat",X,...] | List children → concatenated list |
+
+Lookup keys and values MUST be literal strings; keys MUST be unique. Tables have at most 32 entries. index and places are JSON integers; places is between 0 and 12.
+
+Validation checks all branches. Static type sets propagate through conditionals, whose branches MAY differ in type. Every possible operand type MUST satisfy its consumer. Thus a conditional returning string or list is valid at the root but invalid as an addition operand.
+
+Loops, recursion, regex, imports, executable code, tools, I/O and access to other jobs or host state are unavailable. Host iteration over bounded lists is permitted.
+
+Input. Before a rule sees a job text, the host removes exactly one terminal CRLF, otherwise one terminal LF. No other normalization occurs. Remaining newlines can still cause field to abstain.
+
+Text and numbers. field parses the entire input into segments separated by the literal "; ". Each segment contains exactly one "=". Record keys begin with an ASCII lowercase letter or underscore and continue with those characters or digits. Values are nonempty and contain no semicolon, equals sign, CR or LF. Duplicate record keys or malformed segments make the record malformed. Additional record keys are allowed. No trimming, normalization or case folding occurs. The key parameter of field is validated only as a literal string; the record key grammar is not applied to it. The entire record is parsed and validated first: a malformed record abstains with reason input, otherwise an absent requested key abstains with reason missing.
+
+Other nodes do not require record syntax. Field extraction alone does not validate a value as numeric.
+
+Decimal grammar is an optional ASCII minus, an integer part, and an optional decimal point followed by digits. The integer part is either 0 or begins with digits 1 through 9. Only ASCII digits are accepted. Exponents, plus signs, whitespace, NaN and infinity are forbidden. Input numerals have at most 38 digits total and 12 fractional digits.
+
+num with an empty unit parses the entire string. Otherwise it requires the exact suffix consisting of one ASCII space followed by the unit, removes it, then parses the remaining numeral. There is no unit conversion.
+
+Arithmetic MUST use Decimal with exact addition, subtraction and comparison, never binary floating point. A decimal result is normalized by stripping trailing zeros of its coefficient without rounding and increasing the exponent accordingly; canonical zero has coefficient zero and exponent zero. A result abstains with reason number unless its normalized coefficient has at most 38 digits and its number of fractional digits, max(0, -exponent), is at most 12. These result limits are separate from the input numeral limits. Implementations prevent ambient Decimal settings from introducing rounding.
+
+fmt rounds using decimal ROUND_HALF_EVEN, emits exactly places fractional digits, suppresses negative zero, and appends one space plus the nonempty unit. An empty unit appends nothing. No exponent or grouping separator is emitted. Comparisons use unrounded values.
+
+Extracted strings retain their exact characters, including numeric lexemes: if a field value is 3.10 kg, the extracted string is 3.10 kg. Decimal results themselves do not retain lexical spelling.
+
+Failure and resource bounds. Bounds apply independently to each evaluation:
+
+| Resource | Maximum |
+|---|---:|
+| Original AST JSON bytes, including whitespace | 2,048 |
+| Expression depth, root counted as 1 | 16 |
+| Node occurrences across all branches | 128 |
+| Input UTF-8 bytes | 8,192 |
+| Any intermediate string bytes | 8,192 |
+| Any list elements | 64 |
+| Serialized result value bytes | 4,096 |
+| Steps | 32,768 |
+
+The AST is stored and re-evaluated as the exact bytes of your AST object as written in the envelope, whitespace included. The 2,048 byte limit applies to those bytes.
+
+Steps are accounted as follows. Charge one step on node entry. Process arguments left to right. Charge the UTF-8 bytes of each literal string parameter when it is reached. When a child returns successfully, charge the parent the UTF-8 bytes of the child's string result, or of all member strings of the child's list result. Before returning, a node charges the bytes of its own string or list result again. Lists contribute the UTF-8 bytes of their members. input and field charge the complete input's UTF-8 bytes before access. lookup charges every table string before matching. Final serialization of the result charges its byte length. Opcodes cost nothing. Unselected branches cost nothing. A failed child contributes no operand bytes: evaluation stops immediately with no parent result charge and no serialization charge, retaining the earlier charges. The first charge that would exceed 32,768 yields reason limit with steps saturated at 32,768. Charges are logical and identical with caching.
+
+Except for lazy branches, children evaluate left to right. Any evaluated failure propagates immediately. Missing fields, malformed records, invalid numbers, unit mismatches, type failures, failed guards, absent lookups, indexing failures, resource exhaustion and interpreter errors yield abstain. No partial output, exception or guessed replacement escapes.
+
+Empty lists, false, zero, "unknown" and "none" are ordinary values. Only the explicit abstain result denotes failure.
+
+Evaluation result representation. evaluate(ast, text) accepts the AST JSON bytes and one input string. It returns exactly one of:
+
+{"status":"value","type":"string","value":"abc","steps":123}
+{"status":"abstain","reason":"missing","steps":123}
+
+type may also be decimal, bool or list. Decimal values serialize as normalized decimal strings without exponent or insignificant fractional zeros; zero is "0". Other values use their corresponding JSON types. Serialization is compact, preserves Unicode characters, and escapes controls, quotes and backslashes.
+
+Reasons are invalid_ast, limit, input, missing, number, unit, type, guard, lookup, index or internal. Invalid ASTs abstain before execution with zero steps. Step accounting saturates at the budget.
