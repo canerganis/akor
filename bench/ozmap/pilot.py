@@ -805,8 +805,8 @@ def certify_codex(results, worker_hash):
     """(status, evidence) of the paired Codex telemetry. ok only with backend-specific evidence of inclusive cached
     accounting: two calls on the frozen route (worker hash) with the same system and prompt hashes, every required
     component present as a count (input, cached, output, reasoning), cached <= input and reasoning <= output in each,
-    input_tokens equal and cached_input_tokens grown on the repeat (a cache hit that leaves the input total unchanged
-    is inclusion; exclusive accounting would drop the input total by the cached growth). Inequalities alone never
+    input_tokens equal and cached_input_tokens different on the repeat (a changed cache hit that leaves the input
+    total unchanged is inclusion; exclusive accounting would move the input total by the cached difference). Inequalities alone never
     certify; an empty or partial usage never certifies; leakage never certifies."""
     problems = []
     calls = []
@@ -835,18 +835,24 @@ def certify_codex(results, worker_hash):
         if issue:
             problems.append(f"call {c.get('call_id')}: {issue}")
     evidence = {'calls': [{k: c.get(k) for k in ('call_id', 'usage', 'system_sha256', 'prompt_sha256',
-                                                  'usage_source', 'visible_tokens')} for c in calls]}
+                                                  'usage_source', 'visible_tokens', 'workdir')} for c in calls]}
     if len(calls) == 2 and not problems:
         a, b = calls[0], calls[1]
         if not a.get('prompt_sha256') or (a.get('system_sha256'), a.get('prompt_sha256')) != \
                 (b.get('system_sha256'), b.get('prompt_sha256')):
             problems.append('the two telemetry prompts are not identical (system and prompt hashes)')
+        if not a.get('workdir') or a.get('workdir') != b.get('workdir'):  # codex writes its cwd into the prompt
+            problems.append(f"the two telemetry calls ran in different working directories ({a.get('workdir')}, "
+                            f"{b.get('workdir')}): the requests were not identical")
         ua, ub = a['usage'], b['usage']
         if ua['input_tokens'] != ub['input_tokens']:
             problems.append(f"input_tokens changed on the identical repeat ({ua['input_tokens']} -> "
                             f"{ub['input_tokens']}): not inclusive or not identical")
-        if ub['cached_input_tokens'] <= ua['cached_input_tokens']:
-            problems.append('cached_input_tokens did not grow on the identical repeat: inclusion not shown')
+        # Inclusive accounting keeps input_tokens fixed whatever the cache hit; exclusive accounting would move it by
+        # exactly the cached difference. Live, the cache hit also fell on a repeat (7296 -> 0), so any difference
+        # in cached_input_tokens with an equal input total shows inclusion; equal cached counts show nothing.
+        if ub['cached_input_tokens'] == ua['cached_input_tokens']:
+            problems.append('cached_input_tokens did not change on the identical repeat: inclusion not shown')
         evidence['inclusion'] = {'input_tokens': [ua['input_tokens'], ub['input_tokens']],
                                  'cached_input_tokens': [ua['cached_input_tokens'], ub['cached_input_tokens']]}
     elif len(calls) != 2 and not problems:
@@ -929,6 +935,7 @@ def _guarded_call(ctx, *, key, buckets, request, evidence, backend='codex', arm=
         call = dict(c, usage_source='core_ledger')
         ev = by_receipt.get(c.get('receipt'))
         call['visible_tokens'] = visible_tokens(ev['reply']) if ev is not None else None
+        call['workdir'] = ev['workdir'] if ev is not None else None
         if call.get('usage') is None and ev is not None and ev['usage'] is not None:
             call.update(usage=ev['usage'], usage_source='adapter_envelope:' + c['receipt'])  # failed call: kept
         out['calls'].append(call)

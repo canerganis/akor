@@ -94,6 +94,35 @@ ALLOWED_ITEMS = ('agent_message', 'reasoning')
 EXIT_LEAKAGE = 86
 
 
+# The CLI reports its own config and startup warnings as error items. Only these recognized ones (seen live on
+# codex-cli 0.160.0 with the owner's ~/.codex/config.toml) are exempt, and only with the exact schema
+# {id, type: "error", message}; any other error item stays leakage (Astra sign-off 4).
+KNOWN_NOTICES = ('Codex is ignoring 1 unrecognized configuration setting. Check for typos or deprecated settings.\n',
+                 'Under-development features enabled: ',
+                 'clamping SessionEnd hook timeout to 3s in ')
+
+
+def notice(event):
+    """True when the event is a recognized CLI warning item with exactly {id, type, message}."""
+    item = event.get('item') if isinstance(event, dict) else None
+    return (event.get('type') == 'item.completed' and isinstance(item, dict) and set(item) == {'id', 'type', 'message'}
+            and item.get('type') == 'error' and isinstance(item.get('message'), str)
+            and item['message'].startswith(KNOWN_NOTICES))
+
+
+def notices(stdout):
+    """The messages of every recognized CLI warning item, kept in the capture for the audit record."""
+    found = []
+    for line in (stdout or '').splitlines():
+        try:
+            event = json.loads(line) if line.startswith('{') else None
+        except ValueError:
+            continue
+        if isinstance(event, dict) and notice(event):
+            found.append(event['item']['message'])
+    return found
+
+
 def leakage(stdout):
     """Every event of the stream that is not plain text generation: [{"line", "type", "item_type"}]. Lines that are not
     JSON objects are not events (codex prints none on stdout with --json) and are ignored here."""
@@ -114,10 +143,7 @@ def leakage(stdout):
         item_type = item.get('type') if isinstance(item, dict) else None
         if kind in ITEM_EVENTS and item_type in ALLOWED_ITEMS:
             continue
-        # The CLI reports its own config and startup warnings as an error item holding only a message (seen live:
-        # ignored config keys, unstable features, hook timeouts). Anything with more fields stays leakage.
-        if (kind == 'item.completed' and item_type == 'error' and set(item) <= {'id', 'type', 'message'}
-                and isinstance(item.get('message'), str)):
+        if notice(event):  # a recognized CLI config or startup warning, recorded by notices(), never tool activity
             continue
         found.append({'line': n, 'type': kind if isinstance(kind, str) else repr(kind),
                       'item_type': item_type if isinstance(item_type, str) else repr(item_type)})
@@ -201,7 +227,7 @@ def capture_record(*, model, effort, version, stdout, stderr, exit_code, timed_o
     _, usage, _ = parse_events(stdout)
     return {'adapter': 'codex_cli_adapter', 'backend': 'codex', 'model': model, 'effort': effort, 'codex_version': version,
             'exit_code': exit_code, 'timed_out': timed_out, 'stdout': stdout, 'stderr': stderr, 'usage': usage,
-            'workdir': workdir, 'leakage': leakage(stdout)}
+            'workdir': workdir, 'leakage': leakage(stdout), 'notices': notices(stdout)}
 
 
 def _inside_repo(path):
@@ -223,13 +249,42 @@ def _inside_repo(path):
         probe = parent
 
 
+WORKDIR_SLOTS = 16
+
+
+def _lock(handle):
+    """Nonblocking exclusive OS lock on an open file, released when the process exits; False when held elsewhere."""
+    try:
+        if os.name == 'nt':
+            import msvcrt
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except OSError:
+        return False
+
+
 def empty_workdir():
-    """A fresh empty directory in the system temp area, outside every repository (else RuntimeError)."""
-    path = os.path.realpath(tempfile.mkdtemp(prefix='oz-codex-empty-'))
-    if os.listdir(path) or _inside_repo(path):
+    """(path, lock handle): a freshly emptied directory in the system temp area, outside every repository (else
+    RuntimeError). Its name is the first free numbered slot (oz-codex-empty-<k>, held by an OS lock), not a random
+    one: codex writes its working directory into the prompt, so two identical requests must see the same path for
+    the paired telemetry to send byte-identical prompts."""
+    base = os.path.realpath(tempfile.gettempdir())
+    for k in range(WORKDIR_SLOTS):
+        handle = open(os.path.join(base, f'oz-codex-empty-{k}.lock'), 'a+b')
+        if not _lock(handle):
+            handle.close()
+            continue
+        path = os.path.join(base, f'oz-codex-empty-{k}')
         shutil.rmtree(path, ignore_errors=True)
-        raise RuntimeError(f'the isolated codex working directory {path} is not an empty directory outside any repo')
-    return path
+        os.mkdir(path)
+        if os.listdir(path) or _inside_repo(path):
+            handle.close()
+            raise RuntimeError(f'the isolated codex working directory {path} is not an empty directory outside any repo')
+        return path, handle
+    raise RuntimeError(f'all {WORKDIR_SLOTS} isolated codex working directories are in use')
 
 
 def main():
@@ -251,7 +306,7 @@ def main():
     limit = float(os.environ.get('OZ_CODEX_TIMEOUT', '900'))
     timed_out, code = False, None
     try:
-        workdir = empty_workdir()
+        workdir, held = empty_workdir()
     except (OSError, RuntimeError) as exc:
         sys.stderr.write(f'codex not launched: {exc}')
         sys.exit(2)
@@ -267,6 +322,7 @@ def main():
             stdout, stderr, timed_out = _text(exc.stdout), _text(exc.stderr), True
     finally:
         shutil.rmtree(workdir, ignore_errors=True)
+        held.close()
     record = capture_record(model=model, effort=effort, version=version, stdout=stdout, stderr=stderr,
                             exit_code=code, timed_out=timed_out, workdir=workdir)
     if os.environ.get('OZ_ENVELOPE_PATH'):

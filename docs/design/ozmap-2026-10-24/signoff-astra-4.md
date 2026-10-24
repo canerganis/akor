@@ -1,0 +1,5 @@
+Fix 1: REJECT. Message only structure does not establish that an error is a harmless startup notice. Replacement: exempt only recognized configuration and startup warnings with the exact permitted schema. Preserve their messages in the audit record. Unrecognized errors must invalidate certification; tool activity remains leakage.
+
+Fix 2: ACCEPT, provided the same numbered directory and OS lock are retained across the entire comparison pair. Selecting the first free slot independently for each call is insufficient. Verify identical resolved paths and request content, since equal token totals alone cannot establish identical inputs.
+
+Fix 3: ACCEPT. Either cache direction distinguishes inclusive from exclusive accounting when otherwise identical requests have equal input totals and unequal cached counts. Equal cached counts remain inconclusive. Record this as a revised rule and validate it prospectively; Run 1 remains rejected under its original event classification.

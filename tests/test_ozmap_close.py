@@ -161,9 +161,13 @@ class N1CodexIsolation(Temp):
         self.assertIn('-C', cca.FLAGS)
 
     def test_n1_cli_warning_items_pass_but_error_items_with_more_fields_are_leakage(self):
-        notice = ev('item.completed', item={'id': 'item_0', 'type': 'error',
-                                            'message': 'Codex is ignoring 1 unrecognized configuration setting.'})
+        live = ('Codex is ignoring 1 unrecognized configuration setting. Check for typos or deprecated settings.\n'
+                '  user (C:\\Users\\x\\.codex\\config.toml): `a.b` is ignored.')
+        notice = ev('item.completed', item={'id': 'item_0', 'type': 'error', 'message': live})
         self.assertEqual(cca.leakage(notice), [])  # seen live in the first telemetry run
+        self.assertEqual(cca.notices(notice), [live])
+        unknown = ev('item.completed', item={'id': 'item_0', 'type': 'error', 'message': 'something else failed'})
+        self.assertEqual(len(cca.leakage(unknown)), 1)  # only recognized warnings are exempt (Astra sign-off 4)
         for item in ({'id': 'i', 'type': 'error', 'message': 'x', 'command': 'cat secret'},
                      {'id': 'i', 'type': 'error', 'message': {'nested': 1}}):
             with self.subTest(item=item):
@@ -465,13 +469,13 @@ class B9Host(th.Base):
 
 # ------------------------------------------------------------------------------------ telemetry certification
 
-def tele(key, usage, *, worker='w', system='s', prompt='p', leakage=(), visible='inclusive'):
+def tele(key, usage, *, worker='w', system='s', prompt='p', leakage=(), visible='inclusive', workdir='W'):
     if visible == 'inclusive':  # the visible reply is output minus reasoning, as Codex reports it
         visible = (usage['output_tokens'] - usage['reasoning_output_tokens']
                    if isinstance(usage, dict) and {'output_tokens', 'reasoning_output_tokens'} <= set(usage) else None)
     return {'key': key, 'worker_hash': worker, 'leakage': list(leakage),
             'calls': [{'call_id': key, 'usage': usage, 'system_sha256': system, 'prompt_sha256': prompt,
-                       'visible_tokens': visible}]}
+                       'visible_tokens': visible, 'workdir': workdir}]}
 
 
 def u(inp, cached, out=20, reasoning=5):
@@ -485,6 +489,12 @@ class Telemetry(Temp):
                                                 tele('t2', u(900, 300, out=400, reasoning=200))], 'w')
         self.assertEqual(status, 'ok', evidence)
         self.assertEqual(evidence['inclusion']['cached_input_tokens'], [0, 300])
+        moved = pilot.certify_codex([tele('t1', u(900, 0, out=400, reasoning=200), workdir='A'),
+                                     tele('t2', u(900, 300, out=400, reasoning=200), workdir='B')], 'w')
+        self.assertEqual(moved[0], 'unverified', moved)  # different cwd in the prompt: not identical requests
+        falling = pilot.certify_codex([tele('t1', u(900, 300, out=400, reasoning=200)),
+                                       tele('t2', u(900, 0, out=400, reasoning=200))], 'w')
+        self.assertEqual(falling[0], 'ok', falling)  # seen live: the cache hit fell on the repeat, input unchanged
 
     def test_telemetry_exclusive_totals_and_bare_inequalities_never_certify(self):
         cases = {'exclusive (input drops by the cache hit)': (u(900, 0), u(600, 300)),
