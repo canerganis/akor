@@ -536,34 +536,63 @@ def kill_tree(proc) -> None:
         proc.kill()
 
 
-def ledger_tokens(ws: Path):
-    """Worker tokens of every finished call in the `oz do` ledgers, or None when any finished line is unreadable or
-    a call_end lacks integer input and output counts (unknown spend). Only an unterminated last line, still being
-    written, is left for the next look."""
-    total = 0
-    for ledger in Path(ws).glob('do/*/calls.jsonl'):
+RAW_KEYS = ('input_tokens', 'cached_input_tokens', 'cache_creation_input_tokens', 'output_tokens')
+
+
+def _count(v) -> bool:
+    return type(v) is int and v >= 0
+
+
+def read_ledgers(base: Path, live=False) -> dict:
+    """Strict reading of every `oz do` ledger under base (do/*/calls.jsonl), never raising. A worker call's usage is
+    known only when its call_end holds usage.raw as an object with all four RAW_KEYS as non-negative integers (the
+    oz.adapter/3 usage claude_cli_adapter.py reports). Any unreadable or non-object line, or any call_end with other
+    usage, makes the ledgers incomplete; every valid input and output count still enters the lower bound. live: an
+    unterminated last line is still being written and is left for the next look."""
+    started, used, inn, cached, out, complete = set(), 0, 0, 0, 0, True
+    for ledger in sorted(Path(base).glob('do/*/calls.jsonl')):
         try:
             text = ledger.read_bytes().decode('utf-8')
         except (OSError, UnicodeDecodeError):
-            return None
-        lines = text.split('\n')[:-1]                 # the part after the last newline is still being written
+            complete = False
+            continue
+        lines = text.split('\n')
+        if live:
+            lines = lines[:-1]
         for line in lines:
             if not line.strip():
                 continue
             try:
                 ev = json.loads(line)
             except ValueError:
-                return None
+                complete = False
+                continue
             if not isinstance(ev, dict):
-                return None
+                complete = False
+                continue
+            if ev.get('event') == 'call_start':
+                started.add((str(ledger), str(ev.get('call_id'))))
             if ev.get('event') != 'call_end':
                 continue
-            u = (ev.get('usage') or {}).get('raw') if isinstance(ev.get('usage'), dict) else None
-            if not isinstance(u, dict) or any(type(u.get(k)) is not int or u.get(k) < 0
-                                              for k in ('input_tokens', 'output_tokens')):
-                return None
-            total += u['input_tokens'] + u['output_tokens']
-    return total
+            usage = ev.get('usage')
+            raw = usage.get('raw') if isinstance(usage, dict) else None
+            raw = raw if isinstance(raw, dict) else {}
+            inn += raw['input_tokens'] if _count(raw.get('input_tokens')) else 0
+            out += raw['output_tokens'] if _count(raw.get('output_tokens')) else 0
+            cached += raw['cached_input_tokens'] if _count(raw.get('cached_input_tokens')) else 0
+            if all(_count(raw.get(k)) for k in RAW_KEYS):
+                used += 1
+            else:
+                complete = False
+    return {'worker_calls': len(started), 'worker_calls_with_usage': used, 'worker_in': inn,
+            'worker_cached_in': cached, 'worker_out': out, 'ledger_complete': complete}
+
+
+def ledger_tokens(ws: Path):
+    """The live guard's ledger tokens: every finished call's input plus output, or None when any finished line is
+    unreadable or a call_end's usage is not strict (unknown spend)."""
+    r = read_ledgers(ws, live=True)
+    return r['worker_in'] + r['worker_out'] if r['ledger_complete'] else None
 
 
 def envelope_tokens(envelopes: Path):
@@ -638,17 +667,20 @@ def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float, 
                 ev = json.loads(line)
             except ValueError:
                 continue
+            if not isinstance(ev, dict):
+                continue
             if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
-                m = ev.get('message') or {}
+                m = _obj(ev.get('message'))
                 with lock:
-                    cur = msgs.setdefault(m.get('id') or 'anon%d' % len(msgs), {'tool_ids': set()})
+                    mid = m.get('id') if isinstance(m.get('id'), str) and m.get('id') else 'anon%d' % len(msgs)
+                    cur = msgs.setdefault(mid, {'tool_ids': set()})
                     u = m.get('usage')
                     if strict_message_usage(u) is None:
                         cur['usage_unknown'] = True       # stops the run; valid counters still enter the peak
-                    for k, v in (u.items() if isinstance(u, dict) else ()):
-                        if k in USAGE_KEYS and type(v) is int and v >= 0:
+                    for k, v in _obj(u).items():
+                        if k in USAGE_KEYS and _count(v):
                             cur[k] = max(v, cur.get(k, 0))
-                    cur['tool_ids'] |= {b.get('id') for b in m.get('content') or [] if b.get('type') == 'tool_use'}
+                    cur['tool_ids'] |= {str(b.get('id')) for b in _blocks(m) if b.get('type') == 'tool_use'}
                     cur['tool_uses'] = len(cur['tool_ids'])
                 check()
 
@@ -728,13 +760,49 @@ def _remove(path: Path) -> None:
 
 
 def _events(text: str) -> list:
+    """The JSON object lines of a transcript; any other line (unparsable, or not an object) is left out."""
     out = []
     for line in text.splitlines():
         try:
-            out.append(json.loads(line))
+            ev = json.loads(line)
         except ValueError:
-            pass
+            continue
+        if isinstance(ev, dict):
+            out.append(ev)
     return out
+
+
+def _obj(value) -> dict:
+    return value if isinstance(value, dict) else {}
+
+
+def _blocks(message) -> list:
+    content = _obj(message).get('content')
+    return [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
+
+
+def clean_transcript(text: str) -> str:
+    """The transcript reduced to shapes bench/live/pilot_k2.parse_stream (pinned by another freeze, not edited here)
+    reads without raising: object lines only, message an object, content a list of objects, usage an object of
+    non-negative integer counters, modelUsage an object of objects of non-negative integer counters, result a string.
+    Used only for the record's turns, tool calls and final text; accounting reads the raw transcript strictly."""
+    out = []
+    for ev in _events(text):
+        ev = dict(ev)
+        if 'message' in ev:
+            m = dict(_obj(ev['message']))
+            if 'content' in m:
+                m['content'] = _blocks(m)
+            if 'usage' in m:
+                m['usage'] = {k: v for k, v in _obj(m['usage']).items() if _count(v)}
+            ev['message'] = m
+        if ev.get('type') == 'result':
+            ev['modelUsage'] = {name: {k: v for k, v in entry.items() if _count(v)}
+                                for name, entry in _obj(ev.get('modelUsage')).items() if isinstance(entry, dict)}
+            if not isinstance(ev.get('result'), str):
+                ev['result'] = ''
+        out.append(J(ev))
+    return '\n'.join(out) + '\n' if out else ''
 
 
 def tool_texts(text: str) -> tuple:
@@ -742,18 +810,18 @@ def tool_texts(text: str) -> tuple:
     inputs, results = [], []
     for ev in _events(text):
         if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
-            for b in (ev.get('message') or {}).get('content') or []:
+            for b in _blocks(ev.get('message')):
                 if b.get('type') == 'tool_use':
                     inp = b.get('input')
                     inputs.append(inp.get('command') if isinstance(inp, dict) and isinstance(inp.get('command'), str)
                                   else J(inp))
         elif ev.get('type') == 'user':
-            content = (ev.get('message') or {}).get('content')
-            for b in content if isinstance(content, list) else []:
-                if isinstance(b, dict) and b.get('type') == 'tool_result':
+            for b in _blocks(ev.get('message')):
+                if b.get('type') == 'tool_result':
                     c = b.get('content')
                     results.append(c if isinstance(c, str) else '\n'.join(
-                        x.get('text', '') if isinstance(x, dict) else str(x) for x in c or []))
+                        str(x.get('text', '')) if isinstance(x, dict) else str(x)
+                        for x in (c if isinstance(c, list) else [])))
     return inputs, results
 
 
@@ -818,8 +886,7 @@ def dispatched_requests(run_dir: Path) -> list:
     """The stored work of every `oz do` run directory that started at least one worker call."""
     out = []
     for calls in sorted((run_dir / 'do').glob('*/calls.jsonl')):
-        events = [json.loads(x) for x in calls.read_text(encoding='utf-8').splitlines() if x.strip()]
-        if any(e.get('event') == 'call_start' for e in events):
+        if any(e.get('event') == 'call_start' for e in _events(calls.read_text(encoding='utf-8', errors='replace'))):
             out.append(json.loads((calls.parent / 'request.json').read_text(encoding='utf-8')))
     return out
 
@@ -886,24 +953,30 @@ def partial_model_usage(mu) -> int:
 
 
 def caller_usage(text: str) -> dict:
-    """Caller accounting from the transcript: per-message usage (the largest value seen per message ID, any missing
-    counter contributing nothing) gives a lower bound; the final envelope's modelUsage gives the total only when every
-    counter is present and the total is not below that lower bound."""
+    """Caller accounting from the transcript, never raising: per-message usage (the largest valid value seen per
+    message ID per counter) gives a lower bound; the final envelope's modelUsage gives the total only when every
+    caller message carried strict usage, every modelUsage counter is present and valid, and the total is not below
+    that lower bound. Any other shape is incomplete accounting."""
     msgs = {}
     final = None
+    messages_strict = True
     for ev in _events(text):
         if ev.get('type') == 'result':
             final = ev
         elif ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
-            m = ev.get('message') or {}
-            cur = msgs.setdefault(m.get('id') or 'anon%d' % len(msgs), {})
-            for k, v in (m.get('usage') or {}).items():
-                if type(v) is int and v >= 0:
+            m = _obj(ev.get('message'))
+            mid = m.get('id') if isinstance(m.get('id'), str) and m.get('id') else 'anon%d' % len(msgs)
+            cur = msgs.setdefault(mid, {})
+            u = m.get('usage')
+            if strict_message_usage(u) is None:
+                messages_strict = False
+            for k, v in _obj(u).items():
+                if k in USAGE_KEYS and _count(v):
                     cur[k] = max(v, cur.get(k, 0))
     lower = sum(billed(m) for m in msgs.values())
     sums = strict_model_usage((final or {}).get('modelUsage'))
     total = None if sums is None else sum(sums.values())
-    complete = total is not None and total >= lower
+    complete = total is not None and total >= lower and messages_strict
     return {'complete': complete, 'total': total if complete else None, 'lower_bound': lower,
             'final_lower_bound': partial_model_usage((final or {}).get('modelUsage')),
             'envelope_total': total, 'counters': sums, 'model_calls': len(msgs),
@@ -921,7 +994,7 @@ def envelope_usage(run_dir: Path) -> dict:
         calls += 1
         try:
             data = json.loads(path.read_text(encoding='utf-8'))
-        except ValueError:
+        except (OSError, ValueError):
             complete = False
             continue
         if not isinstance(data, dict):
@@ -945,15 +1018,15 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
     run_dir = Path(run_dir)
     text = (run_dir / 'transcript.jsonl').read_bytes().decode('utf-8', 'replace')
     meta = json.loads((run_dir / 'meta.json').read_text(encoding='utf-8'))
-    parsed = K.parse_stream(text)
+    parsed = K.parse_stream(clean_transcript(text))
     cu = caller_usage(text)
     final = next((e for e in reversed(_events(text)) if e.get('type') == 'result'), None)
     inputs, results = tool_texts(text)
-    wu = K.worker_usage(run_dir)
+    wu = read_ledgers(run_dir)
     ev = envelope_usage(run_dir)
     agree = (ev['envelopes_complete'] and ev['envelopes'] == wu['worker_calls']
              and ev['envelope_in'] == wu['worker_in'] and ev['envelope_out'] == wu['worker_out'])
-    worker_ok = wu['worker_calls'] == wu['worker_calls_with_usage'] and agree
+    worker_ok = wu['ledger_complete'] and wu['worker_calls'] == wu['worker_calls_with_usage'] and agree
     # Review 2, finding 2: the lower bound is the largest of the independent sources for each disjoint spend (the
     # caller's per-message usage and its final total; the worker ledgers and the raw worker envelopes), summed.
     sources = {'caller_messages': cu['lower_bound'], 'caller_final': cu['final_lower_bound'],

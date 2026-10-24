@@ -537,7 +537,8 @@ class GuardTests(unittest.TestCase):
         ledger = tmp / 'ws' / 'do' / 'h1' / 'calls.jsonl'
         ledger.parent.mkdir(parents=True)
         end = lambda u: json.dumps({'event': 'call_end', 'usage': {'raw': u}}) + '\n'
-        ledger.write_text(json.dumps({'event': 'call_start'}) + '\n' + end({'input_tokens': 700, 'output_tokens': 30})
+        raw = {'input_tokens': 700, 'cached_input_tokens': 0, 'cache_creation_input_tokens': 0, 'output_tokens': 30}
+        ledger.write_text(json.dumps({'event': 'call_start'}) + '\n' + end(raw)
                           + '{"event": "call_e', encoding='utf-8')            # unterminated line: still being written
         self.assertEqual(P.ledger_tokens(tmp / 'ws'), 730)
         for bad in (None, {'input_tokens': 700}, {'input_tokens': 700, 'output_tokens': None}):
@@ -717,6 +718,147 @@ class AccountingTests(unittest.TestCase):
         rec = P.build_record(spec, self.run_dir(full, env, end, stop_reason='usage'))
         self.assertFalse(rec['accounting_complete'])
         self.assertEqual(rec['charged_tokens'], P.RUN_RESERVE)
+
+
+BAD = (None, True, False, -1, '5', 5.0, [3], {'n': 3})        # every malformed counter value
+MISSING = object()                                              # stands for a missing key
+
+
+def shapes(good: dict):
+    """Every malformed variant of one usage object: non-dict replacements, then each counter replaced by each bad
+    value or removed."""
+    for whole in (None, 'usage', 7, 2.5, True, [dict(good)]):
+        yield whole
+    for key in good:
+        for bad in BAD + (MISSING,):
+            out = dict(good)
+            if bad is MISSING:
+                del out[key]
+            else:
+                out[key] = bad
+            yield out
+
+
+class MalformedUsageTests(unittest.TestCase):
+    """Re-review, open point: every malformed usage shape, caller or worker, is recorded as incomplete accounting
+    with its lower bound and charged max(reserve, lower bound), never raising, on the first record and on recovery."""
+
+    MSG = {'input_tokens': 1000, 'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0, 'output_tokens': 200}
+    MU = {'inputTokens': 1000, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0, 'outputTokens': 200}
+    RAW = {'input_tokens': 4000, 'cached_input_tokens': 0, 'cache_creation_input_tokens': 0, 'output_tokens': 700}
+    WMU = {'inputTokens': 4000, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0, 'outputTokens': 700}
+    FULL = 1200 + 4700
+
+    def write(self, base: Path, msg_usage=None, model_usage=None, raw=None, wmu=None) -> Path:
+        """A run directory with one caller message, a final envelope, one worker call (ledger and envelope); each
+        argument replaces the good value of that source (a callable left as None keeps it good)."""
+        run = base
+        run.mkdir(parents=True)
+        events = [{'type': 'assistant', 'message': {'id': 'm1', 'content': [{'type': 'text', 'text': '{}'}],
+                                                    'usage': self.MSG if msg_usage is None else msg_usage[0]}},
+                  {'type': 'result', 'subtype': 'success', 'is_error': False, 'num_turns': 1, 'result': '{}',
+                   'modelUsage': {'claude-sonnet-5-5': self.MU} if model_usage is None else model_usage[0]}]
+        (run / 'transcript.jsonl').write_text(''.join(json.dumps(e) + '\n' for e in events), encoding='utf-8')
+        (run / 'meta.json').write_text(json.dumps({'wall_s': 1.0, 'exit_code': 0, 'stop_reason': None}),
+                                       encoding='utf-8')
+        envs = run / 'archive' / 'worker' / 'envelopes'
+        envs.mkdir(parents=True)
+        (envs / '0000.json').write_text(json.dumps({'modelUsage': {'w': self.WMU} if wmu is None else wmu[0]}),
+                                        encoding='utf-8')
+        calls = run / 'do' / 'h1' / 'calls.jsonl'
+        calls.parent.mkdir(parents=True)
+        end = {'event': 'call_end', 'call_id': 'c1', 'usage': {'raw': self.RAW if raw is None else raw[0]}}
+        calls.write_text(json.dumps({'event': 'call_start', 'call_id': 'c1'}) + '\n' + json.dumps(end) + '\n',
+                         encoding='utf-8')
+        (run / 'raw_complete').write_text('raw data kept\n', encoding='utf-8')
+        return run
+
+    def cases(self):
+        yield 'good', {}, True
+        for n, u in enumerate(shapes(self.MSG)):
+            yield f'message {n}', {'msg_usage': (u,)}, False
+        for n, u in enumerate(shapes(self.MU)):
+            yield f'final entry {n}', {'model_usage': ({'claude-sonnet-5-5': u},)}, False
+        for whole in (None, [], 'x', 3, {}):
+            yield f'final whole {whole!r}', {'model_usage': (whole,)}, False
+        for n, u in enumerate(shapes(self.RAW)):
+            yield f'ledger raw {n}', {'raw': (u,)}, False
+        for n, u in enumerate(shapes(self.WMU)):
+            yield f'envelope entry {n}', {'wmu': ({'w': u},)}, False
+        for whole in (None, [], 'x', 3, {}):
+            yield f'envelope whole {whole!r}', {'wmu': (whole,)}, False
+
+    def check(self, name, rec, complete):
+        self.assertEqual(rec['accounting_complete'], complete, name)
+        if complete:
+            self.assertEqual((rec['total_tokens'], rec['charged_tokens']), (self.FULL, self.FULL), name)
+        else:
+            self.assertIsNone(rec['total_tokens'], name)
+            # one source of a spend broken: the other independent source of that spend keeps the bound
+            self.assertEqual(rec['lower_bound_tokens'], self.FULL, name)
+            self.assertEqual(rec['charged_tokens'], max(P.RUN_RESERVE, rec['lower_bound_tokens']), name)
+
+    def test_every_malformed_shape_on_the_first_record(self):
+        base = Path(tempfile.mkdtemp(prefix='crm-'))
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        spec = P.build_spec('A', 'I')
+        n = 0
+        for n, (name, kw, complete) in enumerate(self.cases()):
+            try:
+                rec = P.build_record(spec, self.write(base / f'r{n}', **kw))
+            except Exception as exc:                                  # noqa: BLE001
+                self.fail(f'{name}: {type(exc).__name__}: {exc}')
+            self.check(name, rec, complete)
+        self.assertGreater(n, 120)
+
+    def test_both_sources_of_one_spend_broken(self):
+        base = Path(tempfile.mkdtemp(prefix='crm-'))
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        spec = P.build_spec('A', 'I')
+        rec = P.build_record(spec, self.write(base / 'c', msg_usage=(dict(self.MSG, output_tokens=None),),
+                                              model_usage=({'m': dict(self.MU, outputTokens='200')},)))
+        self.assertEqual(rec['lower_bound_tokens'], 1000 + 4700)
+        rec = P.build_record(spec, self.write(base / 'w', raw=(dict(self.RAW, input_tokens=4000.0),),
+                                              wmu=({'w': dict(self.WMU, inputTokens=None)},)))
+        self.assertEqual(rec['lower_bound_tokens'], 1200 + 700)
+        self.assertEqual(rec['charged_tokens'], P.RUN_RESERVE)
+
+    def test_malformed_ledger_and_stream_lines(self):
+        base = Path(tempfile.mkdtemp(prefix='crm-'))
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        run = self.write(base / 'r')
+        calls = run / 'do' / 'h1' / 'calls.jsonl'
+        calls.write_text(calls.read_text(encoding='utf-8') + 'not json\n5\n{"event": "call_end", "usage": 3}\n',
+                         encoding='utf-8')
+        with (run / 'transcript.jsonl').open('a', encoding='utf-8') as f:
+            f.write('7\n{"type": "assistant", "message": "text"}\n'
+                    '{"type": "assistant", "message": {"id": "m2", "content": "x", "usage": [1]}}\n')
+        rec = P.build_record(P.build_spec('A', 'I'), run)
+        self.assertFalse(rec['accounting_complete'])
+        self.assertEqual(rec['charged_tokens'], P.RUN_RESERVE)
+
+    def test_every_malformed_shape_on_recovery(self):
+        """recover() rebuilds a kept run through the same record path: it must record the run, charged
+        max(reserve, lower bound), and never raise, whatever shape the usage has."""
+        base = Path(tempfile.mkdtemp(prefix='crm-'))
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        cases = [c for c in self.cases() if not c[2]]
+        for n, (name, kw, _) in enumerate(cases):
+            out = base / f'o{n}'
+            out.mkdir()
+            self.write(out / 'A-I', **kw)
+            (out / 'attempts.jsonl').write_text(json.dumps({'attempt': 'A-I#1', 'tag': 'A-I', 'admitted': True,
+                                                            'quota_before': 46.0}) + '\n', encoding='utf-8')
+            try:
+                with contextlib.redirect_stdout(io.StringIO()):
+                    P.recover(out, 'd' * 64)
+            except Exception as exc:                                  # noqa: BLE001
+                self.fail(f'{name}: {type(exc).__name__}: {exc}')
+            recs = [json.loads(x) for x in (out / 'runs.jsonl').read_text(encoding='utf-8').splitlines()]
+            self.assertEqual(len(recs), 1, name)
+            self.assertTrue(recs[0]['recovered'], name)
+            self.check(name, recs[0], False)
+            self.assertEqual(P.admission(P.state(out), '46')['spent_tokens'], recs[0]['charged_tokens'], name)
 
 
 class SnapshotTests(unittest.TestCase):

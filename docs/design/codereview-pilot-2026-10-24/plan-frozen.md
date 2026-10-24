@@ -1,6 +1,6 @@
 # Code-review sizing pilot: frozen run plan
 
-Status: frozen at digest `a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934` (`bench/codereview/freeze.json`,
+Status: frozen at digest `3165fd83d0441597625147fb91c4661792ac684819045ebf5653cac31ae9c7f9` (`bench/codereview/freeze.json`,
 CLI 2.1.306), not run, runnable. The witness domains are frozen: Astra answered the six questions as a new
 evaluator file, `DOMAINS.md` (Astra revision 2), which changes no module, span or reference.
 
@@ -134,6 +134,18 @@ its response without unseeded findings is exactly `[]`. No model scores anything
    non-negative integer. Each record lists the four sources (`lower_bound_sources`). A run with incomplete accounting
    is charged max(101,000, lower bound); a preserved 120,000-token worker envelope with no ledger completion is
    therefore charged at least 120,000 plus the caller's bound (tested).
+6. Malformed shapes never raise (re-review of the second review). Every usage shape other than the strict one, on
+   either side, is recorded as incomplete accounting with its lower bound and charged max(101,000, lower bound): usage
+   or modelUsage that is not an object, a non-object modelUsage entry, a counter that is null, boolean, negative, a
+   string, a float or another non-integer, a missing counter, and unreadable or non-object transcript or ledger lines.
+   A caller message without strict usage makes the caller's accounting incomplete even when the final total is
+   whole. A worker call counts as having usage only when its ledger `usage.raw` holds input_tokens,
+   cached_input_tokens, cache_creation_input_tokens and output_tokens as non-negative integers. The ledgers are read
+   by the pilot's own strict reader (`read_ledgers`, shared with the live guard), not by pilot_k2.worker_usage, and
+   pilot_k2.parse_stream, which is pinned by another freeze and left unedited, only ever sees a transcript reduced to
+   valid shapes; it supplies turns, tool calls and the final text, never accounting. The same record function serves
+   the first record, `rejudge` and crash recovery, and a property-style test runs 178 malformed shapes through the
+   first record and through recovery.
 
 ## Caps (review finding 1, second review finding 1): exact rule
 
@@ -225,16 +237,16 @@ and put it in place of `PCT`; after each run, read it again and settle it.
 1. Check: `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/verify.py`
    and `.venv/Scripts/python.exe bench/codereview/pilot.py freeze` must print ALL PASS and freeze holds.
 2. Run 1 (A-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 3165fd83d0441597625147fb91c4661792ac684819045ebf5653cac31ae9c7f9 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 3. Run 2 (A-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 3165fd83d0441597625147fb91c4661792ac684819045ebf5653cac31ae9c7f9 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 4. Run 3 (B-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 3165fd83d0441597625147fb91c4661792ac684819045ebf5653cac31ae9c7f9 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 5. Run 4 (B-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 3165fd83d0441597625147fb91c4661792ac684819045ebf5653cac31ae9c7f9 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 6. `pilot.py report` prints the per-run table (caller turns, caller tokens, cache reads and writes, worker tokens,
    total, lower bound, charged, time, correctness, recall, false positives, unproven) and the fill-slope estimates for
