@@ -393,3 +393,113 @@ effective request; D3, D5 and D6 are for Opus B as written in the joint decision
 
 Astra 11 of 20, Opus 22 of 40, Fable 2 of 4, Sonnet 1 of 40 (ledger sums, this implementer included). Evaluation calls
 so far: 0 Codex, 0 Sonnet. Driver quota at the start of this step: Claude weekly all models 68%; Codex primary 41%.
+
+
+## A4.14 fail closed execution (2026-10-25)
+
+Implementer: one fresh Opus workflow subagent (claude-opus-5-5), logged in call-ledger.jsonl as role
+`implementer-a414-fail-closed`. It made no model call and no Codex call and ran no real `codex` or `claude`; every
+path was exercised with the harness' own fakes and temporary directories. Two read only metadata checks touched owner
+state: the Windows known folder profile path, and a comparison of the login session hashes of the baseline and the
+owner auth.json (equality only; no token text printed). The sealed reviewer ASTs were not read. Normative input:
+amendment-4-14-fail-closed.md; the round 3 blocker dispositions are in closure-ledger.md.
+
+### What changed
+
+1. In flight recovery, resume and rerun are removed: `recover_inflight`, `_recover_stream`, `_recovered_call`,
+   `_home_shows_start`, `close_dead_windows`, `superseded_terminal_batches`, the read back of earlier terminal batches
+   and of kept markers in `run_batches`, and the `interrupted` retry outcome. A cell runs once; within its invocation
+   only an infrastructure failure is retried from the reserve (A4.3 and A4.5 unchanged).
+2. Every child runs in a supervised process tree (`procs.Tree`: a kill on close job object on Windows, a process group
+   elsewhere). It is created suspended, journaled, then resumed, so no descendant outlives its call or its runner and
+   termination is established for the whole tree.
+3. A4.14.1 stop (`run.stop_cell`). On a crash (detected at the next admission by `crash_scan`), an unsettled call or
+   process state, an authentication stop, a leakage or isolation signal (an executed or uncertain verdict, redacted
+   credential material, a probe disclosure) or an accounting anomaly (usage invalid), the cell stops and every record
+   is preserved: markers, worker homes and raw streams stay; a charged call without an attempt row gets `not_launched`
+   (never started) or `unsettled` (uncertain call state) and, live, its ledger row; after a crash the A4.2 hash
+   comparison of each Codex worker against its prepared generation runs, and a change stops Codex without any
+   propagation or restore. The cell gets INTERRUPTED.json and state `interrupted`. A cell that dispatched nothing (a
+   refusal before its first reservation) stays pending.
+4. Containment before admission. Each outstanding marker must be reserved only, recorded, or shown to have a gone
+   process tree (the runner and the child ended and the child was supervised). Otherwise `D/run-stop.json` is written
+   and no further cell of any backend is admitted (exit 20). Superseded run directories with a run stop or a safety
+   kill block a replacement directory, and a cell that dispatched in a superseded directory is never rerun in its
+   replacement (exit 15).
+5. `run cell <id>` refuses a complete (3), settled (5) or interrupted (19) cell; a cell whose prerequisite is
+   interrupted is interrupted without running (75). An exhausted cell now also writes SETTLED.json. Telemetry writes
+   DONE.json or SETTLED.json and refuses after an interruption.
+6. Scoring (A4.14.1, A4.14.2). An `unsettled` attempt is leakage. A stopped cell whose preserved records show a leak,
+   an isolation signal, an accounting failure or an unsettled call is reported `invalid` (`validity.invalid_cells`,
+   cell state `invalid`); only a stopped cell without a finding is `interrupted`. A run stop fails isolation. Every
+   gate carries a `verdict` in which invalid takes precedence over inconclusive.
+7. Round 3 closure items fixed with it: annex binding in freeze readiness (Astra 1), process trees and no sibling
+   propagation (9), unsettled killed streams (10), reservation debits and ledger reconciliation both ways (11), the
+   guarded executable check (12), the probe journal path (13), the reservation gate on the prepared generation (14),
+   probe disclosures (15), scorer reconstruction of records, job order, audit set and warm C eligibility (16), outward
+   rounding (17), the Sonnet route check (23), the extended discovery scan and the live run directory outside the
+   owner profile (RT3.1), login session separation (RT3.2), owner sessions only in live mode (RT3.3).
+
+New exit codes (harness additions to INTERFACE.md): 19 cell interrupted earlier, never resumed or rerun; 20 run
+stopped, containment not established. The live run directory default is now `<system drive>/ozmap_rep/runs/replication`
+(RT3.1), and `run freeze` refuses a live run directory below an owner profile.
+
+### Replaced tests (A4.14.4)
+
+Each test below encoded in flight recovery or resume and is replaced by a test asserting A4.14.1 behavior: the cell is
+interrupted, records are preserved, nothing is rerun, dependent cells are interrupted, and unresolved outstanding work
+prevents admission unless contained. Replacements without a file name are in `tests/test_a414_fail_closed.py`.
+
+| replaced test | replacement |
+|---|---|
+| `acceptance/test_cli_plan_and_cells.py::test_cli_cell_is_resumable_and_never_repeats_a_completed_call` | `acceptance/test_cli_plan_and_cells.py::test_cli_cell_interrupted_is_never_resumed_or_rerun` |
+| `redteam/test_redteam_r2.py::test_rt2_1_execution_captured_before_the_runner_died_is_still_leakage` (a resumed run completing the cell) | the same test rewritten: the crashed cell is refused (19), the call is `unsettled`, no resend, the capture stays leakage, the cell is invalid |
+| `tests/test_council_r1.py::test_item3_one_refreshed_worker_of_a_killed_call_is_propagated_on_resume` | `test_a414_a_refreshed_worker_of_a_crashed_call_stops_codex_and_is_never_propagated` |
+| `tests/test_council_r1.py::test_item3_two_changed_workers_of_killed_calls_stop_codex_and_keep_the_baseline` | `test_a414_two_changed_workers_of_crashed_calls_stop_codex_and_keep_the_baseline` |
+| `tests/test_council_r1.py::test_item3_a_recorded_child_still_running_stops_the_resume_without_touching_anything` | `test_a414_a_child_still_running_prevents_every_further_admission` |
+| `tests/test_council_r1.py::test_item3_a_crash_just_before_reconciliation_is_reconciled_on_resume` | `test_a414_a_refreshed_worker_of_a_crashed_call_stops_codex_and_is_never_propagated` |
+| `tests/test_council_r1.py::test_item3_a_marker_without_pid_on_a_started_home_is_ambiguous_and_stops_codex` | `test_a414_an_unidentified_or_unsupervised_child_stops_the_run` |
+| `tests/test_council_r1.py::test_item4_a_crash_during_the_telemetry_call_keeps_it_charged_and_blocks_evaluation` | `test_a414_a_crashed_telemetry_call_is_unsettled_and_blocks_evaluation` |
+| `tests/test_council_r2.py::test_item3_a_crash_between_capture_call_record_and_attempt_row_never_resends` (six cases) | `test_a414_a_crash_mid_record_preserves_the_call_unsettled_and_never_resends` (six cases) |
+| `tests/test_council_r2.py::test_b3_an_orphan_without_any_stream_is_uncertain_leakage` | `test_a414_an_orphan_without_any_stream_is_unsettled_leakage_and_its_usage_stays_incomplete` |
+| `tests/test_council_r2.py::test_item3_a_communicate_exception_with_a_live_child_keeps_the_home_and_stops_codex` | `test_a414_a_child_whose_tree_cannot_be_ended_keeps_its_records_and_stops_the_run` |
+| `tests/test_council_r2.py::test_item3_a_spawning_marker_without_pid_is_kept_and_its_batch_never_resent` | `test_a414_an_unidentified_or_unsupervised_child_stops_the_run` |
+| `tests/test_council_r2.py::test_b2_a_reserved_marker_becomes_a_charged_not_launched_attempt` | `test_a414_a_reserved_marker_after_a_crash_is_a_charged_not_launched_attempt` |
+| `tests/test_council_r2.py::test_item14_a_crash_before_the_window_closes_keeps_the_work_in_the_gated_makespan` | `test_a414_a_crash_after_the_last_call_leaves_a_bounded_window_and_an_interrupted_cell` |
+| `tests/test_rule_path.py::test_dead_runner_in_flight_call_is_recorded_once_and_retried_from_the_reserve` | `test_a414_a_reserved_marker_after_a_crash_is_a_charged_not_launched_attempt` |
+
+New A4.14.1 tests besides the replacements: `test_a414_a_stopped_cell_is_interrupted_and_never_resumed_or_rerun`,
+`test_a414_a_cell_whose_prerequisite_is_interrupted_is_interrupted_without_running`,
+`test_a414_a_leakage_signal_stops_the_cell_before_any_retry`, `test_a414_a_run_stop_admits_no_cell_of_any_backend` and
+`test_a414_a_validity_failure_is_never_labeled_inconclusive`, plus one or more per closure item (closure-ledger.md).
+
+Other test edits, none weakening an assertion: `acceptance/INTERFACE.md` states A4.14.1 in place of the resumability
+sentence; the two Live fixtures (`tests/test_council_r1.py::Live`, `redteam/test_redteam_r2.py::Live`) point
+`config.CODEX_SESSIONS_DEFAULT` at their temporary sessions directory, as the RT3.3 fix prescribes;
+`tests/test_council_r2.py::test_b1_readiness_needs_countersigned_ruling_bytes_and_a_matching_configuration` also binds
+the annexes Astra 1 requires, with its round 2 assertions unchanged. The rest of the acceptance suite, red team round 1,
+round 2 (RT2.2 to RT2.6) and round 3 pass unchanged.
+
+### Readings where A4.14 is silent
+
+1. A cell that dispatched nothing (stopped before its first reservation, for example by a quota or launch check) is
+   not interrupted; it stays pending and may be admitted later, since no part of it ran.
+2. A child terminated while still suspended (its pid journal failed before it was resumed) is a proven `not_launched`;
+   Codex still stops, as before.
+3. Any spawn failure in a launch group blocks propagation for the whole group (Astra 9), and Codex stops.
+4. A stopped Codex cell keeps its worker homes; only a later Codex cell would rebuild them, which a Codex stop or a run
+   stop prevents in the same run directory.
+5. With `--ephemeral` kept, a coverage gap after a cell's first group now interrupts the cell for good (Opus B1): the
+   A4.2 revision or an attended reading plan is needed before live waves.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 570 passed |
+| `python -m pytest -q` (full repository) | 1,995 passed, 2 skipped, 1,069 subtests passed (24 min 47 s), exit 0 |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls; report: leakage 0, accounting failures 0, artifact problems 0, isolation passed, no stopped cell |
+
+The system interpreter lacks tiktoken, which 50 tests outside `bench/ozmap_rep/` need (see the first test results
+section). The full repository run here puts the repository `.venv` site packages on PYTHONPATH so the same
+`python -m pytest -q` finds tiktoken 0.14.0; nothing was installed.

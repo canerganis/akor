@@ -102,12 +102,18 @@ INPUT_POLICY = {'version': 'oz-input/1', 'terminal_newline': 'strip_one', 'text_
 EXIT_OK, EXIT_USAGE, EXIT_ALREADY, EXIT_REQUIRES, EXIT_INCOMPLETE = 0, 2, 3, 4, 5
 EXIT_QUOTA, EXIT_AUTH_GATE, EXIT_AUTH_STOP, EXIT_TELEMETRY, EXIT_FREEZE, EXIT_INTERRUPTED = 10, 11, 12, 13, 14, 75
 EXIT_IDENTITY, EXIT_BUSY, EXIT_SAFETY_KILL, EXIT_CLASSIFICATION = 15, 16, 17, 18
+# A4.14.1 (fail closed execution): 19 the cell was interrupted (or settled) earlier and is never resumed or rerun;
+# 20 the run is stopped because containment of outstanding work from an interrupted cell was not established, so no
+# further cell is admitted.
+EXIT_CELL_INTERRUPTED, EXIT_RUN_STOPPED = 19, 20
 
 # Council round 1: the live run directory and the experiment ledger. Live cells run only in the canonical run
 # directory (freeze.json may name another one, which needs a new freeze and a recorded council disposition), and every
 # live charge is also appended to the experiment ledger outside every run directory, so a new or emptied run
 # directory never grants a fresh allocation (RT1.5, item 9).
-LIVE_RUN_DIR_DEFAULT = RUNS_DEFAULT / 'replication'
+# Red team round 3 (RT3.1): the live run directory, and with it every worker home and working directory, sits outside
+# the owner profile, so no ancestor of a live working directory holds the owner's .codex, .claude or .agents state.
+LIVE_RUN_DIR_DEFAULT = Path(Path.home().anchor or '/') / 'ozmap_rep' / 'runs' / 'replication'
 LIVE_LEDGER_DEFAULT = RUNS_DEFAULT / 'live-calls.jsonl'
 
 # Signed exceptions (council rounds 1 and 2). Each entry needs a prospective ruling signed by Astra A and Opus B before

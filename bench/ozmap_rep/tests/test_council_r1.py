@@ -89,6 +89,8 @@ class Live:
         self.before = None  # callable(env, cwd, launch), applied before a fake call
         monkeypatch.setattr(run, 'live_run_dir', lambda: self.run_dir)
         monkeypatch.setattr(run, 'verify_freeze', lambda: [])
+        # A4.12, RT3.3: live mode reads the owner sessions only; the test's sessions directory stands in for them
+        monkeypatch.setattr(config, 'CODEX_SESSIONS_DEFAULT', self.sessions)
         monkeypatch.setattr(run, 'freeze_sha256', lambda: 'f' * 64)
         monkeypatch.setattr(run.tokenizer, 'vocabulary_ok', lambda: True)
         monkeypatch.setattr(run.tokenizer, 'count', lambda texts: [max(1, len(t) // 4) for t in texts])
@@ -347,78 +349,20 @@ def killed_call_with_refresh(tmp_path, slot, marker_text):
     return prepared, sha(home / 'auth.json')
 
 
-def test_item3_one_refreshed_worker_of_a_killed_call_is_propagated_on_resume(tmp_path):
-    fake_opts(tmp_path)
-    prepared, refreshed = killed_call_with_refresh(tmp_path, 1, 'KILLED-CALL')
-    orphan_marker(tmp_path, 'codex-materials-cold-A', 1, prepared, pid=999999)
-    assert go(tmp_path, 'codex-materials-cold-A') == 0
-    assert sha(tmp_path / 'baseline' / 'auth.json') == refreshed, 'the refreshed token was destroyed, not propagated'
-    rows = attempts(tmp_path / 'run', 'codex-materials-cold-A')
-    assert [r['outcome'] for r in rows if r['batch'] == 'r1.b01'] == ['interrupted', 'ok']
-    assert not (tmp_path / 'run' / 'codex-stop.json').exists()
+# test_item3_one_refreshed_worker_of_a_killed_call_is_propagated_on_resume: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_refreshed_worker_of_a_crashed_call_stops_codex_and_is_never_propagated
 
+# test_item3_two_changed_workers_of_killed_calls_stop_codex_and_keep_the_baseline: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_two_changed_workers_of_crashed_calls_stop_codex_and_keep_the_baseline
 
-def test_item3_two_changed_workers_of_killed_calls_stop_codex_and_keep_the_baseline(tmp_path):
-    fake_opts(tmp_path)
-    before = sha(tmp_path / 'baseline' / 'auth.json')
-    p1, _ = killed_call_with_refresh(tmp_path, 1, 'KILLED-1')
-    p2, _ = killed_call_with_refresh(tmp_path, 2, 'KILLED-2')
-    orphan_marker(tmp_path, 'codex-materials-cold-A', 1, p1, pid=999998, batch='r1.b01')
-    orphan_marker(tmp_path, 'codex-materials-cold-A', 2, p2, pid=999997, batch='r1.b02')
-    assert go(tmp_path, 'codex-materials-cold-A') == config.EXIT_AUTH_STOP
-    assert (tmp_path / 'run' / 'codex-stop.json').exists()
-    assert sha(tmp_path / 'baseline' / 'auth.json') == before
-    assert len(attempts(tmp_path / 'run')) == 2 and all(r['outcome'] == 'interrupted'
-                                                        for r in attempts(tmp_path / 'run'))
+# test_item3_a_recorded_child_still_running_stops_the_resume_without_touching_anything: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_child_still_running_prevents_every_further_admission
 
+# test_item3_a_crash_just_before_reconciliation_is_reconciled_on_resume: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_refreshed_worker_of_a_crashed_call_stops_codex_and_is_never_propagated
 
-def test_item3_a_recorded_child_still_running_stops_the_resume_without_touching_anything(tmp_path):
-    fake_opts(tmp_path)
-    prepared, refreshed = killed_call_with_refresh(tmp_path, 1, 'STILL-RUNNING')
-    child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
-    try:
-        orphan_marker(tmp_path, 'codex-materials-cold-A', 1, prepared, pid=child.pid)
-        assert go(tmp_path, 'codex-materials-cold-A') == config.EXIT_INTERRUPTED
-        home = tmp_path / 'run' / 'homes' / 'worker-1'
-        assert sha(home / 'auth.json') == refreshed and (home / 'state.sqlite').exists()
-        assert list((tmp_path / 'run' / 'cells' / 'codex-materials-cold-A' / 'inflight').glob('*.json'))
-        assert attempts(tmp_path / 'run') == []
-    finally:
-        child.kill()
-        child.wait()
-    assert go(tmp_path, 'codex-materials-cold-A') == 0
-    assert sha(tmp_path / 'baseline' / 'auth.json') == refreshed
-
-
-def test_item3_a_crash_just_before_reconciliation_is_reconciled_on_resume(tmp_path, monkeypatch):
-    original = run.CellRun.reconcile
-    state = {'n': 0}
-
-    def crash(self, workers):
-        state['n'] += 1
-        if state['n'] == 1:
-            raise KeyboardInterrupt('runner killed just before reconciliation')
-        return original(self, workers)
-
-    monkeypatch.setattr(run.CellRun, 'reconcile', crash)
-    with pytest.raises(KeyboardInterrupt):
-        go(tmp_path, 'codex-materials-cold-A', fake_refresh=1)
-    markers = list((tmp_path / 'run' / 'cells' / 'codex-materials-cold-A' / 'inflight').glob('*.json'))
-    assert markers, 'markers stay until the reconciliation is done'
-    before = sha(tmp_path / 'baseline' / 'auth.json')
-    assert go(tmp_path, 'codex-materials-cold-A') == 0
-    after = (tmp_path / 'baseline' / 'auth.json').read_bytes()
-    assert sha(tmp_path / 'baseline' / 'auth.json') != before and b'SECRET-FAKE-REFRESHED' in after
-    assert len({r['call_id'] for r in attempts(tmp_path / 'run')}) == len(attempts(tmp_path / 'run'))
-
-
-def test_item3_a_marker_without_pid_on_a_started_home_is_ambiguous_and_stops_codex(tmp_path):
-    fake_opts(tmp_path)
-    prepared, _ = killed_call_with_refresh(tmp_path, 1, 'NO-PID')
-    orphan_marker(tmp_path, 'codex-materials-cold-A', 1, prepared, pid=None)
-    assert go(tmp_path, 'codex-materials-cold-A') == config.EXIT_AUTH_STOP
-    assert 'ambiguous' in json.loads((tmp_path / 'run' / 'codex-stop.json').read_text(encoding='utf-8'))['reason']
-
+# test_item3_a_marker_without_pid_on_a_started_home_is_ambiguous_and_stops_codex: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_an_unidentified_or_unsupervised_child_stops_the_run
 
 # ======================================================================== item 4, B4: telemetry lifecycle
 
@@ -468,26 +412,8 @@ def test_item4_forced_propagation_failure_leaves_no_certificate(live, monkeypatc
     assert (live.run_dir / 'codex-stop.json').exists()
 
 
-def test_item4_a_crash_during_the_telemetry_call_keeps_it_charged_and_blocks_evaluation(live, monkeypatch):
-    original = run.TelemetryRun.after_group
-    state = {'n': 0}
-
-    def crash(self, group):
-        state['n'] += 1
-        if state['n'] == 2:
-            raise KeyboardInterrupt('runner killed during the telemetry call')
-        return original(self, group)
-
-    monkeypatch.setattr(run.TelemetryRun, 'after_group', crash)
-    with pytest.raises(KeyboardInterrupt):
-        live.telemetry()
-    monkeypatch.setattr(run.TelemetryRun, 'after_group', original)
-    assert live.cell('codex-materials-cold-A') == config.EXIT_TELEMETRY
-    tel = attempts(live.run_dir, 'telemetry')
-    # council round 2 (item 3, B3): the dead runner's call is judged from its raw stream, never lost as interrupted
-    assert [a['outcome'] for a in tel] == ['auth_failure', 'ok'] and tel[1]['recovered_from'] == 'raw_stream'
-    assert len(run.jsonl(live.ledger)) == 2
-
+# test_item4_a_crash_during_the_telemetry_call_keeps_it_charged_and_blocks_evaluation: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_crashed_telemetry_call_is_unsettled_and_blocks_evaluation
 
 def test_b4_the_scorer_keeps_telemetry_out_of_evaluation_leakage(live):
     assert live.telemetry() == 0

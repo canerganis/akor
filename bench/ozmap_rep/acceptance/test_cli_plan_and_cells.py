@@ -1,4 +1,4 @@
-"""The run CLI: plan --list-cells, resumable cell execution in fake mode, refusal to rerun, gates before any spawn.
+"""The run CLI: plan --list-cells, cell execution in fake mode, refusal to rerun (A4.14.1), gates before any spawn.
 Never calls a real CLI: fake mode uses the harness' own fakes and a tripwire directory guards the real names."""
 import datetime as dt
 import hashlib
@@ -155,21 +155,29 @@ def test_cli_cell_runs_after_its_bootstrap_cell_completes(env):
     assert 3 <= len(env.fake_calls('codex-materials-cold-C')) <= 4  # bounded by the pooled capacity
 
 
-def test_cli_cell_is_resumable_and_never_repeats_a_completed_call(env):
+def test_cli_cell_interrupted_is_never_resumed_or_rerun(env):
+    """A4.14.4 replacement of test_cli_cell_is_resumable_and_never_repeats_a_completed_call: under A4.14.1 an
+    interrupted cell is never resumed or rerun. It is marked interrupted, its records are preserved, `run cell`
+    refuses it (exit 19, no call), and a cell that requires it is interrupted without running."""
     first = env.cell('codex-materials-cold-A', '--stop-after', '2')
     assert first.returncode == 75
-    state = json.loads((env.run_dir / 'cells' / 'codex-materials-cold-A' / 'state.json').read_text(encoding='utf-8'))
+    cell_dir = env.run_dir / 'cells' / 'codex-materials-cold-A'
+    state = json.loads((cell_dir / 'state.json').read_text(encoding='utf-8'))
     assert state['state'] == 'interrupted'
-    assert not (env.run_dir / 'cells' / 'codex-materials-cold-A' / 'DONE.json').exists()
+    assert not (cell_dir / 'DONE.json').exists() and (cell_dir / 'INTERRUPTED.json').exists()
     assert len(env.fake_calls('codex-materials-cold-A')) == 2
-    second = env.cell('codex-materials-cold-A')
-    assert second.returncode == 0, second.stderr
-    rows = env.fake_calls('codex-materials-cold-A')
-    assert len(rows) == 4, 'two calls before the interruption plus the two that were missing'
-    hashes = [r['stdin_sha256'] for r in rows]
-    assert len(set(hashes)) == 4, 'no prompt may be sent twice'
-    assert env.cell('codex-materials-cold-A').returncode == 3
-    assert len(env.fake_calls()) == 4
+    attempts = jsonl(env.run_dir / 'attempts.jsonl')
+    prompts_before = sorted(p.name for p in (env.run_dir / 'prompts').glob('*.txt'))
+    for _ in range(2):
+        again = env.cell('codex-materials-cold-A')
+        assert again.returncode == 19, again.stderr
+    assert len(env.fake_calls()) == 2, 'nothing is rerun'
+    assert jsonl(env.run_dir / 'attempts.jsonl') == attempts, 'records are preserved unchanged'
+    assert sorted(p.name for p in (env.run_dir / 'prompts').glob('*.txt')) == prompts_before
+    dependent = env.cell('codex-materials-warm-A')
+    assert dependent.returncode == 75, dependent.stderr
+    assert (env.run_dir / 'cells' / 'codex-materials-warm-A' / 'INTERRUPTED.json').exists()
+    assert len(env.fake_calls()) == 2 and env.tripped() == []
 
 
 def test_cli_cell_infrastructure_failures_draw_on_the_two_reserve_calls(env):

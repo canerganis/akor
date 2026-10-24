@@ -32,7 +32,7 @@ def _ratio(num, den):
 
 
 def _span(cell, side='exact'):
-    """A cell's makespan for a comparison (council round 2, item 14). A window closed by recovery has only bounds,
+    """A cell's makespan for a comparison (council round 2, item 14). A window closed after a crash has only bounds,
     so the arm under test uses its upper bound and the reference arm its lower bound: lengthening a reference window
     never helps the arm under test. Exact windows give equal bounds."""
     if side == 'test' and cell.get('makespan_upper_s') is not None:
@@ -83,11 +83,22 @@ def safety_kill(summary) -> bool:
     return any(int(c.get('rule_errors', 0)) > 0 for k, c in summary.get('cells', {}).items() if '/materials/' in k)
 
 
+def _verdict(inconclusive, ok, validity, kill):
+    """A4.11 and A4.14.1: a detected validity failure (or a safety kill) is reported invalid before anything is
+    called inconclusive, so a stopped cell's leak or accounting failure is never labeled interrupted or inconclusive
+    (A4.14.2)."""
+    if validity or kill:
+        return 'invalid'
+    if inconclusive:
+        return 'inconclusive'
+    return 'pass' if ok else 'fail'
+
+
 def _result(keys, cells, checks, validity, ratios, kill=False):
     inconclusive = any(_incomplete(cells.get(k)) for k in keys)
     ok = not inconclusive and all(checks.values()) and not validity and not kill
     return {'pass': ok, 'inconclusive': inconclusive, 'checks': checks, 'validity_problems': validity,
-            'ratios': {k: _f(v) for k, v in ratios.items()}}
+            'verdict': _verdict(inconclusive, ok, validity, kill), 'ratios': {k: _f(v) for k, v in ratios.items()}}
 
 
 def materials_gate(summary, backend) -> dict:

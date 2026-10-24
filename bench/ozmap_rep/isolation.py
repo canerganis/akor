@@ -25,6 +25,14 @@ from . import config
 
 AUTH = 'auth.json'
 INSTRUCTION_NAMES = ('AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md')
+# Red team round 3 (RT3.1): the capability and instruction discovery locations the pinned CLIs know besides the
+# instruction files above: codex-cli 0.160.0 names `.agents/skills`, `.codex/config.toml`, `.codex/agents`,
+# `.codex/hooks` and `mcp.json` in its capability discovery table, and Claude Code reads `.claude/` (CLAUDE.md, rules,
+# settings) and CLAUDE.local.md. Any of them in the working directory or an ancestor refuses the launch, whatever its
+# content (a directory counts as present). The owner profile directory itself is excluded from this extended walk
+# because its user scope state is governed separately: live runs never place a working directory below it
+# (config.LIVE_RUN_DIR_DEFAULT, refused by `run freeze` otherwise).
+DISCOVERY_NAMES = ('.agents', '.codex', '.claude', 'mcp.json', '.mcp.json', 'CLAUDE.local.md', 'AGENTS.local.md')
 SLOT_RE = re.compile(r'slot-[0-9]+\Z')
 LOGIN_HINT = 'the owner must run: CODEX_HOME={baseline} codex login'
 
@@ -237,14 +245,59 @@ def sonnet_env(base_env) -> dict:
     return {k: v for k, v in (base_env or {}).items() if k.upper() in allow}
 
 
+def os_profile_dir():
+    """The user profile directory as the OS resolves it (Windows known folder FOLDERID_Profile), which ignores the
+    HOME and USERPROFILE values a child environment carries; None elsewhere or when it cannot be resolved."""
+    if os.name != 'nt':
+        return None
+    try:
+        import ctypes
+        import uuid
+        from ctypes import wintypes
+
+        class GUID(ctypes.Structure):
+            _fields_ = [('Data1', wintypes.DWORD), ('Data2', wintypes.WORD), ('Data3', wintypes.WORD),
+                        ('Data4', ctypes.c_ubyte * 8)]
+        u = uuid.UUID('{5E6C858F-0E22-4760-9AFE-EA3317B67173}')
+        g = GUID()
+        g.Data1, g.Data2, g.Data3 = u.fields[0], u.fields[1], u.fields[2]
+        g.Data4[:] = list(u.bytes[8:])
+        out = ctypes.c_wchar_p()
+        if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(g), 0, None, ctypes.byref(out)) != 0:
+            return None
+        try:
+            return Path(out.value)
+        finally:
+            ctypes.windll.ole32.CoTaskMemFree(out)
+    except (OSError, AttributeError, ValueError):
+        return None
+
+
+def profile_dirs() -> set:
+    """The owner profile directories (Path.home() and the OS profile): their user scope state is governed by the
+    live run directory placement (never below a profile), not by the ancestor discovery walk."""
+    out = set()
+    for d in (Path.home(), os_profile_dir()):
+        if d is None:
+            continue
+        try:
+            out.add(Path(d).resolve())
+        except (OSError, RuntimeError):
+            continue
+    return out
+
+
 def instruction_scan(workdir) -> tuple:
     """(found, unreadable): instruction files Codex or Claude could discover (AGENTS.md, AGENTS.override.md and
-    CLAUDE.md in the working directory and every ancestor), and the locations whose state could not be read. An
-    unreadable location is never treated as absent (council round 1, item 7)."""
+    CLAUDE.md in the working directory and every ancestor) and the discovery locations of the pinned CLIs
+    (DISCOVERY_NAMES, red team round 3, RT3.1), and the locations whose state could not be read. An unreadable location
+    is never treated as absent (council round 1, item 7)."""
     found, unreadable = [], []
     here = Path(workdir).resolve()
+    profiles = profile_dirs()
     for d in [here, *here.parents]:
-        for name in INSTRUCTION_NAMES:
+        names = INSTRUCTION_NAMES if d in profiles else INSTRUCTION_NAMES + DISCOVERY_NAMES
+        for name in names:
             p = d / name
             try:
                 os.stat(p)
@@ -697,10 +750,40 @@ def owner_auth_paths(base_env=None) -> list:
     return out
 
 
+def _jwt_claims(token):
+    if not (isinstance(token, str) and token.count('.') == 2):
+        return {}
+    part = token.split('.')[1]
+    try:
+        claims = json.loads(base64.urlsafe_b64decode(part + '=' * (-len(part) % 4)).decode('utf-8'))
+    except (ValueError, UnicodeError, TypeError):
+        return {}
+    return claims if isinstance(claims, dict) else {}
+
+
+def login_identity(path) -> dict:
+    """SHA256 of the login session identity of an auth.json (red team round 3, RT3.2): the access token's
+    `session_id` claim, which stays the same across refreshes of one login and differs between two logins. {} when
+    the file is absent or carries no such claim. Never the token text."""
+    doc = _read_auth(Path(path)) if Path(path).exists() else None
+    tokens = (doc or {}).get('tokens') if isinstance((doc or {}).get('tokens'), dict) else {}
+    claims = _jwt_claims(tokens.get('access_token'))
+    auth = claims.get('https://api.openai.com/auth') if isinstance(claims.get('https://api.openai.com/auth'),
+                                                                     dict) else {}
+    value = claims.get('session_id') or auth.get('session_id')
+    return {'session_sha256': sha256_text(value)} if isinstance(value, str) and value else {}
+
+
+_NON_FILE_STORE = re.compile(r'''^\s*cli_auth_credentials_store\s*=\s*["']?(keyring|auto)(?![A-Za-z0-9_])''', re.M | re.I)
+
+
 def token_separation_problems(baseline, others) -> list:
-    """A4.2 (RT2.6): the baseline must share no access or refresh token (or API key) with the owner's authentication.
-    Hash comparison only. An unreadable owner or baseline document, or a baseline that is itself an owner path, is a
-    problem (never treated as different)."""
+    """A4.2 (RT2.6, red team round 3 RT3.2): the baseline must share no access or refresh token (or API key) and no
+    login session with the owner's authentication. Hash comparison only. A stale copy of the owner's login (older
+    tokens of the same login session) is not a separate login. An unreadable owner or baseline document, an owner
+    Codex home that holds no auth.json although it exists (the credential is kept elsewhere, an unexplained
+    representation) or whose configuration names a non file credential store, and a baseline that is itself an owner
+    path, are problems (never treated as different)."""
     problems = []
     base_path = Path(baseline) / AUTH
     try:
@@ -711,6 +794,7 @@ def token_separation_problems(baseline, others) -> list:
         mine = token_hashes(base_path)
     except IsolationError as exc:
         return [str(exc)]
+    my_login = login_identity(base_path)
     for other in others or ():
         other = Path(other)
         try:
@@ -719,11 +803,36 @@ def token_separation_problems(baseline, others) -> list:
                 continue
         except OSError:
             pass
+        home = other.parent
+        try:
+            config_text = (home / 'config.toml').read_text(encoding='utf-8', errors='replace') \
+                if (home / 'config.toml').is_file() else ''
+        except OSError:
+            problems.append(f'{home.name}/config.toml exists but cannot be read; the owner credential store is not '
+                            f'established')
+            continue
+        if _NON_FILE_STORE.search(config_text):
+            problems.append(f'the owner Codex configuration {home.name}/config.toml names a non file credential '
+                            f'store; {other.name} need not be the live credential, so separation is not established')
+        if not other.exists():
+            try:
+                populated = home.is_dir() and any(home.iterdir())
+            except OSError:
+                populated = True
+            if populated:
+                problems.append(f'the owner Codex home {home.name} holds no {other.name}: its credential is kept '
+                                f'elsewhere (an unexplained representation is never treated as different, RT3.2)')
+            continue
         try:
             theirs = token_hashes(other)
         except IsolationError as exc:
             problems.append(str(exc))
             continue
+        their_login = login_identity(other)
+        if my_login and their_login and my_login == their_login:
+            problems.append(f'the baseline is a copy of the owner login {other.parent.name}/{other.name} (same login '
+                            f'session, possibly older tokens; A4.2: seed it by an owner login, never by copying the '
+                            f'owner auth.json, RT3.2)')
         shared = sorted(k for k in mine if k in ('access_token', 'refresh_token', 'api_key') and k in theirs
                         and mine[k] == theirs[k])
         if shared:

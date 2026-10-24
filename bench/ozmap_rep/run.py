@@ -1,7 +1,7 @@
 """oz map clean replication runner (Amendment 4). Standard library only.
 
     python -m bench.ozmap_rep.run plan --list-cells               the 16 cells, one JSON line each
-    python -m bench.ozmap_rep.run cell <id> --mode fake|live ...  run or resume one cell (--mode is required)
+    python -m bench.ozmap_rep.run cell <id> --mode fake|live ...  run one cell once (--mode is required)
     python -m bench.ozmap_rep.run dry --run-dir D                 every cell in fake mode, zero rules, then the scorer
     python -m bench.ozmap_rep.run telemetry --mode live ...       the A4.2 telemetry certificate (live only)
     python -m bench.ozmap_rep.run freeze | verify-freeze          hash the frozen inputs before evaluation calls (A4.1)
@@ -17,12 +17,21 @@ charge written), then reserved as a whole: D/cells/<cell>/inflight/<call id>.jso
 (live) one experiment ledger row per member. Before Popen a marker turns `spawning`, right after it `spawned` with
 the child pid; the child's stdout and stderr go to raw stream files in D/homes/raw-<slot>/ (the credential boundary).
 after_group writes the call record, the captures and the attempt row in that order, then marks the marker `recorded`;
-a marker is removed only after the call's authentication was reconciled (A4.2). On resume every marker is recovered
-before anything else (council round 2, item 3): a recorded child still running stops the resume; a `reserved` marker
-becomes a charged `not_launched` attempt; a pid-less `spawning` marker is ambiguous (kept, Codex stops, its batch is
-never resent); an orphan is judged from its committed capture or else its raw stream, and only without any stream is it
-`interrupted` with an uncertain verdict. A batch whose attempt ended with any terminal outcome is never sent again. A
-completed cell has D/cells/<cell>/DONE.json, a settled but incomplete one SETTLED.json; neither is ever rerun.
+a marker is removed only after the call's authentication was reconciled (A4.2).
+
+Fail closed execution (A4.14.1). Every child runs in a supervised process tree (procs.Tree: a kill on close job object
+on Windows), so no descendant outlives its call or its runner. There is no in flight recovery and no cell is ever
+resumed or rerun within a run. A cell that meets a crash, an unsettled or unknown call or process state, an unexpected
+authentication state, an isolation or leakage signal or an accounting anomaly stops: every record is preserved (its
+markers, homes and raw streams included), each outstanding call gets the attempt row and ledger row its accounting
+obligation needs (`not_launched` when it never started, otherwise `unsettled`, an uncertain call state), and the cell
+gets D/cells/<cell>/INTERRUPTED.json. The scorer then applies A4.3 and A4.11 to those records: a leak, an isolation
+signal, an accounting failure or an unsettled call makes the cell invalid, not merely interrupted. Before another cell
+is admitted the harness establishes containment of the stopped cell's outstanding work (its process trees gone, so no
+worker home or record is still writable by it, and its accounting recorded); when that cannot be established it writes
+D/run-stop.json and admits no further cell. A cell whose prerequisite was interrupted is interrupted without running.
+A completed cell has DONE.json, a settled but incomplete one SETTLED.json, a stopped one INTERRUPTED.json; `run cell`
+refuses each of them.
 
 One cell process at a time per run directory (council round 1, item 2): every cell, telemetry and features run holds
 an exclusive per cell lock and the experiment lock, both taken without waiting before any state is read; live runs
@@ -56,7 +65,7 @@ if str(config.REPO / 'examples') not in sys.path:
 from . import bootstrap as bootstrap_mod  # noqa: E402
 from . import budget as budget_mod  # noqa: E402
 from . import events, isolation, prompts, quota, redact, rules, rulings, usage, workload  # noqa: E402
-from . import fake_cli, tokenizer  # noqa: E402
+from . import fake_cli, procs, tokenizer  # noqa: E402
 
 COMMAND = 'python -m bench.ozmap_rep.run cell {id}'
 LIVE_COMMAND = COMMAND + ' --mode live --claude-weekly-percent <reading>'
@@ -68,7 +77,8 @@ AUTH_FAILURE_RE = re.compile(r'status 401|401 Unauthorized|HTTP error: 401|Missi
                              r'sign in again|Not logged in|invalid_grant|token_expired|refresh_token_reused|'
                              r'Please log ?in|re-?authenticate', re.I)
 TERMINAL_OK = ('ok',)
-RETRYABLE = ('infrastructure_failure', 'interrupted', 'not_launched')
+RETRYABLE = ('infrastructure_failure', 'not_launched')
+STOP_FILES = ('DONE.json', 'SETTLED.json', 'INTERRUPTED.json')
 TELEMETRY_SPEC = {'id': 'telemetry', 'command': None, 'backend': 'codex', 'workload': 'telemetry',
                   'wave': 'telemetry', 'arm': 'telemetry', 'allocation': 'telemetry', 'nominal_calls': 2,
                   'requires': []}
@@ -392,19 +402,23 @@ def ledger_problems(run_dir, ledger):
     return problems
 
 
-def superseded_terminal_batches(run_dir, ledger, cell_id):
-    """(terminal batch keys, problems) of a cell in every superseded run directory: a replacement directory never
-    repeats a batch that ended terminally elsewhere, and missing predecessor evidence is a problem (item 9)."""
-    terminal, problems = set(), []
+def predecessor_cell_calls(run_dir, ledger, cell_id):
+    """Live calls of this cell recorded in the experiment ledger by another run directory (A4.14.1): a cell is never
+    rerun, in its run directory or in a replacement directory, so any such call refuses the cell there."""
+    rows, _ = ledger_rows(ledger)
+    here = str(Path(run_dir).resolve())
+    return sorted(r.get('call_id') for r in rows if r.get('cell') == cell_id and r.get('run_dir') != here)
+
+
+def predecessor_stops(run_dir, ledger):
+    """Run stops and safety kills of superseded run directories (Astra council round 3, item 11): a replacement
+    directory never escapes them."""
+    out = []
     for d in predecessor_dirs(run_dir, ledger):
-        path = Path(d) / 'attempts.jsonl'
-        if not path.exists():
-            problems.append(f'predecessor run directory {d} has no readable attempts (evidence missing)')
-            continue
-        for a in jsonl(path):
-            if a.get('cell') == cell_id and a.get('outcome') not in RETRYABLE:
-                terminal.add(a.get('batch'))
-    return sorted(t for t in terminal if t), problems
+        for name in ('run-stop.json', 'safety-kill.json'):
+            if (Path(d) / name).exists():
+                out.append((name, d))
+    return out
 
 
 # ================================================================================================ processes
@@ -472,39 +486,15 @@ def process_created(pid):
         return None
 
 
-def _kill_tree(proc):
-    try:
-        if os.name == 'nt':
-            subprocess.run(['taskkill', '/T', '/F', '/PID', str(proc.pid)], capture_output=True, timeout=60)
-        else:
-            proc.kill()
-    except (OSError, subprocess.SubprocessError):
-        pass
-
-
 class SpawnFailure(Exception):
-    """A child that was started but whose call cannot be settled normally (council round 2, item 3): its pid could
-    not be journaled, or waiting for it raised. `terminated` says whether termination of its process tree was
-    established; `raw` holds what its raw stream files contain when it was."""
+    """A child that was started but whose call cannot be settled normally (council round 2, item 3; A4.14.1): its pid
+    could not be journaled, waiting for it raised, or a descendant could not be shown to have ended. `terminated`
+    says whether the end of its whole process tree was established; `raw` holds what its raw stream files contain when
+    it was; `never_ran` says the child was terminated while still suspended, before it executed anything."""
 
-    def __init__(self, reason, terminated, pid=None, raw=None):
+    def __init__(self, reason, terminated, pid=None, raw=None, never_ran=False):
         Exception.__init__(self, reason)
-        self.reason, self.terminated, self.pid, self.raw = reason, terminated, pid, raw
-
-
-def _wait_gone(proc, pid, seconds=60):
-    end = time.monotonic() + seconds
-    while time.monotonic() < end:
-        try:
-            if proc is not None and proc.poll() is None:
-                time.sleep(0.1)
-                continue
-        except OSError:
-            pass
-        if not pid_alive(pid):
-            return True
-        time.sleep(0.1)
-    return False
+        self.reason, self.terminated, self.pid, self.raw, self.never_ran = reason, terminated, pid, raw, never_ran
 
 
 def _read_raw(paths):
@@ -517,14 +507,26 @@ def _read_raw(paths):
     return out
 
 
-def spawn(run_dir, launch, stdin_text, env, cwd, external, timeout=config.CALL_TIMEOUT_S):
-    """Run one child; every spawn is logged in D/spawns.jsonl with whether it is an external model CLI.
+def _end_tree(tree, proc, files, reason, raw):
+    """Kill the tree, establish its end, close the stream files and raise SpawnFailure."""
+    tree.kill()
+    gone = tree.gone()
+    for f in files:
+        f.close()
+    raise SpawnFailure(reason, gone, proc.pid, _read_raw(raw) if raw and gone else None,
+                       never_ran=gone and tree.supervised and not tree.resumed)
 
-    Council round 2 (items 3, B3): when the launching thread names a raw stream directory (_TLS.raw, inside D/homes,
-    the credential boundary), the child's stdout and stderr go to files there, not to pipes, so a runner that dies
-    leaves the complete stream for recovery. Right after the process starts, the thread's on_start hook journals its
-    pid in the in-flight marker; when that fails, or waiting for the child raises, its process tree is killed and
-    SpawnFailure says whether termination was established. Exceptions before the process exists propagate."""
+
+def spawn(run_dir, launch, stdin_text, env, cwd, external, timeout=config.CALL_TIMEOUT_S):
+    """Run one child in a supervised process tree (A4.14.1); every spawn is logged in D/spawns.jsonl with whether it
+    is an external model CLI.
+
+    When the launching thread names a raw stream directory (_TLS.raw, inside D/homes, the credential boundary), the
+    child's stdout and stderr go to files there, not to pipes. The child is created suspended and put under
+    supervision; the thread's on_start hook journals its pid (and _TLS.last_tree the supervision record) in the
+    in-flight marker before the child is resumed. When that fails, waiting raises, or a descendant survives the parent
+    and cannot be shown to have ended, the whole tree is killed and SpawnFailure says whether its end was established.
+    Exceptions before the process exists propagate."""
     _append(run_dir, 'spawns.jsonl', {'exe': Path(launch[1] if not external else launch[0]).name,
                                       'external': bool(external), 'at': _now()})
     raw = getattr(_TLS, 'raw', None)
@@ -534,66 +536,82 @@ def spawn(run_dir, launch, stdin_text, env, cwd, external, timeout=config.CALL_T
     if raw is not None:
         Path(raw[0]).parent.mkdir(parents=True, exist_ok=True)
         files = [open(raw[0], 'wb'), open(raw[1], 'wb')]
+    tree = procs.Tree()
     try:
-        proc = subprocess.Popen(launch, stdin=subprocess.PIPE,
-                                stdout=files[0] if files else subprocess.PIPE,
-                                stderr=files[1] if files else subprocess.PIPE, cwd=str(cwd), env=env)
-    except BaseException:
-        for f in files:
-            f.close()
-        raise
-    hook = getattr(_TLS, 'on_start', None)
-    if hook is not None:
         try:
-            hook(proc.pid)
-        except BaseException as exc:  # noqa: BLE001  (the pid could not be journaled: kill and establish the end)
-            _kill_tree(proc)
-            gone = _wait_gone(proc, proc.pid)
+            proc = tree.start(launch, stdin=subprocess.PIPE, stdout=files[0] if files else subprocess.PIPE,
+                              stderr=files[1] if files else subprocess.PIPE, cwd=str(cwd), env=env)
+        except BaseException:
             for f in files:
                 f.close()
-            raise SpawnFailure(f'the child pid could not be journaled: {type(exc).__name__}', gone, proc.pid,
-                               _read_raw(raw) if raw and gone else None) from None
-    timed_out = False
-    try:
+            raise
+        _TLS.last_tree = tree.record()
+        hook = getattr(_TLS, 'on_start', None)
         try:
-            out, err = proc.communicate(stdin_text.encode('utf-8'), timeout=timeout)
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            _kill_tree(proc)
-            out, err = proc.communicate()
-    except SpawnFailure:
-        raise
-    except BaseException as exc:  # noqa: BLE001  (waiting raised with a child that may still run)
-        _kill_tree(proc)
-        gone = _wait_gone(proc, proc.pid)
+            if hook is not None:
+                hook(proc.pid)
+            tree.resume()
+        except BaseException as exc:  # noqa: BLE001  (the pid could not be journaled: kill and establish the end)
+            _end_tree(tree, proc, files, f'the child pid could not be journaled: {type(exc).__name__}', raw)
+        timed_out = False
+        try:
+            try:
+                out, err = proc.communicate(stdin_text.encode('utf-8'), timeout=timeout)
+            except subprocess.TimeoutExpired:
+                timed_out = True
+                tree.kill()
+                out, err = proc.communicate()
+        except BaseException as exc:  # noqa: BLE001  (waiting raised with a child that may still run)
+            _end_tree(tree, proc, files, f'waiting for the child raised {type(exc).__name__}', raw)
+        # the parent ended: no descendant may outlive it (Astra council round 3, item 9)
+        if tree.active() != 0:
+            tree.kill()
+        if not tree.gone():
+            for f in files:
+                f.close()
+            raise SpawnFailure('the end of the process tree of the child could not be established', False, proc.pid)
         for f in files:
             f.close()
-        raise SpawnFailure(f'waiting for the child raised {type(exc).__name__}', gone, proc.pid,
-                           _read_raw(raw) if raw and gone else None) from None
-    for f in files:
-        f.close()
-    if raw is not None:
-        stdout, stderr = _read_raw(raw)
-    else:
-        stdout, stderr = out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
-    return {'stdout': stdout, 'stderr': stderr, 'exit_code': None if timed_out else proc.returncode,
-            'timed_out': timed_out, 'started_at': start, 'ended_at': _now(),
-            'elapsed_s': round(time.monotonic() - t0, 3), 'pid': proc.pid}
+        if raw is not None:
+            stdout, stderr = _read_raw(raw)
+        else:
+            stdout, stderr = out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
+        return {'stdout': stdout, 'stderr': stderr, 'exit_code': None if timed_out else proc.returncode,
+                'timed_out': timed_out, 'started_at': start, 'ended_at': _now(),
+                'elapsed_s': round(time.monotonic() - t0, 3), 'pid': proc.pid, 'tree': tree.record()}
+    finally:
+        tree.close()
 
 
 def run_local(argv, env, cwd, on_start=None, timeout=120):
-    """A local CLI command (no model request) whose pid is recorded like a call's."""
-    proc = subprocess.Popen(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                            cwd=str(cwd), env=env)
-    if on_start is not None:
-        with contextlib.suppress(Exception):
-            on_start(proc.pid)
+    """A local CLI command (no model request) in a supervised process tree whose pid is journaled like a call's
+    before it is resumed (Astra council round 3, item 13: a journal failure is never suppressed)."""
+    tree = procs.Tree()
     try:
-        out, err = proc.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired:
-        _kill_tree(proc)
-        out, err = proc.communicate()
-    return proc.returncode, out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
+        proc = tree.start(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                          cwd=str(cwd), env=env)
+        _TLS.last_tree = tree.record()
+        try:
+            if on_start is not None:
+                on_start(proc.pid)
+            tree.resume()
+        except BaseException as exc:  # noqa: BLE001
+            _end_tree(tree, proc, [], f'the probe pid could not be journaled: {type(exc).__name__}', None)
+        try:
+            try:
+                out, err = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                tree.kill()
+                out, err = proc.communicate()
+        except BaseException as exc:  # noqa: BLE001
+            _end_tree(tree, proc, [], f'waiting for the probe raised {type(exc).__name__}', None)
+        if tree.active() != 0:
+            tree.kill()
+        if not tree.gone():
+            raise SpawnFailure('the end of the process tree of the probe could not be established', False, proc.pid)
+        return proc.returncode, out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
+    finally:
+        tree.close()
 
 
 # ================================================================================================ options, slots
@@ -717,6 +735,30 @@ class Executables:
         self.verified_stats = isolation.file_stats(isolation.identity_files(ident))
         return sorted(set(problems))
 
+    def verified_guard(self, live):
+        """Astra council round 3, item 12: hash the executable and its manifest, take the write guard over every
+        manifest file, then hash again under the guard; the identity verified under the guard must equal the first
+        one and the frozen identity, and the per child statistics are those taken under the guard. Returns the entered
+        guard (the caller exits it once the group's children have ended); raises Stop otherwise."""
+        problems = self.verify()
+        if problems:
+            raise Stop(config.EXIT_FREEZE, f'executable verification before the launch group failed (A4.2): '
+                                           f'{problems}')
+        first = self.identity
+        guard = self.guard().__enter__()
+        if live and not guard.held:
+            guard.__exit__(None, None, None)
+            raise Stop(config.EXIT_FREEZE, f'the executable write guard could not be held (A4.2, item 7): '
+                                           f'{guard.problems[:3] or ["no platform guard"]}')
+        problems = self.verify()
+        if not problems and self.identity != first:
+            problems = ['the executable manifest changed while the write guard was taken']
+        if problems:
+            guard.__exit__(None, None, None)
+            raise Stop(config.EXIT_FREEZE, f'executable verification under the write guard failed (A4.2): '
+                                           f'{problems}')
+        return guard
+
     def guard(self):
         """The write guard over every manifest file (Windows), held from the group's verification until its children
         have ended. Live mode requires it; fake mode records whether it was obtained."""
@@ -749,7 +791,7 @@ def _turn_usage(stdout):
 def account_usage(backend, usage_raw, reply, cache_certified, count=None):
     """Every accounting field of one call derived from its captured usage with the frozen predicates (A4.7): the
     decoded usage, the usage status, the reasoning issue, the additive tokens, the visible reply tokens and the
-    charged tokens. The runner, recovery and the scorer all use this function, so a recorded field that the capture
+    charged tokens. The runner and the scorer both use this function, so a recorded field that the capture
     does not give is an artifact problem (council round 2, item 10). `count` counts visible reply tokens."""
     if backend == 'codex':
         visible = None
@@ -848,23 +890,15 @@ def login_state(text):
     return 'unknown'
 
 
-# ================================================================================================ recovery
+# ================================================================================================ stops
 
 class Stop(Exception):
-    def __init__(self, code, reason):
+    """A stop with its exit code. `interrupt` marks a stop that ends the cell under A4.14.1 even before its first
+    charged call (an isolation signal of a local probe)."""
+
+    def __init__(self, code, reason, interrupt=False):
         Exception.__init__(self, reason)
-        self.code, self.reason = code, reason
-
-
-def _home_shows_start(home, prepared_sha):
-    home = Path(home)
-    if not home.exists():
-        return False
-    others = [p for p in home.rglob('*') if p.relative_to(home).as_posix() != isolation.AUTH]
-    if others:
-        return True
-    auth = home / isolation.AUTH
-    return auth.exists() and prepared_sha is not None and isolation.sha256_file(auth) != prepared_sha
+        self.code, self.reason, self.interrupt = code, reason, interrupt
 
 
 def raw_paths(run_dir, slot, call_id):
@@ -896,7 +930,7 @@ def sanitize(stdout, stderr, secrets):
 
 
 def attempt_row(marker, outcome, why, raw, cls, usage_raw, acct, redaction, fin, extra=None):
-    """The attempts.jsonl row of one judged call (after_group and recovery build it the same way)."""
+    """The attempts.jsonl row of one judged call."""
     base = {k: v for k, v in marker.items() if k not in ('phase', 'secret_fingerprints', 'mapping', 'ops')}
     row = dict(base, outcome=outcome, why=why, exit_code=raw.get('exit_code'), timed_out=raw.get('timed_out'),
                started_at=raw.get('started_at') or marker.get('started_at'), ended_at=raw.get('ended_at'),
@@ -919,14 +953,6 @@ def attempt_row(marker, outcome, why, raw, cls, usage_raw, acct, redaction, fin,
     return row
 
 
-def _recovered_call(m):
-    ids = list(m.get('job_ids') or [])
-    mapping = m.get('mapping') or dict(zip(prompts.packet_ids(len(ids)), ids))
-    return {'call_id': m.get('call_id'), 'jobs': [{'id': j} for j in ids], 'inp': {'mapping': mapping,
-                                                                                     'ops': m.get('ops')},
-            'bootstrap': bool(m.get('bootstrap'))}
-
-
 def not_launched_row(marker, reason):
     """A reserved call proven never started (no Popen): it keeps its allocation debit, has zero model usage and no
     capture (council round 2, B2, RT2.3)."""
@@ -935,211 +961,6 @@ def not_launched_row(marker, reason):
                 elapsed_s=0.0, usage_raw=None, usage={'status': 'not_launched', 'problems': []},
                 usage_status='not_launched', charged_tokens=0, additive_tokens=0, credential_disclosure=False,
                 events={'verdict': 'not_launched', 'uncertain': []}, auth=None, runtime_files=None)
-
-
-def _recover_stream(run_dir, m, secrets_now, recovered_at):
-    """(raw dict, redaction record, how) of an orphan from its durable stream, in order: committed captures, then the
-    raw stream files of its slot; (None, None, reason) when neither can be used. Raw streams are promoted only when
-    every secret fingerprint recorded at preparation is covered by the secrets available now; otherwise they stay
-    quarantined inside the credential boundary (council round 2, items 3 and 6)."""
-    cid = m.get('call_id')
-    slot = m.get('slot')
-    out_p, err_p, meta_p = capture_paths(run_dir, cid)
-    if out_p.exists() and err_p.exists():
-        meta = _read_json(meta_p, {}) or {}
-        raw = {'stdout': out_p.read_bytes().decode('utf-8', 'replace'),
-               'stderr': err_p.read_bytes().decode('utf-8', 'replace')}
-        rec = meta.get('redaction') or {'redactions': 0, 'kinds': []}
-        if isinstance(slot, int) and not isinstance(slot, bool):
-            raws = raw_paths(run_dir, slot, cid)
-            originals = _read_raw(raws) if raws[0].exists() else None
-            chans = rec.get('channels') or {}
-            if originals is not None and any(
-                    prompts.sha256(text) != (chans.get(ch) or {}).get('original_sha256')
-                    for ch, text in zip(('stdout', 'stderr'), originals)):
-                raw['raw_mismatch'] = True
-        return raw, rec, 'capture'
-    if isinstance(slot, int) and not isinstance(slot, bool):
-        r_out, r_err = raw_paths(run_dir, slot, cid)
-        if r_out.exists() or r_err.exists():
-            want = set(m.get('secret_fingerprints') or [])
-            have = {isolation.sha256_text(x) for x in secrets_now}
-            if want - have:
-                return None, None, 'raw stream quarantined: the prepared secrets are not all available to redact it'
-            stdout, stderr = _read_raw((r_out, r_err))
-            clean_out, clean_err, rec = sanitize(stdout, stderr, secrets_now)
-            return {'stdout': clean_out, 'stderr': clean_err}, rec, 'raw_stream'
-    return None, None, 'no capture and no raw stream'
-
-
-def recover_inflight(run_dir, opts, say=None, iso=None):
-    """Experiment wide recovery before anything else (council rounds 1 and 2, items 3, B3, RT2.1, 14). Each marker:
-
-    * a child recorded alive (pid and creation time) stops the resume; nothing is touched;
-    * `reserved` (no Popen was ever called): a `not_launched` attempt, charged, zero usage;
-    * `spawning` without a pid: the process identity is ambiguous; Codex stops, the marker, the home and any raw
-      stream are preserved and no attempt is written (the scorer reports the unrecovered marker);
-    * an orphan (no attempt row) of a started child: judged from its committed capture, else from its raw stream
-      files, exactly as after_group judges a call; the terminal outcome is kept and never resent. Only without any
-      usable stream is it `interrupted`, with the event verdict `uncertain` (no capture), which is leakage (P2);
-    * a recorded call whose reconciliation did not finish: reconciled.
-
-    Every Codex worker of a marker is inventoried and reconciled against the baseline generation it was prepared
-    from; open timing windows of dead invocations are closed with bounds. Returns the recovery record."""
-    run_dir = Path(run_dir)
-    close_dead_windows(run_dir)
-    markers = []
-    for path in sorted(run_dir.glob('cells/*/inflight/*.json')):
-        m = _read_json(path)
-        markers.append((path, m if isinstance(m, dict) else {'call_id': None, 'unreadable': True}))
-    if not markers:
-        return None
-    attempts = jsonl(run_dir / 'attempts.jsonl')
-    by_key = {(a.get('attempt_uid') or a.get('call_id')): a for a in attempts}
-
-    def key(m):
-        return m.get('attempt_uid') or m.get('call_id')
-
-    alive = [m for _, m in markers if key(m) not in by_key and pid_alive(m.get('pid'), m.get('pid_created'))]
-    if alive:
-        raise Stop(config.EXIT_INTERRUPTED, 'calls recorded in flight are still running (pids '
-                   f"{sorted(m.get('pid') for m in alive)}); resume after they have ended (nothing was touched)")
-    now = _now()
-    record = {'at': now, 'markers': [m.get('call_id') for _, m in markers], 'action': 'none', 'ambiguous': [],
-              'recovered': {}}
-    iso = iso or isolation.Isolation(opts.baseline, run_dir, run_dir / 'evidence',
-                                     frozen_inventory=isolation.load_inventory(), base_env=opts.base_env)
-    keep = set()
-    ambiguous, other_ambiguous = [], []
-    for path, m in markers:
-        if m.get('unreadable'):
-            ambiguous.append('an unreadable in-flight marker')
-            keep.add(path)
-        elif m.get('marker') != 'probe' and m.get('phase') not in ('reserved', 'prepared') and not m.get('pid') \
-                and key(m) not in by_key:
-            # `spawning` (or a marker without a phase) and no journaled pid: the child may have started, and
-            # nothing can establish that it ended (council round 2, item 3)
-            (ambiguous if m.get('backend') == 'codex' else other_ambiguous).append(
-                f"{m.get('call_id')}: no journaled pid for a call that may have started (phase {m.get('phase')!r}); "
-                f"the marker, the worker home and any raw stream are kept")
-            keep.add(path)
-    record['kept'] = other_ambiguous
-    workers, fins = {}, {}
-    for path, m in markers:
-        if path in keep or m.get('backend') != 'codex':
-            continue
-        cid, slot = m.get('call_id'), m.get('slot')
-        if not isinstance(slot, int) or isinstance(slot, bool):
-            ambiguous.append(f'{cid}: no slot recorded')
-            keep.add(path)
-            continue
-        home = iso.home(slot)
-        if not home.exists():
-            if m.get('phase') in ('reserved', 'prepared'):
-                continue  # never started: nothing to reconcile
-            ambiguous.append(f'{cid}: worker home missing after a spawn')
-            continue
-        if slot in workers:
-            ambiguous.append(f'slot {slot}: more than one unreconciled marker')
-            continue
-        fin = iso.finish(slot, prepared_sha256=m.get('prepared_sha'))
-        fins[key(m)] = fin
-        row = by_key.get(key(m)) or {}
-        workers[slot] = {'sha256': fin['worker_auth_sha256'], 'prepared': m.get('prepared_sha'),
-                         'auth_failure': row.get('outcome') == 'auth_failure' and m.get('role') != 'probe',
-                         'call_id': cid, 'probe': m.get('role') == 'probe'}
-    secrets_now = redact.secrets_from_auth(Path(opts.baseline) / isolation.AUTH,
-                                           *[iso.home(s) / isolation.AUTH for s in range(config.SLOTS)])
-    quarantined = []
-    for path, m in markers:
-        if path in keep:
-            continue
-        cid = m.get('call_id')
-        if not cid or m.get('marker') == 'probe' or key(m) in by_key:
-            continue
-        fin = fins.get(key(m))
-        if m.get('phase') in ('reserved', 'prepared'):
-            row = not_launched_row(m, 'recovery: the call was reserved but never started (no Popen)')
-            _append(run_dir, 'attempts.jsonl', row)
-            record['recovered'][cid] = 'not_launched'
-            continue
-        raw, redaction, how = _recover_stream(run_dir, m, secrets_now, now)
-        if raw is None:
-            if how.startswith('raw stream quarantined'):
-                quarantined.append(cid)
-            row = dict({k: v for k, v in m.items() if k not in ('phase', 'secret_fingerprints', 'mapping', 'ops')},
-                       outcome='interrupted', ended_at=None, ended_at_upper=now, elapsed_s=None,
-                       usage_status='incomplete', charged_tokens=0, note='the runner ended while the call was in '
-                       f'flight; {how}', recovered_from=None,
-                       events={'verdict': 'uncertain', 'efficiency_invalid': True,
-                               'uncertain': [{'reason': f'possible launch without a capture: {how} (A4.3, P2)'}]},
-                       auth=None if fin is None else {k: fin[k] for k in ('worker_auth_sha256', 'baseline_auth_sha256',
-                                                                            'auth_changed', 'auth_failure')},
-                       runtime_files=None if fin is None else len(fin['runtime_files']))
-            _append(run_dir, 'attempts.jsonl', row)
-            record['recovered'][cid] = 'interrupted'
-            continue
-        raw.update(exit_code=None, timed_out=False, started_at=m.get('spawned_at') or m.get('started_at'),
-                   ended_at=None, elapsed_s=None)
-        judge = judge_codex if m.get('backend') == 'codex' else judge_sonnet
-        outcome, reply, usage_raw, cls, why = judge(raw)
-        c = _recovered_call(m)
-        output = CellRun.interpret(None, c, outcome, reply)
-        if m.get('cell') in ('telemetry', 'features'):
-            output['outcome'] = outcome
-        acct = account_usage(m.get('backend'), usage_raw, reply, usage.cache_certified_for_route()
-                             if m.get('backend') == 'codex' else None)
-        if how == 'raw_stream':
-            write_captures(run_dir, cid, raw['stdout'], raw['stderr'],
-                           {'call_id': cid, 'cell': m.get('cell'), 'redaction': redaction, 'recovered': True})
-        cell_dir = run_dir / 'cells' / str(m.get('cell'))
-        if not (cell_dir / 'calls' / f'{cid}.json').exists():
-            _write_json(cell_dir / 'calls' / f'{cid}.json', output)
-        row = attempt_row(m, output['outcome'], why, raw, cls, usage_raw, acct, redaction, fin,
-                          extra={'recovered_from': how, 'ended_at_upper': now,
-                                 'raw_mismatch': bool(raw.get('raw_mismatch')),
-                                 'note': 'recovered after the runner ended: exit code and end time unknown'})
-        if m.get('expected_outcome'):
-            row['expected_outcome'] = m['expected_outcome']
-        _append(run_dir, 'attempts.jsonl', row)
-        record['recovered'][cid] = output['outcome']
-        if outcome == 'auth_failure' and m.get('role') != 'probe':
-            for w in workers.values():
-                if w['call_id'] == cid:
-                    w['auth_failure'] = True
-        for p in raw_paths(run_dir, m.get('slot'), cid) if isinstance(m.get('slot'), int) else ():
-            with contextlib.suppress(OSError):
-                p.unlink()
-    if quarantined:
-        ambiguous.append(f'raw streams quarantined (redaction coverage not established): {quarantined[:5]}')
-    if any(m.get('backend') == 'codex' for _, m in markers) or ambiguous:
-        reconcile_workers = {s: w for s, w in workers.items() if not w.get('probe')}
-        base = iso.baseline_sha256()
-        verdict = isolation.reconcile_generations(base, reconcile_workers, ambiguous)
-        record.update(action=verdict['action'], ambiguous=ambiguous, baseline_auth_sha256=base,
-                      workers={str(s): {k: w.get(k) for k in ('sha256', 'prepared', 'auth_failure', 'call_id')}
-                               for s, w in workers.items()})
-        if verdict['action'] == 'propagate':
-            try:
-                iso.propagate(verdict['slot'], expected_baseline_sha256=workers[verdict['slot']]['prepared'])
-                lineage(run_dir, iso.baseline, 'propagated', slot=verdict['slot'])
-            except isolation.IsolationError as exc:
-                verdict = {'action': 'stop_codex', 'reason': f'propagation refused: {exc}'}
-                record['action'] = 'stop_codex'
-        if verdict['action'] == 'stop_codex':
-            _write_json(run_dir / 'codex-stop.json', {'reason': 'recovery: ' + verdict.get('reason', ''),
-                                                      'cell': None, 'at': _now()})
-        _append(run_dir, 'evidence/auth-reconcile.jsonl', dict(record, recovery=True, reason=verdict.get('reason')))
-    _append(run_dir, 'evidence/recovery.jsonl', record)
-    for path, _ in markers:
-        if path in keep:
-            continue
-        with contextlib.suppress(OSError):
-            path.unlink()
-    if say:
-        say(f"recovered {len(markers) - len(keep)} in-flight marker(s): {record['action']}"
-            + (f'; {len(keep)} kept (ambiguous)' if keep else ''))
-    return record
 
 
 def lineage(run_dir, baseline, event, **extra):
@@ -1160,28 +981,205 @@ def _window_rows(run_dir, cid):
     return jsonl(Path(run_dir) / 'cells' / cid / 'windows.jsonl')
 
 
-def close_dead_windows(run_dir):
-    """Close every timing window opened by an invocation that ended without closing it (council round 2, item 14):
-    the upper end bound is now (the recovery time), the lower end bound the last durable work timestamp of that
-    invocation (its attempts' ends or starts, else the window start). Never an exact end."""
+def close_crashed_windows(run_dir, cid):
+    """Close every timing window of a crashed invocation of one cell with bounds, never an exact end (the cell is
+    interrupted, so its comparisons are inconclusive under A4.11 and its makespan never gates)."""
+    rows = _window_rows(run_dir, cid)
+    closed = {r.get('invocation') for r in rows if r.get('event') == 'close'}
+    for r in rows:
+        if r.get('event') != 'open' or r.get('invocation') in closed or r.get('invocation') in ACTIVE_INVOCATIONS:
+            continue
+        _append(run_dir, f'cells/{cid}/windows.jsonl', {
+            'event': 'close', 'invocation': r.get('invocation'), 'reconstructed': True, 'ended_at': None,
+            'ended_at_lower': r.get('started_at'), 'ended_at_upper': _now(), 'ended': 'crashed'})
+
+
+# ------------------------------------------------------------------------------------------------ fail closed stop
+
+def unsettled_row(marker, reason):
+    """A dispatched call whose state is not settled (A4.14.1): it keeps its allocation debit, its usage is unknown
+    and its event verdict is uncertain, because nothing establishes whether a tool executed (A4.3, P2)."""
+    base = {k: v for k, v in marker.items() if k not in ('phase', 'secret_fingerprints', 'mapping', 'ops')}
+    return dict(base, outcome='unsettled', why=reason, exit_code=None, timed_out=None, ended_at=None,
+                elapsed_s=None, usage_raw=None, usage={'status': 'incomplete', 'problems': ['call state unsettled']},
+                usage_status='incomplete', charged_tokens=0, additive_tokens=None, credential_disclosure=False,
+                events={'verdict': 'uncertain', 'efficiency_invalid': True,
+                        'uncertain': [{'reason': f'unsettled call state (A4.14.1, A4.3): {reason}'[:300]}]},
+                auth=None, runtime_files=None)
+
+
+def cell_markers(cell_dir):
+    out = []
+    for path in sorted(Path(cell_dir).glob('inflight/*.json')):
+        m = _read_json(path)
+        out.append((path, m if isinstance(m, dict) else {'call_id': path.stem, 'unreadable': True}))
+    return out
+
+
+def _runner_ended(m):
+    pid = m.get('runner_pid')
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    if pid == os.getpid():
+        return m.get('runner_invocation') not in ACTIVE_INVOCATIONS
+    return not pid_alive(pid, m.get('runner_created'))
+
+
+def marker_containment(m):
+    """(contained, why) for one outstanding marker (A4.14.1): whether its work can still affect isolation,
+    authentication, records or accounting. A reserved call never started; a recorded call ended and its process tree
+    was shown gone; otherwise the runner and the child must have ended and the child must have been supervised (the
+    job kills every descendant when the runner's handle closes, also when the runner dies)."""
+    if m.get('unreadable'):
+        return False, 'the marker cannot be read'
+    phase = m.get('phase')
+    if m.get('marker') != 'probe' and phase in ('reserved', 'prepared'):
+        return True, 'reserved, never started (no Popen)'
+    if m.get('tree_gone') is True or phase == 'recorded':
+        return True, 'the process tree was shown gone'
+    if m.get('tree_gone') is False:
+        return False, 'the end of the process tree was not established'
+    if not _runner_ended(m):
+        return False, 'the runner of the call may still be alive'
+    pid = m.get('pid')
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False, 'no journaled pid for a child that may have started'
+    if pid_alive(pid, m.get('pid_created')):
+        return False, f'the child {pid} is still running'
+    if not (m.get('supervision') or {}).get('supervised'):
+        return False, 'the child was not under process tree supervision; its descendants are not established'
+    return True, 'the runner and the child ended; the supervising job ended every descendant'
+
+
+def run_stop_reason(run_dir):
+    doc = _read_json(Path(run_dir) / 'run-stop.json')
+    return (doc or {}).get('reason') if doc else None
+
+
+def write_run_stop(run_dir, cell_id, reason):
+    path = Path(run_dir) / 'run-stop.json'
+    if not path.exists():
+        _write_json(path, {'cell': cell_id, 'reason': reason, 'at': _now(),
+                           'rule': 'A4.14.1: containment of outstanding work was not established; no further cell '
+                                   'is admitted in this run'})
+
+
+def _ensure_ledger_row(ledger, run_dir, m):
+    """The accounting obligation of a dispatched or reserved live call: its experiment ledger row (Astra council
+    round 3, item 11: a crash between the marker and the ledger append never loses the debit)."""
+    rows, _ = ledger_rows(ledger)
+    if any(r.get('attempt_uid') == m.get('attempt_uid') for r in rows):
+        return False
+    _append_file(ledger, {
+        'attempt_uid': m.get('attempt_uid'), 'run_id': m.get('run_id'), 'call_id': m.get('call_id'),
+        'run_dir': str(Path(run_dir).resolve()), 'backend': m.get('backend'), 'workload': m.get('workload'),
+        'allocation': m.get('allocation'), 'reason': m.get('reason'), 'kind': m.get('kind'), 'cell': m.get('cell'),
+        'batch': m.get('batch'), 'outcome': 'reserved', 'recorded_at_stop': True, 'at': _now()})
+    return True
+
+
+def _home_inventory(home):
+    inventory = {}
+    if Path(home).is_dir():
+        for f in sorted(Path(home).rglob('*')):
+            if f.is_file():
+                try:
+                    inventory[f.relative_to(home).as_posix()] = isolation.sha256_file(f)
+                except OSError:
+                    inventory[f.relative_to(home).as_posix()] = None
+    return inventory
+
+
+def stop_cell(run_dir, cell_id, reason, code, ledger=None, crash=False):
+    """A4.14.1: stop one cell and preserve every record. Each outstanding marker keeps its file, its worker home and
+    its raw stream; a charged call without an attempt row gets one (`not_launched` when it never started, otherwise
+    `unsettled`) and, live, its ledger row. After a crash the worker authentication of each Codex marker is compared
+    with the generation it was prepared from (the A4.2 hash comparison, hashes only); a change or a missing home stops
+    Codex, and nothing is propagated or restored. Containment of every marker is established, or the run is stopped.
+    Writes D/cells/<cell>/INTERRUPTED.json and returns its record."""
     run_dir = Path(run_dir)
-    for wfile in sorted(run_dir.glob('cells/*/windows.jsonl')):
-        cid = wfile.parent.name
-        rows = jsonl(wfile)
-        closed = {r.get('invocation') for r in rows if r.get('event') == 'close'}
-        for r in rows:
-            if r.get('event') != 'open' or r.get('invocation') in closed or r.get('invocation') in ACTIVE_INVOCATIONS:
-                continue
-            inv = r.get('invocation')
-            stamps = [r.get('started_at')]
-            for a in jsonl(run_dir / 'attempts.jsonl'):
-                if a.get('cell') == cid and str(a.get('group') or '').startswith(f'{inv}.'):
-                    stamps += [a.get('started_at'), a.get('ended_at')]
-            stamps = [s for s in stamps if _parse_time(s) is not None]
-            lower = max(stamps, key=_parse_time) if stamps else r.get('started_at')
-            _append(run_dir, f'cells/{cid}/windows.jsonl', {
-                'event': 'close', 'invocation': inv, 'reconstructed': True, 'ended_at': None,
-                'ended_at_lower': lower, 'ended_at_upper': _now(), 'ended': 'recovered'})
+    cdir = run_dir / 'cells' / cell_id
+    attempts = jsonl(run_dir / 'attempts.jsonl')
+    known = {a.get('attempt_uid') or a.get('call_id') for a in attempts}
+    record = {'cell': cell_id, 'reason': reason, 'exit_code': code, 'at': _now(), 'crash': bool(crash),
+              'contained': True, 'markers': [], 'accounting': [], 'auth': []}
+    codex_reasons = []
+    for path, m in cell_markers(cdir):
+        cid = m.get('call_id')
+        ok, why = marker_containment(m)
+        record['markers'].append({'call_id': cid, 'phase': m.get('phase'), 'marker': m.get('marker'),
+                                  'contained': ok, 'why': why})
+        if not ok:
+            record['contained'] = False
+        if m.get('unreadable'):
+            continue
+        never_started = m.get('marker') != 'probe' and m.get('phase') in ('reserved', 'prepared')
+        key = m.get('attempt_uid') or cid
+        if m.get('marker') != 'probe' and key not in known:
+            if never_started:
+                row = not_launched_row(m, 'A4.14.1: reserved, never started; the cell stopped')
+            else:
+                row = unsettled_row(m, f'the cell stopped with this call outstanding ({reason})')
+            _append(run_dir, 'attempts.jsonl', row)
+            known.add(key)
+            record['accounting'].append({'call_id': cid, 'outcome': row['outcome']})
+        if m.get('marker') != 'probe' and m.get('mode') == 'live' and ledger and m.get('attempt_uid'):
+            if _ensure_ledger_row(ledger, run_dir, m):
+                record['accounting'].append({'call_id': cid, 'ledger_row': 'recorded at stop'})
+        slot = m.get('slot')
+        if crash and m.get('backend') == 'codex' and isinstance(slot, int) and not isinstance(slot, bool) \
+                and not never_started:
+            home = run_dir / 'homes' / f'worker-{slot}'
+            auth = home / isolation.AUTH
+            now = isolation.sha256_file(auth) if auth.exists() else None
+            _append(run_dir, 'evidence/isolation.jsonl', {'event': 'stop_inventory', 'slot': slot, 'call_id': cid,
+                                                          'files': _home_inventory(home), 'at': _now()})
+            changed = now is None or now != m.get('prepared_sha')
+            record['auth'].append({'call_id': cid, 'slot': slot, 'prepared': m.get('prepared_sha'),
+                                   'worker_auth_sha256': now, 'changed': changed})
+            if changed:
+                codex_reasons.append(f'{cid}: the worker authentication of a crashed call differs from its '
+                                     f'prepared generation or is missing; it is never propagated or restored')
+    if crash:
+        close_crashed_windows(run_dir, cell_id)
+    if codex_reasons and not (run_dir / 'codex-stop.json').exists():
+        _write_json(run_dir / 'codex-stop.json', {'reason': 'A4.14.1 stop: ' + '; '.join(codex_reasons[:3]),
+                                                  'cell': cell_id, 'at': _now()})
+    _write_json(cdir / 'INTERRUPTED.json', record)
+    doc = _read_json(cdir / 'state.json', {}) or {}
+    doc.update(state='interrupted', cell=cell_id, reason=reason, updated_at=_now())
+    doc.setdefault('invocations', [])
+    _write_json(cdir / 'state.json', doc)
+    _append(run_dir, 'evidence/stops.jsonl', record)
+    if not record['contained']:
+        write_run_stop(run_dir, cell_id, f'{cell_id}: ' + '; '.join(
+            f"{x['call_id']}: {x['why']}" for x in record['markers'] if not x['contained'])[:500])
+    return record
+
+
+def crash_scan(run_dir, ledger=None, say=None):
+    """Before admitting a cell (A4.14.1): every cell left neither complete, settled nor interrupted although it was
+    running, holds an in-flight marker or has attempts was ended by a crash. It is stopped and its records are
+    preserved; nothing is resumed, rerun or judged again."""
+    run_dir = Path(run_dir)
+    cells_with_attempts = {a.get('cell') for a in jsonl(run_dir / 'attempts.jsonl')}
+    out = []
+    for cdir in sorted(p for p in (run_dir / 'cells').glob('*') if p.is_dir()):
+        if any((cdir / f).exists() for f in STOP_FILES):
+            continue
+        st = _read_json(cdir / 'state.json', {}) or {}
+        invs = st.get('invocations') or []
+        if invs and invs[-1].get('invocation') in ACTIVE_INVOCATIONS:
+            continue
+        if st.get('state') == 'running' or any(cdir.glob('inflight/*.json')) or cdir.name in cells_with_attempts:
+            rec = stop_cell(run_dir, cdir.name, 'the runner ended without settling the cell (a crash); A4.14.1: it '
+                                                'is never resumed or rerun', config.EXIT_INTERRUPTED, ledger=ledger,
+                            crash=True)
+            out.append(rec)
+            if say:
+                say(f"{cdir.name}: stopped after a crash; records preserved"
+                    + ('' if rec['contained'] else '; containment not established, the run is stopped'))
+    return out
 
 
 # ================================================================================================ the cell runner
@@ -1240,7 +1238,12 @@ class CellRun:
     def codex_quota_gate(self):
         """The P3 gate before every synchronized Codex dispatch group (council round 2, items 31, B8, RT2.5): every
         completed live Codex call of the experiment covered by an observation with an event timestamp after it (or
-        its own rollout reading), the latest owner reading valid, the highest covering percentage below 80."""
+        its own rollout reading), the latest owner reading valid, the highest covering percentage below 80. Live mode
+        reads the owner sessions only (RT3.3)."""
+        if self.opts.mode == 'live' and not _same(self.opts.sessions_dir, config.CODEX_SESSIONS_DEFAULT):
+            return {'ok': False, 'percent': None, 'uncovered': [], 'sessions_dir': str(self.opts.sessions_dir),
+                    'reason': 'live mode reads the owner Codex sessions only; a named sessions directory is refused '
+                              '(A4.12, RT3.3)'}
         return quota.coverage_gate(self.experiment_attempts(), self.opts.sessions_dir, self.harvested_observations(),
                                    isolation.account_sha256(self.opts.baseline))
 
@@ -1289,12 +1292,22 @@ class CellRun:
             problems = ledger_problems(self.run_dir, opts.live_ledger)
             if problems:
                 raise Stop(config.EXIT_IDENTITY, f'experiment ledger check failed: {problems}')
+            stops = predecessor_stops(self.run_dir, opts.live_ledger)
+            if stops:
+                code = config.EXIT_SAFETY_KILL if any(n == 'safety-kill.json' for n, _ in stops) \
+                    else config.EXIT_RUN_STOPPED
+                raise Stop(code, f'a superseded run directory holds {stops[:2]}; a replacement directory never '
+                                 f'escapes a safety kill or a run stop (A4.11, A4.14.1)')
             if self.spec['arm'] != 'telemetry':
-                terminal, missing = superseded_terminal_batches(self.run_dir, opts.live_ledger, self.spec['id'])
-                if missing or terminal:
-                    raise Stop(config.EXIT_IDENTITY, f"{self.spec['id']}: a superseded run directory holds terminal "
-                                                     f'batches {terminal[:5]} or lacks evidence {missing[:2]}; a '
-                                                     f'replacement directory never repeats them (A4.3, item 9)')
+                earlier = predecessor_cell_calls(self.run_dir, opts.live_ledger, self.spec['id'])
+                if earlier:
+                    raise Stop(config.EXIT_IDENTITY, f"{self.spec['id']}: a superseded run directory already "
+                                                     f'dispatched live calls of this cell {earlier[:5]}; a cell is '
+                                                     f'never rerun, here or in a replacement directory (A4.14.1)')
+            if not _same(opts.sessions_dir, config.CODEX_SESSIONS_DEFAULT):
+                raise Stop(config.EXIT_QUOTA, f'live mode reads the owner Codex sessions only '
+                                              f'({config.CODEX_SESSIONS_DEFAULT}); a named sessions directory is '
+                                              f'refused (A4.12, red team round 3, RT3.3)')
             problems = verify_freeze()
             if problems:
                 raise Stop(config.EXIT_FREEZE, f'freeze verification failed (A4.1): {problems[:5]}')
@@ -1314,7 +1327,7 @@ class CellRun:
         if problems:
             raise Stop(config.EXIT_CLASSIFICATION, f'classification invalid (A4.6): {problems[:5]}')
 
-    # ------------------------------------------------------------------------------------------- resume
+    # ------------------------------------------------------------------------------------------- attempts
 
     def prior_attempts(self):
         return [a for a in jsonl(self.run_dir / 'attempts.jsonl') if a.get('cell') == self.spec['id']]
@@ -1352,31 +1365,16 @@ class CellRun:
         return None
 
     def run_batches(self, batches, round_no, bootstrap=False, first_reason='nominal'):
-        """Execute every batch (list of job lists) of one round; returns {batch key: call output}. Batches whose
-        latest attempt is terminal are taken from disk and never sent again.
+        """Execute every batch (list of job lists) of one round in this invocation; returns {batch key: call
+        output}. A cell runs once (A4.14.1): nothing is read back from an earlier invocation, and within the
+        invocation only an infrastructure failure is retried, from the reserve (A4.3, A4.5).
 
         One launch group (council round 2, items 7, B2, RT2.3): verify the executable and its manifest and hold the
         write guard; stage every member (no ledger charge); reserve the whole group under the experiment lock
         (shared prerequisites revalidated, markers, then ledger rows) before any spawn; each child gets a final
         check immediately before Popen; the guard is released when every child has ended."""
-        prior = self.prior_attempts()
-        results, pending = {}, []
-        kept = {(_read_json(p, {}) or {}).get('batch') for p in self.dir.glob('inflight/*.json')}
-        for idx, jobs in enumerate(batches):
-            key = self.batch_key(round_no, idx)
-            mine = [a for a in prior if a.get('batch') == key]
-            last = mine[-1] if mine else None
-            if key in kept:
-                # an ambiguous in-flight marker kept by recovery: the call may have run, so it is never resent
-                results[key] = {'outcome': 'interrupted', 'answers': {}, 'job_ids': [j['id'] for j in jobs]}
-                self.interrupted = self.interrupted or (config.EXIT_INTERRUPTED, f'{key}: an ambiguous in-flight '
-                                                        'marker is kept (process identity not established)')
-                continue
-            if last is not None and last['outcome'] not in RETRYABLE:
-                results[key] = _read_json(self.dir / 'calls' / f"{last['call_id']}.json", {}) or {}
-                results[key].setdefault('outcome', last['outcome'])
-                continue
-            pending.append((key, jobs, len(mine), first_reason if not mine else 'infrastructure_retry'))
+        results = {}
+        pending = [(self.batch_key(round_no, idx), jobs, 0, first_reason) for idx, jobs in enumerate(batches)]
         # First attempts before retries, so a retry never takes a nominal call another batch still needs.
         pending.sort(key=lambda item: (item[2] > 0, item[0]))
         while pending:
@@ -1388,15 +1386,7 @@ class CellRun:
                 self.interrupted = stop
             guard = None
             if not self.interrupted:
-                problems = self.exe.verify()
-                if problems:
-                    raise Stop(config.EXIT_FREEZE, f'executable verification before the launch group failed (A4.2): '
-                                                   f'{problems}')
-                guard = self.exe.guard().__enter__()
-                if self.opts.mode == 'live' and not guard.held:
-                    guard.__exit__(None, None, None)
-                    raise Stop(config.EXIT_FREEZE, f'the executable write guard could not be held (A4.2, item 7): '
-                                                   f'{guard.problems[:3] or ["no platform guard"]}')
+                guard = self.exe.verified_guard(live=self.opts.mode == 'live')
             try:
                 for item in pending:
                     if len(group) >= config.SLOTS:
@@ -1425,8 +1415,10 @@ class CellRun:
                 if group:
                     try:
                         self.reserve_group(group)
-                    except (Stop, isolation.IsolationError) as exc:
+                    except BaseException as exc:
                         self.abandon(group)
+                        if not isinstance(exc, (Stop, isolation.IsolationError)):
+                            raise
                         if isinstance(exc, Stop):
                             raise
                         raise Stop(config.EXIT_INCOMPLETE, f'isolation error while reserving (A4.2): {exc}')
@@ -1454,7 +1446,7 @@ class CellRun:
                                                  'job_ids': [j['id'] for j in item[1]]})
                 for c in group:
                     if c.get('unsettled'):
-                        results.setdefault(c['batch'], {'outcome': 'interrupted', 'answers': {},
+                        results.setdefault(c['batch'], {'outcome': 'unsettled', 'answers': {},
                                                         'job_ids': [j['id'] for j in c['jobs']]})
                     elif c['outcome'] in RETRYABLE:
                         results[c['batch']] = c['output']
@@ -1563,7 +1555,8 @@ class CellRun:
                       'try': tries, 'reason': reason, 'kind': charged['kind'], 'slot': slot, 'mode': self.opts.mode,
                       'group': self.current_group, 'marker': 'call', 'role': self.role, 'phase': 'reserved',
                       'prepared_sha': prepared_sha, 'baseline_sha_at_prepare': base_sha,
-                      'exe_sha256': self.exe.exe_sha256, 'pid': None,
+                      'exe_sha256': self.exe.exe_sha256, 'pid': None, 'runner_pid': os.getpid(),
+                      'runner_created': process_created(os.getpid()), 'runner_invocation': self.invocation,
                       'started_at': _now(), 'job_ids': [j['id'] for j in jobs], 'mapping': inp['mapping'],
                       'ops': inp['ops'], 'secret_fingerprints': fingerprints,
                       'records': {op: sum(1 for j in jobs if j['op'] == op) for op in sorted({j['op'] for j in jobs})},
@@ -1594,15 +1587,27 @@ class CellRun:
         experiment lock the shared prerequisites are revalidated (stops, the baseline the members were prepared from,
         token separation, the Codex quota observation), then every member's in-flight marker (phase `reserved`) and
         prompt are written, then (live) its experiment ledger row. A crash after a marker leaves a `reserved` marker,
-        which recovery turns into a charged `not_launched` attempt and a ledger row."""
+        which the A4.14.1 stop records as a charged `not_launched` attempt with its ledger row."""
         stop = self.stop_reason()
         if stop:
             raise Stop(stop[0], stop[1])
         if self.codex:
-            now = self.iso.baseline_sha256()
+            # Astra council round 3, item 14: the baseline generation the members were prepared from, its inventory
+            # and its 48 hour expiry gate are checked together under the authentication lock at reservation
+            with isolation.auth_lock(self.iso.lock):
+                now = self.iso.baseline_sha256()
+                gate = isolation.wave_gate(self.opts.baseline)
+                inventory = isolation.verify_baseline(self.opts.baseline, isolation.load_inventory())
+                record = isolation.auth_record(self.opts.baseline)
+            _append(self.run_dir, 'evidence/reservation-gates.jsonl', dict(record, group=self.current_group,
+                                                                            ok=gate['ok'], hours_left=gate['hours_left'],
+                                                                            inventory_problems=inventory[:5], at=_now()))
             if any(c['marker'].get('baseline_sha_at_prepare') != now for c in group):
                 raise Stop(config.EXIT_AUTH_STOP, 'the baseline changed while the launch group was prepared (a reseed '
                                                   'or a propagation); nothing was launched (A4.2)')
+            if not gate['ok'] or inventory:
+                raise Stop(config.EXIT_AUTH_GATE, f'the prepared baseline generation fails the wave gate or its '
+                                                  f'inventory at reservation (A4.2): {gate.get("reason") or inventory[:3]}')
             if self.opts.mode == 'live':
                 self.separation_gate()
                 g = self.codex_quota_gate()
@@ -1613,6 +1618,7 @@ class CellRun:
             prompt_path = self.run_dir / 'prompts' / f"{c['call_id']}.txt"
             prompt_path.parent.mkdir(parents=True, exist_ok=True)
             prompt_path.write_text(c['record'], encoding='utf-8')
+            c['reserved'] = True
             _write_json(self.dir / 'inflight' / f"{c['call_id']}.json", c['marker'])
         if self.opts.mode == 'live':
             for c in group:
@@ -1624,14 +1630,29 @@ class CellRun:
                     'cell': self.spec['id'], 'batch': m['batch'], 'outcome': 'reserved', 'at': _now()})
 
     def abandon(self, group):
-        """Calls staged but never reserved (a later member or a shared prerequisite failed): nothing reached a CLI and
-        nothing was written to the experiment ledger, so their markers and prompts go, their in-memory charges are
-        dropped with this invocation, and slots and worker homes are released (council round 2, B2, RT2.3)."""
+        """Calls of a group whose reservation failed. Members staged but never reserved (a later member or a shared
+        prerequisite failed before any marker): nothing reached a CLI or the experiment ledger, so their prompts go,
+        their in-memory charges are dropped with this invocation, and slots and worker homes are released (council
+        round 2, B2, RT2.3). Members whose marker was already written keep their debit (Opus council round 3, C5;
+        Astra item 11): each becomes a charged `not_launched` attempt with its ledger row, and its marker stays."""
+        reserved = [c for c in group if c.get('reserved')]
         for c in group:
+            if c.get('reserved'):
+                continue
             with contextlib.suppress(OSError):
                 (self.dir / 'inflight' / f"{c['call_id']}.json").unlink()
             with contextlib.suppress(OSError):
                 (self.run_dir / 'prompts' / f"{c['call_id']}.txt").unlink()
+        for c in reserved:
+            with contextlib.suppress(Exception):
+                _append(self.run_dir, 'attempts.jsonl',
+                        not_launched_row(c['marker'], 'the launch group reservation failed after this marker'))
+            if self.opts.mode == 'live':
+                with contextlib.suppress(Exception):
+                    _ensure_ledger_row(self.opts.live_ledger, self.run_dir, c['marker'])
+            with contextlib.suppress(OSError):
+                (self.dir / 'inflight' / f"{c['call_id']}.json").unlink()
+        for c in group:
             if self.codex:
                 with contextlib.suppress(Exception):
                     self.iso.finish(c['slot'], prepared_sha256=c['prepared_sha'])
@@ -1641,7 +1662,8 @@ class CellRun:
         _write_json(self.dir / 'inflight' / f"{c['call_id']}.json", c['marker'])
 
     def _mark_spawned(self, c, pid):
-        c['marker'].update(pid=pid, pid_created=process_created(pid), phase='spawned', spawned_at=_now())
+        c['marker'].update(pid=pid, pid_created=process_created(pid), phase='spawned', spawned_at=_now(),
+                           supervision=getattr(_TLS, 'last_tree', None))
         self._write_marker(c)
 
     def final_check(self, c):
@@ -1674,7 +1696,11 @@ class CellRun:
                 c['raw'] = spawn(self.run_dir, c['launch'], c['stdin'], c['env'], c['workdir'],
                                  external=self.opts.mode == 'live')
             except SpawnFailure as exc:
-                if exc.terminated:
+                if exc.terminated and exc.never_ran:
+                    # terminated while still suspended under supervision: it never executed anything
+                    c['not_launched'] = f'{exc.reason}; the child was terminated before it was resumed'
+                    c['spawn_failure'] = exc.reason
+                elif exc.terminated:
                     out, err = exc.raw if exc.raw else ('', '')
                     c['raw'] = {'stdout': out, 'stderr': err + f'\n[harness] {exc.reason}', 'exit_code': None,
                                 'timed_out': False, 'started_at': c['marker'].get('spawning_at'), 'ended_at': _now(),
@@ -1699,7 +1725,7 @@ class CellRun:
 
     def after_group(self, group):
         """Judge every call of a finished launch group on its sanitized output, record it, then reconcile
-        authentication (A4.2). Per call, in this order (recovery relies on it): sanitize with the prepared and current
+        authentication (A4.2). Per call, in this order: sanitize with the prepared and current
         secrets, judge, inventory and harvest the worker home, write the parsed call record, the captures with their
         per channel redaction record, the attempt row, then mark the marker `recorded` and delete the raw stream.
         Slots and markers are released only after the reconciliation. An unsettled child (termination not
@@ -1707,8 +1733,20 @@ class CellRun:
         judged = []
         for c in group:
             if c.get('unsettled'):
+                # A4.14.1: the end of its process tree was not established. Its marker, home and raw stream are
+                # preserved, its accounting obligation is recorded now, and its state stays unsettled (uncertain).
+                c['marker'].update(tree_gone=False)
+                with contextlib.suppress(Exception):
+                    self._write_marker(c)
+                row = unsettled_row(c['marker'], c['unsettled'])
+                _append(self.run_dir, 'attempts.jsonl', row)
+                c['outcome'], c['row'] = 'unsettled', row
                 continue
             if c.get('not_launched'):
+                if c.get('spawn_failure'):
+                    c['marker'].update(tree_gone=True)  # terminated while suspended: shown gone, never ran
+                    with contextlib.suppress(Exception):
+                        self._write_marker(c)
                 row = not_launched_row(c['marker'], c['not_launched'])
                 _append(self.run_dir, 'attempts.jsonl', row)
                 c['outcome'], c['row'] = 'not_launched', row
@@ -1737,6 +1775,12 @@ class CellRun:
                                           'auth_failure': fin['auth_failure'], 'call_id': c['call_id']}
             output = self.interpret(c, outcome, reply)
             outcome = output['outcome']
+            if c.get('spawn_failure') and outcome in RETRYABLE:
+                # Astra council round 3, item 10: a stream without complete terminal evidence of a child that had to
+                # be killed is never a clean infrastructure failure; whether a tool executed is not established
+                outcome = output['outcome'] = 'unsettled'
+                cls = dict(cls, verdict='uncertain', efficiency_invalid=True, uncertain=list(cls.get('uncertain') or [])
+                           + [{'reason': f"incomplete stream of a killed child: {c['spawn_failure']}"[:300]}])
             acct = account_usage(self.backend, usage_raw, reply, self.cache_certified,
                                  count=lambda texts: [counts.get(t) for t in texts])
             if c.get('spawn_failure'):
@@ -1764,16 +1808,23 @@ class CellRun:
             c['outcome'], c['output'], c['row'] = outcome, output, row
         failures = [c for c in group if c.get('spawn_failure') or c.get('unsettled')]
         try:
-            if self.codex and workers:
+            if self.codex and workers and failures:
+                # Astra council round 3, item 9: with a member whose call did not settle normally, nothing is
+                # propagated; the baseline stays unchanged and Codex stops (A4.2)
+                _append(self.run_dir, 'evidence/auth-reconcile.jsonl', {
+                    'cell': self.spec['id'], 'action': 'stop_codex', 'baseline_auth_sha256': self.iso.baseline_sha256(),
+                    'reason': 'a member of the launch group did not settle normally; nothing is propagated',
+                    'calls': sorted(w['call_id'] for w in workers.values()), 'at': _now()})
+            elif self.codex and workers:
                 self.reconcile(workers)
             for c in group:
                 if c.get('not_launched') and self.codex:
                     with contextlib.suppress(Exception):
                         self.iso.finish(c['slot'], prepared_sha256=c['prepared_sha'])
-            # markers go only once the group is reconciled; a runner that dies before keeps them for recovery
+            # markers go only once the group is reconciled; a runner that dies before keeps them for the A4.14.1 stop
             for c in group:
-                if c.get('unsettled'):
-                    continue
+                if c.get('unsettled') or (failures and self.codex):
+                    continue  # preserved for the A4.14.1 stop record
                 with contextlib.suppress(OSError):
                     (self.dir / 'inflight' / f"{c['call_id']}.json").unlink()
         finally:
@@ -1792,6 +1843,28 @@ class CellRun:
             why = not_launched[0]['not_launched']
             code = config.EXIT_FREEZE if 'executable' in why else config.EXIT_INCOMPLETE
             self.interrupted = (code, f"{not_launched[0]['call_id']}: not launched: {why}")
+        if self.anomaly_stop and not self.interrupted:
+            signals = self.anomalies(group)
+            if signals:
+                self.interrupted = (config.EXIT_INTERRUPTED, 'A4.14.1 stop: ' + '; '.join(signals[:3]))
+
+    anomaly_stop = True
+
+    def anomalies(self, group):
+        """The A4.14.1 signals of a finished launch group that stop the cell: a leakage signal (an executed or
+        uncertain event verdict), an isolation signal (credential material in the output) and an accounting anomaly
+        (usage shown invalid). The scorer applies A4.3 and A4.11 to the preserved records."""
+        out = []
+        for c in group:
+            row = c.get('row') or {}
+            verdict = (row.get('events') or {}).get('verdict')
+            if verdict in ('executed', 'uncertain'):
+                out.append(f"{c['call_id']}: leakage signal (event verdict {verdict})")
+            if row.get('credential_disclosure'):
+                out.append(f"{c['call_id']}: isolation signal (credential material redacted from its output)")
+            if (row.get('usage') or {}).get('status') == 'invalid':
+                out.append(f"{c['call_id']}: accounting anomaly (usage invalid)")
+        return out
 
     def reconcile(self, workers):
         """A4.2 after every call, failures included: each worker is compared with the baseline generation it was
@@ -2004,12 +2077,17 @@ class CellRun:
                     return self._guarded()
                 finally:
                     ACTIVE_INVOCATIONS.discard(self.invocation)
+                    if self.slots is not None:  # what the death of a runner process releases
+                        for k in list(self.slots.held):
+                            self.slots.release(k)
         except Busy as exc:
             self.say(f"{spec['id']}: another runner is active in this run directory ({exc}); no call made")
             return config.EXIT_BUSY
 
     def _preflight(self):
-        """Checks every invocation repeats under the locks before touching state (DONE, SETTLED, requirements)."""
+        """Checks every invocation repeats under the locks before touching state: a complete, settled or interrupted
+        cell is refused (A4.14.1: never resumed or rerun); a cell whose prerequisite was interrupted is interrupted
+        without running; a missing prerequisite refuses."""
         spec = self.spec
         if (self.dir / 'DONE.json').exists():
             self.say(f"{spec['id']}: already complete; refusing to rerun (no call made)")
@@ -2017,25 +2095,50 @@ class CellRun:
         if (self.dir / 'SETTLED.json').exists():
             self.say(f"{spec['id']}: settled incomplete; terminal outcomes are never resent (no call made)")
             return config.EXIT_INCOMPLETE
+        if (self.dir / 'INTERRUPTED.json').exists():
+            self.say(f"{spec['id']}: interrupted earlier; A4.14.1: an interrupted cell is never resumed or rerun "
+                     f"(no call made)")
+            return config.EXIT_CELL_INTERRUPTED
+        stopped = [r for r in spec['requires'] if (self.run_dir / 'cells' / r / 'INTERRUPTED.json').exists()]
+        if stopped:
+            stop_cell(self.run_dir, spec['id'], f'prerequisite {stopped} interrupted; A4.14.1: a dependent cell is '
+                                                f'interrupted without running', config.EXIT_INTERRUPTED)
+            self.say(f"{spec['id']}: interrupted without running: prerequisite {stopped} was interrupted (no call made)")
+            return config.EXIT_INTERRUPTED
         missing = [r for r in spec['requires'] if not (self.run_dir / 'cells' / r / 'DONE.json').exists()]
         if missing:
             self.say(f"{spec['id']}: required cells not complete: {missing} (no call made)")
             return config.EXIT_REQUIRES
         return None
 
+    def admit(self):
+        """A4.14.1 admission, before any other state is read: a stopped run admits nothing; every cell ended by a
+        crash is stopped with its records preserved (crash_scan) and must be contained, or the run stops."""
+        reason = run_stop_reason(self.run_dir)
+        if reason is None:
+            crash_scan(self.run_dir, self.opts.live_ledger if self.opts.mode == 'live' else None, self.say)
+            reason = run_stop_reason(self.run_dir)
+        if reason is not None:
+            self.say(f"{self.spec['id']}: the run is stopped (A4.14.1, containment not established): {reason} "
+                     f"(no call made)")
+            return config.EXIT_RUN_STOPPED
+        return None
+
     def _guarded(self):
         spec, opts = self.spec, self.opts
-        code = self._preflight()
-        if code is not None:
-            return code
         problem = identity_problem(self.run_dir, opts)
         if problem:
             self.say(f"{spec['id']}: {problem} (no call made)")
             return config.EXIT_IDENTITY
+        code = self.admit()
+        if code is not None:
+            return code
+        code = self._preflight()
+        if code is not None:
+            return code
         if opts.mode == 'fake' and opts.default_baseline and not (opts.baseline / isolation.AUTH).exists():
             synthetic_baseline(opts.baseline)
         try:
-            recover_inflight(self.run_dir, opts, self.say)
             self.gates()
         except Stop as stop:
             self.say(f"{spec['id']}: {stop.reason}")
@@ -2063,11 +2166,9 @@ class CellRun:
             try:
                 self.record_features()
             except Stop as stop:
-                self.say(f"{spec['id']}: {stop.reason}")
-                return stop.code
+                return self.conclude(stop.code, stop.reason, force=stop.interrupt)
             if self.interrupted:
-                self.say(f"{spec['id']}: {self.interrupted[1]}")
-                return self.interrupted[0]
+                return self.conclude(*self.interrupted)
         doc = _read_json(self.dir / 'state.json', {}) or {}
         invocations = doc.get('invocations', []) + [{'mode': opts.mode, 'started_at': _now(), 'pid': os.getpid(),
                                                      'invocation': self.invocation,
@@ -2112,15 +2213,31 @@ class CellRun:
             return self.run_bootstrap()
         return self.run_BC()
 
+    def conclude(self, code, reason, force=False):
+        """A4.14.1: the cell stops. A cell that dispatched nothing (no attempt and no marker) is left pending with the
+        refusal recorded, since nothing of it ran; any other stopped cell is interrupted for good through stop_cell,
+        which preserves its records, records its outstanding accounting and establishes containment (or stops the
+        run). Returns the exit code of the cause."""
+        spec = self.spec
+        dispatched = force or bool(self.prior_attempts()) or any(self.dir.glob('inflight/*.json'))
+        if not dispatched:
+            self.state('pending', refused=reason)
+            self.say(f"{spec['id']}: {reason} (nothing was dispatched)")
+            return code
+        rec = stop_cell(self.run_dir, spec['id'], reason, code,
+                        ledger=self.opts.live_ledger if self.opts.mode == 'live' else None)
+        self.say(f"{spec['id']}: interrupted: {reason}"
+                 + ('' if rec['contained'] else '; containment of outstanding work not established: the run is '
+                                                'stopped (A4.14.1)'))
+        return code
+
     def _run_locked(self, spec, opts):
         self._window_open()
         try:
             result = self.arm()
         except Stop as stop:
-            self.state('incomplete', reason=stop.reason)
             self._window('stopped')
-            self.say(f"{spec['id']}: {stop.reason}")
-            return stop.code
+            return self.conclude(stop.code, stop.reason, force=stop.interrupt)
         result.update(cell=spec['id'], spec=spec, mode=opts.mode)
         exhausted = [k for k, v in result.get('batches', {}).items() if v in ('budget_exhausted',)]
         killed = self.rule_errors(result)
@@ -2134,11 +2251,11 @@ class CellRun:
 
     def _settle(self, spec, opts, result, exhausted, killed):
         if self.interrupted:
-            code, reason = self.interrupted
-            self.state('interrupted', reason=reason)
-            self.say(f"{spec['id']}: interrupted: {reason}")
-            return code
+            return self.conclude(*self.interrupted)
         if exhausted:
+            _write_json(self.dir / 'SETTLED.json', {'cell': spec['id'], 'settled_at': _now(),
+                                                    'physical_calls': len(self.prior_attempts()),
+                                                    'terminal_outcomes': {k: 'budget_exhausted' for k in exhausted}})
             self.state('incomplete', reason=f'allocation and reserve exhausted for batches {exhausted}')
             self.say(f"{spec['id']}: incomplete: allocation and reserve exhausted ({exhausted})")
             return config.EXIT_INCOMPLETE
@@ -2166,12 +2283,14 @@ class CellRun:
     def probe_marker(self, name, slot, prepared_sha):
         marker = {'call_id': f'probe-{name}-{self.invocation}', 'cell': self.spec['id'], 'backend': 'codex',
                   'marker': 'probe', 'role': 'probe', 'slot': slot, 'prepared_sha': prepared_sha, 'pid': None,
-                  'mode': self.opts.mode, 'started_at': _now()}
+                  'mode': self.opts.mode, 'started_at': _now(), 'runner_pid': os.getpid(),
+                  'runner_created': process_created(os.getpid()), 'runner_invocation': self.invocation}
         path = self.dir / 'inflight' / f"{marker['call_id']}.json"
         _write_json(path, marker)
 
         def on_start(pid):
-            marker.update(pid=pid, pid_created=process_created(pid), phase='spawned')
+            marker.update(pid=pid, pid_created=process_created(pid), phase='spawned',
+                          supervision=getattr(_TLS, 'last_tree', None))
             _write_json(path, marker)
         return marker, path, on_start
 
@@ -2197,10 +2316,27 @@ class CellRun:
                                            if name == 'features' else [self.exe.exe, *config.ROUTE_SECURITY_ARGS[:2],
                                                                        *args],
                                            prepared['env'], prepared['workdir'], on_start)
+            except SpawnFailure as exc:
+                # A4.14.1: the probe did not settle normally. Its authentication result is unknown: nothing is
+                # propagated, Codex stops; with its tree shown gone the home is reconciled as a failure, otherwise
+                # its marker and home are preserved and containment is left to the stop record.
+                marker.update(tree_gone=bool(exc.terminated))
+                _write_json(path, marker)
+                if exc.terminated:
+                    fin = self.iso.finish(slot, auth_failure=True, prepared_sha256=prepared['auth_sha256'])
+                    self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
+                                           'auth_failure': True, 'call_id': marker['call_id']}})
+                    with contextlib.suppress(OSError):
+                        path.unlink()
+                else:
+                    self.codex_stop(f'{name} probe: {exc.reason}')
+                raise Stop(config.EXIT_AUTH_STOP, f'{name} probe did not settle: {exc.reason}; Codex stopped (A4.2, '
+                                                  f'A4.14.1)', interrupt=True) from None
             finally:
                 secrets |= redact.secrets_from_auth(self.iso.home(slot) / isolation.AUTH,
                                                     self.opts.baseline / isolation.AUTH)
                 fin = None
+            out_raw, err_raw = out, err
             out, r1 = redact.redact(out, secrets)
             err, r2 = redact.redact(err, secrets)
             failure = auth_failure_detected(out, err)
@@ -2209,11 +2345,17 @@ class CellRun:
             fin = self.iso.finish(slot, auth_failure=failure, prepared_sha256=prepared['auth_sha256'])
             self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
                                    'auth_failure': failure, 'call_id': marker['call_id']}})
-            if r1.get('redactions') or r2.get('redactions'):
-                _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
-                        {'probe': name, 'cell': self.spec['id'], 'redaction': redact.merge(r1, r2), 'at': _now()})
             with contextlib.suppress(OSError):
                 path.unlink()
+            if r1.get('redactions') or r2.get('redactions'):
+                # Astra council round 3, item 15: a probe disclosure is a persistent isolation failure. It is
+                # recorded with per channel original and sanitized hashes, the scorer and the telemetry certificate
+                # read it, and the cell stops (A4.14.1 isolation signal).
+                channels = redact.channels(stdout=(out_raw or '', out, r1), stderr=(err_raw or '', err, r2))
+                _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
+                        {'probe': name, 'cell': self.spec['id'], 'redaction': channels, 'at': _now()})
+                raise Stop(config.EXIT_AUTH_GATE, f'{name} probe output carried credential material (isolation '
+                                                  f'failure, A4.2, A4.14.1)', interrupt=True)
             return code, out, err, fin
         finally:
             self.slots.release(slot)
@@ -2273,9 +2415,15 @@ def _canon(value):
 # ================================================================================================ telemetry
 
 def telemetry_failures(run_dir):
-    """Every telemetry attempt that did not end as expected and every telemetry record that did not pass."""
+    """Every telemetry attempt that did not end as expected, every telemetry record that did not pass, every probe
+    disclosure (Astra council round 3, item 15) and an interrupted telemetry cell (A4.14.1)."""
     run_dir = Path(run_dir)
     problems = []
+    for r in jsonl(run_dir / 'evidence' / 'probe-disclosures.jsonl'):
+        problems.append(f"a {r.get('probe')} probe of {r.get('cell')} disclosed credential material (isolation "
+                        f"failure)")
+    if (run_dir / 'cells' / 'telemetry' / 'INTERRUPTED.json').exists():
+        problems.append('the telemetry cell was interrupted (A4.14.1)')
     for a in jsonl(run_dir / 'attempts.jsonl'):
         if a.get('cell') == 'telemetry' and a.get('outcome') != a.get('expected_outcome'):
             problems.append(f"telemetry attempt {a.get('call_id')} ended {a.get('outcome')!r}, expected "
@@ -2318,6 +2466,8 @@ class TelemetryRun(CellRun):
        must deliver a plain reply; its runtime files are inventoried by name and hash.
     6. `login status` at the four emptied worker paths again: the call left no credential keyed by a worker path.
     The certificate is published (evidence/telemetry.jsonl, telemetry.json) only after the call was reconciled."""
+
+    anomaly_stop = False  # telemetry makes at most one further call; any failed telemetry attempt blocks for good
 
     def __init__(self, opts):
         CellRun.__init__(self, dict(TELEMETRY_SPEC), opts)
@@ -2445,6 +2595,9 @@ class TelemetryRun(CellRun):
                 self.probe_fin = c.get('fin')
 
     def _run_locked(self, spec, opts):
+        if (self.dir / 'INTERRUPTED.json').exists():
+            self.say('telemetry interrupted earlier; A4.14.1: never resumed or rerun (no call made)')
+            return config.EXIT_CELL_INTERRUPTED
         failures = telemetry_failures(self.run_dir)
         if failures:
             self.say(f'telemetry refused: {failures[:3]}')
@@ -2458,10 +2611,14 @@ class TelemetryRun(CellRun):
             self.say(f'telemetry: {stop.reason}')
             _append(self.run_dir, 'evidence/telemetry.jsonl', {'at': _now(), 'passed': False,
                                                                'problems': [stop.reason], 'certificate': None})
-            return stop.code
+            return self.conclude(stop.code, stop.reason, force=stop.interrupt)
         if self.interrupted:
-            return self.interrupted[0]
-        return config.EXIT_OK if result['telemetry'] else config.EXIT_TELEMETRY
+            return self.conclude(*self.interrupted)
+        if result['telemetry']:
+            _write_json(self.dir / 'DONE.json', {'cell': 'telemetry', 'completed_at': _now()})
+            return config.EXIT_OK
+        _write_json(self.dir / 'SETTLED.json', {'cell': 'telemetry', 'settled_at': _now(), 'passed': False})
+        return config.EXIT_TELEMETRY
 
 
 def telemetry(opts) -> int:
@@ -2602,6 +2759,12 @@ def freeze_command(new_run_dir=None, disposition=None):
         print('refused: the freeze is not ready (B1): ' + '; '.join(ready), file=sys.stderr)
         return config.EXIT_FREEZE
     target = live_run_dir()
+    planned = Path(new_run_dir) if new_run_dir else target
+    below = [str(d) for d in isolation.profile_dirs() if d in planned.resolve().parents]
+    if below:
+        print(f'refused: the live run directory {planned} is below the owner profile {below[0]}; every worker home '
+              f'and working directory would have the owner state as an ancestor (A4.2, RT3.1)', file=sys.stderr)
+        return config.EXIT_FREEZE
     bound = (target / 'experiment.json').exists() or bool(jsonl(config.LIVE_LEDGER_DEFAULT))
     if bound:
         if not new_run_dir or not disposition or not Path(disposition).is_file():

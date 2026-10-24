@@ -55,71 +55,11 @@ REFUSED = [{'type': 'item.completed', 'item': {'id': 'c1', 'type': 'command_exec
 
 # ======================================================== items 3, B3, RT2.1: recovery reconciles durable evidence
 
-@pytest.mark.parametrize('kind,want', [('ok', 'ok'), ('refused', 'refused'), ('executed', 'executed')])
-@pytest.mark.parametrize('crash_at', ['attempt_row', 'captures'])
-def test_item3_a_crash_between_capture_call_record_and_attempt_row_never_resends(tmp_path, monkeypatch, kind, want,
-                                                                                crash_at):
-    target = f'{CELL}.r1.b02.t0'
-    monkeypatch.setattr(run, 'spawn', inject('r1.b02', {'ok': [], 'refused': REFUSED, 'executed': EXECUTED}[kind]))
-    original_append, original_captures = run._append, run.write_captures
-    state = {}
+# test_item3_a_crash_between_capture_call_record_and_attempt_row_never_resends: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_crash_mid_record_preserves_the_call_unsettled_and_never_resends
 
-    def append(run_dir, name, row):
-        if crash_at == 'attempt_row' and name == 'attempts.jsonl' and row.get('call_id') == target and not state:
-            state['killed'] = True
-            raise KeyboardInterrupt('runner killed after the capture, before the attempt row')
-        return original_append(run_dir, name, row)
-
-    def captures(run_dir, call_id, stdout, stderr, meta):
-        if crash_at == 'captures' and call_id == target and not state:
-            state['killed'] = True
-            raise KeyboardInterrupt('runner killed after the call record, before the captures')
-        return original_captures(run_dir, call_id, stdout, stderr, meta)
-
-    monkeypatch.setattr(run, '_append', append)
-    monkeypatch.setattr(run, 'write_captures', captures)
-    with pytest.raises(KeyboardInterrupt):
-        go(tmp_path, CELL)
-    monkeypatch.setattr(run, 'spawn', inject('r1.b02', []))
-    code = go(tmp_path, CELL)
-    rows = [r for r in attempts(tmp_path / 'run', CELL) if r['batch'] == 'r1.b02']
-    assert [r['outcome'] for r in rows] == [want], 'the batch was resent or misjudged: ' + str(
-        [(r['outcome'], r.get('recovered_from')) for r in rows])
-    assert rows[0]['recovered_from'] == ('capture' if crash_at == 'attempt_row' else 'raw_stream')
-    assert code == (0 if kind == 'ok' else config.EXIT_INCOMPLETE)
-    rep = score.score_run(tmp_path / 'run')
-    flagged = [p for p in rep['validity']['leakage'] if target in p]
-    assert bool(flagged) == (kind == 'executed')
-    assert not [p for p in rep['validity']['artifact_problems'] if target in p]
-
-
-def test_b3_an_orphan_without_any_stream_is_uncertain_leakage(tmp_path, monkeypatch):
-    target = f'{CELL}.r1.b01.t0'
-    original = run.CellRun.after_group
-
-    def crash(self, group):
-        for c in group:
-            for p in run.raw_paths(self.run_dir, c['slot'], c['call_id']):
-                if c['call_id'] == target:
-                    p.unlink()
-        raise KeyboardInterrupt('runner killed; the raw stream of one call is gone')
-    monkeypatch.setattr(run.CellRun, 'after_group', crash)
-    with pytest.raises(KeyboardInterrupt):
-        go(tmp_path, CELL)
-    monkeypatch.setattr(run.CellRun, 'after_group', original)
-    assert go(tmp_path, CELL) == 0
-    rows = {r['call_id']: r for r in attempts(tmp_path / 'run', CELL)}
-    assert rows[target]['outcome'] == 'interrupted' and rows[target]['events']['verdict'] == 'uncertain'
-    assert rows[f'{CELL}.r1.b01.t1']['kind'] == 'reserve'
-    rep = score.score_run(tmp_path / 'run')
-    assert any(target in p for p in rep['validity']['leakage'])
-    # B7, P2: the unknown usage stays incomplete; the substitution is only a labeled observation
-    cell = rep['cells']['codex/materials/cold/A']
-    assert cell['usage'] == 'incomplete'
-    obs = rep['unknown_usage_observation']['codex/materials/cold/A']
-    assert obs['attempts_with_unknown_usage'] == 1 and 'not an established bound' in obs['label']
-    assert obs['hypothetical_tokens'] > obs['known_charged_tokens'] == cell['tokens']
-
+# test_b3_an_orphan_without_any_stream_is_uncertain_leakage: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_an_orphan_without_any_stream_is_unsettled_leakage_and_its_usage_stays_incomplete
 
 def test_item3_a_pid_journal_failure_stops_codex_and_records_the_terminated_child(tmp_path, monkeypatch):
     original = run.CellRun._mark_spawned
@@ -138,65 +78,14 @@ def test_item3_a_pid_journal_failure_stops_codex_and_records_the_terminated_chil
     assert any('journaled' in (r.get('why') or '') for r in rows)
 
 
-def test_item3_a_communicate_exception_with_a_live_child_keeps_the_home_and_stops_codex(tmp_path, monkeypatch):
-    original = subprocess.Popen.communicate
-    state = {'pids': []}
+# test_item3_a_communicate_exception_with_a_live_child_keeps_the_home_and_stops_codex: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_child_whose_tree_cannot_be_ended_keeps_its_records_and_stops_the_run
 
-    def communicate(self, *a, **k):
-        if a and isinstance(a[0], bytes) and not state['pids']:
-            state['pids'].append(self.pid)
-            raise RuntimeError('waiting failed')
-        return original(self, *a, **k)
-    monkeypatch.setattr(subprocess.Popen, 'communicate', communicate)
-    monkeypatch.setattr(run, '_kill_tree', lambda proc: None)
-    monkeypatch.setattr(run, '_wait_gone', lambda proc, pid, seconds=60: False)
-    try:
-        assert go(tmp_path, CELL) == config.EXIT_AUTH_STOP
-        assert (tmp_path / 'run' / 'codex-stop.json').exists()
-        markers = list((tmp_path / 'run' / 'cells' / CELL / 'inflight').glob('*.json'))
-        assert len(markers) == 1, 'the unsettled call keeps its marker'
-        m = json.loads(markers[0].read_text(encoding='utf-8'))
-        assert (tmp_path / 'run' / 'homes' / f"worker-{m['slot']}" / 'auth.json').exists(), 'home preserved'
-        assert m['call_id'] not in {r['call_id'] for r in attempts(tmp_path / 'run')}
-        assert len(attempts(tmp_path / 'run', CELL)) == 3
-    finally:
-        for pid in state['pids']:
-            subprocess.run(['taskkill', '/T', '/F', '/PID', str(pid)], capture_output=True) if os.name == 'nt' \
-                else os.kill(pid, 9)
+# test_item3_a_spawning_marker_without_pid_is_kept_and_its_batch_never_resent: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_an_unidentified_or_unsupervised_child_stops_the_run
 
-
-def test_item3_a_spawning_marker_without_pid_is_kept_and_its_batch_never_resent(tmp_path):
-    fake_opts(tmp_path)
-    assert go(tmp_path, CELL, stop_after=1) == config.EXIT_INTERRUPTED
-    cell_dir = tmp_path / 'run' / 'cells' / CELL
-    marker = {'call_id': f'{CELL}.r1.b01.t0', 'attempt_uid': 'u-1', 'cell': CELL, 'backend': 'codex',
-              'workload': 'materials', 'wave': 'cold', 'arm': 'A', 'allocation': 'cold_A', 'batch': 'r1.b01',
-              'try': 0, 'reason': 'nominal', 'kind': 'nominal', 'slot': 0, 'mode': 'fake', 'group': 'dead.g1',
-              'phase': 'spawning', 'pid': None, 'started_at': stamp(), 'job_ids': [], 'records': {}}
-    (cell_dir / 'inflight' / f"{marker['call_id']}.json").write_text(json.dumps(marker), encoding='utf-8')
-    assert go(tmp_path, CELL) == config.EXIT_AUTH_STOP
-    assert list((cell_dir / 'inflight').glob('*.json')), 'the ambiguous marker is kept'
-    assert not [r for r in attempts(tmp_path / 'run', CELL) if r['batch'] == 'r1.b01']
-    rep = score.score_run(tmp_path / 'run')
-    assert any('unrecovered in-flight markers' in p for p in rep['validity']['accounting_failures'])
-
-
-def test_b2_a_reserved_marker_becomes_a_charged_not_launched_attempt(tmp_path):
-    fake_opts(tmp_path)
-    assert go(tmp_path, CELL, stop_after=1) == config.EXIT_INTERRUPTED
-    cell_dir = tmp_path / 'run' / 'cells' / CELL
-    marker = {'call_id': f'{CELL}.r1.b01.t0', 'attempt_uid': 'u-2', 'cell': CELL, 'backend': 'codex',
-              'workload': 'materials', 'wave': 'cold', 'arm': 'A', 'allocation': 'cold_A', 'batch': 'r1.b01',
-              'try': 0, 'reason': 'nominal', 'kind': 'nominal', 'slot': 1, 'mode': 'fake', 'group': 'dead.g1',
-              'phase': 'reserved', 'pid': None, 'started_at': stamp(), 'job_ids': [], 'records': {}}
-    (cell_dir / 'inflight' / f"{marker['call_id']}.json").write_text(json.dumps(marker), encoding='utf-8')
-    assert go(tmp_path, CELL) == 0
-    rows = [r for r in attempts(tmp_path / 'run', CELL) if r['batch'] == 'r1.b01']
-    assert [r['outcome'] for r in rows] == ['not_launched', 'ok'] and rows[0]['kind'] == 'nominal'
-    assert rows[1]['kind'] == 'reserve'
-    rep = score.score_run(tmp_path / 'run')
-    assert rep['validity']['leakage'] == [] and rep['validity']['artifact_problems'] == []
-
+# test_b2_a_reserved_marker_becomes_a_charged_not_launched_attempt: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_reserved_marker_after_a_crash_is_a_charged_not_launched_attempt
 
 # ================================================================= item 5, C3: probes and the features inventory
 
@@ -479,29 +368,8 @@ def test_item10_a_launch_identity_differing_from_the_bound_freeze_withholds_clai
 
 # ===================================================================================== item 14: timing windows
 
-def test_item14_a_crash_before_the_window_closes_keeps_the_work_in_the_gated_makespan(tmp_path, monkeypatch):
-    original = run.CellRun.rule_errors
-    state = {}
-
-    def crash(self, result):
-        if not state:
-            state['done'] = True
-            raise KeyboardInterrupt('runner killed after the last attempt, before the window was closed')
-        return original(self, result)
-    monkeypatch.setattr(run.CellRun, 'rule_errors', crash)
-    with pytest.raises(KeyboardInterrupt):
-        go(tmp_path, CELL)
-    rows = attempts(tmp_path / 'run', CELL)
-    work = sum(float(r['elapsed_s']) for r in rows)
-    assert go(tmp_path, CELL) == 0
-    windows = run.jsonl(tmp_path / 'run' / 'cells' / CELL / 'windows.jsonl')
-    assert any(w.get('reconstructed') for w in windows)
-    cell = score.score_run(tmp_path / 'run')['cells']['codex/materials/cold/A']
-    assert cell['timing'] == 'bounded' and cell['makespan_upper_s'] >= max(float(r['elapsed_s']) for r in rows)
-    assert cell['makespan_lower_s'] <= cell['makespan_upper_s'] and work > 0
-    assert gates._span(cell, 'test') == gates._F(cell['makespan_upper_s'])
-    assert gates._span(cell, 'ref') == gates._F(cell['makespan_lower_s'])
-
+# test_item14_a_crash_before_the_window_closes_keeps_the_work_in_the_gated_makespan: encoded in flight recovery or resume; replaced under A4.14.4 by
+# tests/test_a414_fail_closed.py::test_a414_a_crash_after_the_last_call_leaves_a_bounded_window_and_an_interrupted_cell
 
 def test_item14_an_attempt_outside_every_window_makes_the_cell_incomplete(tmp_path):
     assert go(tmp_path, CELL) == 0
@@ -657,27 +525,39 @@ def test_b1_the_freeze_refuses_while_a_ruling_slot_is_unsettled(tmp_path, monkey
 
 
 def test_b1_readiness_needs_countersigned_ruling_bytes_and_a_matching_configuration(tmp_path, monkeypatch):
-    slots = {}
-    for name in config.REQUIRED_RULINGS:
-        f = tmp_path / f'{name}.md'
-        f.write_text(f'{name} ruling text\n\nSigned: Astra A\n', encoding='utf-8')
-        slots[name] = {'path': str(f), 'sha256': sha(f)}
-    assert all('lacks' in p for p in rulings.ruling_problems(slots))
-    for name, entry in slots.items():
-        Path(entry['path']).write_text(f'{name} ruling text\n\nSigned: Astra A\nSigned: Opus B\n', encoding='utf-8')
-    assert all('hash differs' in p for p in rulings.ruling_problems(slots)), 'the countersigned bytes are pinned'
-    for entry in slots.values():
-        entry['sha256'] = sha(entry['path'])
-    assert rulings.ruling_problems(slots) == []
-    disable = ['--disable', 'code_mode_host']
-    assert any('Code Mode' in p for p in rulings.configuration_problems(disable))
+    # Astra council round 3, item 1 (A4.14 build): each ruling also binds its approved annexes (hash in the
+    # countersigned text, file hashing to it, configuration equal to it); the assertions of round 2 are unchanged
     monkeypatch.setattr(config, 'SIGNED_CLI_NOTICES', (NOTICE,))
     monkeypatch.setattr(config, 'SIGNED_CLI_NOTICE_EVENT_KEYS', ('type', 'item'))
     monkeypatch.setattr(config, 'SIGNED_CLI_NOTICE_ID_RE', r'item_[0-9]+')
     manifest = tmp_path / 'startup-manifest.json'
     manifest.write_text(json.dumps({'files': [{'path': 'skills/.system/x/SKILL.md', 'sha256': 'a' * 64}]}),
                         encoding='utf-8')
+    annex_files = {'startup_manifest': manifest, 'cli_notice_annex': tmp_path / 'p4.json'}
+    annex_files['cli_notice_annex'].write_text(json.dumps(rulings.cli_notice_config()), encoding='utf-8')
+    for kind in ('quota_source_manifest', 'effective_context_evidence', 'attribution_evidence'):
+        annex_files[kind] = tmp_path / f'{kind}.json'
+        annex_files[kind].write_text(json.dumps({'annex': kind}), encoding='utf-8')
+    slots, texts = {}, {}
+    for name in config.REQUIRED_RULINGS:
+        annexes = {k: {'path': str(annex_files[k]), 'sha256': sha(annex_files[k])}
+                   for k in rulings.ANNEXES_REQUIRED.get(name, ())}
+        texts[name] = f'{name} ruling text\n' + ''.join(f'{k} {a["sha256"]}\n' for k, a in annexes.items())
+        f = tmp_path / f'{name}.md'
+        f.write_text(texts[name] + '\nSigned: Astra A\n', encoding='utf-8')
+        slots[name] = {'path': str(f), 'sha256': sha(f), 'annexes': annexes}
+    assert all('lacks' in p for p in rulings.ruling_problems(slots))
+    for name, entry in slots.items():
+        Path(entry['path']).write_text(texts[name] + '\nSigned: Astra A\nSigned: Opus B\n', encoding='utf-8')
+    assert all('hash differs' in p for p in rulings.ruling_problems(slots)), 'the countersigned bytes are pinned'
+    for entry in slots.values():
+        entry['sha256'] = sha(entry['path'])
     monkeypatch.setattr(config, 'STARTUP_MANIFEST_FILE', manifest)
+    assert rulings.ruling_problems(slots) == []
+    disable = ['--disable', 'code_mode_host']
+    monkeypatch.setattr(config, 'SIGNED_CLI_NOTICES', ())
+    assert any('Code Mode' in p for p in rulings.configuration_problems(disable))
+    monkeypatch.setattr(config, 'SIGNED_CLI_NOTICES', (NOTICE,))
     assert rulings.readiness_problems(disable, slots) == []
 
 

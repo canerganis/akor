@@ -56,6 +56,8 @@ class Live:
         self.touch_sessions()
         monkeypatch.setattr(run, 'live_run_dir', lambda: self.current)
         monkeypatch.setattr(run, 'verify_freeze', lambda: [])
+        # A4.12, RT3.3: live mode reads the owner sessions only; the test's sessions directory stands in for them
+        monkeypatch.setattr(config, 'CODEX_SESSIONS_DEFAULT', self.sessions)
         monkeypatch.setattr(run, 'freeze_sha256', lambda: 'f' * 64)
         monkeypatch.setattr(run.tokenizer, 'vocabulary_ok', lambda: True)
         monkeypatch.setattr(run.tokenizer, 'count', lambda texts: [max(1, len(t) // 4) for t in texts])
@@ -132,11 +134,13 @@ def live(tmp_path, monkeypatch):
 
 def test_rt2_1_execution_captured_before_the_runner_died_is_still_leakage(tmp_path, monkeypatch):
     """after_group writes D/captures/<call id>.stdout before it appends the attempt line. A runner killed in between
-    (a runner subagent timeout, a crash in _append) leaves the capture; recovery then records the call as
-    `interrupted` with no event verdict, the batch is retried from the reserve and the cell completes. The scorer
-    never re-judges the capture of an interrupted attempt (`_rejudge` is skipped for it) and the capture check only
-    looks for captures without any attempt line, so a call that executed a tool (the failure that invalidated the
-    pilot) vanishes from `leakage`. A4.3: actual execution invalidates replication efficiency; leakage is global."""
+    (a runner subagent timeout, a crash in _append) leaves the capture. A4.3: actual execution invalidates
+    replication efficiency; leakage is global.
+
+    A4.14.4 replacement (the original asserted a resumed run that recovered the call and completed the cell): under
+    A4.14.1 the crashed cell is stopped, never resumed or rerun; the call is recorded `unsettled` (its state was never
+    settled), its batch is never resent, the capture that shows execution stays leakage and the cell is invalid, not
+    merely interrupted."""
     cell = 'codex-materials-cold-A'
     target = f'{cell}.r1.b03.t0'
     o = fake_opts(tmp_path)
@@ -184,10 +188,13 @@ def test_rt2_1_execution_captured_before_the_runner_died_is_still_leakage(tmp_pa
     capture = (o.run_dir / 'captures' / f'{target}.stdout').read_text(encoding='utf-8')
     assert '"command_execution"' in capture and '"exit_code": 0' in capture
 
-    assert run.CellRun(run.spec_by_id(cell), fake_opts(tmp_path)).run() == config.EXIT_OK
+    assert run.CellRun(run.spec_by_id(cell), fake_opts(tmp_path)).run() == config.EXIT_CELL_INTERRUPTED
     outcomes = {r['call_id']: r['outcome'] for r in attempts(o.run_dir, cell)}
-    assert outcomes[target] == 'interrupted' and outcomes[f'{cell}.r1.b03.t1'] == 'ok'
+    assert outcomes[target] == 'unsettled' and f'{cell}.r1.b03.t1' not in outcomes, 'the batch was resent'
+    assert (o.run_dir / 'cells' / cell / 'INTERRUPTED.json').exists()
     rep = score.score_run(o.run_dir)
+    assert cell in rep['validity']['invalid_cells'], 'a stopped cell with execution evidence is invalid'
+    assert run.CellRun(run.spec_by_id(cell), fake_opts(tmp_path)).run() == config.EXIT_CELL_INTERRUPTED
     flagged = [p for k in ('leakage', 'artifact_problems') for p in rep['validity'][k] if target in p]
     assert flagged, (f'{target} executed `{cmd}` (its capture holds the command_execution item with exit_code 0) but '
                      f"the report flags nothing: leakage {rep['validity']['leakage']}, artifact problems "

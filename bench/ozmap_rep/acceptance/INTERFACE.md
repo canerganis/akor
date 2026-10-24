@@ -44,7 +44,9 @@ D/report.json, D/report.md       written by the scorer
   cell ids that must be complete first: cold B and C and warm C require their backend/workload bootstrap cell.
 * `python -m bench.ozmap_rep.run cell <id> [--run-dir D] [--mode fake|live] [--baseline P]
   [--codex-sessions-dir P] [--claude-weekly-percent X] [--stop-after N] [--fake-fail N] [--fake-refresh K]`.
-  Resumable: calls already recorded in `attempts.jsonl` as terminal are never repeated. Exit codes: 0 complete,
+  A4.14.1 (fail closed, replaces resumption): a cell runs once; an interrupted cell is never resumed or rerun and
+  is refused with 19, a cell whose prerequisite was interrupted is interrupted without running (75), and 20 means
+  the run is stopped because containment of outstanding work was not established. Exit codes: 0 complete,
   3 cell already complete (refuses, makes no call), 4 required cell not complete (no call), 5 budget or reserve
   exhausted or cell incomplete, 10 quota stop (Codex primary used_percent >= 80 or Claude weekly >= 99, before any
   call), 11 baseline authentication gate failed (A4.2, before any call), 75 interrupted (`--stop-after`).

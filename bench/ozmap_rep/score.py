@@ -17,6 +17,11 @@ windows (each invocation from the start of its work to the written result, local
 rule execution, audits, delivery and launch skew included), plus the bootstrap cell's windows for cold B and C. The
 child execution time (sum over launch groups of the longest call) is reported separately and never gated.
 
+Fail closed execution (A4.14.1): the preserved records of every stopped cell are scored like any other. A leakage or
+isolation signal, a demonstrated accounting failure or an unsettled call (uncertainty whether a tool executed) makes a
+stopped cell invalid, not merely interrupted; only a stopped cell without such a finding is reported interrupted, which
+leaves its comparisons inconclusive (A4.3, A4.11). A run stop (containment not established) fails isolation.
+
 Claims need the artifact chain (item 10): every capture hashes to its attempt, the attempt's outcome, usage and
 answers are derived again from the capture, the cell's answers come from those calls (or from the bootstrap, or from
 the admitted rule applied again), admission records are reproduced, the launch identity matches the run bound freeze,
@@ -28,6 +33,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -36,7 +42,7 @@ from . import events as events_mod
 from .run import _read_json, cell_specs, jsonl
 
 SCHEMA = 'ozmap-rep/1'
-RETRYABLE_OUTCOMES = ('infrastructure_failure', 'interrupted', 'not_launched')
+RETRYABLE_OUTCOMES = ('infrastructure_failure', 'not_launched')
 NON_EVALUATION = ('telemetry', 'features')
 
 
@@ -79,7 +85,7 @@ def _union(intervals):
 def _window_spans(run_dir, ids, rows):
     """The gated makespan of a cell (council round 2, item 14): the union of its work windows (each opened before
     the invocation's work and closed after its result was delivered; overlapping windows merge, never sum), with a
-    lower and an upper bound when a window was closed by recovery. Every attempt must start inside a window; an open
+    lower and an upper bound when a crashed invocation's window was closed with bounds (A4.14.1). Every attempt must start inside a window; an open
     window without a close, a missing window or an attempt outside every window makes the evidence incomplete."""
     exact, lower, upper, problems = [], [], [], []
     bounded = False
@@ -96,7 +102,7 @@ def _window_spans(run_dir, ids, rows):
             if c.get('reconstructed'):
                 lo, hi = _t(c.get('ended_at_lower')), _t(c.get('ended_at_upper'))
                 if lo is None or hi is None or lo < start or hi < lo:
-                    problems.append(f'{cid}: a recovered work window without consistent bounds ({inv})')
+                    problems.append(f'{cid}: a bounded work window without consistent bounds ({inv})')
                     continue
                 bounded = True
                 lower.append((start, lo))
@@ -203,9 +209,15 @@ def _rejudge(run_dir, a, derived=None, counts=None, live=False, proposals=None):
     outcome, reply, usage_raw, cls = derived['outcome'], derived['reply'], derived['usage_raw'], derived['cls']
     want = a.get('outcome')
     derived_outcome = ('ok' if want in ('malformed', 'malformed_reply', 'malformed_answers') else want)
-    if outcome != derived_outcome:
+    if want == 'unsettled':
+        # A4.14.1 (Astra council round 3, item 10): the stream of a killed child without complete terminal evidence
+        # is recorded unsettled and uncertain, whatever the partial stream alone would judge; only a delivered
+        # terminal outcome in the capture would contradict that
+        if outcome in ('ok', 'refused', 'executed', 'auth_failure'):
+            problems.append(f'{cid}: the capture judges {outcome!r}, the attempt says unsettled')
+    elif outcome != derived_outcome:
         problems.append(f'{cid}: the capture judges {outcome!r}, the attempt says {want!r}')
-    if cls['verdict'] != (a.get('events') or {}).get('verdict'):
+    if want != 'unsettled' and cls['verdict'] != (a.get('events') or {}).get('verdict'):
         problems.append(f'{cid}: the capture event verdict differs from the attempt')
     if _canon(usage_raw) != _canon(a.get('usage_raw')):
         problems.append(f'{cid}: the attempt usage does not derive from the capture')
@@ -245,6 +257,46 @@ def _rejudge(run_dir, a, derived=None, counts=None, live=False, proposals=None):
         problems.append(f'{cid}: the recorded answers do not derive from the capture')
     return problems
 
+
+
+def _input_problems(run_dir, a):
+    """Astra council round 3, item 16: the job ids, their order and the per operation records of an evaluation
+    attempt are reconstructed from the frozen workload and must reproduce the prompt that was sent (its hash is
+    checked against the prompt file by _evidence_ok); `records` decides the attribution of the call's costs to R."""
+    cid = a.get('call_id')
+    ids = list(a.get('job_ids') or [])
+    if not ids or a.get('cell') in NON_EVALUATION:
+        return []
+    try:
+        by_id = {j['id']: j for j in workload.jobs_for(a.get('workload'), a.get('wave'))}
+    except (RuntimeError, ValueError, KeyError) as exc:
+        return [f'{cid}: the frozen workload cannot be loaded to reconstruct its input ({type(exc).__name__})']
+    if any(j not in by_id for j in ids):
+        return [f'{cid}: job ids outside the frozen workload of its wave']
+    jobs = [by_id[j] for j in ids]
+    problems = []
+    records = {op: sum(1 for j in jobs if j['op'] == op) for op in sorted({j['op'] for j in jobs})}
+    if _canon(records) != _canon(a.get('records') or {}):
+        problems.append(f'{cid}: the per operation records do not derive from its job ids')
+    inp = prompts.model_input(jobs, a.get('workload'), bootstrap=bool(a.get('bootstrap')))
+    if prompts.sha256(prompts.prompt_record(inp)) != a.get('prompt_sha256'):
+        problems.append(f'{cid}: its job ids do not reproduce the prompt that was sent')
+    return problems
+
+
+def _required_audits(spec, asts, jobs, boot_ids):
+    """The audit sample the frozen rule phase draws for a B or C cell from the jobs the admitted rules cover."""
+    import oz_rulephase
+    covered = []
+    for j in jobs:
+        if j['id'] in boot_ids or j['op'] not in asts:
+            continue
+        value, _ = rules.apply(j['op'], asts[j['op']], j['text'])
+        if value is not None:
+            covered.append(j['id'])
+    if not covered:
+        return set()
+    return set(oz_rulephase.select_audits(sorted(covered), config.SEED, config.AUDITS))
 
 
 def _rule_asts(results, prefix, boot_props=None):
@@ -287,6 +339,10 @@ def _cell_chain(run_dir, cid, spec, results, calls_ok, boot_props=None):
     jobs = {j['id']: j for j in workload.jobs_for(spec['workload'], spec['wave'])} if spec['arm'] != 'telemetry' \
         else {}
     asts = _rule_asts(results, prefix, boot_props) if spec['workload'] == 'materials' else {}
+    if spec['wave'] == 'warm' and spec['arm'] == 'C':
+        # item 16: warm C may reuse only a rule cold C adopted (an audit that agreed), never one bootstrap accepted
+        cold = (results.get(f'{prefix}-cold-C') or {}).get('rule_status') or {}
+        asts = {op: ast for op, ast in asts.items() if cold.get(op) == 'adopted'}
     cache = {}
     for jid, row in (res.get('answers') or {}).items():
         src, call_id = row.get('source'), row.get('call_id')
@@ -311,6 +367,12 @@ def _cell_chain(run_dir, cid, spec, results, calls_ok, boot_props=None):
                 problems.append(f'{cid}/{jid}: the rule answer is not what the admitted rule gives')
         else:
             problems.append(f'{cid}/{jid}: unknown answer source {src!r}')
+    if spec['arm'] in ('B', 'C') and spec['workload'] == 'materials' and res:
+        boot_ids = set(workload.bootstrap_ids(spec['workload'])) if spec['wave'] == 'cold' else set()
+        want = _required_audits(spec, asts, list(jobs.values()), boot_ids)
+        if want != set((res.get('audits') or {}).keys()):
+            problems.append(f'{cid}: the recorded audit set is not the frozen audit sample of the covered jobs '
+                            f'({len(res.get("audits") or {})} recorded, {len(want)} required)')
     if spec['arm'] in ('B', 'C') and res.get('audits') is not None:
         model = _model_answers(run_dir, cid, calls_ok)
         bad_ops = set()
@@ -414,6 +476,8 @@ def score_run(run_dir, write=False) -> dict:
         ev = a.get('events') or {}
         if ev.get('verdict') in ('executed', 'uncertain'):
             leakage.append(f"{a['call_id']}: tool event verdict {ev['verdict']} (A4.3)")
+        if a.get('outcome') == 'unsettled' and ev.get('verdict') not in ('executed', 'uncertain'):
+            leakage.append(f"{a['call_id']}: unsettled call state, uncertain whether a tool executed (A4.14.1, A4.3)")
         if a.get('raw_mismatch'):
             leakage.append(f"{a['call_id']}: the recovered capture differs from the raw stream (uncertain, A4.3)")
         if (a.get('usage') or {}).get('status') == 'invalid':
@@ -438,7 +502,7 @@ def score_run(run_dir, write=False) -> dict:
     for a in all_attempts:
         cid = a.get('call_id')
         seen[cid] = seen.get(cid, 0) + 1
-        if a.get('outcome') not in ('infrastructure_failure', 'interrupted', 'not_launched'):
+        if a.get('outcome') not in RETRYABLE_OUTCOMES:
             key = (a.get('cell'), a.get('batch'))
             terminal[key] = terminal.get(key, 0) + 1
     accounting += [f'{cid}: call id recorded {n} times' for cid, n in sorted(seen.items(), key=str) if n > 1]
@@ -451,9 +515,39 @@ def score_run(run_dir, write=False) -> dict:
         nominal = config.ALLOCATIONS.get(f'{b}/{w}', {}).get(al)
         if nominal is not None and n > nominal + config.RESERVE_PER_ALLOCATION:
             accounting.append(f'{b}/{w} {al}: {n} physical calls above nominal {nominal} plus reserve')
-    markers = sorted(p.name for p in run_dir.glob('cells/*/inflight/*.json'))
-    if markers:
-        accounting.append(f'unrecovered in-flight markers (charged calls without attempts): {markers[:5]}')
+    # A4.14.1: markers stay preserved with a stopped cell; a call marker without its attempt row is a charged call
+    # whose accounting was not recorded, and a probe marker is a local probe in an unknown state
+    recorded_uids = {a.get('attempt_uid') or a.get('call_id') for a in all_attempts}
+    lost_markers, open_probes = [], []
+    for mp in sorted(run_dir.glob('cells/*/inflight/*.json')):
+        m = _read_json(mp)
+        if not isinstance(m, dict):
+            lost_markers.append(mp.name)
+        elif m.get('marker') == 'probe':
+            open_probes.append(mp.name)
+        elif (m.get('attempt_uid') or m.get('call_id')) not in recorded_uids:
+            lost_markers.append(mp.name)
+    if lost_markers:
+        accounting.append(f'in-flight markers without an attempt (charged calls whose accounting is not recorded): '
+                          f'{lost_markers[:5]}')
+    if open_probes:
+        isolation_problems.append(f'local probes ended in an unknown state (A4.14.1): {open_probes[:5]}')
+    stop_doc = _read_json(run_dir / 'run-stop.json')
+    if stop_doc:
+        isolation_problems.append(f"the run is stopped: containment of outstanding work was not established "
+                                  f"(A4.14.1): {str(stop_doc.get('reason'))[:200]}")
+    # Astra council round 3, item 15: every probe disclosure fails isolation, and every capture's own redaction
+    # record is checked, whatever the attempt's disclosure flag says
+    for r in jsonl(run_dir / 'evidence' / 'probe-disclosures.jsonl'):
+        isolation_problems.append(f"a {r.get('probe')} probe of {r.get('cell')}: credential material was redacted "
+                                  f"from its output (A4.2)")
+    flagged = {a.get('call_id') for a in all_attempts if a.get('credential_disclosure')}
+    for mp in sorted((run_dir / 'captures').glob('*.meta.json')) if (run_dir / 'captures').exists() else []:
+        meta = _read_json(mp, {}) or {}
+        red = meta.get('redaction') if isinstance(meta.get('redaction'), dict) else {}
+        if (red.get('redactions') or 0) > 0 and meta.get('call_id') not in flagged:
+            isolation_problems.append(f"{meta.get('call_id')}: its capture record shows redacted credential material "
+                                      f"the attempt does not flag (A4.2)")
     ledger_path = experiment.get('live_ledger')
     experiment_view = None
     if ledger_path:
@@ -466,6 +560,12 @@ def score_run(run_dir, write=False) -> dict:
                       if r.get('run_dir') == here and (r.get('attempt_uid') or r.get('call_id')) not in known)
         if lost:
             accounting.append(f'experiment ledger calls missing from the run directory: {lost[:5]}')
+        # Astra council round 3, item 11: and the reverse, a live attempt whose debit the ledger lacks
+        in_ledger = {r.get('attempt_uid') for r in rows_l if r.get('attempt_uid')}
+        unledgered = sorted(a.get('call_id') for a in all_attempts if a.get('mode') == 'live'
+                            and a.get('attempt_uid') and a.get('attempt_uid') not in in_ledger)
+        if unledgered:
+            accounting.append(f'live attempts missing from the experiment ledger: {unledgered[:5]}')
         # experiment wide (item 9, RT2.2): every allocation and the telemetry cap over every run directory
         totals = {}
         for r in rows_l:
@@ -538,14 +638,15 @@ def score_run(run_dir, write=False) -> dict:
             for a in rows:
                 if a.get('outcome') not in ('not_launched',):
                     isolation_problems += _launch_problems(run_dir, a, bound_freeze)
-                if a.get('outcome') not in ('interrupted', 'not_launched') and not a.get('auth'):
+                if a.get('outcome') not in ('interrupted', 'not_launched', 'unsettled') and not a.get('auth'):
                     isolation_problems.append(f"{a['call_id']}: no authentication record")
 
     # artifact chain (item 10)
     verified, proposals, derived = set(), {}, {}
     for a in all_attempts:
         has_capture = _capture_text(run_dir, a['call_id']) is not None
-        if a.get('outcome') == 'not_launched' or (a.get('outcome') == 'interrupted' and not has_capture):
+        if a.get('outcome') == 'not_launched' or (a.get('outcome') in ('interrupted', 'unsettled')
+                                                  and not has_capture):
             continue
         derived[a['call_id']] = _derive(run_dir, a)
     replies = sorted({d[1]['reply'] for d in derived.values() if d[1] and isinstance(d[1]['reply'], str)
@@ -553,6 +654,8 @@ def score_run(run_dir, write=False) -> dict:
     from . import tokenizer as tokenizer_mod
     counts = dict(zip(replies, tokenizer_mod.count(replies))) if replies else {}
     for a in all_attempts:
+        if a.get('cell') not in NON_EVALUATION and a.get('outcome') != 'not_launched':
+            artifact += _input_problems(run_dir, a)
         if a['call_id'] not in derived:
             continue
         found = _rejudge(run_dir, a, derived=derived[a['call_id']], counts=counts, live=live_mode,
@@ -560,7 +663,7 @@ def score_run(run_dir, write=False) -> dict:
         artifact += found
         if not found:
             verified.add(a['call_id'])
-    # Every capture is judged, interrupted and recovered attempts included (council round 2, RT2.1): execution or
+    # Every capture is judged, those of stopped cells included (council round 2, RT2.1; A4.14.1): execution or
     # uncertainty in any captured evaluation stream is leakage, whatever its attempt row says.
     recorded = {a.get('call_id'): a for a in all_attempts}
     if (run_dir / 'captures').exists():
@@ -592,6 +695,20 @@ def score_run(run_dir, write=False) -> dict:
         if results.get(cid):
             artifact += _cell_chain(run_dir, cid, spec, results, verified, boot_props)
     freeze_problems = _freeze_problems(run_dir, experiment) if live else []
+    # A4.14.1: the preserved records of every stopped cell decide its validity first
+    invalid_cells = {}
+    for cid, st in states.items():
+        if st != 'interrupted':
+            continue
+        ids = {a.get('call_id') for a in by_cell[cid]}
+        cell_markers = [mp.name for mp in run_dir.glob(f'cells/{cid}/inflight/*.json')]
+        findings = [p for p in leakage + accounting + isolation_problems + artifact
+                    if any(i and (p.startswith(f'{i}:') or f' {i}:' in p or f'{i} ' in p) for i in ids)]
+        findings += [p for p in accounting + isolation_problems if any(m in p for m in cell_markers)]
+        if findings:
+            invalid_cells[cid] = sorted(set(findings))[:10]
+    for cid in invalid_cells:
+        states[cid] = 'invalid'
     interrupted = sorted(cid for cid, st in states.items() if st == 'interrupted')
 
     # ------------------------------------------------------------------------------------------- bootstrap
@@ -681,8 +798,10 @@ def score_run(run_dir, write=False) -> dict:
         return {'jobs': len(jobs), 'correct': correct, 'unresolved': unresolved, 'tokens': tokens,
                 'additive_tokens': sum(int(a.get('additive_tokens') or 0) for a in rows),
                 'makespan_s': round(makespan, 3), 'child_makespan_s': round(child, 3),
-                'makespan_lower_s': None if lower is None else round(lower, 3),
-                'makespan_upper_s': None if upper is None else round(upper, 3),
+                # outward rounding (Astra council round 3, item 17): the reference arm's lower bound rounds down
+                # and the tested arm's upper bound up, so rounding never helps a gate
+                'makespan_lower_s': None if lower is None else math.floor(lower * 1000) / 1000,
+                'makespan_upper_s': None if upper is None else math.ceil(upper * 1000) / 1000,
                 'timing': span['timing'], 'timing_problems': span['problems'][:5],
                 'usage': 'complete' if usage_ok else 'incomplete'
                 if any(a.get('usage_status') == 'incomplete' for a in used) or not used else 'unverified',
@@ -714,8 +833,17 @@ def score_run(run_dir, write=False) -> dict:
         cells[key] = c
 
     isolation_state = 'passed' if not isolation_problems else 'failed'
+    quota_problems = []
+    if live:
+        owner_dir = str(config.CODEX_SESSIONS_DEFAULT)
+        for g in jsonl(run_dir / 'evidence' / 'quota-gates.jsonl'):
+            src = str(g.get('owner_source') or '')
+            if g.get('ok') and not src.startswith(owner_dir):
+                quota_problems.append(f"group {g.get('group')}: released on a reading outside the owner sessions "
+                                      f"({src or 'no source recorded'}) (A4.12, RT3.3)")
     validity = {'isolation': isolation_state, 'isolation_problems': isolation_problems, 'leakage': leakage,
-                'accounting_failures': accounting, 'interrupted': interrupted, 'bootstrap': boot_validity,
+                'accounting_failures': accounting, 'interrupted': interrupted, 'invalid_cells': invalid_cells,
+                'bootstrap': boot_validity,
                 'simulation': simulation, 'freeze_problems': freeze_problems, 'artifact_problems': artifact[:200],
                 'classification_problems': class_problems}
     summary = {'cells': cells, 'R': R, 'R_cells': r_cells, 'validity': validity}
@@ -769,6 +897,7 @@ def score_run(run_dir, write=False) -> dict:
                              'note': 'analytical cell tokens charge the shared bootstrap fully to cold B and C; the '
                                      'physical total counts it once'},
               'cell_states': dict(sorted(states.items())),
+              'quota_gate_problems': quota_problems[:20],
               'sensitivity': {k: {'charged_tokens': c['tokens'], 'additive_tokens': c['additive_tokens']}
                               for k, c in cells.items()},
               'unknown_usage_observation': _unknown_usage_observation(specs, by_cell),
@@ -837,11 +966,11 @@ def render_md(r) -> str:
                      f"{c['usage']} | {c['evidence']} | {c['physical_calls']} | {c['rule_answers']} |")
     lines += ['', '## Gates (A4.10)', '']
     for b, g in sorted(r['gates']['materials'].items()):
-        lines.append(f"- {b} materials: pass {g['pass']}, inconclusive {g['inconclusive']}, ratios "
+        lines.append(f"- {b} materials: verdict {g.get('verdict')}, pass {g['pass']}, ratios "
                      + ', '.join(f'{k} {_fmt(v, 4)}' for k, v in sorted(g['ratios'].items())))
     for name in ('boolq', 'pooling'):
         g = r['gates'][name]
-        lines.append(f"- {name}: pass {g['pass']}, inconclusive {g['inconclusive']}, ratios "
+        lines.append(f"- {name}: verdict {g.get('verdict')}, pass {g['pass']}, ratios "
                      + ', '.join(f'{k} {_fmt(v, 4)}' for k, v in sorted(g['ratios'].items())))
     c = r['claims']
     lines += ['', f"Claims: codex {c['codex']}, sonnet {c['sonnet']}, cross backend headline "
@@ -852,6 +981,8 @@ def render_md(r) -> str:
     v = r['validity']
     lines += ['', '## Validity', '', f"- leakage: {len(v['leakage'])}",
               f"- accounting failures: {len(v['accounting_failures'])}",
+              f"- stopped cells invalid (A4.14.1): {sorted(v.get('invalid_cells') or {})}",
+              f"- stopped cells interrupted, no finding: {v.get('interrupted')}",
               f"- simulation: {len(v['simulation'])}",
               f"- artifact chain problems: {len(v['artifact_problems'])}",
               f"- run bound freeze problems: {len(v['freeze_problems'])}",

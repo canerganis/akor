@@ -33,8 +33,8 @@ def _find_rate_limits(value, depth=0):
         return found
     if isinstance(value, dict):
         for k, v in value.items():
-            if k == 'rate_limits' and isinstance(v, dict):
-                found.append(v)
+            if k == 'rate_limits':
+                found.append(v)  # a malformed (non object) latest reading is selected, then rejected (Astra r3, 4)
             else:
                 found += _find_rate_limits(v, depth + 1)
     elif isinstance(value, list):
@@ -112,7 +112,7 @@ def read_file(path) -> dict:
         return out
     event, rl = last
     out['found'] = True
-    primary = rl.get('primary')
+    primary = rl.get('primary') if isinstance(rl, dict) else None
     value = valid_percent(primary.get('used_percent')) if isinstance(primary, dict) else None
     out['percent'] = value
     out['reason'] = None if value is not None else 'the latest rate limit reading is malformed or out of range'
@@ -185,7 +185,11 @@ def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, n
     now = now or dt.datetime.now(dt.timezone.utc)
     harvested = harvested or {}
     owner = latest_reading(sessions_dir)
-    base = {'ok': False, 'percent': None, 'reason': None, 'uncovered': [], 'owner_reading_at': None}
+    # red team round 3 (RT3.3): every gate row names the file the owner reading came from, its account hash and its
+    # event timestamp, so the scorer and a reviewer can tell which reading released a group
+    base = {'ok': False, 'percent': None, 'reason': None, 'uncovered': [], 'owner_reading_at': None,
+            'owner_source': owner.get('source'), 'owner_account_sha256': owner.get('account_sha256'),
+            'sessions_dir': str(Path(sessions_dir))}
     readings = []
     if owner['found']:
         if owner['percent'] is None:

@@ -272,6 +272,21 @@ def classify_claude(data) -> dict:
     is a refused request; more than one turn or another model is uncertain."""
     import claude_map_adapter
     found = claude_map_adapter.tool_use(data) if isinstance(data, dict) else ['envelope is not an object']
+    # Astra council round 3, item 23: the harness checks the route itself, independent of the adapter's OZ_MODEL
+    # environment variable: one completed turn, a permission denial list and usage of the frozen Sonnet model only.
+    # Missing or malformed lifecycle evidence never qualifies as a plain call.
+    if isinstance(data, dict):
+        if type(data.get('num_turns')) is not int or data.get('num_turns') != 1:
+            found.append(f"num_turns missing or not 1 ({data.get('num_turns')!r})")
+        if not isinstance(data.get('permission_denials'), list):
+            found.append('no permission denial list in the envelope')
+        models = data.get('modelUsage')
+        if not isinstance(models, dict) or not models:
+            found.append('modelUsage missing or empty')
+        else:
+            found += [f'model other than the frozen Sonnet model: {name}' for name in sorted(models)
+                      if not str(name).startswith(config.SONNET_MODEL)]
+        found = list(dict.fromkeys(found))
     denials = [f for f in found if f.startswith('permission_denials')]
     other = [f for f in found if not f.startswith('permission_denials')]
     if other:

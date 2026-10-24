@@ -22,6 +22,48 @@ from pathlib import Path
 from . import config, isolation
 
 SIGNATURES = ('Signed: Astra A', 'Signed: Opus B')
+# Astra council round 3, item 1: the annexes each ruling must bind. A slot entry lists them as
+# {'annexes': {kind: {'path': <repo relative>, 'sha256': <hash>}}}; each annex file must hash to its value, its hash
+# must appear in the countersigned ruling text, and the configuration the harness runs with must be that annex
+# (the startup manifest file itself, the CLI notice predicate exactly as configured).
+ANNEXES_REQUIRED = {'P3': ('quota_source_manifest',), 'P4': ('cli_notice_annex',),
+                    'P5': ('startup_manifest', 'effective_context_evidence'), 'D1': ('attribution_evidence',)}
+
+
+def cli_notice_config():
+    return {'notices': list(config.SIGNED_CLI_NOTICES),
+            'event_keys': sorted(config.SIGNED_CLI_NOTICE_EVENT_KEYS) if config.SIGNED_CLI_NOTICE_EVENT_KEYS else None,
+            'id_re': config.SIGNED_CLI_NOTICE_ID_RE}
+
+
+def annex_problems(name, entry, ruling_text):
+    import json
+    problems = []
+    annexes = entry.get('annexes') if isinstance(entry.get('annexes'), dict) else {}
+    for kind in ANNEXES_REQUIRED.get(name, ()):
+        a = annexes.get(kind)
+        if not isinstance(a, dict) or not a.get('path') or not a.get('sha256'):
+            problems.append(f'ruling {name}: the required annex {kind} is not bound')
+            continue
+        path = config.REPO / a['path']
+        if not path.is_file():
+            problems.append(f'ruling {name}: annex {kind} {a["path"]} is missing')
+            continue
+        if _sha(path) != a['sha256']:
+            problems.append(f'ruling {name}: annex {kind} {a["path"]} is not the approved annex (hash differs)')
+            continue
+        if a['sha256'] not in ruling_text:
+            problems.append(f'ruling {name}: the countersigned text does not name the hash of annex {kind}')
+        if kind == 'startup_manifest' and path.resolve() != Path(config.STARTUP_MANIFEST_FILE).resolve():
+            problems.append(f'ruling {name}: the approved startup manifest is not the manifest the harness reads')
+        if kind == 'cli_notice_annex':
+            try:
+                doc = json.loads(path.read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                doc = None
+            if doc != cli_notice_config():
+                problems.append(f'ruling {name}: the configured CLI notice predicate is not the approved annex')
+    return problems
 
 
 def _sha(path):
@@ -47,6 +89,8 @@ def ruling_problems(slots=None) -> list:
         missing = [s for s in SIGNATURES if s not in text]
         if missing:
             problems.append(f'ruling {name}: {entry["path"]} lacks {missing}')
+            continue
+        problems += annex_problems(name, entry, text)
     return problems
 
 
@@ -77,5 +121,6 @@ def readiness_problems(disable_options=None, slots=None) -> list:
 def record(slots=None) -> dict:
     """The ruling files and hashes freeze.json binds (signed_exceptions.rulings)."""
     slots = config.SIGNED_RULINGS if slots is None else slots
-    return {name: {'path': (slots.get(name) or {}).get('path'), 'sha256': (slots.get(name) or {}).get('sha256')}
+    return {name: {'path': (slots.get(name) or {}).get('path'), 'sha256': (slots.get(name) or {}).get('sha256'),
+                   'annexes': (slots.get(name) or {}).get('annexes')}
             for name in config.REQUIRED_RULINGS}
