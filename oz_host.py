@@ -244,7 +244,7 @@ def envelope_evidence(raw) -> dict:
     """{kind, usage, leakage} of one adapter envelope: a codex_cli_adapter capture (usage and tool events recomputed
     from its raw JSONL stdout), a Claude CLI result envelope (usage from modelUsage, tool use from num_turns and
     permission_denials), or unknown (no usage, no verdict)."""
-    out = {'kind': 'unknown', 'usage': None, 'leakage': []}
+    out = {'kind': 'unknown', 'usage': None, 'leakage': [], 'reply': None}
     try:
         doc = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
     except (ValueError, UnicodeError, AttributeError, TypeError):
@@ -255,7 +255,8 @@ def envelope_evidence(raw) -> dict:
         codex = _example('codex_cli_adapter')
         stdout = doc.get('stdout') if isinstance(doc.get('stdout'), str) else ''
         recorded = doc.get('leakage') if isinstance(doc.get('leakage'), list) else []
-        out.update(kind='codex', usage=codex.parse_events(stdout)[1], leakage=codex.leakage(stdout) or recorded)
+        reply, usage, _ = codex.parse_events(stdout)
+        out.update(kind='codex', usage=usage, leakage=codex.leakage(stdout) or recorded, reply=reply)
     elif 'modelUsage' in doc or doc.get('type') == 'result':
         claude = _example('claude_map_adapter')
         out.update(kind='claude', usage=claude.frozen.usage_from_envelope(doc), leakage=claude.tool_use(doc))

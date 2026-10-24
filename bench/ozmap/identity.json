@@ -39,7 +39,7 @@
    "spec_excerpt_sha256": "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
   },
   "cli_version": "codex-cli 0.160.0",
-  "effort": "medium",
+  "effort": "high",
   "effort_applicable": true,
   "flags": [
    "-s",
@@ -66,10 +66,10 @@
     ],
     [
      "claude_map_adapter.py",
-     "da1520ed98c4765cea8c0f1f8c0dc2f60bd0830286fdac75c3bba61b04cab540"
+     "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689"
     ]
    ],
-   "adapter_sha256": "da1520ed98c4765cea8c0f1f8c0dc2f60bd0830286fdac75c3bba61b04cab540",
+   "adapter_sha256": "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689",
    "closure": [
     [
      "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
@@ -85,7 +85,7 @@
     ],
     [
      "claude_map_adapter.py",
-     "da1520ed98c4765cea8c0f1f8c0dc2f60bd0830286fdac75c3bba61b04cab540"
+     "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689"
     ]
    ],
    "instruction_sha256": "ebb9183a89d8e44c66c9e1ca81fa50407af11449646ecd4be3ea0ae3a032fa87",

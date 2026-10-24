@@ -50,6 +50,11 @@ def tool_use(data):
     denials = data.get('permission_denials')
     if isinstance(denials, list) and denials:
         found.append(f'permission_denials={len(denials)}')
+    # usage_from_envelope sums every modelUsage entry, so a model other than the pinned one is extra work to flag.
+    pinned = os.environ.get('OZ_MODEL', 'claude-sonnet-5-5')
+    usage = data.get('modelUsage')
+    if isinstance(usage, dict):
+        found += [f'unexpected_model={name}' for name in sorted(usage) if not str(name).startswith(pinned)]
     return found
 
 

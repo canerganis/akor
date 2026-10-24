@@ -135,8 +135,14 @@ def codex(argv):
                  if json.loads(p.read_text(encoding='utf-8')).get('prompt_sha256') == prompt_sha) \
         if folder.is_dir() else 0
     cached = min(s['input_tokens'], s['cached_input_tokens'] + repeat * max(1, s['input_tokens'] // 4))
+    output = s['output_tokens']
+    try:  # Codex reports reasoning inside output_tokens: the replayed output is the visible reply plus reasoning
+        import tiktoken
+        output = len(tiktoken.get_encoding('o200k_base').encode(reply)) + s['reasoning_output_tokens']
+    except Exception:  # noqa: BLE001 - without a tokenizer the recorded output stays (telemetry then fails closed)
+        pass
     usage = {'input_tokens': s['input_tokens'], 'cached_input_tokens': cached,
-             'cache_write_input_tokens': s.get('cache_creation_input_tokens', 0), 'output_tokens': s['output_tokens'],
+             'cache_write_input_tokens': s.get('cache_creation_input_tokens', 0), 'output_tokens': output,
              'reasoning_output_tokens': s['reasoning_output_tokens']}
     events = [{'type': 'thread.started', 'thread_id': 'fake'}, {'type': 'turn.started'}]
     if (CONFIG.get('leak') or {}).get('codex'):

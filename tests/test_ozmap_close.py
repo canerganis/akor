@@ -174,6 +174,14 @@ class N1Claude(Temp):
         self.assertEqual(cma.tool_use({'num_turns': 3, 'permission_denials': [{'tool_name': 'Read'}]}),
                          ['num_turns=3', 'permission_denials=1'])
 
+    def test_n1_claude_usage_from_a_model_other_than_the_pinned_one_is_flagged(self):
+        from unittest import mock
+        one = {'num_turns': 1, 'modelUsage': {'claude-sonnet-5-5': {}}}
+        two = {'num_turns': 1, 'modelUsage': {'claude-sonnet-5-5': {}, 'claude-haiku-5-5': {}}}
+        with mock.patch.dict(os.environ, {'OZ_MODEL': 'claude-sonnet-5-5'}):
+            self.assertEqual(cma.tool_use(one), [])
+            self.assertEqual(cma.tool_use(two), ['unexpected_model=claude-haiku-5-5'])
+
     def test_n1_claude_tool_use_exits_86_and_keeps_the_envelope(self):
         fake = self.dir / 'fake'
         fake_cli.build(fake, answers={}, rules={}, samples=SAMPLES, repo=REPO, leak={'claude': True})
@@ -447,9 +455,13 @@ class B9Host(th.Base):
 
 # ------------------------------------------------------------------------------------ telemetry certification
 
-def tele(key, usage, *, worker='w', system='s', prompt='p', leakage=()):
+def tele(key, usage, *, worker='w', system='s', prompt='p', leakage=(), visible='inclusive'):
+    if visible == 'inclusive':  # the visible reply is output minus reasoning, as Codex reports it
+        visible = (usage['output_tokens'] - usage['reasoning_output_tokens']
+                   if isinstance(usage, dict) and {'output_tokens', 'reasoning_output_tokens'} <= set(usage) else None)
     return {'key': key, 'worker_hash': worker, 'leakage': list(leakage),
-            'calls': [{'call_id': key, 'usage': usage, 'system_sha256': system, 'prompt_sha256': prompt}]}
+            'calls': [{'call_id': key, 'usage': usage, 'system_sha256': system, 'prompt_sha256': prompt,
+                       'visible_tokens': visible}]}
 
 
 def u(inp, cached, out=20, reasoning=5):
@@ -459,7 +471,8 @@ def u(inp, cached, out=20, reasoning=5):
 
 class Telemetry(Temp):
     def test_telemetry_certifies_only_backend_specific_inclusion_evidence(self):
-        status, evidence = pilot.certify_codex([tele('t1', u(900, 0)), tele('t2', u(900, 300))], 'w')
+        status, evidence = pilot.certify_codex([tele('t1', u(900, 0, out=400, reasoning=200)),
+                                                tele('t2', u(900, 300, out=400, reasoning=200))], 'w')
         self.assertEqual(status, 'ok', evidence)
         self.assertEqual(evidence['inclusion']['cached_input_tokens'], [0, 300])
 
@@ -475,6 +488,19 @@ class Telemetry(Temp):
         for name, (a, b) in cases.items():
             with self.subTest(name):
                 self.assertEqual(pilot.certify_codex([tele('t1', a), tele('t2', b)], 'w')[0], 'unverified')
+
+    def test_telemetry_certifies_reasoning_inclusion_only_from_the_visible_reply(self):
+        a, b = u(900, 0, out=400, reasoning=200), u(900, 300, out=400, reasoning=200)
+        self.assertEqual(pilot.certify_codex([tele('t1', a), tele('t2', b)], 'w')[0], 'ok')
+        cases = {'no visible reply': None,
+                 'exclusive (output equals the visible reply alone)': 400,
+                 'neither reading matches': 300}
+        for name, visible in cases.items():
+            with self.subTest(name):
+                got = pilot.certify_codex([tele('t1', a, visible=visible), tele('t2', b, visible=visible)], 'w')
+                self.assertEqual(got[0], 'unverified', got)
+        self.assertIsNone(pilot.reasoning_inclusion(u(1, 0, out=1324, reasoning=205), 1113))  # a recorded call
+        self.assertIsNotNone(pilot.reasoning_inclusion(u(1, 0, out=1324, reasoning=205), 1324))
 
     def test_telemetry_is_bound_to_the_frozen_route_and_an_identical_prompt(self):
         good = (u(900, 0), u(900, 300))

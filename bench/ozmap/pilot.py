@@ -24,7 +24,7 @@ temporary. The dry run also runs the paired telemetry through the fake codex. fr
 deterministic output.
 
 Frozen configuration (DRIVER choices are listed in ASSUMPTIONS and printed by `plan`).
-  Codex   codex exec through examples/bootstrap_codex_adapter.json, model gpt-6.1-sol, effort medium, in a fresh empty
+  Codex   codex exec through examples/bootstrap_codex_adapter.json, model gpt-6.1-sol, effort high, in a fresh empty
           temporary working directory outside the repo; any tool, command, file or web event invalidates the call
   Sonnet  claude -p through examples/bootstrap_claude_adapter.json, model claude-sonnet-5-5, effort default, tools off
   Budget  amendment 3 (owner decisions 2026-10-24): global cap 54; Codex 37 = telemetry 1, bootstraps 2, A 12,
@@ -112,7 +112,7 @@ NORMATIVE = ('docs/design/brainstorm-2026-10-24/05-joint-record.md',
 TELEMETRY_KEYS = (('telemetry-1', ['telemetry', 'reserve']), ('telemetry-2', ['telemetry', 'reserve']))
 BACKENDS = {
     'codex': {'adapter': EXAMPLES / 'bootstrap_codex_adapter.json', 'real': 'codex_cli_adapter', 'route_backend': 'codex',
-              'model': 'gpt-6.1-sol', 'effort': 'medium', 'host_effort': 'medium'},
+              'model': 'gpt-6.1-sol', 'effort': 'high', 'host_effort': 'high'},
     'sonnet': {'adapter': EXAMPLES / 'bootstrap_claude_adapter.json', 'real': 'claude_map_adapter',
                'route_backend': 'claude', 'model': 'claude-sonnet-5-5', 'effort': 'default', 'host_effort': None},
 }
@@ -123,7 +123,7 @@ MAX_BYTES = {'e': 256, 'b': 64, 'm': 64, 'v': 16}
 JSON_TYPES = {'e': ['array'], 'b': ['array', 'string'], 'm': ['array'], 'v': ['string']}
 RESULTS = {'e': 'JSON array of six strings', 'b': 'JSON array of two strings, or the string unknown',
            'm': 'JSON array of field names', 'v': 'one of the strings inside, outside, unknown'}
-LEDGERS = {'codex': REPO / 'bench' / 'codex_kit' / 'results_gpt-6.1-sol_medium.jsonl',
+LEDGERS = {'codex': REPO / 'bench' / 'codex_kit' / 'results_gpt-6.1-sol_high.jsonl',
            'sonnet': REPO / 'bench' / 'live' / 'data' / 'pilot2_sonnet64.jsonl'}
 LEDGERS_32 = {'codex': LEDGERS['codex'], 'sonnet': REPO / 'bench' / 'live' / 'data' / 'live24_1g_D_sonnet32.jsonl'}
 # Bootstrap usage is not measured yet: a recorded 64-job call plus the shim's added system text (chars / 4) and the
@@ -148,8 +148,9 @@ ASSUMPTIONS = [
     'e uses json_type + max_bytes + rule_provenance/1, not quoted_span: quoted_span accepts only a string value '
     '(oz_accept and oz_registry), so every correct e answer (a JSON array) would fail it. rule_provenance/1 is '
     'authorized for all four materials contract hashes (amendment 1 D1: "the four supplied materials contracts").',
-    'Codex model gpt-6.1-sol, effort medium: the Codex default in ~/.codex/config.toml and the 6.1-sol medium runs in '
-    'bench/codex_kit; Luna is excluded by the owner.',
+    'Codex model gpt-6.1-sol, effort high (DRIVER, after the Astra sign-off): at medium 8 of 12 recorded 6.1-sol calls '
+    'reported zero reasoning tokens, so paired telemetry could not show that output_tokens includes reasoning; at high '
+    'all 12 reasoned (30 to 205 tokens). Every Codex arm uses the same effort. Luna is excluded by the owner.',
     'Sonnet effort is "default" (no --effort flag), the configuration of the historical 91.6 tokens / 20 s cell the '
     'record allows as context; the host passes no OZ_EFFORT.',
     'Op texts are MAT_D verbatim, including "c[N]\'s" in e (live11.py rewrote it to "the ref\'s"; not done here).',
@@ -756,6 +757,50 @@ def interpreter_record():
 
 # ---------------------------------------------------------------------------- telemetry (Astra blocker 1)
 
+REASONING_TOLERANCE = (8, 0.0)  # absolute tokens, fraction of the visible reply; recorded framing residual is 4 or 6
+
+
+def visible_tokens(reply):
+    """o200k token count of the visible reply text, or None when the reply or the tokenizer is unavailable."""
+    if not isinstance(reply, str):
+        return None
+    try:
+        import tiktoken
+        return len(tiktoken.get_encoding('o200k_base').encode(reply))
+    except Exception:  # noqa: BLE001 - no tokenizer means no reasoning evidence, never a guess
+        return None
+
+
+def tokenizer_record():
+    """The o200k_base tokenizer the reasoning certification counts with: tiktoken version and the sha256 of every
+    cached vocabulary file it loads (tiktoken keeps them in TIKTOKEN_CACHE_DIR or the temp data-gym-cache)."""
+    import tempfile
+    import tiktoken
+    tiktoken.get_encoding('o200k_base')  # loads (from the local cache) before the files are hashed
+    cache = Path(os.environ.get('TIKTOKEN_CACHE_DIR') or os.environ.get('DATA_GYM_CACHE_DIR')
+                 or Path(tempfile.gettempdir()) / 'data-gym-cache')
+    files = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(cache.glob('*')) if p.is_file()}
+    return {'tiktoken': getattr(tiktoken, '__version__', 'unknown'), 'encoding': 'o200k_base', 'cache_files': files}
+
+
+def reasoning_inclusion(usage, visible):
+    """Problem text or None. output_tokens includes reasoning when output - reasoning equals the visible reply's
+    tokens within REASONING_TOLERANCE; exclusive accounting would make output itself equal the visible tokens. The
+    recorded 26 Codex calls with reasoning (bench/codex_kit) give a median deviation of 0.7% for the inclusive reading
+    and 10.5% for the exclusive one (docs/design/ozmap-2026-10-24/codex-reasoning-evidence.md)."""
+    if visible is None:
+        return 'visible reply tokens unavailable: reasoning inclusion not shown'
+    absolute, fraction = REASONING_TOLERANCE
+    tol = max(absolute, fraction * visible)
+    if abs(usage['output_tokens'] - usage['reasoning_output_tokens'] - visible) > tol:
+        return (f"output_tokens - reasoning_output_tokens = "
+                f"{usage['output_tokens'] - usage['reasoning_output_tokens']} does not match the visible reply "
+                f"({visible} tokens, tolerance {tol:g}): reasoning inclusion not shown")
+    if abs(usage['output_tokens'] - visible) <= tol:  # whatever the reasoning size (Astra sign-off 2)
+        return 'output_tokens also matches the visible reply alone: inclusion and exclusion not distinguishable'
+    return None
+
+
 def certify_codex(results, worker_hash):
     """(status, evidence) of the paired Codex telemetry. ok only with backend-specific evidence of inclusive cached
     accounting: two calls on the frozen route (worker hash) with the same system and prompt hashes, every required
@@ -785,8 +830,12 @@ def certify_codex(results, worker_hash):
             continue
         if u['cached_input_tokens'] > u['input_tokens'] or u['reasoning_output_tokens'] > u['output_tokens']:
             problems.append(f"call {c.get('call_id')}: a component exceeds its total")
+            continue
+        issue = reasoning_inclusion(u, c.get('visible_tokens'))
+        if issue:
+            problems.append(f"call {c.get('call_id')}: {issue}")
     evidence = {'calls': [{k: c.get(k) for k in ('call_id', 'usage', 'system_sha256', 'prompt_sha256',
-                                                  'usage_source')} for c in calls]}
+                                                  'usage_source', 'visible_tokens')} for c in calls]}
     if len(calls) == 2 and not problems:
         a, b = calls[0], calls[1]
         if not a.get('prompt_sha256') or (a.get('system_sha256'), a.get('prompt_sha256')) != \
@@ -815,8 +864,8 @@ def usage_semantics(routes, doc, freeze_sha256=None):
           and (freeze_sha256 is None or doc.get('freeze_sha256') == freeze_sha256))
     if ok:
         codex = (f"inclusive cached accounting certified by paired identical-prompt telemetry {doc.get('run_dir')} on "
-                 f"worker {doc['worker_hash'][:12]}; reasoning_output_tokens reported within output_tokens (bounded, "
-                 'not certified); tokens = input_tokens + output_tokens')
+                 f"worker {doc['worker_hash'][:12]}; reasoning inclusion in output_tokens certified on the same calls "
+                 '(output - reasoning equals the visible reply tokens); tokens = input_tokens + output_tokens')
     return {'codex': codex, 'sonnet': SONNET_SEMANTICS}
 
 
@@ -879,6 +928,7 @@ def _guarded_call(ctx, *, key, buckets, request, evidence, backend='codex', arm=
     for c in core:
         call = dict(c, usage_source='core_ledger')
         ev = by_receipt.get(c.get('receipt'))
+        call['visible_tokens'] = visible_tokens(ev['reply']) if ev is not None else None
         if call.get('usage') is None and ev is not None and ev['usage'] is not None:
             call.update(usage=ev['usage'], usage_source='adapter_envelope:' + c['receipt'])  # failed call: kept
         out['calls'].append(call)
@@ -1470,7 +1520,11 @@ def freeze(run=subprocess.run):
         ([] if result['reconciliation']['ok'] else ['dry: reconciliation failed']) + \
         [f'dry: {p}' for p in result['prompt_leakage']] + \
         (['dry: tool use'] if result['isolation']['tool_use_leakage'] else []) + \
-        ([f'dry: {result["fake_misses"]} fake answer misses'] if result['fake_misses'] else [])
+        ([f'dry: {result["fake_misses"]} fake answer misses'] if result['fake_misses'] else []) + \
+        ([] if result['telemetry']['status'] == 'ok' else [f"dry: telemetry {result['telemetry']['status']}"])
+    iso = result['isolation']
+    if iso.get('codex_isolated') != iso.get('codex_calls') or iso.get('claude_tools_disabled') != iso.get('claude_calls'):
+        bad.append(f'dry: isolation counts short ({json.dumps(iso)})')
     if bad:
         print('freeze refused: ' + '; '.join(bad))
         return 2
@@ -1479,6 +1533,7 @@ def freeze(run=subprocess.run):
     record['git_head'] = head
     record['registry_manifest_sha256'] = json.loads(REGISTRY_FILE.read_text(encoding='utf-8'))['manifest_sha256']
     record['closure'] = closure
+    record['tokenizer'] = tokenizer_record()
     record['dry_run']['output_sha256'] = result['output_sha256']
     record['dry_run']['output'] = deterministic(result)
     _write(FREEZE_FILE, record)
