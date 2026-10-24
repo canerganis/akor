@@ -286,3 +286,10 @@ refuses, or if a run shows an isolation breach or an unseeded review item.
    charged at its lower bound, and is a stop condition.
 4. `--max-turns` is not listed in `claude --help` for 2.1.306, but the option parser accepts it. The guard enforces
    five model calls independently, before the sixth starts.
+
+## Launch record, 2026-10-24
+
+Astra approved the harness after five reviews (all findings closed; freeze ea306969, commit 17cac21). Before run 1
+the weekly figure read 55%, above the admission edge of 53.32% for the first run, so no run was started and nothing
+was spent on model calls. The pilot runs unchanged at this freeze once the weekly figure allows admission (window
+resets 2026-10-27 09:00 UTC), after `verify.py`, `pilot.py freeze` and `claude --version`.

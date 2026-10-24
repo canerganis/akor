@@ -116,3 +116,15 @@ Haiku 5.5 on repair-handoff-20: all five scenarios pass, every job right on its 
 303 s against Sonnet's 55,413 and 190 s, because Haiku reasons six to seven times longer per call. Under the
 preregistered gate Haiku does not earn the worker place; Sonnet stays
 ([results](../docs/design/step3-haiku-2026-10-23/results.md)). Weekly quota 46%.
+
+## 2026-10-24 status
+
+- Owner raised the weekly line to 60%. H attribution closed at zero cost (H can be at most 20.3% of the gate cell).
+- Code-review sizing pilot (context offloading, first new task family): preregistered by Astra and Opus, fixtures
+  authored by Astra (one defect found in verification and fixed by Astra, then a frozen witness-domain spec), harness
+  built by Opus and hardened through five Astra reviews (caps, isolation, domains, strict accounting, immutable
+  snapshot, transcript integrity, one splitter). Approved, freeze ea306969. **Not run**: the weekly figure read 55%,
+  above the 53.32% admission edge. Runs unchanged after the window resets (2026-10-27 09:00 UTC).
+- Another Claude session is working in this checkout on `oz map` (commits 7346cb0, f4f8abb and uncommitted
+  oz_cli.py, oz_map.py, oz_rule.py, oz_spool.py, oz_rulephase.py, oz_route.py and others). Its uncommitted edits to
+  oz_do.py and the adapter made 22 older freeze tests fail for a while; this session did not touch those files.
