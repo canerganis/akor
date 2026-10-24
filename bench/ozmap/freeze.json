@@ -1333,7 +1333,7 @@
    "Dry-run usage: every replayed call costs a recorded 64-job call of that backend, chosen by the call's content (deterministic), also the smaller residual and audit calls (conservative for B and C); BoolQ calls use the materials samples too, so BoolQ input tokens are underestimated by roughly the passage text.",
    "Bootstrap usage is an estimate (recorded 64-job call + shim system text + rule bytes + reasoning allowance).",
    "Dry-run makespans are replay projections (recorded 64-job elapsed per call, list-scheduled on 4 slots); the gates score measured makespan live; summed physical call seconds are reported separately and never replace makespan (amendment 3 sections 2 and 3).",
-   "Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens grows. Sonnet usage semantics are the adapter construction, not telemetry.",
+   "Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens differs. Without that certification a Codex call with cached_input_tokens 0 is complete and one with positive cached counts is usage unverified (its cell incomplete); the reasoning predicate is evaluated on every Codex call. Sonnet usage semantics are the adapter construction, not telemetry.",
    "Gate readings: \"preserves correctness\" = C gold-correct count >= A; BoolQ \"adds no gold errors\" = C not-correct count <= A; the headline needs all five gates."
   ],
   "output": {
@@ -1781,10 +1781,10 @@
   "bench/ozmap/fake_cli.py": "0d51f9a634c1d8f617494c51740132c08c6fff3c61deb8a7fd4334c19e295137",
   "bench/ozmap/identity.json": "c73d7cccaa96f151339c22cea547358a992dfea754ff62b7e117dc571590e830",
   "bench/ozmap/oracle.py": "60446b93b39be10f2d57e1b65e77113c7e4dc20e301c6e7f3102f43c92325b4b",
-  "bench/ozmap/pilot.py": "c32a43fb822fbaccd4b1d93aa4b6f961decd4787b0bf74a83716fc67902f3de4",
+  "bench/ozmap/pilot.py": "c7f7de0b06d7c1ce5ac14af11e508012ba4d92d9930f92f3a73c072677302a8e",
   "bench/ozmap/registry.json": "328bc70ab17aba22fe3754b43873dfba1a0f94777eb7fb9712d1e97cd5f41a7c",
   "bench/ozmap/routes.json": "08bea6761aba167f6f94cac54d89920b9d36dd2666627994e1d45373b0d9f9e3",
-  "bench/ozmap/score.py": "bec7fe8221a3bd67aac79604e400c0f2b767e2c05fc00a62e830087cf48789aa",
+  "bench/ozmap/score.py": "f975bc940d4faa7c156697d5ea419d174cc944f184b0bc71dc6847b83e9a7af4",
   "docs/design/brainstorm-2026-10-24/05-joint-record.md": "a95705a71ff4864fa2dffe6692318f1df2636df59744eda70ddb4b623ae53851",
   "docs/design/ozmap-2026-10-24/amendment-2-and-step6-architecture.md": "a1a09450f02c943220adf63eeb97f3941a5d66fce86311dd76cb18f6da6606de",
   "docs/design/ozmap-2026-10-24/amendment-3.md": "56c3e53f0a87c058f5bf62287522d2562b6a0c6e3b6a593517c42625a12b8eb1",
@@ -1810,7 +1810,7 @@
   "oz_cli.py": "23f87dc8fa87d7c1aa3701133cab54bbd78696f365452f99159a70381b1fb6e0",
   "oz_do.py": "0570865aa2fd774ec8ee4f37c457c26b161847da50f9463a763846bbfc7c99fc",
   "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
-  "oz_host.py": "b65bde0e2f703ff49cce9153868e22d882b452bd6a1c817c511ad47ce3db9877",
+  "oz_host.py": "69008d794e01d9128cf26947526c8587b61d62c40cb3637bb1c14c36a1d3478e",
   "oz_map.py": "a4e7306bd5304325757054781b01140896b14f5f7169ace801d4d88c8e2238ec",
   "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
   "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
@@ -1824,14 +1824,14 @@
   "oz_spool.py": "b55a93b4c2f0103735be791ce6f734e01f934b8cb7e88dd4372e370c094f17b9",
   "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
   "oz_workspace.py": "f708d6062c6c751d17aaea24c82aa333816adbcbaff0c34156ea8969b9931f5a",
-  "tests/test_ozmap_close.py": "f9654478dea28cf6989cf5ae611487a8ae7b8f13682b507094024a6bb474fa4b",
+  "tests/test_ozmap_close.py": "17ba26805d0b0b90462f17244d06cfab496039c52e85b78eaeca3cbe1f9c3a76",
   "tests/test_ozmap_pilot.py": "55f654717fe67dbc45da3bbca93e6e0f835ff74ada021b83b69dd403b1580325"
  },
  "gate_texts": {
   "boolq": "On the frozen Codex BoolQ cold evaluation, C MUST have no more gold errors than A, consume at most 1.10 times A’s total charged tokens, and have at most 1.10 times A’s measured makespan. C’s accounting MUST include the complete shared bootstrap charge and all required residual work. Makespan MUST include required admission, checking, queueing and completion costs. No bootstrap subtraction, floor adjustment or substitution of summed physical call seconds is permitted.",
   "materials_warm": "For each backend independently, warm C MUST preserve correctness, have measured makespan at most 0.90 times matched warm A, and consume at most 0.50 times A’s tokens per gold correct job. Score actual live measurements using the frozen timing boundaries and accounting rules."
  },
- "git_head": "26e4f37b3854b667df87b83ff772c734d9d15252",
+ "git_head": "81422d7167c55204eec060c3189ca4d1f0b85e13",
  "host": {
   "intake": {
    "per_producer": 64,
@@ -1906,7 +1906,7 @@
    "Dry-run usage: every replayed call costs a recorded 64-job call of that backend, chosen by the call's content (deterministic), also the smaller residual and audit calls (conservative for B and C); BoolQ calls use the materials samples too, so BoolQ input tokens are underestimated by roughly the passage text.",
    "Bootstrap usage is an estimate (recorded 64-job call + shim system text + rule bytes + reasoning allowance).",
    "Dry-run makespans are replay projections (recorded 64-job elapsed per call, list-scheduled on 4 slots); the gates score measured makespan live; summed physical call seconds are reported separately and never replace makespan (amendment 3 sections 2 and 3).",
-   "Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens grows. Sonnet usage semantics are the adapter construction, not telemetry.",
+   "Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens differs. Without that certification a Codex call with cached_input_tokens 0 is complete and one with positive cached counts is usage unverified (its cell incomplete); the reasoning predicate is evaluated on every Codex call. Sonnet usage semantics are the adapter construction, not telemetry.",
    "Gate readings: \"preserves correctness\" = C gold-correct count >= A; BoolQ \"adds no gold errors\" = C not-correct count <= A; the headline needs all five gates."
   ],
   "backends": {
@@ -2219,7 +2219,7 @@
    }
   ]
  },
- "plan_sha256": "84b1732b4603a58324e92b91df0e08c28a3a19031996b326167900c3ccb60700",
+ "plan_sha256": "303c8c8b376acd9be46d23e32171317fb0239952fbd56e0090971151b4f9da54",
  "registry_manifest_sha256": {
   "codex": "d02d5dc01255142a4edfc749ac1a969f51ae9075f76ee40818203b728854532c",
   "sonnet": "9696f546846bb730d6b96ae1ee5bab3dfcb48b464e3182f5f5090f31d9431e78"
