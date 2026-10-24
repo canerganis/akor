@@ -1,0 +1,2243 @@
+{
+ "allocation": {
+  "caps": {
+   "codex": {
+    "A": 12,
+    "B": 8,
+    "C": 7,
+    "bootstrap": 2,
+    "reserve": 7,
+    "telemetry": 1
+   },
+   "sonnet": {
+    "A": 8,
+    "B": 4,
+    "C": 2,
+    "bootstrap": 1,
+    "reserve": 2,
+    "telemetry": 0
+   }
+  },
+  "global_cap": 54,
+  "quota": "99% Claude weekly usage: stop every launch and hand off (owner rule); enforced by the launch gate from an explicit reading recorded per launch batch; the 55% launch guard is suspended by owner decision 1 and amendment 3 until the pilot report is written"
+ },
+ "boolq_source": {
+  "approved_by": "owner (Google bucket returned 403)",
+  "fields": [
+   "idx",
+   "question",
+   "passage",
+   "label"
+  ],
+  "file": "bench/ozmap/data/boolq-superglue-val.jsonl",
+  "file_sha256": "0c86a5045886e5795fe9052003873f7d94b88ed3028a33007c51d99e44fd66d9",
+  "lines": 3270,
+  "member": "BoolQ/val.jsonl",
+  "url": "https://dl.fbaipublicfiles.com/glue/superglue/data/v2/BoolQ.zip",
+  "zip_sha256": "853fbe7922f70c59629f06a39e8d9ca440c3d740e760fd3b87a5ddf3dcba2436"
+ },
+ "closure": {
+  "codex": {
+   "base_prefix": "C:\\Users\\can02\\AppData\\Local\\Programs\\Python\\Python312",
+   "executable": "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\python.exe",
+   "executable_sha256": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+   "implementation": "cpython",
+   "modules": [
+    [
+     "_abc",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_ast",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_bisect",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_blake2",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_bz2",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_bz2.pyd",
+     "65f610646d10d5babea080e060d244b546ec52c54012e5e937dc72dcc2e2e7bc"
+    ],
+    [
+     "_codecs",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_collections",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_collections_abc",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_collections_abc.py",
+     "d0c7b4810d0d6e22968223599e2051aa2148c8ce435cad8798644e7b682a9147"
+    ],
+    [
+     "_compression",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_compression.py",
+     "a10cf1a317374641bcdb8252499e9cb9d4d6e774ac724edfdddd0433ead771d9"
+    ],
+    [
+     "_distutils_hack",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\site-packages\\_distutils_hack\\__init__.py",
+     "ced72e54431ecf2d8d7dbd8a1e27724f1b171af3ca1503c304bf11c59a7fe861"
+    ],
+    [
+     "_frozen_importlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap.py",
+     "b9b30c578a34f70508768eeac35fab4a0095e369a7f5d7d3275c310e605d4313"
+    ],
+    [
+     "_frozen_importlib_external",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap_external.py",
+     "255750f5267b487dbb99b1deed48b50a4524f4dbba38d40aa0f9cd5a063f7c62"
+    ],
+    [
+     "_functools",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_hashlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_hashlib.pyd",
+     "03d233dbace599168eaffec823de6ed7beec8c2a4ebfe9b8a3d8e042a59af3ba"
+    ],
+    [
+     "_imp",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_io",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_json",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_locale",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_lzma",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_lzma.pyd",
+     "e3deecc1f59a3b811c608861decd84de1e8df8bafd5e2b39188861318c5a38cf"
+    ],
+    [
+     "_operator",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_random",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_sha2",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_signal",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_sitebuiltins",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_sitebuiltins.py",
+     "924f95fd516ecaea9c9af540dc0796fb15ec17d8c42b59b90cf57cfe15962e2e"
+    ],
+    [
+     "_sre",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_stat",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_struct",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_thread",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_uuid",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_uuid.pyd",
+     "acce4f281d7ffb2dec0997527faf25b1df62ad7bd3032c568ddcf65c90edc867"
+    ],
+    [
+     "_warnings",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_weakref",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_weakrefset",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_weakrefset.py",
+     "cf8031a6e21150438f3d2964c4152615b91a03894616d5b6930e0f14f44dabda"
+    ],
+    [
+     "_winapi",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "abc",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\abc.py",
+     "d51c54428495cd62a5da4360315fa84f692b5aa9db21be986b3e14a83f7cf288"
+    ],
+    [
+     "ast",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ast.py",
+     "57cf6e193f932dcfa3b7080e189d689f510c700d95c3b27e7e8a0d48d2166c2d"
+    ],
+    [
+     "base64",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\base64.py",
+     "366e287224862a59d1416aa17b2259827d46a55c8406ae3f178f9ee7dc3c6f5a"
+    ],
+    [
+     "binascii",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "bisect",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\bisect.py",
+     "085dad54dd1a00d68aaa5361031c0c4bff5efbd281d1a02ddc8f317c519e540b"
+    ],
+    [
+     "bootstrap_shim",
+     "file",
+     "c:\\users\\can02\\projects\\akor\\examples\\bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ],
+    [
+     "builtins",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "bz2",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\bz2.py",
+     "a539fc503737c53d5a45272e33a435b8a6b7a8559ba6a425002978038096bd66"
+    ],
+    [
+     "codecs",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\codecs.py",
+     "000cf1d683c677ed3de6d8e284376f81def4b91f93d68ee41bdf07c4e04cea77"
+    ],
+    [
+     "codex_cli_adapter",
+     "file",
+     "c:\\users\\can02\\projects\\akor\\examples\\codex_cli_adapter.py",
+     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+    ],
+    [
+     "collections",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\collections\\__init__.py",
+     "58d1f234b7845ff280f8a195a795f206bc62ce42732caecaf06e6a133ddd6f15"
+    ],
+    [
+     "contextlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\contextlib.py",
+     "a53b1db774f19c6b1e4320c2bc64058c49e3fba58b20b9c1158e5a8d02069890"
+    ],
+    [
+     "copyreg",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\copyreg.py",
+     "ea2363638fe83e8e5b007013a821841371a615d99414b3c2f8f19152ca109a07"
+    ],
+    [
+     "encodings",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\__init__.py",
+     "8b997e9f7beef09de01c34ac34191866d3ab25e17164e08f411940b070bc3e74"
+    ],
+    [
+     "encodings.aliases",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\aliases.py",
+     "1893cfb597bc5eafd38ef03ac85d8874620112514eb42660408811929cc0d6f8"
+    ],
+    [
+     "encodings.utf_8",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\utf_8.py",
+     "9c54c7db8ce0722ca4ddb5f45d4e170357e37991afb3fcdc091721bf6c09257e"
+    ],
+    [
+     "encodings.utf_8_sig",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\utf_8_sig.py",
+     "21a95bb95448f2f064f08aa2c89e843b87a20a5a13c45c6c47c288f2be5219a4"
+    ],
+    [
+     "enum",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\enum.py",
+     "5f6126ee55609a8fc27be206803703597e2efdcaad1fb80ab975ecd0e63cd6aa"
+    ],
+    [
+     "errno",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "fnmatch",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\fnmatch.py",
+     "146d27a2853cd14c95ee49cc6130b9f84e2a56618dd1be695cddb20489460425"
+    ],
+    [
+     "functools",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\functools.py",
+     "f0ca5dd563498f8971e410fe9f37083cfcff2052a0f48efcfbe07d6975754864"
+    ],
+    [
+     "genericpath",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\genericpath.py",
+     "c540a28c560234d4d00d3451dfdde05b404f81a38bde87086ce8773021e1cc1b"
+    ],
+    [
+     "hashlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\hashlib.py",
+     "f0c8900585062c567a283cb782c3c867f86c38516e30f1f98a04ffa775b9a013"
+    ],
+    [
+     "importlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\__init__.py",
+     "80ca1730bd367f664ae4bafbe73326bdcaa60fa1029033a9210a355a5168c0fa"
+    ],
+    [
+     "importlib._abc",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_abc.py",
+     "795157b91862d662ae681c0521daa1311b34b763b955e01505a27c865d848eae"
+    ],
+    [
+     "importlib._bootstrap",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap.py",
+     "b9b30c578a34f70508768eeac35fab4a0095e369a7f5d7d3275c310e605d4313"
+    ],
+    [
+     "importlib._bootstrap_external",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap_external.py",
+     "255750f5267b487dbb99b1deed48b50a4524f4dbba38d40aa0f9cd5a063f7c62"
+    ],
+    [
+     "importlib.util",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\util.py",
+     "5adb3c86ff7b800c60cc78ea5a892ae8fc08f90d97208a7e447e77beb9d50360"
+    ],
+    [
+     "io",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\io.py",
+     "d70646d9c063dd0ac4293591639de75a100731d9f091f916fbca4857cd8a044e"
+    ],
+    [
+     "ipaddress",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ipaddress.py",
+     "98e5d9e9235c4381265d84d3b4d8125822cbfbe352e747190c8be877f6cec2d5"
+    ],
+    [
+     "itertools",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "json",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\__init__.py",
+     "feb17670e443e5db2723f217727dcc5d5e155c40e4e6935b16061c88542f24e7"
+    ],
+    [
+     "json.decoder",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\decoder.py",
+     "9f4cc83197bf1b13fee3ce71a044a4b4987a7eeecd8768206abd31a78e0a3d16"
+    ],
+    [
+     "json.encoder",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\encoder.py",
+     "497cc84d2b3936f2a25ec6e561a9a3266c4bc4c9661f5841c3b6ec31eaa0edb9"
+    ],
+    [
+     "json.scanner",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\scanner.py",
+     "b2577f9db9f69a0a27f251776349238b17b8b214a01128e7477b0f7d8e24a186"
+    ],
+    [
+     "keyword",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\keyword.py",
+     "1f28f509383273238ad86eda04a96343fa0dc10eeaf3189439959d75cdac0a0b"
+    ],
+    [
+     "locale",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\locale.py",
+     "f2a5793c0d629730c9f60ef11509484e04a92697ce603b30b7e9f1137cc48742"
+    ],
+    [
+     "lzma",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\lzma.py",
+     "da46fa7c6c554a0705cf9a7318279b56fd5f62f71a55ac28e9579616f11129d6"
+    ],
+    [
+     "marshal",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "math",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "msvcrt",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "nt",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "ntpath",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ntpath.py",
+     "e62526627fe0129120e452f99b05b84965a57451e5ad8d29f0d5f3276cc2c489"
+    ],
+    [
+     "operator",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\operator.py",
+     "c57b6816cfddfa6e4a126583fca0a2563234018daec2cfb9b5142d855546955c"
+    ],
+    [
+     "os",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\os.py",
+     "c1549bf7ce4acf22f760f5076149afa5250faf24bcab9515890f590ee78d927b"
+    ],
+    [
+     "os.path",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ntpath.py",
+     "e62526627fe0129120e452f99b05b84965a57451e5ad8d29f0d5f3276cc2c489"
+    ],
+    [
+     "pathlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\pathlib.py",
+     "cd1557dedcaa1be0459cd59760c5ebac83a3e412e0e1b5bc0b1a82a19563a090"
+    ],
+    [
+     "posixpath",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\posixpath.py",
+     "4a50991174a61362a0d612b86d05230b05c7ae282291733e32c87699168c857b"
+    ],
+    [
+     "random",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\random.py",
+     "4d415e54bdf94a270ca54e8ad27ef1019a22147b162a6023253858725882be38"
+    ],
+    [
+     "re",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\__init__.py",
+     "778cdca1fe51cddb7671d7a158c6bdecee1b7967e9f4a0ddf41cfb5320568c42"
+    ],
+    [
+     "re._casefix",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_casefix.py",
+     "b0dee234e5f8096fc9c1b035ec52d0b1b50cc1f3aea20b360b8be902e53ac752"
+    ],
+    [
+     "re._compiler",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_compiler.py",
+     "618f17add086b1dc5314a4e68e9b02a7072cbfb0a401791fd5963dabcd03098c"
+    ],
+    [
+     "re._constants",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_constants.py",
+     "8df304954ca75dcd98b9f1f5e3cb5347adc6eaccfc461a94ab914e1b0085e9ab"
+    ],
+    [
+     "re._parser",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_parser.py",
+     "bcc84f06d54e2d28506350a60bc1aaaa0efda4221f4ceeb05b2d0f48c712c479"
+    ],
+    [
+     "reprlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\reprlib.py",
+     "53c0c775acd2c7ea3405271e2b8619a5fdc0567a63f263199d594626616184cd"
+    ],
+    [
+     "shutil",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\shutil.py",
+     "de2f5819114464949b55229b137ac9deed85ce16955ead2dc725e45805ba098c"
+    ],
+    [
+     "signal",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\signal.py",
+     "0b7e3d3d39a120142dbf4875d7d79579cad8fee662add30c2375a797f0d2386e"
+    ],
+    [
+     "site",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\site.py",
+     "f8d58aca8dcbcd193bd8650fb8939b6312e64c6d4a7e5e3f7cc3ca2fb60c2daa"
+    ],
+    [
+     "stat",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\stat.py",
+     "e514fd41e2933dd1f06be315fb42a62e67b33d04571435a4815a18f490e0f6ce"
+    ],
+    [
+     "struct",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\struct.py",
+     "eadbcc540c3b6496e52449e712eca3694e31e1d935af0f1e26cff0e3cc370945"
+    ],
+    [
+     "subprocess",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\subprocess.py",
+     "e9886605ccac88bcfe2330a1b4cd8f132cbaf97ebb6834b1dcb5a69b127b8d5b"
+    ],
+    [
+     "sys",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "tempfile",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\tempfile.py",
+     "561adb9a999bfe6a98af76c7acb41d3e811d5a0bafbf86e78899548e00479d4b"
+    ],
+    [
+     "threading",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\threading.py",
+     "feb12e11fd550b71869a8960d6e8c0151e3b1fdc7a2df08a4bf5900affc11c8a"
+    ],
+    [
+     "time",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "types",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\types.py",
+     "d7ce485ecd8d4d1531d8f710e538b4d1a49378afacb6ff9231e48c645a9fa95e"
+    ],
+    [
+     "urllib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\urllib\\__init__.py",
+     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    [
+     "urllib.parse",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\urllib\\parse.py",
+     "8e1026b2de5fb7ef9265bf512b6ba11923c3a8bfa48a8b2158475c07c255e1a1"
+    ],
+    [
+     "uuid",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\uuid.py",
+     "328e41c4eed0877be1dd3af10bc93ca54ff6d9a49b4fcbcb27dab47a7c3ae424"
+    ],
+    [
+     "warnings",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\warnings.py",
+     "0cdd7709b5f38f2a3a1d84893d5d652eaaffd96fb1182e953513998ed09a2e34"
+    ],
+    [
+     "weakref",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\weakref.py",
+     "6721c34ba3c404bf4a443890ed374b546a870c958935a6aa4fdf634876a5a980"
+    ],
+    [
+     "winreg",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "zipimport",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\zipimport.py",
+     "6e3d94c0d4e0622a6a034e8212e41be78aa702d6e18100e2769c05413fbf7e7a"
+    ],
+    [
+     "zlib",
+     "built-in",
+     null,
+     null
+    ]
+   ],
+   "prefix": "C:\\Users\\can02\\AppData\\Local\\Programs\\Python\\Python312",
+   "unresolved": [],
+   "version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]"
+  },
+  "sonnet": {
+   "base_prefix": "C:\\Users\\can02\\AppData\\Local\\Programs\\Python\\Python312",
+   "executable": "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\python.exe",
+   "executable_sha256": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a",
+   "implementation": "cpython",
+   "modules": [
+    [
+     "_abc",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_ast",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_blake2",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_bz2",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_bz2.pyd",
+     "65f610646d10d5babea080e060d244b546ec52c54012e5e937dc72dcc2e2e7bc"
+    ],
+    [
+     "_codecs",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_collections",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_collections_abc",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_collections_abc.py",
+     "d0c7b4810d0d6e22968223599e2051aa2148c8ce435cad8798644e7b682a9147"
+    ],
+    [
+     "_compression",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_compression.py",
+     "a10cf1a317374641bcdb8252499e9cb9d4d6e774ac724edfdddd0433ead771d9"
+    ],
+    [
+     "_distutils_hack",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\site-packages\\_distutils_hack\\__init__.py",
+     "ced72e54431ecf2d8d7dbd8a1e27724f1b171af3ca1503c304bf11c59a7fe861"
+    ],
+    [
+     "_frozen_importlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap.py",
+     "b9b30c578a34f70508768eeac35fab4a0095e369a7f5d7d3275c310e605d4313"
+    ],
+    [
+     "_frozen_importlib_external",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap_external.py",
+     "255750f5267b487dbb99b1deed48b50a4524f4dbba38d40aa0f9cd5a063f7c62"
+    ],
+    [
+     "_functools",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_hashlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_hashlib.pyd",
+     "03d233dbace599168eaffec823de6ed7beec8c2a4ebfe9b8a3d8e042a59af3ba"
+    ],
+    [
+     "_imp",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_io",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_json",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_locale",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_lzma",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_lzma.pyd",
+     "e3deecc1f59a3b811c608861decd84de1e8df8bafd5e2b39188861318c5a38cf"
+    ],
+    [
+     "_operator",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_signal",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_sitebuiltins",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_sitebuiltins.py",
+     "924f95fd516ecaea9c9af540dc0796fb15ec17d8c42b59b90cf57cfe15962e2e"
+    ],
+    [
+     "_sre",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_stat",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_struct",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_thread",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_uuid",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\dlls\\_uuid.pyd",
+     "acce4f281d7ffb2dec0997527faf25b1df62ad7bd3032c568ddcf65c90edc867"
+    ],
+    [
+     "_warnings",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_weakref",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "_weakrefset",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\_weakrefset.py",
+     "cf8031a6e21150438f3d2964c4152615b91a03894616d5b6930e0f14f44dabda"
+    ],
+    [
+     "_winapi",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "abc",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\abc.py",
+     "d51c54428495cd62a5da4360315fa84f692b5aa9db21be986b3e14a83f7cf288"
+    ],
+    [
+     "ast",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ast.py",
+     "57cf6e193f932dcfa3b7080e189d689f510c700d95c3b27e7e8a0d48d2166c2d"
+    ],
+    [
+     "base64",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\base64.py",
+     "366e287224862a59d1416aa17b2259827d46a55c8406ae3f178f9ee7dc3c6f5a"
+    ],
+    [
+     "binascii",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "bootstrap_shim",
+     "file",
+     "c:\\users\\can02\\projects\\akor\\examples\\bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ],
+    [
+     "builtins",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "bz2",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\bz2.py",
+     "a539fc503737c53d5a45272e33a435b8a6b7a8559ba6a425002978038096bd66"
+    ],
+    [
+     "claude_cli_adapter",
+     "file",
+     "c:\\users\\can02\\projects\\akor\\examples\\claude_cli_adapter.py",
+     "44bc195e5761c5603f6601437b38c2038379168796b4d5ade385119717845e64"
+    ],
+    [
+     "claude_map_adapter",
+     "file",
+     "c:\\users\\can02\\projects\\akor\\examples\\claude_map_adapter.py",
+     "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689"
+    ],
+    [
+     "codecs",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\codecs.py",
+     "000cf1d683c677ed3de6d8e284376f81def4b91f93d68ee41bdf07c4e04cea77"
+    ],
+    [
+     "collections",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\collections\\__init__.py",
+     "58d1f234b7845ff280f8a195a795f206bc62ce42732caecaf06e6a133ddd6f15"
+    ],
+    [
+     "contextlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\contextlib.py",
+     "a53b1db774f19c6b1e4320c2bc64058c49e3fba58b20b9c1158e5a8d02069890"
+    ],
+    [
+     "copyreg",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\copyreg.py",
+     "ea2363638fe83e8e5b007013a821841371a615d99414b3c2f8f19152ca109a07"
+    ],
+    [
+     "encodings",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\__init__.py",
+     "8b997e9f7beef09de01c34ac34191866d3ab25e17164e08f411940b070bc3e74"
+    ],
+    [
+     "encodings.aliases",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\aliases.py",
+     "1893cfb597bc5eafd38ef03ac85d8874620112514eb42660408811929cc0d6f8"
+    ],
+    [
+     "encodings.utf_8",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\utf_8.py",
+     "9c54c7db8ce0722ca4ddb5f45d4e170357e37991afb3fcdc091721bf6c09257e"
+    ],
+    [
+     "encodings.utf_8_sig",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\encodings\\utf_8_sig.py",
+     "21a95bb95448f2f064f08aa2c89e843b87a20a5a13c45c6c47c288f2be5219a4"
+    ],
+    [
+     "enum",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\enum.py",
+     "5f6126ee55609a8fc27be206803703597e2efdcaad1fb80ab975ecd0e63cd6aa"
+    ],
+    [
+     "errno",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "fnmatch",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\fnmatch.py",
+     "146d27a2853cd14c95ee49cc6130b9f84e2a56618dd1be695cddb20489460425"
+    ],
+    [
+     "functools",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\functools.py",
+     "f0ca5dd563498f8971e410fe9f37083cfcff2052a0f48efcfbe07d6975754864"
+    ],
+    [
+     "genericpath",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\genericpath.py",
+     "c540a28c560234d4d00d3451dfdde05b404f81a38bde87086ce8773021e1cc1b"
+    ],
+    [
+     "hashlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\hashlib.py",
+     "f0c8900585062c567a283cb782c3c867f86c38516e30f1f98a04ffa775b9a013"
+    ],
+    [
+     "importlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\__init__.py",
+     "80ca1730bd367f664ae4bafbe73326bdcaa60fa1029033a9210a355a5168c0fa"
+    ],
+    [
+     "importlib._abc",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_abc.py",
+     "795157b91862d662ae681c0521daa1311b34b763b955e01505a27c865d848eae"
+    ],
+    [
+     "importlib._bootstrap",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap.py",
+     "b9b30c578a34f70508768eeac35fab4a0095e369a7f5d7d3275c310e605d4313"
+    ],
+    [
+     "importlib._bootstrap_external",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\_bootstrap_external.py",
+     "255750f5267b487dbb99b1deed48b50a4524f4dbba38d40aa0f9cd5a063f7c62"
+    ],
+    [
+     "importlib.util",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\importlib\\util.py",
+     "5adb3c86ff7b800c60cc78ea5a892ae8fc08f90d97208a7e447e77beb9d50360"
+    ],
+    [
+     "io",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\io.py",
+     "d70646d9c063dd0ac4293591639de75a100731d9f091f916fbca4857cd8a044e"
+    ],
+    [
+     "ipaddress",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ipaddress.py",
+     "98e5d9e9235c4381265d84d3b4d8125822cbfbe352e747190c8be877f6cec2d5"
+    ],
+    [
+     "itertools",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "json",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\__init__.py",
+     "feb17670e443e5db2723f217727dcc5d5e155c40e4e6935b16061c88542f24e7"
+    ],
+    [
+     "json.decoder",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\decoder.py",
+     "9f4cc83197bf1b13fee3ce71a044a4b4987a7eeecd8768206abd31a78e0a3d16"
+    ],
+    [
+     "json.encoder",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\encoder.py",
+     "497cc84d2b3936f2a25ec6e561a9a3266c4bc4c9661f5841c3b6ec31eaa0edb9"
+    ],
+    [
+     "json.scanner",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\json\\scanner.py",
+     "b2577f9db9f69a0a27f251776349238b17b8b214a01128e7477b0f7d8e24a186"
+    ],
+    [
+     "keyword",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\keyword.py",
+     "1f28f509383273238ad86eda04a96343fa0dc10eeaf3189439959d75cdac0a0b"
+    ],
+    [
+     "locale",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\locale.py",
+     "f2a5793c0d629730c9f60ef11509484e04a92697ce603b30b7e9f1137cc48742"
+    ],
+    [
+     "lzma",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\lzma.py",
+     "da46fa7c6c554a0705cf9a7318279b56fd5f62f71a55ac28e9579616f11129d6"
+    ],
+    [
+     "marshal",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "math",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "msvcrt",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "nt",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "ntpath",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ntpath.py",
+     "e62526627fe0129120e452f99b05b84965a57451e5ad8d29f0d5f3276cc2c489"
+    ],
+    [
+     "operator",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\operator.py",
+     "c57b6816cfddfa6e4a126583fca0a2563234018daec2cfb9b5142d855546955c"
+    ],
+    [
+     "os",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\os.py",
+     "c1549bf7ce4acf22f760f5076149afa5250faf24bcab9515890f590ee78d927b"
+    ],
+    [
+     "os.path",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\ntpath.py",
+     "e62526627fe0129120e452f99b05b84965a57451e5ad8d29f0d5f3276cc2c489"
+    ],
+    [
+     "pathlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\pathlib.py",
+     "cd1557dedcaa1be0459cd59760c5ebac83a3e412e0e1b5bc0b1a82a19563a090"
+    ],
+    [
+     "posixpath",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\posixpath.py",
+     "4a50991174a61362a0d612b86d05230b05c7ae282291733e32c87699168c857b"
+    ],
+    [
+     "re",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\__init__.py",
+     "778cdca1fe51cddb7671d7a158c6bdecee1b7967e9f4a0ddf41cfb5320568c42"
+    ],
+    [
+     "re._casefix",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_casefix.py",
+     "b0dee234e5f8096fc9c1b035ec52d0b1b50cc1f3aea20b360b8be902e53ac752"
+    ],
+    [
+     "re._compiler",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_compiler.py",
+     "618f17add086b1dc5314a4e68e9b02a7072cbfb0a401791fd5963dabcd03098c"
+    ],
+    [
+     "re._constants",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_constants.py",
+     "8df304954ca75dcd98b9f1f5e3cb5347adc6eaccfc461a94ab914e1b0085e9ab"
+    ],
+    [
+     "re._parser",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\re\\_parser.py",
+     "bcc84f06d54e2d28506350a60bc1aaaa0efda4221f4ceeb05b2d0f48c712c479"
+    ],
+    [
+     "reprlib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\reprlib.py",
+     "53c0c775acd2c7ea3405271e2b8619a5fdc0567a63f263199d594626616184cd"
+    ],
+    [
+     "shutil",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\shutil.py",
+     "de2f5819114464949b55229b137ac9deed85ce16955ead2dc725e45805ba098c"
+    ],
+    [
+     "signal",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\signal.py",
+     "0b7e3d3d39a120142dbf4875d7d79579cad8fee662add30c2375a797f0d2386e"
+    ],
+    [
+     "site",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\site.py",
+     "f8d58aca8dcbcd193bd8650fb8939b6312e64c6d4a7e5e3f7cc3ca2fb60c2daa"
+    ],
+    [
+     "stat",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\stat.py",
+     "e514fd41e2933dd1f06be315fb42a62e67b33d04571435a4815a18f490e0f6ce"
+    ],
+    [
+     "struct",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\struct.py",
+     "eadbcc540c3b6496e52449e712eca3694e31e1d935af0f1e26cff0e3cc370945"
+    ],
+    [
+     "subprocess",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\subprocess.py",
+     "e9886605ccac88bcfe2330a1b4cd8f132cbaf97ebb6834b1dcb5a69b127b8d5b"
+    ],
+    [
+     "sys",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "threading",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\threading.py",
+     "feb12e11fd550b71869a8960d6e8c0151e3b1fdc7a2df08a4bf5900affc11c8a"
+    ],
+    [
+     "time",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "types",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\types.py",
+     "d7ce485ecd8d4d1531d8f710e538b4d1a49378afacb6ff9231e48c645a9fa95e"
+    ],
+    [
+     "urllib",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\urllib\\__init__.py",
+     "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    ],
+    [
+     "urllib.parse",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\urllib\\parse.py",
+     "8e1026b2de5fb7ef9265bf512b6ba11923c3a8bfa48a8b2158475c07c255e1a1"
+    ],
+    [
+     "uuid",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\uuid.py",
+     "328e41c4eed0877be1dd3af10bc93ca54ff6d9a49b4fcbcb27dab47a7c3ae424"
+    ],
+    [
+     "warnings",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\warnings.py",
+     "0cdd7709b5f38f2a3a1d84893d5d652eaaffd96fb1182e953513998ed09a2e34"
+    ],
+    [
+     "winreg",
+     "built-in",
+     null,
+     null
+    ],
+    [
+     "zipimport",
+     "file",
+     "c:\\users\\can02\\appdata\\local\\programs\\python\\python312\\lib\\zipimport.py",
+     "6e3d94c0d4e0622a6a034e8212e41be78aa702d6e18100e2769c05413fbf7e7a"
+    ],
+    [
+     "zlib",
+     "built-in",
+     null,
+     null
+    ]
+   ],
+   "prefix": "C:\\Users\\can02\\AppData\\Local\\Programs\\Python\\Python312",
+   "unresolved": [],
+   "version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]"
+  }
+ },
+ "datasets": {
+  "boolq": "baf3fefce0c9c92ba24e78e62e819cb207a4466f0b154c18a8f88c4cf0a22f1b",
+  "boolq/file": "0c86a5045886e5795fe9052003873f7d94b88ed3028a33007c51d99e44fd66d9",
+  "materials/admission_texts": "531c315e27ad87f8e607539194d9e7e7b703d409a2dd6c1eadeb2cd0861233ef",
+  "materials/cold": "4f6aa8599b540a30eed16aaf9366d0b220db6d479b6ce7fbaf309d897aaeff3b",
+  "materials/tags": "fa7f528018986bd3b32b65e36ace5aae5397d96b964223c9cb8457a167e999c5",
+  "materials/telemetry": "d551bf0b74eefae962031c48f3e42a3cd3d0ebc08186ea5b416fb0598b9eee02",
+  "materials/warm": "f80ed649121ae8e95a0c0e4fd343a9b306029a453b4b107d0abcfda1ff9a7c1f"
+ },
+ "dry_run": {
+  "assumptions": [
+   "Materials is ONE workload of four operations (e, b, m, v): one shared bootstrap per backend proposes a rule or \"none\" per operation, batches mix operations, and the 32 audits per evaluation wave are drawn over all four operations together. oz_host.ArmHost was single-operation; it now accepts op={op id: op text} (DRIVER fix).",
+   "Each producer submits 16 jobs per operation per wave (64), one fresh record per job.",
+   "e uses json_type + max_bytes + rule_provenance/1, not quoted_span: quoted_span accepts only a string value (oz_accept and oz_registry), so every correct e answer (a JSON array) would fail it. rule_provenance/1 is authorized for all four materials contract hashes (amendment 1 D1: \"the four supplied materials contracts\").",
+   "Codex model gpt-6.1-sol, effort high (DRIVER, after the Astra sign-off): at medium 8 of 12 recorded 6.1-sol calls reported zero reasoning tokens, so paired telemetry could not show that output_tokens includes reasoning; at high all 12 reasoned (30 to 205 tokens). Every Codex arm uses the same effort. Luna is excluded by the owner.",
+   "Sonnet effort is \"default\" (no --effort flag), the configuration of the historical 91.6 tokens / 20 s cell the record allows as context; the host passes no OZ_EFFORT.",
+   "Op texts are MAT_D verbatim, including \"c[N]'s\" in e (live11.py rewrote it to \"the ref's\"; not done here).",
+   "BoolQ op text and goal are new (data.BOOLQ_OP_TEXT, data.BOOLQ_GOAL); BoolQ runs on Codex only, cold only.",
+   "BoolQ is the SuperGLUE distribution of the BoolQ validation split (owner approved; the Google bucket returned 403); its labels are the dataset annotations, used for the 64 admission cases and for scoring only; no admission row shares a passage with an evaluation row.",
+   "Allocation (amendment 3): Codex reserve 7 = second telemetry invocation 1 + 6 for retries and overflow; Sonnet B has 4 dedicated residual calls (one per producer) and never uses the Sonnet reserve as its nominal allocation; Sonnet materials A, B and C form one cell with one shared bootstrap.",
+   "No 55% weekly launch guard (owner decision 1); the 99% handoff stop and the frozen caps still bind.",
+   "The dry run is the live driver with fake codex and claude executables first on PATH (bench/ozmap/fake_cli.py); their answers are the oracle and dataset answers (a perfect model) and their rules the spec's worked E/B/M/V ASTs, so the projection is an upper bound on coverage and correctness.",
+   "Dry-run usage: every replayed call costs a recorded 64-job call of that backend, chosen by the call's content (deterministic), also the smaller residual and audit calls (conservative for B and C); BoolQ calls use the materials samples too, so BoolQ input tokens are underestimated by roughly the passage text.",
+   "Bootstrap usage is an estimate (recorded 64-job call + shim system text + rule bytes + reasoning allowance).",
+   "Dry-run makespans are replay projections (recorded 64-job elapsed per call, list-scheduled on 4 slots); the gates score measured makespan live; summed physical call seconds are reported separately and never replace makespan (amendment 3 sections 2 and 3).",
+   "Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens grows. Sonnet usage semantics are the adapter construction, not telemetry.",
+   "Gate readings: \"preserves correctness\" = C gold-correct count >= A; BoolQ \"adds no gold errors\" = C not-correct count <= A; the headline needs all five gates."
+  ],
+  "output": {
+   "budget_total": 44,
+   "budget_used": {
+    "codex": {
+     "A": 12,
+     "B": 8,
+     "C": 5,
+     "bootstrap": 2,
+     "reserve": 1,
+     "telemetry": 1
+    },
+    "sonnet": {
+     "A": 8,
+     "B": 4,
+     "C": 2,
+     "bootstrap": 1
+    }
+   },
+   "external_calls": 0,
+   "fake_misses": 0,
+   "gates": [
+    {
+     "gate": 1,
+     "pass": true
+    },
+    {
+     "gate": 2,
+     "pass": true
+    },
+    {
+     "gate": 3,
+     "pass": false
+    },
+    {
+     "gate": 4,
+     "pass": false
+    },
+    {
+     "gate": 5,
+     "pass": true
+    }
+   ],
+   "isolation": {
+    "claude_calls": 15,
+    "claude_tools_disabled": 15,
+    "codex_calls": 29,
+    "codex_isolated": 29,
+    "gold_accessed_during_run": false,
+    "tool_use_leakage": []
+   },
+   "physical_calls_by_backend": {
+    "codex": 29,
+    "sonnet": 15
+   },
+   "prompt_leakage": [],
+   "reconciliation": {
+    "charged_calls": 45,
+    "fake_cli_calls": 44,
+    "imported_calls": 3,
+    "ok": true,
+    "physical_calls": 42,
+    "telemetry_calls": 2
+   },
+   "rows": [
+    {
+     "accepted": 256,
+     "arm": "B",
+     "audits_selected": 32,
+     "backend": "codex",
+     "cell": "codex-materials",
+     "charged_calls": 5,
+     "coverage": 0.75,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 149704,
+     "jobs": 256,
+     "makespan_s": 60.767,
+     "output_tokens": 7017,
+     "physical_calls": 5,
+     "refused": 0,
+     "replayed_call_seconds": 120.607,
+     "rule_hits": 192,
+     "tokens": 156721,
+     "tokens_per_job": 612.2,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "A",
+     "audits_selected": 0,
+     "backend": "codex",
+     "cell": "codex-materials",
+     "charged_calls": 4,
+     "coverage": 0.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 117600,
+     "jobs": 256,
+     "makespan_s": 20.0,
+     "output_tokens": 11488,
+     "physical_calls": 4,
+     "refused": 0,
+     "replayed_call_seconds": 79.31,
+     "rule_hits": 0,
+     "tokens": 129088,
+     "tokens_per_job": 504.2,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "C",
+     "audits_selected": 32,
+     "backend": "codex",
+     "cell": "codex-materials",
+     "charged_calls": 2,
+     "coverage": 0.75,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 1,
+     "incomplete": [],
+     "input_tokens": 61610,
+     "jobs": 256,
+     "makespan_s": 60.687,
+     "output_tokens": 6801,
+     "physical_calls": 1,
+     "refused": 0,
+     "replayed_call_seconds": 19.92,
+     "rule_hits": 192,
+     "tokens": 68411,
+     "tokens_per_job": 267.2,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "A",
+     "audits_selected": 0,
+     "backend": "codex",
+     "cell": "codex-materials",
+     "charged_calls": 4,
+     "coverage": 0.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 117548,
+     "jobs": 256,
+     "makespan_s": 19.92,
+     "output_tokens": 11214,
+     "physical_calls": 4,
+     "refused": 0,
+     "replayed_call_seconds": 79.53,
+     "rule_hits": 0,
+     "tokens": 128762,
+     "tokens_per_job": 503.0,
+     "unresolved": 0,
+     "wave": "warm",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "C",
+     "audits_selected": 32,
+     "backend": "codex",
+     "cell": "codex-materials",
+     "charged_calls": 1,
+     "coverage": 1.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 29378,
+     "jobs": 256,
+     "makespan_s": 19.92,
+     "output_tokens": 1510,
+     "physical_calls": 1,
+     "refused": 0,
+     "replayed_call_seconds": 19.92,
+     "rule_hits": 256,
+     "tokens": 30888,
+     "tokens_per_job": 120.7,
+     "unresolved": 0,
+     "wave": "warm",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "B",
+     "audits_selected": 0,
+     "backend": "codex",
+     "cell": "codex-boolq",
+     "charged_calls": 5,
+     "coverage": 0.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 149760,
+     "jobs": 256,
+     "makespan_s": 87.954,
+     "output_tokens": 11882,
+     "physical_calls": 5,
+     "refused": 0,
+     "replayed_call_seconds": 142.794,
+     "rule_hits": 0,
+     "tokens": 161642,
+     "tokens_per_job": 631.4,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "boolq"
+    },
+    {
+     "accepted": 256,
+     "arm": "A",
+     "audits_selected": 0,
+     "backend": "codex",
+     "cell": "codex-boolq",
+     "charged_calls": 4,
+     "coverage": 0.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 117544,
+     "jobs": 256,
+     "makespan_s": 20.17,
+     "output_tokens": 9771,
+     "physical_calls": 4,
+     "refused": 0,
+     "replayed_call_seconds": 79.78,
+     "rule_hits": 0,
+     "tokens": 127315,
+     "tokens_per_job": 497.3,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "boolq"
+    },
+    {
+     "accepted": 256,
+     "arm": "C",
+     "audits_selected": 0,
+     "backend": "codex",
+     "cell": "codex-boolq",
+     "charged_calls": 4,
+     "coverage": 0.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 1,
+     "incomplete": [],
+     "input_tokens": 120402,
+     "jobs": 256,
+     "makespan_s": 87.504,
+     "output_tokens": 11766,
+     "physical_calls": 3,
+     "refused": 0,
+     "replayed_call_seconds": 54.84,
+     "rule_hits": 0,
+     "tokens": 132168,
+     "tokens_per_job": 516.3,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "boolq"
+    },
+    {
+     "accepted": 256,
+     "arm": "C",
+     "audits_selected": 32,
+     "backend": "sonnet",
+     "cell": "sonnet-materials",
+     "charged_calls": 2,
+     "coverage": 0.75,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 9984,
+     "jobs": 256,
+     "makespan_s": 60.687,
+     "output_tokens": 6986,
+     "physical_calls": 2,
+     "refused": 0,
+     "replayed_call_seconds": 60.687,
+     "rule_hits": 192,
+     "tokens": 16970,
+     "tokens_per_job": 66.3,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "B",
+     "audits_selected": 32,
+     "backend": "sonnet",
+     "cell": "sonnet-materials",
+     "charged_calls": 5,
+     "coverage": 0.75,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 1,
+     "incomplete": [],
+     "input_tokens": 20727,
+     "jobs": 256,
+     "makespan_s": 60.767,
+     "output_tokens": 13836,
+     "physical_calls": 4,
+     "refused": 0,
+     "replayed_call_seconds": 79.84,
+     "rule_hits": 192,
+     "tokens": 34563,
+     "tokens_per_job": 135.0,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "A",
+     "audits_selected": 0,
+     "backend": "sonnet",
+     "cell": "sonnet-materials",
+     "charged_calls": 4,
+     "coverage": 0.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 14315,
+     "jobs": 256,
+     "makespan_s": 20.0,
+     "output_tokens": 9155,
+     "physical_calls": 4,
+     "refused": 0,
+     "replayed_call_seconds": 79.31,
+     "rule_hits": 0,
+     "tokens": 23470,
+     "tokens_per_job": 91.7,
+     "unresolved": 0,
+     "wave": "cold",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "C",
+     "audits_selected": 32,
+     "backend": "sonnet",
+     "cell": "sonnet-materials",
+     "charged_calls": 1,
+     "coverage": 1.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 3587,
+     "jobs": 256,
+     "makespan_s": 19.92,
+     "output_tokens": 2268,
+     "physical_calls": 1,
+     "refused": 0,
+     "replayed_call_seconds": 19.92,
+     "rule_hits": 256,
+     "tokens": 5855,
+     "tokens_per_job": 22.9,
+     "unresolved": 0,
+     "wave": "warm",
+     "workload": "materials"
+    },
+    {
+     "accepted": 256,
+     "arm": "A",
+     "audits_selected": 0,
+     "backend": "sonnet",
+     "cell": "sonnet-materials",
+     "charged_calls": 4,
+     "coverage": 0.0,
+     "efficiency_invalid": [],
+     "efficiency_valid": true,
+     "evidence": "complete",
+     "imported_calls": 0,
+     "incomplete": [],
+     "input_tokens": 14340,
+     "jobs": 256,
+     "makespan_s": 19.92,
+     "output_tokens": 9092,
+     "physical_calls": 4,
+     "refused": 0,
+     "replayed_call_seconds": 79.53,
+     "rule_hits": 0,
+     "tokens": 23432,
+     "tokens_per_job": 91.5,
+     "unresolved": 0,
+     "wave": "warm",
+     "workload": "materials"
+    }
+   ],
+   "telemetry": "ok",
+   "verdict": "killed: materials efficiency gate failed"
+  },
+  "output_sha256": "b66a0c52a4aee527b8487fc8334e3763aae2af0d6cd657474804f96ac47156b2",
+  "sources": {
+   "boolq_usage": "materials usage samples",
+   "bootstrap": "estimated: recorded 64-job call + shim system text + rule bytes + reasoning allowance",
+   "ledgers": {
+    "codex": {
+     "file": "bench/codex_kit/results_gpt-6.1-sol_high.jsonl",
+     "sha256": "f22f6eec3d8b1c51d186e1076dd05305c8bc8bcfcb6df62c15fd67d747f61f56"
+    },
+    "sonnet": {
+     "file": "bench/live/data/pilot2_sonnet64.jsonl",
+     "sha256": "74417f715facaec2683cb1eb4b13b68e79a1458771fcf2d0df87bee0e6e09a80"
+    }
+   }
+  }
+ },
+ "files": {
+  "bench/codex_kit/results_gpt-6.1-sol_high.jsonl": "f22f6eec3d8b1c51d186e1076dd05305c8bc8bcfcb6df62c15fd67d747f61f56",
+  "bench/live/data/live24_1g_D_sonnet32.jsonl": "7b148abbd69f3baba0711d5bdf484391dc8c86045831631aa2642d13cc5bf603",
+  "bench/live/data/pilot2_sonnet64.jsonl": "74417f715facaec2683cb1eb4b13b68e79a1458771fcf2d0df87bee0e6e09a80",
+  "bench/live/live2.py": "bc33421cfe580e185f41a8ec61a0ca23134ea2639c0ec0123005f0fdecce5247",
+  "bench/ozmap/data.py": "d94c6332de0aaf2208234eefddfb1a8ac95bd91648440680550343aa89040b62",
+  "bench/ozmap/data/boolq-superglue-val.jsonl": "0c86a5045886e5795fe9052003873f7d94b88ed3028a33007c51d99e44fd66d9",
+  "bench/ozmap/fake_cli.py": "0d51f9a634c1d8f617494c51740132c08c6fff3c61deb8a7fd4334c19e295137",
+  "bench/ozmap/identity.json": "d9f80f27dcdc9899ddd0b02f8236b7efb1100a0ec52677dd1878d08366bbd8bd",
+  "bench/ozmap/oracle.py": "60446b93b39be10f2d57e1b65e77113c7e4dc20e301c6e7f3102f43c92325b4b",
+  "bench/ozmap/pilot.py": "d51df3d748f67fcac7d8fc4d1b4276d6546cd9bb064c245e07e4adb68181c882",
+  "bench/ozmap/registry.json": "d24a00650067124ff4b4ae6eb1e0eadb3de493b0112ea4689e0391ad46a2cc0d",
+  "bench/ozmap/routes.json": "b30a75d0d0b14d6d4da526a82e24d5627c25b07e47a66207a74c2270e12056fb",
+  "bench/ozmap/score.py": "bec7fe8221a3bd67aac79604e400c0f2b767e2c05fc00a62e830087cf48789aa",
+  "docs/design/brainstorm-2026-10-24/05-joint-record.md": "a95705a71ff4864fa2dffe6692318f1df2636df59744eda70ddb4b623ae53851",
+  "docs/design/ozmap-2026-10-24/amendment-2-and-step6-architecture.md": "a1a09450f02c943220adf63eeb97f3941a5d66fce86311dd76cb18f6da6606de",
+  "docs/design/ozmap-2026-10-24/amendment-3.md": "56c3e53f0a87c058f5bf62287522d2562b6a0c6e3b6a593517c42625a12b8eb1",
+  "docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt": "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14",
+  "docs/design/ozmap-2026-10-24/council2-astra.md": "f9ed1177cf521b151e63a7b81d566ee6b273e1b72fab215f42614c937f21ddf1",
+  "docs/design/ozmap-2026-10-24/council2-opus.md": "6f3a8787f3dcba1c29f3e9f19de242c4c19d76d1832eaab854b4a74d021ee8ec",
+  "docs/design/ozmap-2026-10-24/council3-astra.md": "733dbfbd7970b461b0bec960f99460aaadc2d8b258b1650802915eab8a062eda",
+  "docs/design/ozmap-2026-10-24/council3-close-astra.md": "3bd121ccfc82f659a84243548b829f2558163f1202cc0d0315226a641fd58e62",
+  "docs/design/ozmap-2026-10-24/council3-close-opus.md": "08e241286b3a0025d8c685d80360b7c54d0940935c5d6e58a0213c0e3571409f",
+  "docs/design/ozmap-2026-10-24/council3-opus.md": "d31bad548e8b9092f6e2aa142ad48b919b9bcd6f529077bbbf5e6494480a774c",
+  "docs/design/ozmap-2026-10-24/owner-decisions-2026-10-24.md": "27f9934cc74698717a7e2e5a0c4418655b3c44730b3432060960fddda1d08f2e",
+  "docs/design/ozmap-2026-10-24/oz-rule-1-amendment-1.md": "2911170fc467094b753629f64daef70adcb459d64b194dc790d9bf61ca2df381",
+  "docs/design/ozmap-2026-10-24/oz-rule-1-spec.md": "dc3d11ca67229a944fea0df2141d2361777c84ea21e37955c0f9b0532c0351fe",
+  "examples/bootstrap_claude_adapter.json": "ebc0ce5eb9e1811f41c31f036cb5beac68f8007274f8573e07657d8f6c4f2cb8",
+  "examples/bootstrap_codex_adapter.json": "99a3ec2b4ee843c0bd9f4420cc3169850b7c07b0e62c72cdd1cc96326ccd610e",
+  "examples/bootstrap_shim.py": "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae",
+  "examples/claude_cli_adapter.py": "44bc195e5761c5603f6601437b38c2038379168796b4d5ade385119717845e64",
+  "examples/claude_map_adapter.py": "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689",
+  "examples/codex_cli_adapter.py": "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578",
+  "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
+  "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
+  "oz_batch.py": "6aa71ed131116c4f08c53a85c90df736740f7a84f3b4bbafc4ec323eaa4f1fc3",
+  "oz_cli.py": "23f87dc8fa87d7c1aa3701133cab54bbd78696f365452f99159a70381b1fb6e0",
+  "oz_do.py": "0570865aa2fd774ec8ee4f37c457c26b161847da50f9463a763846bbfc7c99fc",
+  "oz_fault.py": "f34aa651661fc708a3a5a9aed091869158915482fb8e82ba755dec24f367f63c",
+  "oz_host.py": "0e1727c563628bdcfd8e35bcbc9a3422124d6689c05c2cc8ac1a84245ce2f09e",
+  "oz_map.py": "a4e7306bd5304325757054781b01140896b14f5f7169ace801d4d88c8e2238ec",
+  "oz_memo.py": "bb8963bf1ddf376495ed49c83f94176d3627a486d59ca078cf20a0bde9821dd7",
+  "oz_quota.py": "76328b7fb4c2eaf7e1e38fa5aa91e7f6448384e483719c606bf84b331bebad75",
+  "oz_registry.py": "a10e1ef7ce41dd04d816e686aa6c7fb0d49197bcf52fc4da62efc71b727e9536",
+  "oz_reply.py": "02980369a1e7fdcf02a6b9eafaed9ea228e1958d6676b38e3f1ead8bfb4c42cd",
+  "oz_route.py": "2c145acf9a464e3da124e627f64fb96438ab9e11d05831f76b8f27a458f29698",
+  "oz_rule.py": "8a9897c66c7518031fe50d3124101ad7cd35b39a2f7946eadef5612cc8e77e8c",
+  "oz_rulephase.py": "dfe5e3a2e6e3391aa078f45cafa0329d16ad10edea919d61d7732e7436eb3098",
+  "oz_runner.py": "b4ad4e47f46138729f37830dd42b8c1ef98e3150e6832ff6dc30ca6700ffecfd",
+  "oz_runtime.py": "0b9426eda127505b5833a2fe5f7e03cd6a0a1df96227d085c527d837f31c16c9",
+  "oz_spool.py": "b55a93b4c2f0103735be791ce6f734e01f934b8cb7e88dd4372e370c094f17b9",
+  "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
+  "oz_workspace.py": "f708d6062c6c751d17aaea24c82aa333816adbcbaff0c34156ea8969b9931f5a",
+  "tests/test_ozmap_close.py": "aff4f4b3ca3fe34e3162fbb72b437c69186dd7355a4840b2d67a81f440171191",
+  "tests/test_ozmap_pilot.py": "55f654717fe67dbc45da3bbca93e6e0f835ff74ada021b83b69dd403b1580325"
+ },
+ "gate_texts": {
+  "boolq": "On the frozen Codex BoolQ cold evaluation, C MUST have no more gold errors than A, consume at most 1.10 times A’s total charged tokens, and have at most 1.10 times A’s measured makespan. C’s accounting MUST include the complete shared bootstrap charge and all required residual work. Makespan MUST include required admission, checking, queueing and completion costs. No bootstrap subtraction, floor adjustment or substitution of summed physical call seconds is permitted.",
+  "materials_warm": "For each backend independently, warm C MUST preserve correctness, have measured makespan at most 0.90 times matched warm A, and consume at most 0.50 times A’s tokens per gold correct job. Score actual live measurements using the frozen timing boundaries and accounting rules."
+ },
+ "git_head": "db1e6429502dd60ab87a82efe1ef6c5bd096faaa",
+ "host": {
+  "intake": {
+   "per_producer": 64,
+   "producers": 4
+  },
+  "limits": {
+   "call_timeout_seconds": 1200,
+   "deadline_seconds": 1800,
+   "max_input_tokens": 1000000
+  },
+  "max_records": 64,
+  "max_wait": 1.0,
+  "slots": 4
+ },
+ "interpreter": {
+  "base_prefix": "C:\\Users\\can02\\AppData\\Local\\Programs\\Python\\Python312",
+  "executable": "c:\\users\\can02\\projects\\akor\\.venv\\scripts\\python.exe",
+  "implementation": "cpython",
+  "sha256": "0b471133e110cfb53a061cad528ce8e517d7b9ac41a0a396c39ad795a487fc14",
+  "version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]"
+ },
+ "normative": {
+  "precedence": [
+   "docs/design/brainstorm-2026-10-24/05-joint-record.md",
+   "docs/design/ozmap-2026-10-24/oz-rule-1-amendment-1.md",
+   "docs/design/ozmap-2026-10-24/amendment-2-and-step6-architecture.md",
+   "docs/design/ozmap-2026-10-24/council3-astra.md",
+   "docs/design/ozmap-2026-10-24/owner-decisions-2026-10-24.md",
+   "docs/design/ozmap-2026-10-24/amendment-3.md"
+  ],
+  "rule": "a later document supersedes conflicting text in an earlier one",
+  "sha256": {
+   "docs/design/brainstorm-2026-10-24/05-joint-record.md": "a95705a71ff4864fa2dffe6692318f1df2636df59744eda70ddb4b623ae53851",
+   "docs/design/ozmap-2026-10-24/amendment-2-and-step6-architecture.md": "a1a09450f02c943220adf63eeb97f3941a5d66fce86311dd76cb18f6da6606de",
+   "docs/design/ozmap-2026-10-24/amendment-3.md": "56c3e53f0a87c058f5bf62287522d2562b6a0c6e3b6a593517c42625a12b8eb1",
+   "docs/design/ozmap-2026-10-24/council3-astra.md": "733dbfbd7970b461b0bec960f99460aaadc2d8b258b1650802915eab8a062eda",
+   "docs/design/ozmap-2026-10-24/owner-decisions-2026-10-24.md": "27f9934cc74698717a7e2e5a0c4418655b3c44730b3432060960fddda1d08f2e",
+   "docs/design/ozmap-2026-10-24/oz-rule-1-amendment-1.md": "2911170fc467094b753629f64daef70adcb459d64b194dc790d9bf61ca2df381"
+  }
+ },
+ "plan": {
+  "allocation_total": 54,
+  "arm_orders": {
+   "codex-boolq": [
+    "B",
+    "A",
+    "C"
+   ],
+   "codex-materials": [
+    "B",
+    "A",
+    "C"
+   ],
+   "sonnet-materials": [
+    "C",
+    "B",
+    "A"
+   ]
+  },
+  "assumptions": [
+   "Materials is ONE workload of four operations (e, b, m, v): one shared bootstrap per backend proposes a rule or \"none\" per operation, batches mix operations, and the 32 audits per evaluation wave are drawn over all four operations together. oz_host.ArmHost was single-operation; it now accepts op={op id: op text} (DRIVER fix).",
+   "Each producer submits 16 jobs per operation per wave (64), one fresh record per job.",
+   "e uses json_type + max_bytes + rule_provenance/1, not quoted_span: quoted_span accepts only a string value (oz_accept and oz_registry), so every correct e answer (a JSON array) would fail it. rule_provenance/1 is authorized for all four materials contract hashes (amendment 1 D1: \"the four supplied materials contracts\").",
+   "Codex model gpt-6.1-sol, effort high (DRIVER, after the Astra sign-off): at medium 8 of 12 recorded 6.1-sol calls reported zero reasoning tokens, so paired telemetry could not show that output_tokens includes reasoning; at high all 12 reasoned (30 to 205 tokens). Every Codex arm uses the same effort. Luna is excluded by the owner.",
+   "Sonnet effort is \"default\" (no --effort flag), the configuration of the historical 91.6 tokens / 20 s cell the record allows as context; the host passes no OZ_EFFORT.",
+   "Op texts are MAT_D verbatim, including \"c[N]'s\" in e (live11.py rewrote it to \"the ref's\"; not done here).",
+   "BoolQ op text and goal are new (data.BOOLQ_OP_TEXT, data.BOOLQ_GOAL); BoolQ runs on Codex only, cold only.",
+   "BoolQ is the SuperGLUE distribution of the BoolQ validation split (owner approved; the Google bucket returned 403); its labels are the dataset annotations, used for the 64 admission cases and for scoring only; no admission row shares a passage with an evaluation row.",
+   "Allocation (amendment 3): Codex reserve 7 = second telemetry invocation 1 + 6 for retries and overflow; Sonnet B has 4 dedicated residual calls (one per producer) and never uses the Sonnet reserve as its nominal allocation; Sonnet materials A, B and C form one cell with one shared bootstrap.",
+   "No 55% weekly launch guard (owner decision 1); the 99% handoff stop and the frozen caps still bind.",
+   "The dry run is the live driver with fake codex and claude executables first on PATH (bench/ozmap/fake_cli.py); their answers are the oracle and dataset answers (a perfect model) and their rules the spec's worked E/B/M/V ASTs, so the projection is an upper bound on coverage and correctness.",
+   "Dry-run usage: every replayed call costs a recorded 64-job call of that backend, chosen by the call's content (deterministic), also the smaller residual and audit calls (conservative for B and C); BoolQ calls use the materials samples too, so BoolQ input tokens are underestimated by roughly the passage text.",
+   "Bootstrap usage is an estimate (recorded 64-job call + shim system text + rule bytes + reasoning allowance).",
+   "Dry-run makespans are replay projections (recorded 64-job elapsed per call, list-scheduled on 4 slots); the gates score measured makespan live; summed physical call seconds are reported separately and never replace makespan (amendment 3 sections 2 and 3).",
+   "Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens grows. Sonnet usage semantics are the adapter construction, not telemetry.",
+   "Gate readings: \"preserves correctness\" = C gold-correct count >= A; BoolQ \"adds no gold errors\" = C not-correct count <= A; the headline needs all five gates."
+  ],
+  "backends": {
+   "codex": {
+    "adapter": "examples/bootstrap_codex_adapter.json",
+    "effort": "high",
+    "host_effort": "high",
+    "model": "gpt-6.1-sol",
+    "real": "codex_cli_adapter",
+    "route_backend": "codex"
+   },
+   "sonnet": {
+    "adapter": "examples/bootstrap_claude_adapter.json",
+    "effort": "default",
+    "host_effort": null,
+    "model": "claude-sonnet-5-5",
+    "real": "claude_map_adapter",
+    "route_backend": "claude"
+   }
+  },
+  "boolq_available": true,
+  "boolq_source": {
+   "approved_by": "owner (Google bucket returned 403)",
+   "fields": [
+    "idx",
+    "question",
+    "passage",
+    "label"
+   ],
+   "file": "bench/ozmap/data/boolq-superglue-val.jsonl",
+   "file_sha256": "0c86a5045886e5795fe9052003873f7d94b88ed3028a33007c51d99e44fd66d9",
+   "lines": 3270,
+   "member": "BoolQ/val.jsonl",
+   "url": "https://dl.fbaipublicfiles.com/glue/superglue/data/v2/BoolQ.zip",
+   "zip_sha256": "853fbe7922f70c59629f06a39e8d9ca440c3d740e760fd3b87a5ddf3dcba2436"
+  },
+  "caps": {
+   "codex": {
+    "A": 12,
+    "B": 8,
+    "C": 7,
+    "bootstrap": 2,
+    "reserve": 7,
+    "telemetry": 1
+   },
+   "sonnet": {
+    "A": 8,
+    "B": 4,
+    "C": 2,
+    "bootstrap": 1,
+    "reserve": 2,
+    "telemetry": 0
+   }
+  },
+  "cells": [
+   {
+    "arm": "B",
+    "available": true,
+    "bucket": "bootstrap",
+    "calls": 1,
+    "cell": "codex-materials",
+    "kind": "bootstrap",
+    "wave": "cold"
+   },
+   {
+    "arm": "B",
+    "available": true,
+    "bucket": "B",
+    "calls": 4,
+    "cell": "codex-materials",
+    "kind": "residual, producer-local",
+    "wave": "cold"
+   },
+   {
+    "arm": "A",
+    "available": true,
+    "bucket": "A",
+    "calls": 4,
+    "cell": "codex-materials",
+    "kind": "ordinary",
+    "wave": "cold"
+   },
+   {
+    "arm": "C",
+    "available": true,
+    "bucket": "C",
+    "calls": 1,
+    "cell": "codex-materials",
+    "kind": "residual, pooled",
+    "wave": "cold"
+   },
+   {
+    "arm": "A",
+    "available": true,
+    "bucket": "A",
+    "calls": 4,
+    "cell": "codex-materials",
+    "kind": "ordinary",
+    "wave": "warm"
+   },
+   {
+    "arm": "C",
+    "available": true,
+    "bucket": "C",
+    "calls": 1,
+    "cell": "codex-materials",
+    "kind": "residual, pooled",
+    "wave": "warm"
+   },
+   {
+    "arm": "B",
+    "available": true,
+    "bucket": "bootstrap",
+    "calls": 1,
+    "cell": "codex-boolq",
+    "kind": "bootstrap",
+    "wave": "cold"
+   },
+   {
+    "arm": "B",
+    "available": true,
+    "bucket": "B",
+    "calls": 4,
+    "cell": "codex-boolq",
+    "kind": "residual, producer-local",
+    "wave": "cold"
+   },
+   {
+    "arm": "A",
+    "available": true,
+    "bucket": "A",
+    "calls": 4,
+    "cell": "codex-boolq",
+    "kind": "ordinary",
+    "wave": "cold"
+   },
+   {
+    "arm": "C",
+    "available": true,
+    "bucket": "C",
+    "calls": 3,
+    "cell": "codex-boolq",
+    "kind": "residual, pooled",
+    "wave": "cold"
+   },
+   {
+    "arm": "C",
+    "available": true,
+    "bucket": "bootstrap",
+    "calls": 1,
+    "cell": "sonnet-materials",
+    "kind": "bootstrap",
+    "wave": "cold"
+   },
+   {
+    "arm": "C",
+    "available": true,
+    "bucket": "C",
+    "calls": 1,
+    "cell": "sonnet-materials",
+    "kind": "residual, pooled",
+    "wave": "cold"
+   },
+   {
+    "arm": "B",
+    "available": true,
+    "bucket": "B",
+    "calls": 4,
+    "cell": "sonnet-materials",
+    "kind": "residual, producer-local",
+    "wave": "cold"
+   },
+   {
+    "arm": "A",
+    "available": true,
+    "bucket": "A",
+    "calls": 4,
+    "cell": "sonnet-materials",
+    "kind": "ordinary",
+    "wave": "cold"
+   },
+   {
+    "arm": "C",
+    "available": true,
+    "bucket": "C",
+    "calls": 1,
+    "cell": "sonnet-materials",
+    "kind": "residual, pooled",
+    "wave": "warm"
+   },
+   {
+    "arm": "A",
+    "available": true,
+    "bucket": "A",
+    "calls": 4,
+    "cell": "sonnet-materials",
+    "kind": "ordinary",
+    "wave": "warm"
+   }
+  ],
+  "complete": true,
+  "fits_global_cap": true,
+  "gate_texts": {
+   "boolq": "On the frozen Codex BoolQ cold evaluation, C MUST have no more gold errors than A, consume at most 1.10 times A’s total charged tokens, and have at most 1.10 times A’s measured makespan. C’s accounting MUST include the complete shared bootstrap charge and all required residual work. Makespan MUST include required admission, checking, queueing and completion costs. No bootstrap subtraction, floor adjustment or substitution of summed physical call seconds is permitted.",
+   "materials_warm": "For each backend independently, warm C MUST preserve correctness, have measured makespan at most 0.90 times matched warm A, and consume at most 0.50 times A’s tokens per gold correct job. Score actual live measurements using the frozen timing boundaries and accounting rules."
+  },
+  "global_cap": 54,
+  "host": {
+   "intake": {
+    "per_producer": 64,
+    "producers": 4
+   },
+   "limits": {
+    "call_timeout_seconds": 1200,
+    "deadline_seconds": 1800,
+    "max_input_tokens": 1000000
+   },
+   "max_records": 64,
+   "max_wait": 1.0,
+   "slots": 4
+  },
+  "incomplete": [],
+  "nominal_physical_calls": 44,
+  "quota_stop": "99% Claude weekly usage: stop every launch and hand off (owner rule); enforced by the launch gate from an explicit reading recorded per launch batch; the 55% launch guard is suspended by owner decision 1 and amendment 3 until the pilot report is written",
+  "seed": 20261024,
+  "table": [
+   {
+    "allocation": 1,
+    "backend": "codex",
+    "bucket": "telemetry",
+    "fits": true,
+    "nominal": 1
+   },
+   {
+    "allocation": 2,
+    "backend": "codex",
+    "bucket": "bootstrap",
+    "fits": true,
+    "nominal": 2
+   },
+   {
+    "allocation": 12,
+    "backend": "codex",
+    "bucket": "A",
+    "fits": true,
+    "nominal": 12
+   },
+   {
+    "allocation": 8,
+    "backend": "codex",
+    "bucket": "B",
+    "fits": true,
+    "nominal": 8
+   },
+   {
+    "allocation": 7,
+    "backend": "codex",
+    "bucket": "C",
+    "fits": true,
+    "nominal": 5
+   },
+   {
+    "allocation": 7,
+    "backend": "codex",
+    "bucket": "reserve",
+    "fits": true,
+    "nominal": 1
+   },
+   {
+    "allocation": 0,
+    "backend": "sonnet",
+    "bucket": "telemetry",
+    "fits": true,
+    "nominal": 0
+   },
+   {
+    "allocation": 1,
+    "backend": "sonnet",
+    "bucket": "bootstrap",
+    "fits": true,
+    "nominal": 1
+   },
+   {
+    "allocation": 8,
+    "backend": "sonnet",
+    "bucket": "A",
+    "fits": true,
+    "nominal": 8
+   },
+   {
+    "allocation": 4,
+    "backend": "sonnet",
+    "bucket": "B",
+    "fits": true,
+    "nominal": 4
+   },
+   {
+    "allocation": 2,
+    "backend": "sonnet",
+    "bucket": "C",
+    "fits": true,
+    "nominal": 2
+   },
+   {
+    "allocation": 2,
+    "backend": "sonnet",
+    "bucket": "reserve",
+    "fits": true,
+    "nominal": 0
+   }
+  ]
+ },
+ "plan_sha256": "84b1732b4603a58324e92b91df0e08c28a3a19031996b326167900c3ccb60700",
+ "registry_manifest_sha256": {
+  "codex": "a9b2983c23a9e8993934a18cceaecfe4d3a8232a63fb89fe0b32eecb5c310b61",
+  "sonnet": "9696f546846bb730d6b96ae1ee5bab3dfcb48b464e3182f5f5090f31d9431e78"
+ },
+ "schema": "ozmap.freeze/2",
+ "seed": 20261024,
+ "timing": {
+  "charged_makespan": "makespan plus, for the arm that imported the shared bootstrap, its complete recorded elapsed (claim to final settlement of the 64 answers, interrupted spans included); nothing is subtracted (no bootstrap wait subtraction, no floor, amendment 3 section 2); the gates score this value",
+  "dry_run": "replay projection: recorded elapsed per call list-scheduled on the slots",
+  "interrupted_spans": "a phase span whose process session ended before its end is kept and closed at the next later stamp of the wave (wall clock), else at the last stamp of its session",
+  "makespan": "first intake submission of the wave to the last terminal delivery of the arm (monotonic within one host process, wall clock across processes); every admission, check, queue, wait and completion cost inside that span counts",
+  "summed_call_seconds": "sum of the physical attempts’ elapsed; reported separately, never a gate input"
+ },
+ "tokenizer": {
+  "cache_files": {
+   "fb374d419588a4632f3f557e76b4b70aebbca790": "446a9538cb6c348e3516120d7c08b09f57c36495e2acfffe59a5bf8b0cfb1a2d"
+  },
+  "encoding": "o200k_base",
+  "tiktoken": "0.14.0"
+ }
+}
