@@ -7,9 +7,9 @@ runs during a pilot call. Inputs are the per cell files pilot.py run writes (cel
 Per job: correct (accepted by the host's checks and equal to gold), incorrect (accepted, not equal) or unresolved
 (not accepted: failed, unresolved, awaiting verification). Rule-origin errors are incorrect rows with source "rule";
 fallback errors are incorrect rows of phase "fallback". Tokens are the host's charged tokens (input plus output; the
-shared bootstrap is charged in full to each of B and C); makespan is the host's charged makespan: the measured span
-from the first intake to the last delivery, plus, for the arm that imported the shared bootstrap, that bootstrap's
-complete recorded elapsed (never a bootstrap subtraction). The dry run scores its replay projection instead. Summed
+shared bootstrap is charged in full to each of B and C); makespan is the host's charged makespan (TIMING): the
+measured span from the first intake to the last delivery, every wait inside it, plus, for the arm that imported the
+shared bootstrap, that bootstrap's complete recorded elapsed. Nothing is subtracted (amendment 3 section 2). The dry run scores its replay projection instead. Summed
 physical call seconds are an extra metric only and never replace makespan (amendment 3 sections 2 and 3).
 
 Gates, in order (record 6):
@@ -64,9 +64,14 @@ GATE_TEXTS = {
                        'rules.'),
 }
 TIMING = {'makespan': 'first intake submission of the wave to the last terminal delivery of the arm (monotonic within '
-                      'one host process, wall clock across processes)',
-          'charged_makespan': 'makespan; the arm that imported the shared bootstrap adds its recorded elapsed (claim '
-                              'to final settlement of the 64 answers) and drops only its own wait for that bootstrap',
+                      'one host process, wall clock across processes); every admission, check, queue, wait and '
+                      'completion cost inside that span counts',
+          'charged_makespan': 'makespan plus, for the arm that imported the shared bootstrap, its complete '
+                              'recorded elapsed (claim to final settlement of the 64 answers, interrupted spans '
+                              'included); nothing is subtracted (no bootstrap wait subtraction, no floor, amendment 3 '
+                              'section 2); the gates score this value',
+          'interrupted_spans': 'a phase span whose process session ended before its end is kept and closed at the next '
+                               'later stamp of the wave (wall clock), else at the last stamp of its session',
           'summed_call_seconds': 'sum of the physical attempts’ elapsed; reported separately, never a gate input',
           'dry_run': 'replay projection: recorded elapsed per call list-scheduled on the slots'}
 HEADLINE = ('In preregistered Codex and Sonnet pilots, guarded rules reduced cold tokens per correct materials job by '
@@ -134,6 +139,7 @@ def summarize(jobs, counts, *, rule_errors, fallback_errors, rule_hits, report, 
            'usage': tokens['usage'],
            'tokens_per_correct': round(tokens['tokens'] / correct, 3) if correct else None,
            'makespan_s': round(float(span), 3),
+           'measured_makespan_s': round(float(report.get('measured_makespan_seconds', span) or 0.0), 3),
            'summed_call_seconds': round(float(summed_call_seconds if summed_call_seconds is not None else
                                               report.get('summed_call_seconds') or 0.0), 3),
            'jobs_per_min': round(jobs / (span / 60.0), 3) if span else None,

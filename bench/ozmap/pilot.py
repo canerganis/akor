@@ -2,27 +2,43 @@
 
     python bench/ozmap/pilot.py plan       the matrix and the frozen budget allocation per backend and bucket
     python bench/ozmap/pilot.py registry   (re)build bench/ozmap/registry.json from the oracle-labeled admission sets
-    python bench/ozmap/pilot.py dry        oz_host.dry_run over the full matrix with recorded real usage, zero calls
+    python bench/ozmap/pilot.py dry        the live driver over the full matrix with FAKE codex and claude executables
+                                           replaying recorded usage (zero model calls)
     python bench/ozmap/pilot.py identity   record each adapter's `--identity` (no model call; runs `<cli> --version`)
     python bench/ozmap/pilot.py freeze     fill the identity placeholders, then hash everything into freeze.json
-    python bench/ozmap/pilot.py telemetry --i-have-approval   the two paired Codex telemetry calls (guarded)
-    python bench/ozmap/pilot.py run --live --i-have-approval  the pilot (guarded: freeze, approval, telemetry, budget)
+    python bench/ozmap/pilot.py telemetry --i-have-approval --claude-weekly PCT   the two paired Codex telemetry calls
+    python bench/ozmap/pilot.py run --live --i-have-approval --claude-weekly PCT  the pilot (guarded)
+    python bench/ozmap/pilot.py quota --percent PCT [RUN_DIR]  record a newer Claude weekly usage reading for a run
     python bench/ozmap/pilot.py report [RUN_DIR]              gold scoring and the ordered gates (score.py)
 
 Standard library. Nothing here calls a model except `telemetry` and `run --live`, and both refuse unless freeze.json
-verifies against the current files and --i-have-approval is given.
+verifies against the current files and interpreter, --i-have-approval is given and a Claude weekly usage reading below
+99% is recorded for the launch batch.
+
+One driver (council 3 close, N2). `run --live` and `dry` run the same function, drive(): the same ArmHost, Scheduler,
+SlotPool, settlement, registry file loaded from disk, launch-time route verification, launch gate, oz_quota
+reservation, frozen max_wait and ChildLauncher children. The dry run differs only in its environment: a temporary
+directory holding fake `codex` and `claude` executables (fake_cli.py) comes first on PATH, the routes and the registry
+are built for that environment (so the route check sees the fake executables' hashes) and the run directory is
+temporary. The dry run also runs the paired telemetry through the fake codex. freeze records the hash of the dry run's
+deterministic output.
 
 Frozen configuration (DRIVER choices are listed in ASSUMPTIONS and printed by `plan`).
-  Codex   codex exec through examples/bootstrap_codex_adapter.json, model gpt-6.1-sol, effort medium
-  Sonnet  claude -p through examples/bootstrap_claude_adapter.json, model claude-sonnet-5-5, effort default
+  Codex   codex exec through examples/bootstrap_codex_adapter.json, model gpt-6.1-sol, effort medium, in a fresh empty
+          temporary working directory outside the repo; any tool, command, file or web event invalidates the call
+  Sonnet  claude -p through examples/bootstrap_claude_adapter.json, model claude-sonnet-5-5, effort default, tools off
   Budget  amendment 3 (owner decisions 2026-10-24): global cap 54; Codex 37 = telemetry 1, bootstraps 2, A 12,
           B residuals 8, C residuals 7, reserve 7 (the second telemetry invocation consumes one reserve call, leaving
           six); Sonnet 17 = telemetry 0, bootstrap 1, A 8, B residuals 4 (dedicated, never the reserve), C residuals 2,
           reserve 2. Audits, overflow, additional telemetry, preparation and permitted infrastructure retries consume
           the applicable reserve; every launch reserves first; exhaustion leaves the evidence incomplete.
   Quota   the 55% weekly launch guard is suspended for this build and pilot (owner decision 1, amendment 3 section 1;
-          ends when the pilot report is written). The 99% quota handoff rule stays a documented stop: at 99% Claude
-          weekly usage every launch stops and the work is handed off; oz_quota reservation discipline is unchanged.
+          ends when the pilot report is written). The 99% handoff stop binds every launch, telemetry and retries
+          included: there is no programmatic source of the Claude plan usage, so every launch batch (`telemetry`,
+          `run`) needs an explicit recorded reading (--claude-weekly PCT, later readings with `quota`), and the launch
+          gate refuses without a reading of the batch or at 99% or more. Every launch also reserves an oz_quota slot
+          (group ozmap-slot<k>, one per physical slot) before it starts and releases it only after its process tree
+          is verified gone.
   Host    one experiment-wide pool of 4 physical slots across every arm and backend, batches of at most 64 records,
           flush after 1 s, call_timeout_seconds 1200 (the child is killed with its process tree 120 s later),
           deadline_seconds 1800, max_input_tokens 1000000; the four producers of a wave submit from one barrier and a
@@ -36,6 +52,7 @@ import json
 import math
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
@@ -64,6 +81,7 @@ def _sibling(name):
 data = _sibling('data')
 oracle = _sibling('oracle')
 score = _sibling('score')
+fake_cli = _sibling('fake_cli')
 
 REGISTRY_FILE = HERE / 'registry.json'
 IDENTITY_FILE = HERE / 'identity.json'
@@ -77,8 +95,12 @@ CAPS = {'codex': {'telemetry': 1, 'bootstrap': 2, 'A': 12, 'B': 8, 'C': 7, 'rese
         'sonnet': {'telemetry': 0, 'bootstrap': 1, 'A': 8, 'B': 4, 'C': 2, 'reserve': 2}}
 HOST = {'slots': 4, 'max_records': 64, 'max_wait': 1.0, 'intake': {'producers': 4, 'per_producer': 64},
         'limits': {'call_timeout_seconds': 1200, 'deadline_seconds': 1800, 'max_input_tokens': 1000000}}
-QUOTA_STOP = ('99% Claude weekly usage: stop every launch and hand off (owner rule); the 55% launch guard is '
-              'suspended by owner decision 1 and amendment 3 until the pilot report is written')
+HANDOFF_PERCENT = 99.0
+QUOTA_GROUP = 'ozmap'
+READINGS = 'quota_readings.jsonl'
+QUOTA_STOP = ('99% Claude weekly usage: stop every launch and hand off (owner rule); enforced by the launch gate from '
+              'an explicit reading recorded per launch batch; the 55% launch guard is suspended by owner decision 1 '
+              'and amendment 3 until the pilot report is written')
 # Normative documents in precedence order (amendment 3 section 4): a later entry supersedes conflicting text in an
 # earlier one.
 NORMATIVE = ('docs/design/brainstorm-2026-10-24/05-joint-record.md',
@@ -108,6 +130,15 @@ LEDGERS_32 = {'codex': LEDGERS['codex'], 'sonnet': REPO / 'bench' / 'live' / 'da
 # rule output (AST bytes / 3) plus a reasoning allowance. Elapsed scales with output tokens.
 BOOTSTRAP_REASONING_ALLOWANCE = 2000
 CHARS_PER_TOKEN, AST_BYTES_PER_TOKEN = 4.0, 3.0
+# Usage semantics per backend (Astra blocker 1: a backend's telemetry never certifies another backend).
+CODEX_REQUIRED = ('input_tokens', 'cached_input_tokens', 'output_tokens', 'reasoning_output_tokens')
+# The components each CLI reports on every call (a missing one leaves a cell's evidence incomplete). The Claude CLI has
+# no reasoning counter (thinking is billed inside output_tokens); Codex reports cache writes only optionally.
+USAGE_COMPONENTS = {'codex': CODEX_REQUIRED,
+                    'sonnet': ('input_tokens', 'cached_input_tokens', 'cache_creation_input_tokens', 'output_tokens')}
+SONNET_SEMANTICS = ('adapter-constructed inclusive input, not telemetry-certified (Sonnet telemetry allocation 0): the '
+                    'frozen claude_cli_adapter sums inputTokens + cacheReadInputTokens + cacheCreationInputTokens of '
+                    'every modelUsage entry into input_tokens; the Codex telemetry does not certify it')
 
 ASSUMPTIONS = [
     'Materials is ONE workload of four operations (e, b, m, v): one shared bootstrap per backend proposes a rule or '
@@ -124,20 +155,25 @@ ASSUMPTIONS = [
     'Op texts are MAT_D verbatim, including "c[N]\'s" in e (live11.py rewrote it to "the ref\'s"; not done here).',
     'BoolQ op text and goal are new (data.BOOLQ_OP_TEXT, data.BOOLQ_GOAL); BoolQ runs on Codex only, cold only.',
     'BoolQ is the SuperGLUE distribution of the BoolQ validation split (owner approved; the Google bucket returned '
-    '403); its labels are the dataset annotations, used for the 64 admission cases and for scoring only.',
+    '403); its labels are the dataset annotations, used for the 64 admission cases and for scoring only; no admission '
+    'row shares a passage with an evaluation row.',
     'Allocation (amendment 3): Codex reserve 7 = second telemetry invocation 1 + 6 for retries and overflow; Sonnet B '
     'has 4 dedicated residual calls (one per producer) and never uses the Sonnet reserve as its nominal allocation; '
     'Sonnet materials A, B and C form one cell with one shared bootstrap.',
     'No 55% weekly launch guard (owner decision 1); the 99% handoff stop and the frozen caps still bind.',
-    'Dry-run replay answers are the oracle answers (a perfect model) and the rules are the spec\'s worked E/B/M/V '
+    'The dry run is the live driver with fake codex and claude executables first on PATH (bench/ozmap/fake_cli.py); '
+    'their answers are the oracle and dataset answers (a perfect model) and their rules the spec\'s worked E/B/M/V '
     'ASTs, so the projection is an upper bound on coverage and correctness.',
-    'Dry-run usage: every replayed call costs a recorded 64-job call of that backend, also the smaller residual and '
-    'audit calls (conservative for B and C); BoolQ calls use the materials samples too, so BoolQ input tokens are '
-    'underestimated by roughly the passage text.',
+    'Dry-run usage: every replayed call costs a recorded 64-job call of that backend, chosen by the call\'s content '
+    '(deterministic), also the smaller residual and audit calls (conservative for B and C); BoolQ calls use the '
+    'materials samples too, so BoolQ input tokens are underestimated by roughly the passage text.',
     'Bootstrap usage is an estimate (recorded 64-job call + shim system text + rule bytes + reasoning allowance).',
     'Dry-run makespans are replay projections (recorded 64-job elapsed per call, list-scheduled on 4 slots); the '
     'gates score measured makespan live; summed physical call seconds are reported separately and never replace '
     'makespan (amendment 3 sections 2 and 3).',
+    'Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls '
+    'report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens grows. '
+    'Sonnet usage semantics are the adapter construction, not telemetry.',
     'Gate readings: "preserves correctness" = C gold-correct count >= A; BoolQ "adds no gold errors" = C not-correct '
     'count <= A; the headline needs all five gates.',
 ]
@@ -161,6 +197,10 @@ def _write(path, obj):
 
 def _rel(path):
     return Path(path).resolve().relative_to(REPO).as_posix()
+
+
+def _digest(obj):
+    return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False, separators=(',', ':')).encode()).hexdigest()
 
 
 # --------------------------------------------------------------------------------------------------- routes
@@ -203,48 +243,64 @@ def route(backend, identity=None):
         if eff['backend'] != cfg['route_backend']:
             raise ValueError(f'{backend}: identity backend {eff["backend"]!r}')
         if eff['flags'] != flags:
-            raise ValueError(f'{backend}: identity flags {eff["flags"]} differ from the sources {flags}')
+            raise ValueError(f'{backend}: identity flags {eff["flags"]} differ from the sources {flags}; the '
+                             'identity record is stale, run `pilot.py identity` again')
         cli = eff['cli_version']
+    return static_route(backend, cli)
+
+
+def static_route(backend, cli=PLACEHOLDER):
+    """The route computed from the sources alone (cli_version given)."""
+    import oz_route
+    cfg = BACKENDS[backend]
     return {'adapter_hash': oz_route.adapter_hash(cfg['adapter']), 'backend': cfg['route_backend'],
             'model': cfg['model'], 'effort': cfg['effort'], 'cli_version': cli,
-            'environment_hash': oz_route.environment_hash(cfg['adapter'], flags, route_env(backend))}
+            'environment_hash': oz_route.environment_hash(cfg['adapter'], static_flags(backend), route_env(backend))}
 
 
-def _routes():
-    if not ROUTES_FILE.exists():
+def _routes(path=None):
+    path = Path(path) if path is not None else ROUTES_FILE
+    if not path.exists():
         return {}
-    return json.loads(ROUTES_FILE.read_text(encoding='utf-8'))
+    return json.loads(path.read_text(encoding='utf-8'))
 
 
-def build_routes(run=subprocess.run):
-    """routes.json: for each backend the WHOLE oz_route.build result (route, worker_hash, launch snapshot, do_route)
-    computed in the child environment the host launches with. No model call (the adapter's --identity)."""
+def child_env(backend, base=None, extra=None):
     import oz_host
+    cfg = BACKENDS[backend]
+    return oz_host.child_env(model=cfg['model'], effort=cfg['host_effort'], base=base, extra=extra)
+
+
+def build_routes(run=subprocess.run, env=None, path=None):
+    """The routes document: for each backend the WHOLE oz_route.build result (route, worker_hash, launch snapshot,
+    do_route) computed in the child environment the host launches with (env: the base environment, default
+    os.environ). Written to path (default routes.json). No model call (the adapter's --identity)."""
     import oz_route
     doc = {}
     for backend, cfg in BACKENDS.items():
-        env = oz_host.child_env(model=cfg['model'], effort=cfg['host_effort'])
-        doc[backend] = oz_route.build(cfg['adapter'], model=cfg['model'], effort=cfg['effort'], run=run, env=env)
-    _write(ROUTES_FILE, doc)
+        doc[backend] = oz_route.build(cfg['adapter'], model=cfg['model'], effort=cfg['effort'], run=run,
+                                      env=child_env(backend, env))
+    _write(Path(path) if path is not None else ROUTES_FILE, doc)
     return doc
 
 
-def route_check(backend):
+def route_check(backend, routes=None):
     """The host's launch-time route check: oz_route.verify of the frozen build result in the real launch env."""
     cfg = BACKENDS[backend]
-    frozen = _routes().get(backend)
+    frozen = (routes if routes is not None else _routes()).get(backend)
     if frozen is None:
         raise SystemExit(f'refused: no frozen route for {backend} (run `pilot.py freeze`)')
     return {'frozen': frozen, 'adapter': str(cfg['adapter']), 'model': cfg['model'], 'effort': cfg['effort']}
 
 
 def pilot_config(mode, routes, usage_semantics):
-    """The frozen host configuration (oz_host.check_pilot): caps, global cap, slots, limits, intake, routes."""
+    """The frozen host configuration (oz_host.check_pilot): caps, global cap, slots, limits, intake, routes, the
+    declared usage semantics and the usage components each backend's CLI must report on every call."""
     import oz_host
     return {'schema': oz_host.PILOT_SCHEMA, 'mode': mode, 'global_cap': GLOBAL_CAP, 'caps': CAPS,
             'slots': HOST['slots'], 'max_records': HOST['max_records'], 'max_wait': HOST['max_wait'],
             'intake': dict(HOST['intake']), 'limits': dict(HOST['limits']), 'usage_semantics': usage_semantics,
-            'routes': routes}
+            'usage_components': {b: list(c) for b, c in USAGE_COMPONENTS.items()}, 'routes': routes}
 
 
 # ------------------------------------------------------------------------------------------------- registry
@@ -279,10 +335,11 @@ def provenance(labeler, method):
             'synthesis_agents': [BACKENDS[b]['model'] for b in BACKENDS]}
 
 
-def operations(backend, boolq_source):
-    """build_manifest operations for one backend. boolq_source: data.boolq() (or the dry stand-in) or None."""
+def operations(backend, boolq_source, rt=None):
+    """build_manifest operations for one backend. boolq_source: data.boolq() (or the dry stand-in) or None. rt: the
+    route (default: the frozen or identity-filled route of this checkout)."""
     cases = data.admission_cases(oracle)
-    rt = route(backend, _identity(backend))
+    rt = dict(rt) if rt is not None else route(backend, _identity(backend))
     labeler = f'bench/ozmap/oracle.py sha256:{_sha_file(HERE / "oracle.py")}'
     ops = {}
     for op in data.OPS:
@@ -304,22 +361,56 @@ def operations(backend, boolq_source):
     return ops
 
 
-def build_manifests(boolq_source):
+def build_manifests(boolq_source, routes=None):
+    """{backend: manifest}; routes: optional {backend: route dict} (default: route() of each backend)."""
     import oz_registry
     checks = check_definitions()
-    return {b: oz_registry.build_manifest(operations(b, boolq_source), checks, APPROVED_BY) for b in BACKENDS}
+    return {b: oz_registry.build_manifest(operations(b, boolq_source, (routes or {}).get(b)), checks, APPROVED_BY)
+            for b in BACKENDS}
+
+
+def registry_doc(boolq_source, routes=None):
+    """The registry-set document (registry.json) for these routes."""
+    import oz_registry
+    manifests = build_manifests(boolq_source, routes)
+    placeholders = sorted(f'{b}: route.cli_version' for b in BACKENDS
+                          if manifests[b]['operations']['e']['route']['cli_version'] == PLACEHOLDER)
+    q = boolq_source
+    return {'schema': 'ozmap.registry-set/1',
+            'boolq': 'available' if q and q.get('available') else 'stand-in' if q and q.get('standin') else
+            'unavailable',
+            'placeholders': placeholders, 'manifests': manifests,
+            'manifest_sha256': {b: oz_registry.digest(m) for b, m in manifests.items()}}
 
 
 def build_registry_file():
-    import oz_registry
     q = data.boolq()
-    manifests = build_manifests(q if q['available'] else None)
-    placeholders = sorted(f'{b}: route.cli_version' for b in BACKENDS if _identity(b) is None)
-    doc = {'schema': 'ozmap.registry-set/1', 'boolq': 'available' if q['available'] else q['reason'],
-           'placeholders': placeholders, 'manifests': manifests,
-           'manifest_sha256': {b: oz_registry.digest(m) for b, m in manifests.items()}}
+    doc = registry_doc(q if q['available'] else None)
+    if not q['available']:
+        doc['boolq'] = q['reason']
     _write(REGISTRY_FILE, doc)
     return doc
+
+
+def registry_problems(path=None):
+    """[] when the registry file is exactly what the builder makes for the routes it carries (so a dry registry that
+    differs from it only by route is the same registry)."""
+    path = Path(path) if path is not None else REGISTRY_FILE
+    if not path.exists():
+        return [f'{path.name} is missing (run `pilot.py registry`)']
+    doc = json.loads(path.read_text(encoding='utf-8'))
+    q = data.boolq()
+    try:
+        routes = {b: doc['manifests'][b]['operations']['e']['route'] for b in BACKENDS}
+        want = registry_doc(q if q['available'] else None, routes)
+    except (KeyError, TypeError, ValueError) as exc:
+        return [f'{path.name} cannot be rebuilt: {type(exc).__name__}: {exc}']
+    if not q['available']:
+        want['boolq'] = q['reason']
+    if {k: v for k, v in doc.items() if k != 'placeholders'} != {k: v for k, v in want.items() if k != 'placeholders'}:
+        return [f'{path.name} differs from the builder for its own routes (stale data, contracts or checks; run '
+                '`pilot.py registry` or `freeze`)']
+    return []
 
 
 def load_registry(backend, doc=None):
@@ -459,12 +550,10 @@ def print_plan(p):
 
 # ------------------------------------------------------------------------------------------- recorded usage
 
-def _usage(sample):
-    return {k: v for k, v in sample.items()}
-
 
 def recorded_usage():
-    """{backend: {"call": [...], "bootstrap": [...]}} from real 64-job ledgers, plus the bootstrap estimate."""
+    """{backend: {"call": [...], "bootstrap": [...]}} from real 64-job ledgers, plus the bootstrap estimate. A Sonnet
+    sample keeps its raw components ("raw"), which the fake claude reports as modelUsage."""
     import bootstrap_shim
     out = {}
     calls = []
@@ -485,6 +574,8 @@ def recorded_usage():
             calls.append({'input_tokens': r['in'], 'cached_input_tokens': r['cache_read'],
                           'cache_creation_input_tokens': r['cache_write'], 'output_tokens': r['out'],
                           'reasoning_output_tokens': r['thinking'], 'elapsed_seconds': r['wall_s'],
+                          'raw': {'in_uncached': r['in'] - r['cache_read'] - r['cache_write'],
+                                  'cache_read': r['cache_read'], 'cache_write': r['cache_write'], 'out': r['out']},
                           'source': f"{_rel(LEDGERS['sonnet'])} seq {r['seq']}"})
     out['sonnet'] = {'call': calls}
     config = {'schema': 'oz.bootstrap.config/2', 'ops': list(data.OPS),
@@ -501,6 +592,9 @@ def recorded_usage():
                      elapsed_seconds=round(c['elapsed_seconds'] * (c['output_tokens'] + extra_out)
                                            / max(1, c['output_tokens']), 3),
                      source='estimate: ' + c['source'] + f' + {extra_in} system tokens + {extra_out} output tokens')
+            if 'raw' in c:
+                b['raw'] = dict(c['raw'], in_uncached=c['raw']['in_uncached'] + extra_in,
+                                out=c['raw']['out'] + extra_out)
             boots.append(b)
         out[backend]['bootstrap'] = boots
     out['_estimate'] = {'bootstrap_added_system_chars': added_chars, 'bootstrap_extra_input_tokens': extra_in,
@@ -528,148 +622,634 @@ def elapsed_sensitivity():
     return out
 
 
+# ---------------------------------------------------------------------------------- quota and the handoff stop
+
+def _percent(text):
+    try:
+        value = float(str(text).strip().rstrip('%'))
+    except (TypeError, ValueError):
+        return None
+    return value if 0 <= value <= 100 else None
+
+
+def record_reading(run_dir, percent, source, session):
+    """Append one explicit Claude weekly usage reading to the run's quota_readings.jsonl (there is no programmatic
+    source of the plan usage; the owner reads it and passes it)."""
+    value = _percent(percent)
+    if value is None:
+        raise SystemExit(f'refused: {percent!r} is not a weekly usage percentage 0..100')
+    path = Path(run_dir) / READINGS
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, 'a', encoding='utf-8', newline='\n') as f:
+        f.write(json.dumps({'percent': value, 'source': source, 'session': session, 'at': time.time()},
+                           sort_keys=True) + '\n')
+    return value
+
+
+def readings(run_dir):
+    path = Path(run_dir) / READINGS
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding='utf-8').splitlines() if line.strip()]
+
+
+def launch_gate_for(budget, run_dir=None, session=None):
+    """The launch gate of every pilot launch, telemetry and retries included: the frozen global cap and, with a run
+    directory, the 99% handoff stop (council 3 close, N3/B9): a launch needs a reading recorded for this launch batch
+    (session), and the newest reading of the run must be below 99%. No 55% weekly guard (owner decision 1)."""
+    def gate(view):
+        if budget.usage()['total'] >= GLOBAL_CAP:
+            return 'global_cap_reached'
+        if run_dir is None:
+            return None
+        found = readings(run_dir)
+        if not any(r.get('session') == session for r in found):
+            return ('quota_reading_missing: record the Claude weekly usage read just now for this launch batch '
+                    '(--claude-weekly PCT); there is no programmatic source')
+        latest = found[-1]['percent']
+        if latest >= HANDOFF_PERCENT:
+            return f'quota_handoff_99: Claude weekly usage {latest:g}% reached {HANDOFF_PERCENT:g}%; stop and hand off'
+        return None
+    return gate
+
+
+# -------------------------------------------------------------------- dependency closure (council 3 close, B11)
+
+CLOSURE_PROBE = r'''
+import hashlib, json, os, sys
+adapter_dir, scripts = sys.argv[1], sys.argv[2:]
+sys.path.insert(0, adapter_dir)
+import importlib.util
+for name in scripts:
+    spec = importlib.util.spec_from_file_location(name[:-3] if name.endswith('.py') else name,
+                                                  os.path.join(adapter_dir, name))
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+modules, unresolved = [], []
+for name in sorted(sys.modules):
+    if name == '__main__':
+        continue  # the probe itself
+    m = sys.modules[name]
+    path = getattr(m, '__file__', None)
+    if path is None:
+        spec = getattr(m, '__spec__', None)
+        origin = getattr(spec, 'origin', None) if spec is not None else None
+        kind = origin if origin in ('built-in', 'frozen') else 'namespace' if spec is not None else 'unknown'
+        if kind == 'unknown':
+            unresolved.append(name)
+        modules.append([name, kind, None, None])
+        continue
+    try:
+        with open(path, 'rb') as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        unresolved.append(name)
+        digest = None
+    modules.append([name, 'file', os.path.normcase(os.path.realpath(path)), digest])
+with open(sys.executable, 'rb') as f:
+    exe = hashlib.sha256(f.read()).hexdigest()
+print(json.dumps({'executable': os.path.normcase(os.path.realpath(sys.executable)), 'executable_sha256': exe,
+                  'version': sys.version, 'implementation': sys.implementation.name, 'prefix': sys.prefix,
+                  'base_prefix': sys.base_prefix, 'modules': modules, 'unresolved': unresolved}))
+'''
+
+
+def dependency_closure(backend, env=None, run=subprocess.run):
+    """The executable dependency closure of a backend's adapter as the LAUNCHED interpreter sees it: argv[0] resolved
+    on the launch PATH (as oz_route.executables does), run in the launch environment from the adapter directory,
+    importing the adapter's Python scripts exactly as `python <script>` would, then every loaded module with its file
+    and sha256 (stdlib, site-packages and repo files alike), the interpreter's path, sha256 and version."""
+    cfg = BACKENDS[backend]
+    argv = json.loads(cfg['adapter'].read_text(encoding='utf-8'))['argv']
+    env = dict(os.environ if env is None else env)
+    program = shutil.which(argv[0], path=env.get('PATH'))
+    if program is None:
+        return {'error': f'{argv[0]} is not on the launch PATH', 'unresolved': [argv[0]]}
+    scripts = [a for a in argv[1:] if a.endswith('.py')]
+    with_real = scripts + [s for s in [f'{cfg["real"]}.py'] if s not in scripts]
+    done = run([program, '-c', CLOSURE_PROBE, str(cfg['adapter'].parent), *with_real], cwd=str(cfg['adapter'].parent),
+               env=env, capture_output=True, text=True, encoding='utf-8', timeout=120, stdin=subprocess.DEVNULL)
+    if done.returncode != 0:
+        return {'error': f'the closure probe exited {done.returncode}: {(done.stderr or "")[-300:]}',
+                'unresolved': ['<probe>']}
+    return json.loads(done.stdout)
+
+
+def closure_problems(record):
+    if not isinstance(record, dict):
+        return ['no dependency closure recorded']
+    problems = []
+    if record.get('error'):
+        problems.append(record['error'])
+    if record.get('unresolved'):
+        problems.append('unresolved modules: ' + ', '.join(record['unresolved'][:10]))
+    return problems
+
+
+def interpreter_record():
+    """The interpreter running this driver (it starts every host child: ChildLauncher uses sys.executable)."""
+    exe = Path(sys.executable).resolve()
+    return {'executable': os.path.normcase(str(exe)), 'sha256': _sha_file(exe), 'version': sys.version,
+            'implementation': sys.implementation.name, 'base_prefix': sys.base_prefix}
+
+
+# ---------------------------------------------------------------------------- telemetry (Astra blocker 1)
+
+def certify_codex(results, worker_hash):
+    """(status, evidence) of the paired Codex telemetry. ok only with backend-specific evidence of inclusive cached
+    accounting: two calls on the frozen route (worker hash) with the same system and prompt hashes, every required
+    component present as a count (input, cached, output, reasoning), cached <= input and reasoning <= output in each,
+    input_tokens equal and cached_input_tokens grown on the repeat (a cache hit that leaves the input total unchanged
+    is inclusion; exclusive accounting would drop the input total by the cached growth). Inequalities alone never
+    certify; an empty or partial usage never certifies; leakage never certifies."""
+    problems = []
+    calls = []
+    for r in results:
+        if r.get('refused'):
+            problems.append(f"{r['key']}: refused ({r['refused']})")
+            continue
+        if r.get('worker_hash') != worker_hash:
+            problems.append(f"{r['key']}: not on the frozen codex route")
+        if r.get('leakage'):
+            problems.append(f"{r['key']}: tool use in the event stream")
+        if len(r.get('calls') or []) != 1:
+            problems.append(f"{r['key']}: {len(r.get('calls') or [])} core calls (one expected)")
+            continue
+        calls.append(r['calls'][0])
+    for c in calls:
+        u = c.get('usage')
+        if not isinstance(u, dict) or any(type(u.get(k)) is not int or u[k] < 0 for k in CODEX_REQUIRED):
+            problems.append(f"call {c.get('call_id')}: a required usage component is missing or not a count "
+                            f"({sorted(u) if isinstance(u, dict) else u})")
+            continue
+        if u['cached_input_tokens'] > u['input_tokens'] or u['reasoning_output_tokens'] > u['output_tokens']:
+            problems.append(f"call {c.get('call_id')}: a component exceeds its total")
+    evidence = {'calls': [{k: c.get(k) for k in ('call_id', 'usage', 'system_sha256', 'prompt_sha256',
+                                                  'usage_source')} for c in calls]}
+    if len(calls) == 2 and not problems:
+        a, b = calls[0], calls[1]
+        if not a.get('prompt_sha256') or (a.get('system_sha256'), a.get('prompt_sha256')) != \
+                (b.get('system_sha256'), b.get('prompt_sha256')):
+            problems.append('the two telemetry prompts are not identical (system and prompt hashes)')
+        ua, ub = a['usage'], b['usage']
+        if ua['input_tokens'] != ub['input_tokens']:
+            problems.append(f"input_tokens changed on the identical repeat ({ua['input_tokens']} -> "
+                            f"{ub['input_tokens']}): not inclusive or not identical")
+        if ub['cached_input_tokens'] <= ua['cached_input_tokens']:
+            problems.append('cached_input_tokens did not grow on the identical repeat: inclusion not shown')
+        evidence['inclusion'] = {'input_tokens': [ua['input_tokens'], ub['input_tokens']],
+                                 'cached_input_tokens': [ua['cached_input_tokens'], ub['cached_input_tokens']]}
+    elif len(calls) != 2 and not problems:
+        problems.append(f'{len(calls)} telemetry calls with usage (two expected)')
+    evidence['problems'] = problems
+    return ('ok' if not problems else 'unverified'), evidence
+
+
+def usage_semantics(routes, doc, freeze_sha256=None):
+    """{backend: declared usage semantics}. Codex is certified only by its own telemetry on its own frozen route (and,
+    live, the same freeze); Sonnet is the adapter construction. Nothing certifies across backends."""
+    codex = 'unverified'
+    ok = (isinstance(doc, dict) and doc.get('status') == 'ok' and doc.get('backend') == 'codex'
+          and doc.get('worker_hash') == (routes.get('codex') or {}).get('worker_hash')
+          and (freeze_sha256 is None or doc.get('freeze_sha256') == freeze_sha256))
+    if ok:
+        codex = (f"inclusive cached accounting certified by paired identical-prompt telemetry {doc.get('run_dir')} on "
+                 f"worker {doc['worker_hash'][:12]}; reasoning_output_tokens reported within output_tokens (bounded, "
+                 'not certified); tokens = input_tokens + output_tokens')
+    return {'codex': codex, 'sonnet': SONNET_SEMANTICS}
+
+
+def _guarded_call(ctx, *, key, buckets, request, evidence, backend='codex', arm='T', kind='telemetry'):
+    """One physical call outside an arm host (telemetry), through the same discipline as ArmHost._launch: launch gate
+    (cap and 99% stop), route verification, experiment slot, oz_quota slot, budget reservation, ChildLauncher with the
+    verified process tree, the core ledger read after the child whatever happened, every adapter envelope harvested."""
+    import oz_host
+    import oz_route
+    cfg = BACKENDS[backend]
+    check = route_check(backend, ctx['routes'])
+    out = {'key': key, 'worker_hash': check['frozen']['worker_hash'], 'calls': [], 'envelopes': [], 'leakage': []}
+    refusal = ctx['gate'](None)
+    if refusal:
+        return dict(out, refused=refusal)
+    env = child_env(backend, ctx['env'], {'OZ_ENVELOPE_PATH': str(Path(evidence) / 'adapter-envelope.json')})
+    try:
+        oz_route.verify(check['frozen'], {k: v for k, v in check.items() if k != 'frozen'}, env=env)
+    except Exception as exc:  # noqa: BLE001 - any failure blocks the launch
+        return dict(out, refused='route_unverified: ' + str(exc)[:300])
+    pool, quota, budget = ctx['pool'], ctx['quota'], ctx['budget']
+    lock = pool.acquire()
+    group = f'{QUOTA_GROUP}-slot{lock.slot}'
+    ws = Path(ctx['run_dir']) / 'telemetry' / 'ws'
+    got = quota.acquire(group, run_dir=ws / 'do' / key, receipt=key)
+    if got.get('status') != 'acquired':
+        pool.release(lock)
+        return dict(out, refused=f"quota_held: {got.get('reason')}")
+    bucket = budget.reserve(key, backend=backend, buckets=buckets, arm=arm, kind=kind)
+    if bucket is None:
+        quota.release(group, got['token'])
+        pool.release(lock)
+        return dict(out, refused='budget_exhausted')
+    launcher = oz_host.ChildLauncher(cfg['adapter'])
+    spec = {'workspace': str(ws), 'request': request, 'max_calls': 1, 'route': oz_host.identity_for(
+        check['frozen']['route'])['do_route'], 'experimental_sizes': [],
+        'child_timeout': oz_host.child_timeout(HOST['limits'])}
+    verified = None
+    try:
+        execution, meta = launcher(spec, env, Path(evidence))
+        verified = (meta.get('tree') or {}).get('verified')
+    finally:
+        if verified is not False:
+            quota.release(group, got['token'])
+            pool.release(lock)
+        else:
+            ctx.setdefault('retained', []).append({'key': key, 'lock': lock, 'quota': (group, got['token'])})
+    run = ws / 'do' / key
+    core = oz_host._ledger_calls(run)
+    envelopes = oz_host._run_envelopes(run, [('attempt:' + key, Path(evidence) / 'adapter-envelope.json')])
+    by_receipt = {}
+    for receipt, env_ in envelopes.items():
+        ev = oz_host.envelope_evidence(env_['raw'])
+        by_receipt[receipt] = ev
+        out['envelopes'].append({'receipt': receipt, 'exit_code': env_['exit_code'], 'kind': ev['kind'],
+                                 'usage': ev['usage'], 'leakage': ev['leakage'],
+                                 'sha256': hashlib.sha256(env_['raw']).hexdigest()})
+        if ev['leakage']:
+            out['leakage'].append({'receipt': receipt, 'leakage': ev['leakage']})
+    for c in core:
+        call = dict(c, usage_source='core_ledger')
+        ev = by_receipt.get(c.get('receipt'))
+        if call.get('usage') is None and ev is not None and ev['usage'] is not None:
+            call.update(usage=ev['usage'], usage_source='adapter_envelope:' + c['receipt'])  # failed call: kept
+        out['calls'].append(call)
+    out.update(bucket=bucket, meta=meta, status=(execution or {}).get('status'), tree_verified=verified,
+               unresolved=[c['call_id'] for c in out['calls'] if c.get('usage') is None])
+    return out
+
+
+def run_telemetry(ctx):
+    """The two paired Codex telemetry calls: ONE identical request (the first telemetry job) sent twice under two
+    request ids, each through _guarded_call. Writes and returns the telemetry document."""
+    from oz_workspace import initialize
+    import oz_host
+    ws = Path(ctx['run_dir']) / 'telemetry' / 'ws'
+    if not (ws / 'oz.json').exists():
+        initialize(ws)
+    job = data.materials()['telemetry'][0]
+    cfg = BACKENDS['codex']
+    results = []
+    for key, buckets in TELEMETRY_KEYS:
+        request = {'v': 'oz.do/1', 'request_id': key, 'goal': data.MAT_GOAL, 'ops': {job['op']: data.MAT_D[job['op']]},
+                   'refs': {'r0': oracle.resolve(job['text'])}, 'jobs': [['j0', job['op'], 'r0']],
+                   'profile': oz_host.PROFILE, 'allow_experimental': True, 'max_inline_bytes': oz_host.MAX_INLINE,
+                   'max_attempts': 1, 'max_jobs_per_call': 1, 'max_input_tokens': 1000000, 'model': cfg['model']}
+        results.append(_guarded_call(ctx, key=key, buckets=buckets, request=request,
+                                     evidence=Path(ctx['run_dir']) / 'telemetry' / key))
+    worker = route_check('codex', ctx['routes'])['frozen']['worker_hash']
+    status, evidence = certify_codex(results, worker)
+    doc = {'status': status, 'backend': 'codex', 'worker_hash': worker, 'freeze_sha256': ctx.get('freeze_sha256'),
+           'run_dir': str(ctx['run_dir']) if ctx['mode'] != 'live' else _rel(ctx['run_dir']), 'evidence': evidence,
+           'results': results, 'leakage': [x for r in results for x in r['leakage']]}
+    _write(ctx['telemetry_file'], doc)
+    return doc
+
+
+# -------------------------------------------------------------------------------------- the one driver (N2)
+
+def preflight(ctx):
+    """Problems that refuse a run before any launch: every backend's registry route is its frozen route, oz_route.verify
+    of that route passes in the launch environment, the launched interpreter's dependency closure equals the frozen
+    one and has no unresolved entry, the frozen route has no unversioned dependency, and the static leakage lint."""
+    import oz_route
+    problems = []
+    doc = ctx['registry']
+    for backend, cfg in BACKENDS.items():
+        check = route_check(backend, ctx['routes'])
+        if doc['manifests'][backend]['operations']['e']['route'] != check['frozen']['route']:
+            problems.append(f'the registry route of {backend} is not the frozen route (D7)')
+        env = child_env(backend, ctx['env'])
+        try:
+            oz_route.verify(check['frozen'], {k: v for k, v in check.items() if k != 'frozen'}, env=env)
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f'{backend}: {exc}')
+        loose = [e for e in (check['frozen'].get('launch') or {}).get('externals') or []
+                 if e[2] in ('unversioned', None) or e[1] == 'declared-external']
+        if loose:
+            problems.append(f'{backend}: unversioned dependencies in the frozen route: {loose}')
+        now = dependency_closure(backend, env)
+        problems += [f'{backend}: {p}' for p in closure_problems(now)]
+        frozen = (ctx.get('closure') or {}).get(backend)
+        if frozen is None:
+            problems.append(f'{backend}: no frozen dependency closure')
+        elif now != frozen:
+            problems.append(f'{backend}: the launched interpreter\'s dependency closure differs from the freeze')
+    problems += leakage_problems()
+    return problems
+
+
+def drive(ctx):
+    """The pilot driver shared by `run --live` and `dry` (council 3 close, N2): the matrix through ArmHost with
+    ChildLauncher children, the registry loaded from its file, the frozen pilot configuration (max_wait 1 s), the
+    launch-time route check, the launch gate and oz_quota. Writes cells/, budget.json and manifest.json in the run
+    directory and returns {"cells": [...], "manifest"}."""
+    import oz_host
+    run_dir = Path(ctx['run_dir'])
+    doc = ctx['registry']
+    budget, pool, routes = ctx['budget'], ctx['pool'], ctx['routes']
+    semantics = ctx['semantics']
+    config = pilot_config(ctx['mode'], routes, semantics)
+    q = data.boolq()
+    mat = data.materials()
+    manifest = {'mode': ctx['mode'], 'freeze_sha256': ctx.get('freeze_sha256'), 'session': ctx['session'],
+                'gold_accessed_during_run': None, 'leakage_problems': leakage_problems(),
+                'boolq': 'available' if q['available'] else q['reason'], 'started_at': time.time(), 'cells': []}
+    if manifest['leakage_problems']:
+        raise SystemExit('refused: leakage or wave overlap before launch: ' + '; '.join(manifest['leakage_problems']))
+    _write(run_dir / 'manifest.json', manifest)
+    cells, leaks = [], list((ctx.get('telemetry') or {}).get('leakage') or [])
+    try:
+        for spec in matrix_spec(q['available']):
+            if spec.get('available') is False:
+                manifest['cells'].append({'id': spec['id'], 'status': 'unavailable'})
+                continue
+            backend = spec['backend']
+            cfg = BACKENDS[backend]
+            registry = load_registry(backend, doc)
+            rt = doc['manifests'][backend]['operations']['e']['route']
+            order = oz_host.arm_order(SEED, backend, spec['workload'], spec['arms'])
+            hosts = {}
+            try:
+                for arm in order:
+                    hosts[arm] = oz_host.ArmHost(
+                        arm=arm, backend=backend, workload=spec['workload'], experiment_dir=run_dir,
+                        launcher=oz_host.ChildLauncher(cfg['adapter']), op=spec['op'], op_text=spec.get('op_text'),
+                        goal=spec['goal'], model=cfg['model'], effort=cfg['host_effort'],
+                        identity=dict(oz_host.identity_for(rt), launch=routes[backend].get('launch')),
+                        registry=registry, seed=SEED if arm != 'A' else None,
+                        budget=budget, slots=HOST['slots'], max_records=HOST['max_records'],
+                        max_wait=HOST['max_wait'], limits=HOST['limits'], allow_experimental=True, slot_pool=pool,
+                        route_check=route_check(backend, routes), pilot=config,
+                        usage_semantics=oz_host.semantics_for(config, backend), hooks={'launch_gate': ctx['gate']},
+                        base_env=ctx['env'], quota=ctx['quota'], quota_group=QUOTA_GROUP)
+                for name, learn, arms in spec['waves']:
+                    producers = mat['waves'][name] if spec['workload'] == 'materials' else q['waves'][name]
+                    for arm in [a for a in order if a in (arms or order)]:
+                        host = hosts[arm]
+                        subs = {p: f's{name}{arm}{p}'[:64] for p in producers}
+                        oz_host.submit_barrier(host, name, producers, subs.get)  # four producers, one barrier
+                        report = host.run_wave(name, learn=learn)
+                        rows = [r for p, s in subs.items() for r in host.collect(p, s)]
+                        texts = {r['delivery']: r['text_sha256'] for r in host.ledger.plan(name)}
+                        attempts = [{'attempt_id': a['attempt_id'], 'round': a['round'], 'state': a['state'],
+                                     'outcome': a['outcome'], 'call_ids': a['call_ids'], 'records': a['records'],
+                                     'elapsed': a['elapsed'], 'text_sha256': [texts.get(x) for x in a['records']]}
+                                    for a in host.ledger.attempts(name)]
+                        cell = {'id': spec['id'], 'backend': backend, 'workload': spec['workload'], 'wave': name,
+                                'arm': arm, 'report': report, 'rows': rows, 'attempts': attempts}
+                        _write(run_dir / 'cells' / f'{backend}-{spec["workload"]}-{name}-{arm}.json', cell)
+                        cells.append(cell)
+                        manifest['cells'].append({'id': spec['id'], 'wave': name, 'arm': arm,
+                                                  'evidence': report['evidence']})
+                        _write(run_dir / 'manifest.json', manifest)
+            finally:
+                for h in hosts.values():
+                    leaks += h.leakage()
+                    h.close()
+    finally:
+        _write(run_dir / 'budget.json', budget.usage())
+        # Derived, never a constant (N1): gold stayed out of reach only when no envelope of the run shows tool use.
+        manifest['tool_use_leakage'] = leaks
+        manifest['gold_accessed_during_run'] = bool(leaks)
+        manifest['finished_at'] = time.time()
+        _write(run_dir / 'manifest.json', manifest)
+    return {'cells': cells, 'manifest': manifest}
+
+
+def _context(mode, run_dir, *, env, routes, registry, closure, quota, session, telemetry_file, freeze_sha256=None):
+    import oz_host
+    run_dir = Path(run_dir)
+    budget = oz_host.Budget(run_dir / 'budget.sqlite', caps=CAPS, global_cap=GLOBAL_CAP)
+    pool = oz_host.SlotPool(run_dir / 'slots', HOST['slots'])
+    return {'mode': mode, 'run_dir': run_dir, 'env': env, 'routes': routes, 'registry': registry, 'closure': closure,
+            'quota': quota, 'session': session, 'telemetry_file': Path(telemetry_file), 'freeze_sha256': freeze_sha256,
+            'budget': budget, 'pool': pool, 'gate': launch_gate_for(budget, run_dir, session)}
+
+
+def _close(ctx):
+    for thing in (ctx.get('budget'), ctx.get('quota')):
+        try:
+            thing.close()
+        except Exception:  # noqa: BLE001
+            pass
+
+
 # ------------------------------------------------------------------------------------------------------ dry
 
-def _answers(boolq_source):
+def fake_answers(boolq_source):
+    """{sha256(resolved text): answer} for every evaluation and telemetry job: the fake model's answers (gold)."""
     table = {}
     mat = data.materials()
     for wave in data.WAVES:
         for jobs in mat['waves'][wave].values():
             for j in jobs:
                 table[oracle.resolve(j['text'])] = oracle.gold(j['op'], j['text'])
+    for j in mat['telemetry']:
+        table[oracle.resolve(j['text'])] = oracle.gold(j['op'], j['text'])
     for jobs in boolq_source['waves']['cold'].values():
         for j in jobs:
             table[oracle.resolve(j['text'])] = oracle.gold(data.BOOLQ_OP, '', boolq_source['labels'][j['dataset_id']])
-
-    def answer(text):
-        return table[text]
-    return answer
+    return {hashlib.sha256(t.encode('utf-8')).hexdigest(): v for t, v in table.items()}
 
 
-def dry_matrix(experiment_dir):
-    """The dry-run matrix for oz_host.dry_run: the frozen cells with replay answers and the worked ASTs as rules."""
-    import bootstrap_shim
-    import oz_registry
-    q = data.boolq()
-    source = q if q['available'] else data.boolq_standin()
-    manifests = build_manifests(source)
-    mat = data.materials()
-    answer = _answers(source)
-    rules = dict(zip(data.OPS, bootstrap_shim.HIDDEN_ASTS))
-    import oz_host
-    routes = {}
-    for b in BACKENDS:
-        rt = manifests[b]['operations']['e']['route']
-        routes[b] = dict(oz_host.identity_for(rt), launch=None)
-    cells = []
-    for spec in matrix_spec(True):
-        backend = spec['backend']
-        waves = []
-        for name, learn, arms in spec['waves']:
-            producers = (mat['waves'][name] if spec['workload'] == 'materials' else source['waves'][name])
-            waves.append({'name': name, 'learn': learn, 'arms': arms, 'producers': producers})
-        cells.append({'backend': backend, 'workload': spec['workload'],
-                      'registry': oz_registry.Registry(manifests[backend]), 'op': spec['op'],
-                      'op_text': spec.get('op_text'), 'goal': spec['goal'], 'model': BACKENDS[backend]['model'],
-                      'effort': BACKENDS[backend]['host_effort'],
-                      'route': manifests[backend]['operations']['e']['route'], 'identity': routes[backend],
-                      'answer': answer,
-                      'rules': rules if spec['workload'] == 'materials' else {data.BOOLQ_OP: 'none'},
-                      'arms': spec['arms'], 'waves': waves, '_id': spec['id']})
-    # The dry run runs under the frozen pilot configuration (mode dry, replay launchers) except the flush wait, which
-    # is 0 s so a replayed wave does not sleep; the batches it forms are the same (every group is full or final).
-    config = pilot_config('dry', routes, 'replay: recorded usage samples (dry run)')
-    config['max_wait'] = 0.0
-    return {'seed': SEED, 'experiment_dir': str(experiment_dir), 'caps': CAPS, 'global_cap': GLOBAL_CAP,
-            'max_wait': 0.0, 'slots': HOST['slots'], 'pilot': config, 'cells': cells}, source
-
-
-def _reserve_telemetry(budget):
-    for key, buckets in TELEMETRY_KEYS:
-        if budget.reserve(key, backend='codex', buckets=buckets, arm='T', kind='telemetry') is None:
-            raise RuntimeError('telemetry does not fit the frozen budget')
-
-
-def dry(experiment_dir=None, verbose=True):
+def dry(experiment_dir=None, verbose=True, leak=None):
+    """The dry run: drive() and the paired telemetry with fake CLI executables first on PATH (zero model calls)."""
     import tempfile
+    import bootstrap_shim
     import oz_host
     temp = None
     if experiment_dir is None:
         temp = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
         experiment_dir = temp.name
+    ctx = None
     try:
-        experiment_dir = Path(experiment_dir)
-        budget = oz_host.Budget(experiment_dir / 'budget.sqlite', caps=CAPS, global_cap=GLOBAL_CAP)
-        _reserve_telemetry(budget)
-        budget.close()
-        matrix, source = dry_matrix(experiment_dir)
+        root = Path(experiment_dir)
+        run_dir = root / 'run'
+        q = data.boolq()
+        source = q if q['available'] else data.boolq_standin()
         usage = recorded_usage()
+        fake = root / 'fake-cli'
+        fake_cli.build(fake, answers=fake_answers(source), rules=dict(zip(data.OPS, bootstrap_shim.HIDDEN_ASTS)),
+                       samples={'codex': usage['codex'], 'claude': usage['sonnet']}, repo=REPO, leak=leak)
+        env = fake_cli.env_with(fake)
+        for name in ('codex', 'claude'):  # never a real CLI in a dry run
+            found = shutil.which(name, path=env['PATH'])
+            if found is None or Path(found).resolve().parent != fake.resolve():
+                raise SystemExit(f'refused: {name} does not resolve to the fake CLI directory ({found})')
+        routes = build_routes(env=env, path=root / 'routes.json')
+        stale = registry_problems()
+        reg_path = root / 'registry.json'
+        _write(reg_path, registry_doc(source, {b: routes[b]['route'] for b in BACKENDS}))
+        registry = json.loads(reg_path.read_text(encoding='utf-8'))  # loaded from its file, as live loads its own
+        closure = {b: dependency_closure(b, child_env(b, env)) for b in BACKENDS}
+        _write(root / 'closure.json', closure)
+        session = 'dry-' + os.urandom(6).hex()
+        record_reading(run_dir, 0.0, 'dry run: fake CLIs, no plan usage', session)
+        ctx = _context('dry', run_dir, env=env, routes=routes, registry=registry, closure=closure,
+                       quota=oz_host.QuotaStore(root / 'quota.sqlite'), session=session,
+                       telemetry_file=root / 'telemetry.json')
         t0 = time.time()
-        out = oz_host.dry_run(matrix, {k: v for k, v in usage.items() if not k.startswith('_')})
-        result = summarize_dry(out, matrix, usage, source)
+        problems = preflight(ctx)
+        if problems:
+            raise SystemExit('dry run refused: ' + '; '.join(problems))
+        ctx['telemetry'] = run_telemetry(ctx)
+        ctx['semantics'] = usage_semantics(routes, ctx['telemetry'])
+        out = drive(ctx)
+        result = summarize_dry(out, ctx, usage, source, fake, stale)
         result['wall_seconds'] = round(time.time() - t0, 1)
         if verbose:
             print_dry(result)
         return result
     finally:
+        if ctx is not None:
+            _close(ctx)
         if temp is not None:
             temp.cleanup()
 
 
-def summarize_dry(out, matrix, usage, source):
-    rows, summary_cells = [], {}
-    by_backend = {}
-    for spec, cell in zip(matrix['cells'], out['cells']):
-        for wave in cell['waves']:
-            for arm, r in wave['arms'].items():
-                tok = r['tokens']['charged']
-                jobs = r['jobs']
-                row = {'cell': spec['_id'], 'backend': cell['backend'], 'workload': cell['workload'],
-                       'wave': wave['name'], 'arm': arm, 'jobs': jobs, 'accepted': r['accepted_by_checks'],
-                       'unresolved': r['unresolved'], 'rule_hits': r['rule_hits'], 'coverage': r['coverage'],
-                       'physical_calls': r['calls']['physical'], 'imported_calls': r['calls']['imported'],
-                       'charged_calls': r['calls']['charged'], 'refused': r['calls']['refused'],
-                       'tokens': tok['tokens'], 'input_tokens': tok['input_tokens'],
-                       'output_tokens': tok['output_tokens'],
-                       'tokens_per_job': round(tok['tokens'] / jobs, 1) if jobs else None,
-                       'makespan_s': r['projected_makespan_seconds'],
-                       'replayed_call_seconds': r['replayed_call_seconds'],
-                       'audits_selected': r['audits']['selected'],
-                       'evidence': r['evidence'], 'incomplete': r['incomplete'],
-                       'efficiency_valid': r['efficiency_valid'], 'efficiency_invalid': r['efficiency_invalid']}
-                rows.append(row)
-                by_backend.setdefault(cell['backend'], 0)
-                by_backend[cell['backend']] += r['calls']['physical']
-                counts = {'correct': r['accepted_by_checks'], 'incorrect': 0,
-                          'unresolved': jobs - r['accepted_by_checks']}
-                summary_cells[f"{cell['backend']}/{cell['workload']}/{wave['name']}/{arm}"] = score.summarize(
-                    jobs, counts, rule_errors=0, fallback_errors=0, rule_hits=r['rule_hits'], report=r,
-                    makespan=r['projected_makespan_seconds'], summed_call_seconds=r['replayed_call_seconds'])
-    by_backend['codex'] = by_backend.get('codex', 0) + len(TELEMETRY_KEYS)
-    total = out['physical_calls'] + len(TELEMETRY_KEYS)
+def _projection(attempts, elapsed_by_key, slots):
+    """Projected seconds of an arm wave: each round's recorded call elapsed list-scheduled over the slots."""
+    rounds = {}
+    for a in attempts:
+        if a['state'] == 'refused' or not a['call_ids']:
+            continue
+        key = json.dumps(sorted(a['text_sha256']))
+        rounds.setdefault(a['round'].split('-')[0], []).append(elapsed_by_key.get(key, 0.0))
+    total = 0.0
+    for name in sorted(rounds, key=lambda r: ('bootstrap', 'r1', 'r2', 'r3').index(r) if r in
+                       ('bootstrap', 'r1', 'r2', 'r3') else 9):
+        finish = [0.0] * slots
+        for seconds in rounds[name]:
+            k = finish.index(min(finish))
+            finish[k] += seconds
+        total += max(finish)
+    return total
+
+
+def prompt_leakage(calls):
+    """B12: no complete prompt the fake CLIs received (every bootstrap and ordinary prompt, as assembled by oz_do and
+    the shim) holds a worked AST, a materials admission text or a BoolQ admission passage."""
+    import bootstrap_shim
+    mat = data.materials()
+    admission = {oracle.resolve(t) for rows in mat['admission_texts'].values() for _, t, _, _ in rows}
+    q = data.boolq()
+    passages = set()
+    if q['available']:
+        passages = {t.split('\nquestion: ')[0] for _, t, _, _ in q['admission']}
+    problems = []
+    for c in calls:
+        text = c.get('text') or ''
+        kind = 'bootstrap' if c.get('bootstrap') else 'ordinary'
+        if any(a in text for a in bootstrap_shim.HIDDEN_ASTS):
+            problems.append(f'a worked AST is in a {kind} prompt')
+        if any(t in text for t in admission):
+            problems.append(f'a materials admission text is in a {kind} prompt')
+        if any(p in text for p in passages):
+            problems.append(f'a BoolQ admission passage is in a {kind} prompt')
+    return sorted(set(problems))
+
+
+def summarize_dry(out, ctx, usage, source, fake, stale):
+    calls = fake_cli.calls(fake)
+    elapsed = {json.dumps(c['keys']): float(c.get('elapsed_seconds') or 0.0) for c in calls}
     boots = {}
-    for spec, cell in zip(matrix['cells'], out['cells']):
-        for wave in cell['waves']:
-            for arm, r in wave['arms'].items():
-                if r['bootstrap']:
-                    boots[f"{cell['backend']}/{cell['workload']}"] = {'status': r['bootstrap']['status'],
-                                                                      'gold_errors': 0, 'disagreements': 0}
-    budget = out['budget']
-    projected = {'cells': summary_cells, 'boolq_available': True,
-                 'validity': {'leakage': leakage_problems(), 'bootstrap': boots,
-                              'budget': dict(budget, over=score.budget_over(budget))}}
+    for cell in out['cells']:
+        for a in cell['attempts']:
+            if a['round'].startswith('bootstrap') and a['call_ids']:
+                boots[(cell['backend'], cell['workload'])] = elapsed.get(json.dumps(sorted(a['text_sha256'])), 0.0)
+    rows, summary_cells, by_backend = [], {}, {}
+    for cell in out['cells']:
+        r = cell['report']
+        tok = r['tokens']['charged']
+        jobs = r['jobs']
+        projected = _projection(cell['attempts'], elapsed, HOST['slots'])
+        if (r['bootstrap'] or {}).get('imported'):
+            projected += boots.get((cell['backend'], cell['workload']), 0.0)
+        call_s = sum(elapsed.get(json.dumps(sorted(a['text_sha256'])), 0.0) for a in cell['attempts']
+                     if a['state'] != 'refused' and a['call_ids'])
+        row = {'cell': cell['id'], 'backend': cell['backend'], 'workload': cell['workload'], 'wave': cell['wave'],
+               'arm': cell['arm'], 'jobs': jobs, 'accepted': r['accepted_by_checks'], 'unresolved': r['unresolved'],
+               'rule_hits': r['rule_hits'], 'coverage': r['coverage'], 'physical_calls': r['calls']['physical'],
+               'imported_calls': r['calls']['imported'], 'charged_calls': r['calls']['charged'],
+               'refused': r['calls']['refused'], 'tokens': tok['tokens'], 'input_tokens': tok['input_tokens'],
+               'output_tokens': tok['output_tokens'], 'tokens_per_job': round(tok['tokens'] / jobs, 1) if jobs else None,
+               'makespan_s': round(projected, 3), 'replayed_call_seconds': round(call_s, 3),
+               'audits_selected': r['audits']['selected'], 'evidence': r['evidence'], 'incomplete': r['incomplete'],
+               'efficiency_valid': r['efficiency_valid'], 'efficiency_invalid': r['efficiency_invalid']}
+        rows.append(row)
+        by_backend[cell['backend']] = by_backend.get(cell['backend'], 0) + r['calls']['physical']
+        counts = {'correct': r['accepted_by_checks'], 'incorrect': 0, 'unresolved': jobs - r['accepted_by_checks']}
+        summary_cells[f"{cell['backend']}/{cell['workload']}/{cell['wave']}/{cell['arm']}"] = score.summarize(
+            jobs, counts, rule_errors=0, fallback_errors=0, rule_hits=r['rule_hits'], report=r,
+            makespan=projected, summed_call_seconds=call_s)
+    tele = ctx['telemetry']
+    tele_calls = sum(len(x['calls']) for x in tele['results'])
+    by_backend['codex'] = by_backend.get('codex', 0) + tele_calls
+    host_calls = sum(r['physical_calls'] for r in rows)
+    total = host_calls + tele_calls
+    boot_status = {}
+    for cell in out['cells']:
+        b = cell['report']['bootstrap']
+        if b:
+            boot_status[f"{cell['backend']}/{cell['workload']}"] = {'status': b['status'], 'gold_errors': 0,
+                                                                    'disagreements': 0}
+    budget = ctx['budget'].usage()
+    prompt_problems = prompt_leakage(calls)
+    leak = out['manifest']['tool_use_leakage']
+    projected = {'cells': summary_cells, 'boolq_available': bool(source.get('available')),
+                 'validity': {'leakage': leakage_problems() + prompt_problems +
+                              (['tool use in the event stream'] if leak else []),
+                              'bootstrap': boot_status, 'budget': dict(budget, over=score.budget_over(budget))}}
     gates = score.evaluate(projected)
     incomplete = [f"{r['cell']} {r['wave']} {r['arm']}: {', '.join(r['incomplete'])}" for r in rows
                   if r['evidence'] != 'complete']
-    return {'rows': rows, 'external_calls': out['external_calls'], 'physical_calls_by_backend': by_backend,
-            'physical_calls_total': total, 'budget': budget, 'reconciliation': out['reconciliation'],
-            'dry_run_fits': out['fits'], 'within_global_cap': total <= GLOBAL_CAP,
-            'sources': dry_sources(usage), 'assumptions': ASSUMPTIONS,
-            'evidence': out['evidence'], 'incomplete_cells': incomplete,
-            'boolq': 'real BoolQ' if source.get('available') else 'synthetic stand-ins (real BoolQ file absent)',
-            'usage_samples': {b: [s['source'] for s in usage[b]['call']] for b in BACKENDS},
-            'bootstrap_estimate': usage['_estimate'], 'projected_gates': gates,
-            'elapsed_sensitivity': elapsed_sensitivity()}
+    reconciliation = {'physical_calls': host_calls, 'telemetry_calls': tele_calls,
+                      'imported_calls': sum(r['imported_calls'] for r in rows),
+                      'charged_calls': sum(r['charged_calls'] for r in rows), 'fake_cli_calls': len(calls),
+                      'ok': total == len(calls) == budget['total']
+                      and all(r['charged_calls'] == r['physical_calls'] + r['imported_calls'] for r in rows)}
+    isolation = {'codex_calls': sum(1 for c in calls if c['cli'] == 'codex'),
+                 'codex_isolated': sum(1 for c in calls if c['cli'] == 'codex' and c.get('isolated')),
+                 'claude_calls': sum(1 for c in calls if c['cli'] == 'claude'),
+                 'claude_tools_disabled': sum(1 for c in calls if c['cli'] == 'claude' and c.get('tools_disabled')),
+                 'tool_use_leakage': leak, 'gold_accessed_during_run': out['manifest']['gold_accessed_during_run']}
+    result = {'rows': rows, 'external_calls': total - len(calls), 'physical_calls_by_backend': by_backend,
+              'physical_calls_total': total, 'budget': budget, 'reconciliation': reconciliation,
+              'dry_run_fits': all(r['refused'] == 0 for r in rows) and total <= GLOBAL_CAP,
+              'within_global_cap': total <= GLOBAL_CAP, 'sources': dry_sources(usage), 'assumptions': ASSUMPTIONS,
+              'evidence': 'complete' if not incomplete else 'incomplete', 'incomplete_cells': incomplete,
+              'boolq': 'real BoolQ' if source.get('available') else 'synthetic stand-ins (real BoolQ file absent)',
+              'usage_samples': {b: [s['source'] for s in usage[b]['call']] for b in BACKENDS},
+              'bootstrap_estimate': usage['_estimate'], 'projected_gates': gates,
+              'elapsed_sensitivity': elapsed_sensitivity(), 'telemetry': {'status': tele['status'],
+                                                                          'evidence': tele['evidence']},
+              'usage_semantics': ctx['semantics'], 'isolation': isolation, 'prompt_leakage': prompt_problems,
+              'registry_file_problems': stale, 'fake_misses': sum(c.get('misses') or 0 for c in calls),
+              'driver': 'pilot.drive (the live driver) with fake codex and claude executables'}
+    result['output_sha256'] = _digest(deterministic(result))
+    return result
+
+
+def deterministic(result):
+    """The part of a dry result that must not change between runs on the same checkout (freeze records its hash):
+    every count, token total, projection, evidence verdict and gate; no wall clock, path or session."""
+    rows = [{k: v for k, v in r.items()} for r in result['rows']]
+    return {'rows': rows, 'budget_used': result['budget']['used'], 'budget_total': result['budget']['total'],
+            'physical_calls_by_backend': result['physical_calls_by_backend'],
+            'reconciliation': {k: v for k, v in result['reconciliation'].items()},
+            'gates': [{'gate': g['gate'], 'pass': g['pass']} for g in result['projected_gates']['gates']],
+            'verdict': result['projected_gates']['verdict'], 'telemetry': result['telemetry']['status'],
+            'isolation': {k: v for k, v in result['isolation'].items()}, 'prompt_leakage': result['prompt_leakage'],
+            'external_calls': result['external_calls'], 'fake_misses': result['fake_misses']}
 
 
 def dry_sources(usage):
@@ -682,11 +1262,14 @@ def dry_sources(usage):
 
 
 def print_dry(r):
+    print(f"driver: {r['driver']}")
     print(f"external calls {r['external_calls']}; physical calls {r['physical_calls_total']} "
           f"(by backend {r['physical_calls_by_backend']}, incl. 2 telemetry); within global cap {GLOBAL_CAP}: "
           f"{r['within_global_cap']}; every launch fit: {r['dry_run_fits']}; reconciliation ok: "
-          f"{r['reconciliation']['ok']}")
-    print(f"BoolQ: {r['boolq']}")
+          f"{r['reconciliation']['ok']} (fake CLI calls {r['reconciliation']['fake_cli_calls']})")
+    print(f"BoolQ: {r['boolq']}; telemetry: {r['telemetry']['status']}; isolation: {json.dumps(r['isolation'])}")
+    print(f"prompt leakage: {r['prompt_leakage'] or 'none'}; registry.json: {r['registry_file_problems'] or 'ok'}; "
+          f"fake answer misses: {r['fake_misses']}")
     print('\ncell                 wave arm jobs  phys/charged/refused   tokens  tok/job  projected_s  call_s  '
           'coverage audits evidence')
     for x in r['rows']:
@@ -705,13 +1288,16 @@ def print_dry(r):
         print(f"  {g['gate']} {g['name']}: {'pass' if g['pass'] else 'FAIL'} {json.dumps(detail)}")
     print('\nelapsed sensitivity (recorded 32-job vs 64-job calls):', json.dumps(r['elapsed_sensitivity']))
     print('bootstrap estimate:', json.dumps(r['bootstrap_estimate']))
+    print('dry output sha256:', r['output_sha256'], f"(wall {r.get('wall_seconds')} s)")
 
 
 # -------------------------------------------------------------------------------------------------- leakage
 
 def leakage_problems():
     """Admission texts disjoint from evaluation and telemetry texts (resolved); the cold and warm evaluation waves
-    disjoint (council 3, B12); no worked AST or admission text in any registry contract shown to the model."""
+    disjoint (council 3, B12); BoolQ admission separated from evaluation by dataset id, text and passage; no worked AST
+    or admission text in any registry contract shown to the model, nor in the assembled bootstrap system text of any
+    workload (the shim's text around an empty original system; the complete prompts are scanned by the dry run)."""
     import bootstrap_shim
     problems = []
     mat = data.materials()
@@ -723,11 +1309,36 @@ def leakage_problems():
     admission = {oracle.resolve(t) for rows in mat['admission_texts'].values() for _, t, _, _ in rows}
     if evaluation & admission:
         problems.append(f'{len(evaluation & admission)} admission texts are also evaluation texts')
+    q = data.boolq()
+    passages = set()
+    if q['available']:
+        jobs = [j for js in q['waves']['cold'].values() for j in js]
+        eval_ids = {j['dataset_id'].rsplit('-', 1)[-1] for j in jobs}
+        eval_texts = {j['text'] for j in jobs}
+        eval_passages = {j['text'].split('\nquestion: ')[0] for j in jobs}
+        adm_texts = {t for _, t, _, _ in q['admission']}
+        passages = {t.split('\nquestion: ')[0] for t in adm_texts}
+        if eval_texts & adm_texts:
+            problems.append(f'{len(eval_texts & adm_texts)} BoolQ admission texts are evaluation texts')
+        if eval_passages & passages:
+            problems.append(f'{len(eval_passages & passages)} BoolQ admission passages are evaluation passages')
+        if len(eval_ids) != len(jobs) or len(adm_texts) != len(q['admission']):
+            problems.append('BoolQ evaluation ids or admission texts repeat')
     shown = json.dumps(contracts(), ensure_ascii=False)
     if any(a in shown for a in bootstrap_shim.HIDDEN_ASTS):
         problems.append('a worked AST is in a contract')
     if any(t in shown for t in admission):
         problems.append('an admission text is in a contract')
+    for ops in (list(data.OPS), [data.BOOLQ_OP]):
+        config = {'schema': 'oz.bootstrap.config/2', 'ops': ops, 'contracts': {o: contracts()[o] for o in ops},
+                  'eligibility': {o: o in data.OPS for o in ops}}
+        system = bootstrap_shim.system_text('', config)
+        try:
+            bootstrap_shim.check_hidden(system, strings=False)
+        except ValueError as exc:
+            problems.append(f'the assembled bootstrap system text: {exc}')
+        if any(t in system for t in admission) or any(p in system for p in passages):
+            problems.append('an admission text or passage is in the assembled bootstrap system text')
     return problems
 
 
@@ -736,10 +1347,11 @@ def leakage_problems():
 FROZEN_CORE = ('oz.py', 'oz_accept.py', 'oz_batch.py', 'oz_cli.py', 'oz_do.py', 'oz_fault.py', 'oz_memo.py',
                'oz_reply.py', 'oz_runner.py', 'oz_runtime.py', 'oz_worker.py', 'oz_workspace.py')
 FREEZE_FILES = (
-    [f'bench/ozmap/{n}' for n in ('data.py', 'oracle.py', 'score.py', 'pilot.py', 'registry.json', 'identity.json')]
+    [f'bench/ozmap/{n}' for n in ('data.py', 'oracle.py', 'score.py', 'pilot.py', 'fake_cli.py', 'registry.json',
+                                  'identity.json')]
     + ['bench/ozmap/routes.json']
-    + ['tests/test_ozmap_pilot.py', 'oz_host.py', 'oz_registry.py', 'oz_rule.py', 'oz_rulephase.py', 'oz_spool.py',
-       'oz_route.py', 'oz_map.py', 'oz_quota.py', *FROZEN_CORE,
+    + ['tests/test_ozmap_pilot.py', 'tests/test_ozmap_close.py', 'oz_host.py', 'oz_registry.py', 'oz_rule.py',
+       'oz_rulephase.py', 'oz_spool.py', 'oz_route.py', 'oz_map.py', 'oz_quota.py', *FROZEN_CORE,
        'examples/bootstrap_shim.py', 'examples/codex_cli_adapter.py', 'examples/claude_map_adapter.py',
        'examples/claude_cli_adapter.py', 'examples/bootstrap_codex_adapter.json',
        'examples/bootstrap_claude_adapter.json', 'bench/live/live2.py',
@@ -749,6 +1361,7 @@ FREEZE_FILES = (
        'docs/design/ozmap-2026-10-24/oz-rule-1-amendment-1.md', 'docs/design/ozmap-2026-10-24/oz-rule-1-spec.md',
        'docs/design/ozmap-2026-10-24/council2-astra.md', 'docs/design/ozmap-2026-10-24/council2-opus.md',
        'docs/design/ozmap-2026-10-24/council3-astra.md', 'docs/design/ozmap-2026-10-24/council3-opus.md',
+       'docs/design/ozmap-2026-10-24/council3-close-astra.md', 'docs/design/ozmap-2026-10-24/council3-close-opus.md',
        'docs/design/ozmap-2026-10-24/owner-decisions-2026-10-24.md', 'docs/design/ozmap-2026-10-24/amendment-3.md',
        _rel(LEDGERS['codex']), _rel(LEDGERS['sonnet']), _rel(LEDGERS_32['sonnet']), data.BOOLQ_SOURCE['file']])
 
@@ -769,10 +1382,11 @@ def freeze_record(root=REPO, files=FREEZE_FILES, *, datasets=None, plan_obj=None
         path = root / rel
         hashes[rel] = _sha_file(path) if path.is_file() else None
     plan_obj = plan_obj if plan_obj is not None else plan()
-    record = {'schema': 'ozmap.freeze/1', 'seed': SEED, 'files': hashes,
+    record = {'schema': 'ozmap.freeze/2', 'seed': SEED, 'files': hashes,
               'datasets': datasets if datasets is not None else data.dataset_digests(),
               'plan': plan_obj, 'plan_sha256': hashlib.sha256(json.dumps(plan_obj, sort_keys=True).encode()).hexdigest()}
     record['boolq_source'] = data.BOOLQ_SOURCE
+    record['interpreter'] = interpreter_record()
     # Amendment 3 section 4: the normative documents with their hashes and precedence, the owner decisions, the
     # revised allocation, the exact gate texts, the timing boundaries, and the dry run's sources and assumptions.
     record['normative'] = {'precedence': list(NORMATIVE), 'rule': 'a later document supersedes conflicting text in '
@@ -790,21 +1404,30 @@ def freeze_record(root=REPO, files=FREEZE_FILES, *, datasets=None, plan_obj=None
     return record
 
 
-def verify_freeze(record, root=REPO, *, datasets=None, plan_obj=None):
-    """Problems (empty when the freeze record matches the current files, datasets and plan)."""
+def verify_freeze(record, root=REPO, *, datasets=None, plan_obj=None, files=None):
+    """Problems (empty when the freeze record matches the current files, datasets, plan and interpreter). The record
+    must hold every required file (files, default FREEZE_FILES), each present at the freeze (council 3 close)."""
     root = Path(root)
     problems = []
-    for rel, sha in record['files'].items():
+    required = list(FREEZE_FILES if files is None else files)
+    for rel in required:
+        if rel not in record.get('files', {}):
+            problems.append(f'{rel} is missing from the freeze record')
+        elif record['files'][rel] is None:
+            problems.append(f'{rel} was absent at the freeze')
+    for rel, sha in record.get('files', {}).items():
         path = root / rel
         now = _sha_file(path) if path.is_file() else None
-        if now != sha:
+        if now != sha and sha is not None:
             problems.append(f'{rel} changed since the freeze')
     now = datasets if datasets is not None else data.dataset_digests()
-    if now != record['datasets']:
+    if now != record.get('datasets'):
         problems.append('a dataset changed since the freeze')
     p = plan_obj if plan_obj is not None else plan()
-    if hashlib.sha256(json.dumps(p, sort_keys=True).encode()).hexdigest() != record['plan_sha256']:
+    if hashlib.sha256(json.dumps(p, sort_keys=True).encode()).hexdigest() != record.get('plan_sha256'):
         problems.append('the plan changed since the freeze')
+    if record.get('interpreter') != interpreter_record():
+        problems.append('the interpreter (path, sha256 or version) changed since the freeze')
     return problems
 
 
@@ -830,16 +1453,36 @@ def freeze(run=subprocess.run):
     if dirty:
         print('freeze refused: uncommitted changes in frozen files:\n  ' + '\n  '.join(dirty))
         return 2
-    problems = leakage_problems()
+    problems = leakage_problems() + registry_problems()
+    closure = {b: dependency_closure(b, child_env(b)) for b in BACKENDS}
+    for b, rec in closure.items():
+        problems += [f'{b}: {p}' for p in closure_problems(rec)]
+    for b, frozen in _routes().items():
+        loose = [e for e in (frozen.get('launch') or {}).get('externals') or []
+                 if e[2] in ('unversioned', None) or e[1] == 'declared-external']
+        if loose:
+            problems.append(f'{b}: unversioned dependencies {loose}')
     if problems:
-        print('freeze refused: leakage lint: ' + '; '.join(problems))
+        print('freeze refused: ' + '; '.join(problems))
+        return 2
+    result = dry(verbose=False)
+    bad = ([f'dry: {result["external_calls"]} external calls'] if result['external_calls'] else []) + \
+        ([] if result['reconciliation']['ok'] else ['dry: reconciliation failed']) + \
+        [f'dry: {p}' for p in result['prompt_leakage']] + \
+        (['dry: tool use'] if result['isolation']['tool_use_leakage'] else []) + \
+        ([f'dry: {result["fake_misses"]} fake answer misses'] if result['fake_misses'] else [])
+    if bad:
+        print('freeze refused: ' + '; '.join(bad))
         return 2
     record = freeze_record()
     head = run(['git', 'rev-parse', 'HEAD'], cwd=REPO, capture_output=True, text=True).stdout.strip()
     record['git_head'] = head
     record['registry_manifest_sha256'] = json.loads(REGISTRY_FILE.read_text(encoding='utf-8'))['manifest_sha256']
+    record['closure'] = closure
+    record['dry_run']['output_sha256'] = result['output_sha256']
+    record['dry_run']['output'] = deterministic(result)
     _write(FREEZE_FILE, record)
-    print(f'freeze.json written ({len(record["files"])} files, git {head[:12]})')
+    print(f'freeze.json written ({len(record["files"])} files, git {head[:12]}, dry output {result["output_sha256"][:12]})')
     return 0
 
 
@@ -847,10 +1490,9 @@ def freeze(run=subprocess.run):
 
 def probe_identity(backend):
     """The adapter's own `--identity` report under the child environment the host will use. No model call."""
-    import oz_host
     cfg = BACKENDS[backend]
     argv = json.loads(cfg['adapter'].read_text(encoding='utf-8'))['argv']
-    env = oz_host.child_env(model=cfg['model'], effort=cfg['host_effort'])
+    env = child_env(backend)
     done = subprocess.run([sys.executable if argv[0] == 'python' else argv[0], *argv[1:], '--identity'],
                           cwd=cfg['adapter'].parent, env=env, capture_output=True, text=True, encoding='utf-8',
                           timeout=120, stdin=subprocess.DEVNULL)
@@ -880,40 +1522,28 @@ def guard(args):
         return 'refused: pass --i-have-approval (explicit owner approval for paid calls)'
     if getattr(args, 'command', None) == 'run' and not getattr(args, 'live', False):
         return 'refused: pass --live'
+    if _percent(getattr(args, 'claude_weekly', None)) is None:
+        return ('refused: pass --claude-weekly PCT, the Claude weekly usage read just now (the 99% handoff stop has '
+                'no programmatic source)')
+    if _percent(args.claude_weekly) >= HANDOFF_PERCENT:
+        return f'refused: Claude weekly usage {args.claude_weekly}% has reached {HANDOFF_PERCENT:g}%; hand off'
     return None
 
 
-def _reconcile_routes():
-    """Recompute every backend's route in the launch env (oz_route.verify of the frozen build result, no model call)
-    and require the registry manifest to carry exactly that route."""
+def _live_run_dir():
+    record = json.loads(FREEZE_FILE.read_text(encoding='utf-8'))
+    return RUNS / ('live-' + hashlib.sha256(_dump(record).encode()).hexdigest()[:12]), record
+
+
+def _live_context(args):
     import oz_host
-    import oz_route
-    doc = json.loads(REGISTRY_FILE.read_text(encoding='utf-8'))
-    for backend, cfg in BACKENDS.items():
-        check = route_check(backend)
-        if doc['manifests'][backend]['operations']['e']['route'] != check['frozen']['route']:
-            raise SystemExit(f'refused: the registry route of {backend} is not the frozen route (D7)')
-        try:
-            oz_route.verify(check['frozen'], {k: v for k, v in check.items() if k != 'frozen'},
-                            env=oz_host.child_env(model=cfg['model'], effort=cfg['host_effort']))
-        except Exception as exc:
-            raise SystemExit(f'refused: {exc}') from None
-    return doc
-
-
-def launch_gate_for(budget):
-    """The live launch gate: the frozen global cap. There is no 55% weekly guard (owner decision 1, amendment 3)."""
-    def gate(view):
-        if budget.usage()['total'] >= GLOBAL_CAP:
-            return 'global_cap_reached'
-        return None
-    return gate
-
-
-def _usage_semantics():
-    doc = json.loads(TELEMETRY_FILE.read_text(encoding='utf-8')) if TELEMETRY_FILE.exists() else {}
-    return ('inclusive usage verified by paired telemetry ' + doc.get('run_dir', '')) if doc.get('status') == 'ok' \
-        else 'unverified'
+    run_dir, record = _live_run_dir()
+    session = 'live-' + os.urandom(6).hex()
+    record_reading(run_dir, args.claude_weekly, 'owner (--claude-weekly)', session)
+    return _context('live', run_dir, env=None, routes=_routes(),
+                    registry=json.loads(REGISTRY_FILE.read_text(encoding='utf-8')), closure=record.get('closure'),
+                    quota=oz_host.QuotaStore(), session=session, telemetry_file=TELEMETRY_FILE,
+                    freeze_sha256=_sha_file(FREEZE_FILE))
 
 
 def telemetry(args):
@@ -921,50 +1551,17 @@ def telemetry(args):
     if refusal:
         print(refusal)
         return 2
-    import oz_host
-    from oz_workspace import initialize
-    doc = _reconcile_routes()
-    record = json.loads(FREEZE_FILE.read_text(encoding='utf-8'))
-    run_dir = RUNS / ('live-' + hashlib.sha256(_dump(record).encode()).hexdigest()[:12])
-    budget = oz_host.Budget(run_dir / 'budget.sqlite', caps=CAPS, global_cap=GLOBAL_CAP)
-    pool = oz_host.SlotPool(run_dir / 'slots', HOST['slots'])
-    cfg = BACKENDS['codex']
-    rt = doc['manifests']['codex']['operations']['e']['route']
-    ident = oz_host.identity_for(rt)
-    ws = run_dir / 'telemetry' / 'ws'
-    if not (ws / 'oz.json').exists():
-        initialize(ws)
-    launcher = oz_host.ChildLauncher(cfg['adapter'])
-    results = []
-    for (key, buckets), job in zip(TELEMETRY_KEYS, data.materials()['telemetry']):
-        if budget.reserve(key, backend='codex', buckets=buckets, arm='T', kind='telemetry') is None:
-            print('telemetry refused: budget')
+    ctx = _live_context(args)
+    try:
+        problems = preflight(ctx)
+        if problems:
+            print('refused: ' + '; '.join(problems))
             return 2
-        request = {'v': 'oz.do/1', 'request_id': key, 'goal': data.MAT_GOAL, 'ops': {job['op']: data.MAT_D[job['op']]},
-                   'refs': {'r0': oracle.resolve(job['text'])}, 'jobs': [['j0', job['op'], 'r0']],
-                   'profile': oz_host.PROFILE, 'allow_experimental': True, 'max_inline_bytes': oz_host.MAX_INLINE,
-                   'max_attempts': 1, 'max_jobs_per_call': 1, 'max_input_tokens': 1000000, 'model': cfg['model']}
-        spec = {'workspace': str(ws), 'request': request, 'max_calls': 1, 'route': ident['do_route'],
-                'experimental_sizes': [], 'child_timeout': oz_host.child_timeout(HOST['limits'])}
-        env = oz_host.child_env(model=cfg['model'], effort=cfg['host_effort'])
-        import oz_route
-        oz_route.verify(route_check('codex')['frozen'], {k: v for k, v in route_check('codex').items()
-                                                         if k != 'frozen'}, env=env)
-        lock = pool.acquire()  # telemetry takes the same experiment-wide slots (B9)
-        try:
-            execution, meta = launcher(spec, env, run_dir / 'telemetry' / key)
-        finally:
-            pool.release(lock)
-        calls = (execution or {}).get('calls') or []
-        usage = [c.get('usage') for c in calls]
-        inclusive = all(isinstance(u, dict) and u.get('input_tokens', 0) >= u.get('cached_input_tokens', 0)
-                        and u.get('output_tokens', 0) >= u.get('reasoning_output_tokens', 0) for u in usage) and usage
-        results.append({'key': key, 'exit': meta, 'calls': calls, 'inclusive_usage_verified': bool(inclusive)})
-    status = 'ok' if all(r['inclusive_usage_verified'] for r in results) else 'unverified'
-    _write(TELEMETRY_FILE, {'status': status, 'run_dir': _rel(run_dir), 'results': results})
-    print('telemetry', status)
-    budget.close()
-    return 0 if status == 'ok' else 1
+        doc = run_telemetry(ctx)
+    finally:
+        _close(ctx)
+    print('telemetry', doc['status'], json.dumps(doc['evidence'].get('problems')))
+    return 0 if doc['status'] == 'ok' else 1
 
 
 def run_live(args):
@@ -972,76 +1569,36 @@ def run_live(args):
     if refusal:
         print(refusal)
         return 2
-    if not TELEMETRY_FILE.exists() or json.loads(TELEMETRY_FILE.read_text(encoding='utf-8')).get('status') != 'ok':
-        print('refused: telemetry is not resolved (run `pilot.py telemetry --i-have-approval` first)')
-        return 2
     if 'OZ_CODEX_TIMEOUT' in os.environ:
         print('refused: OZ_CODEX_TIMEOUT is set but not part of the frozen route environment')
         return 2
-    import oz_host
-    doc = _reconcile_routes()
-    record = json.loads(FREEZE_FILE.read_text(encoding='utf-8'))
-    run_dir = RUNS / ('live-' + hashlib.sha256(_dump(record).encode()).hexdigest()[:12])
-    budget = oz_host.Budget(run_dir / 'budget.sqlite', caps=CAPS, global_cap=GLOBAL_CAP)
-    pool = oz_host.SlotPool(run_dir / 'slots', HOST['slots'])
-    gate = launch_gate_for(budget)
-    semantics = _usage_semantics()
-    routes = _routes()
-    config = pilot_config('live', routes, semantics)
-    q = data.boolq()
-    mat = data.materials()
-    manifest = {'freeze_sha256': _sha_file(FREEZE_FILE), 'gold_accessed_during_run': False,
-                'leakage_problems': leakage_problems(), 'boolq': 'available' if q['available'] else q['reason'],
-                'started_at': time.time(), 'cells': []}
-    if manifest['leakage_problems']:
-        print('refused: leakage or wave overlap before launch: ' + '; '.join(manifest['leakage_problems']))
+    doc = json.loads(TELEMETRY_FILE.read_text(encoding='utf-8')) if TELEMETRY_FILE.exists() else None
+    semantics = usage_semantics(_routes(), doc, _sha_file(FREEZE_FILE))
+    if semantics['codex'] == 'unverified':
+        print('refused: telemetry is not certified for this freeze and the frozen codex route (run `pilot.py '
+              'telemetry --i-have-approval --claude-weekly PCT` first)')
         return 2
-    _write(run_dir / 'manifest.json', manifest)
+    ctx = _live_context(args)
     try:
-        for spec in matrix_spec(q['available']):
-            if spec.get('available') is False:
-                manifest['cells'].append({'id': spec['id'], 'status': 'unavailable'})
-                continue
-            backend = spec['backend']
-            cfg = BACKENDS[backend]
-            registry = load_registry(backend, doc)
-            rt = doc['manifests'][backend]['operations']['e']['route']
-            order = oz_host.arm_order(SEED, backend, spec['workload'], spec['arms'])
-            hosts = {}
-            for arm in order:
-                hosts[arm] = oz_host.ArmHost(
-                    arm=arm, backend=backend, workload=spec['workload'], experiment_dir=run_dir,
-                    launcher=oz_host.ChildLauncher(cfg['adapter']), op=spec['op'], op_text=spec.get('op_text'),
-                    goal=spec['goal'], model=cfg['model'], effort=cfg['host_effort'],
-                    identity=dict(oz_host.identity_for(rt), launch=routes[backend].get('launch')),
-                    registry=registry, seed=SEED if arm != 'A' else None,
-                    budget=budget, slots=HOST['slots'], max_records=HOST['max_records'], max_wait=HOST['max_wait'],
-                    limits=HOST['limits'], allow_experimental=True, slot_pool=pool, route_check=route_check(backend),
-                    pilot=config, usage_semantics=semantics, hooks={'launch_gate': gate})
-            try:
-                for name, learn, arms in spec['waves']:
-                    producers = mat['waves'][name] if spec['workload'] == 'materials' else q['waves'][name]
-                    for arm in [a for a in order if a in (arms or order)]:
-                        host = hosts[arm]
-                        subs = {p: f's{name}{arm}{p}'[:64] for p in producers}
-                        oz_host.submit_barrier(host, name, producers, subs.get)  # four producers, one barrier
-                        report = host.run_wave(name, learn=learn)
-                        rows = [r for p, s in subs.items() for r in host.collect(p, s)]
-                        _write(run_dir / 'cells' / f'{backend}-{spec["workload"]}-{name}-{arm}.json',
-                               {'backend': backend, 'workload': spec['workload'], 'wave': name, 'arm': arm,
-                                'report': report, 'rows': rows})
-                        manifest['cells'].append({'id': spec['id'], 'wave': name, 'arm': arm,
-                                                  'evidence': report['evidence']})
-                        _write(run_dir / 'manifest.json', manifest)
-            finally:
-                for h in hosts.values():
-                    h.close()
+        problems = preflight(ctx)
+        if problems:
+            print('refused: ' + '; '.join(problems))
+            return 2
+        ctx['telemetry'], ctx['semantics'] = doc, semantics
+        drive(ctx)
     finally:
-        _write(run_dir / 'budget.json', budget.usage())
-        manifest['finished_at'] = time.time()
-        _write(run_dir / 'manifest.json', manifest)
-        budget.close()
-    print('run finished:', _rel(run_dir))
+        _close(ctx)
+    print('run finished:', _rel(ctx['run_dir']))
+    return 0
+
+
+def quota_reading(args):
+    run_dir = Path(args.run_dir) if args.run_dir else (_live_run_dir()[0] if FREEZE_FILE.exists() else None)
+    if run_dir is None:
+        print('no run directory')
+        return 2
+    value = record_reading(run_dir, args.percent, 'owner (quota command)', 'owner')
+    print(f'recorded {value:g}% for {run_dir}')
     return 0
 
 
@@ -1069,9 +1626,14 @@ def main(argv=None):
     sub.add_parser('freeze')
     t = sub.add_parser('telemetry')
     t.add_argument('--i-have-approval', action='store_true')
+    t.add_argument('--claude-weekly')
     r = sub.add_parser('run')
     r.add_argument('--live', action='store_true')
     r.add_argument('--i-have-approval', action='store_true')
+    r.add_argument('--claude-weekly')
+    qa = sub.add_parser('quota')
+    qa.add_argument('--percent', required=True)
+    qa.add_argument('run_dir', nargs='?')
     rep = sub.add_parser('report')
     rep.add_argument('run_dir', nargs='?')
     args = p.parse_args(argv)
@@ -1096,6 +1658,8 @@ def main(argv=None):
         return telemetry(args)
     if args.command == 'run':
         return run_live(args)
+    if args.command == 'quota':
+        return quota_reading(args)
     if args.command == 'report':
         return report(args)
     return 2

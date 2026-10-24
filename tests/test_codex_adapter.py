@@ -142,8 +142,10 @@ class FakeCodexTests(unittest.TestCase):
         self.assertEqual(out['reply'], 'OZ/1g')
         self.assertEqual(out['usage']['cached_input_tokens'], 7296)
         sent = json.loads(self.log.read_text(encoding='utf-8'))
+        workdir = sent['argv'][sent['argv'].index('-C') + 1]
         self.assertEqual(sent['argv'], ['exec', '-m', 'm1', '-c', 'model_reasoning_effort="high"', '-s', 'read-only',
-                                        '--skip-git-repo-check', '--ephemeral', '--json', '-'])
+                                        '--skip-git-repo-check', '--ephemeral', '--json', '-C', workdir, '-'])
+        self.assertFalse(Path(workdir).exists())  # the isolated working directory is removed after the call
         self.assertTrue(sent['stdin'].startswith('SYS'))
         self.assertTrue(sent['stdin'].endswith('PROMPT'))
 

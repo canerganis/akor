@@ -35,6 +35,8 @@ pilot = _load('pilot')
 data, oracle, score = pilot.data, pilot.oracle, pilot.score
 
 MAT = data.materials()
+# Placeholder routes from the sources alone: the registry tests never depend on an identity record or routes.json.
+STATIC = {b: pilot.static_route(b) for b in pilot.BACKENDS}
 
 
 def eval_jobs(wave=None):
@@ -210,7 +212,7 @@ class Admission(unittest.TestCase):
         self.assertEqual(pilot.leakage_problems(), [])
 
     def test_registry_resolves_and_admits_the_worked_rules_with_oracle_provenance(self):
-        manifests = pilot.build_manifests(None)
+        manifests = pilot.build_manifests(None, STATIC)
         self.assertEqual(sorted(manifests), ['codex', 'sonnet'])
         sha = pilot._sha_file(REPO / 'bench' / 'ozmap' / 'oracle.py')
         for backend, manifest in manifests.items():
@@ -250,7 +252,7 @@ class Admission(unittest.TestCase):
 
 class BoolQ(unittest.TestCase):
     def test_boolq_is_ineligible_by_construction(self):
-        manifests = pilot.build_manifests(data.boolq_standin())
+        manifests = pilot.build_manifests(data.boolq_standin(), STATIC)
         registry = oz_registry.Registry(manifests['codex'])
         with self.assertRaises(oz_registry.RegistryError) as ctx:
             registry.resolve('boolq')
@@ -272,7 +274,7 @@ class BoolQ(unittest.TestCase):
         self.assertEqual(len({j['text'] for j in jobs}), 256)
         self.assertEqual(set(got['labels']), {j['dataset_id'] for j in jobs})
         self.assertEqual({oracle.gold('boolq', '', a) for a in got['labels'].values()}, {'yes', 'no'})
-        manifests = pilot.build_manifests(got)
+        manifests = pilot.build_manifests(got, STATIC)
         self.assertEqual(len(manifests['codex']['operations']['boolq']['dataset']['cases']), 64)
         with self.assertRaises(oz_registry.RegistryError):
             oz_registry.Registry(manifests['codex']).resolve('boolq')
@@ -367,6 +369,24 @@ class DryRun(unittest.TestCase):
                                                         'C': 5})
         self.assertEqual(r['budget']['used']['sonnet'], {'bootstrap': 1, 'A': 8, 'B': 4, 'C': 2})
 
+    def test_n2_dry_is_the_live_driver_with_fake_cli_executables(self):
+        r = self.result
+        self.assertIn('pilot.drive', r['driver'])
+        # every physical call (telemetry included) was served by a fake CLI child: zero real CLI calls
+        self.assertEqual(r['reconciliation']['fake_cli_calls'], r['physical_calls_total'])
+        self.assertEqual(r['reconciliation']['telemetry_calls'], 2)
+        iso = r['isolation']
+        self.assertEqual((iso['codex_calls'], iso['codex_isolated']), (29, 29))  # N1: empty -C dir outside the repo
+        self.assertEqual((iso['claude_calls'], iso['claude_tools_disabled']), (15, 15))
+        self.assertEqual((iso['tool_use_leakage'], iso['gold_accessed_during_run']), ([], False))
+        self.assertEqual(r['telemetry']['status'], 'ok')  # the paired telemetry ran through the fake codex
+        self.assertTrue(r['usage_semantics']['codex'].startswith('inclusive cached accounting certified'))
+        self.assertEqual(r['usage_semantics']['sonnet'], pilot.SONNET_SEMANTICS)
+        self.assertEqual((r['prompt_leakage'], r['fake_misses']), ([], 0))
+        self.assertRegex(r['output_sha256'], r'^[0-9a-f]{64}$')
+        self.assertEqual(r['output_sha256'], pilot._digest(pilot.deterministic(r)))
+        self.assertNotIn('wall_seconds', json.dumps(pilot.deterministic(r)))
+
     def test_every_cell_is_complete_and_the_dry_run_fits(self):
         rows = {(x['cell'], x['wave'], x['arm']): x for x in self.result['rows']}
         self.assertEqual(len(rows), 13)
@@ -414,18 +434,19 @@ class Freeze(unittest.TestCase):
             (root / 'a.py').write_text('x = 1\n', encoding='utf-8')
             (root / 'b.json').write_text('{}\n', encoding='utf-8')
             plan_obj = {'p': 1}
-            record = pilot.freeze_record(root, ['a.py', 'b.json'], datasets={'d': 'h'}, plan_obj=plan_obj)
-            self.assertEqual(pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj=plan_obj), [])
+            files = ['a.py', 'b.json']
+            record = pilot.freeze_record(root, files, datasets={'d': 'h'}, plan_obj=plan_obj)
+            self.assertEqual(pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj=plan_obj, files=files), [])
             (root / 'a.py').write_text('x = 2\n', encoding='utf-8')
-            self.assertEqual(pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj=plan_obj),
+            self.assertEqual(pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj=plan_obj, files=files),
                              ['a.py changed since the freeze'])
             self.assertIn('a dataset changed since the freeze',
-                          pilot.verify_freeze(record, root, datasets={'d': 'other'}, plan_obj=plan_obj))
+                          pilot.verify_freeze(record, root, datasets={'d': 'other'}, plan_obj=plan_obj, files=files))
             self.assertIn('the plan changed since the freeze',
-                          pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj={'p': 2}))
+                          pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj={'p': 2}, files=files))
             (root / 'b.json').unlink()
             self.assertIn('b.json changed since the freeze',
-                          pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj=plan_obj))
+                          pilot.verify_freeze(record, root, datasets={'d': 'h'}, plan_obj=plan_obj, files=files))
 
     def test_freeze_refuses_uncommitted_frozen_files(self):
         def fake(argv, **kw):
@@ -476,19 +497,22 @@ class LiveGuard(unittest.TestCase):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         self.dir = Path(temp.name)
-        self.saved = (pilot.FREEZE_FILE, pilot.probe_identity, pilot.TELEMETRY_FILE)
+        self.saved = (pilot.FREEZE_FILE, pilot.probe_identity, pilot.TELEMETRY_FILE, pilot.FREEZE_FILES)
         pilot.FREEZE_FILE = self.dir / 'freeze.json'
         pilot.TELEMETRY_FILE = self.dir / 'telemetry.json'
+        # the files this checkout has (routes.json and freeze.json appear only at freeze)
+        pilot.FREEZE_FILES = [f for f in self.saved[3] if (REPO / f).is_file()]
 
         def no_probe(backend):
             raise AssertionError('a guarded command must refuse before probing any CLI')
         pilot.probe_identity = no_probe
 
     def tearDown(self):
-        pilot.FREEZE_FILE, pilot.probe_identity, pilot.TELEMETRY_FILE = self.saved
+        pilot.FREEZE_FILE, pilot.probe_identity, pilot.TELEMETRY_FILE, pilot.FREEZE_FILES = self.saved
 
     def args(self, **kw):
-        return types.SimpleNamespace(**{'command': 'run', 'live': True, 'i_have_approval': True, **kw})
+        return types.SimpleNamespace(**{'command': 'run', 'live': True, 'i_have_approval': True,
+                                        'claude_weekly': '40', **kw})
 
     def test_live_run_refuses_without_freeze(self):
         self.assertIn('no freeze.json', pilot.guard(self.args()))
@@ -496,7 +520,7 @@ class LiveGuard(unittest.TestCase):
         self.assertEqual(pilot.telemetry(self.args(command='telemetry')), 2)
 
     def test_live_run_refuses_with_a_stale_freeze_or_without_approval(self):
-        record = pilot.freeze_record()
+        record = pilot.freeze_record(files=pilot.FREEZE_FILES)
         stale = json.loads(json.dumps(record))
         stale['files']['oz_host.py'] = '0' * 64
         pilot._write(pilot.FREEZE_FILE, stale)
@@ -506,6 +530,8 @@ class LiveGuard(unittest.TestCase):
         self.assertIn('--i-have-approval', pilot.guard(self.args(i_have_approval=False)))
         self.assertEqual(pilot.run_live(self.args(i_have_approval=False)), 2)
         self.assertIn('--live', pilot.guard(self.args(live=False)))
+        self.assertIn('--claude-weekly', pilot.guard(self.args(claude_weekly=None)))
+        self.assertIn('hand off', pilot.guard(self.args(claude_weekly='99')))
         # approval and a verified freeze, but unresolved telemetry: still no call
         self.assertEqual(pilot.run_live(self.args()), 2)
 
@@ -560,14 +586,14 @@ class PilotConfig(unittest.TestCase):
         kw.update(over)
         return self.oz_host.check_pilot(config, **kw)
 
-    def test_the_frozen_dry_configuration_passes_check_pilot(self):
-        config = pilot.pilot_config('dry', self.routes, 'x')
+    def test_the_frozen_replay_configuration_passes_check_pilot(self):
+        config = pilot.pilot_config('replay', self.routes, 'x')
         self.assertEqual((config['global_cap'], config['caps']), (54, pilot.CAPS))
         self.assertIsNone(self.check(config))
 
     def test_check_pilot_refuses_mismatched_budget_missing_pool_and_a_live_run_without_launcher(self):
         Error = self.oz_host.Error
-        dry = pilot.pilot_config('dry', self.routes, 'x')
+        dry = pilot.pilot_config('replay', self.routes, 'x')
         other = json.loads(json.dumps(pilot.CAPS))
         other['codex']['A'] = 13
         other['codex']['reserve'] = 6

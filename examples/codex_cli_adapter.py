@@ -23,13 +23,22 @@ Identity (amendment D7): `--identity` prints one JSON line with the effective ba
 and the frozen command-line flags, then exits without any model call, so the host can reconcile the route before
 dispatch.
 
+Isolation (council 3 close, Opus N1): every `codex exec` runs in a fresh EMPTY temporary working directory outside any
+repository (`-C <dir>`, also its process cwd, plus `--skip-git-repo-check`), created per call and removed afterwards,
+so the worker's root holds no gold, admission label or worked AST. The sandbox stays read-only. Because a read-only
+sandbox can still read files by absolute path, the event stream is also checked: any JSON event that is not a turn
+event, a thread start, a top-level error notice, or an agent_message/reasoning item (a command, file read or change,
+MCP tool call, web search, plan or any unknown item) is a leakage violation. Such a call exits EXIT_LEAKAGE (86) with
+`oz-leakage:` on stderr and no reply, so its answers are never accepted; the capture keeps the usage and lists every
+violating event under "leakage", and the host marks the run's efficiency invalid.
+
 Raw capture: when the runner sets OZ_ENVELOPE_PATH (as for the Claude adapter), a JSON document with the raw codex
 stdout (JSONL), stderr, exit status, timeout flag, effective model and effort, `codex --version` and the usage of the
 last turn.completed is published there atomically BEFORE the exit code is acted on, so a failed or timed-out call
 still keeps its telemetry. On a non-zero exit the usage stays in the capture and is echoed on stderr as
 `oz-usage-not-accepted`; it is never put in a response, so the failed call is not accepted.
 """
-import json, os, shutil, subprocess, sys
+import json, os, shutil, subprocess, sys, tempfile
 
 REQUIRED = ('input_tokens', 'cached_input_tokens', 'output_tokens')
 OPTIONAL = (('cache_write_input_tokens', 'cache_creation_input_tokens'),
@@ -76,6 +85,38 @@ def parse_events(stdout):
             error = event.get('error')
             failure = str(error.get('message') if isinstance(error, dict) else error)
     return reply, usage, failure
+
+
+# Events a pure text completion may emit. Anything else in the JSON stream is tool, command, file or web activity.
+ALLOWED_EVENTS = ('thread.started', 'turn.started', 'turn.completed', 'turn.failed', 'error')
+ITEM_EVENTS = ('item.started', 'item.updated', 'item.completed')
+ALLOWED_ITEMS = ('agent_message', 'reasoning')
+EXIT_LEAKAGE = 86
+
+
+def leakage(stdout):
+    """Every event of the stream that is not plain text generation: [{"line", "type", "item_type"}]. Lines that are not
+    JSON objects are not events (codex prints none on stdout with --json) and are ignored here."""
+    found = []
+    for n, line in enumerate((stdout or '').splitlines()):
+        if not line.startswith('{'):
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        kind = event.get('type')
+        if kind in ALLOWED_EVENTS:
+            continue
+        item = event.get('item')
+        item_type = item.get('type') if isinstance(item, dict) else None
+        if kind in ITEM_EVENTS and item_type in ALLOWED_ITEMS:
+            continue
+        found.append({'line': n, 'type': kind if isinstance(kind, str) else repr(kind),
+                      'item_type': item_type if isinstance(item_type, str) else repr(item_type)})
+    return found
 
 
 def last_error(stdout):
@@ -136,7 +177,8 @@ def codex_version(exe):
         return f'unknown ({type(exc).__name__})'
 
 
-FLAGS = ('-s', 'read-only', '--skip-git-repo-check', '--ephemeral', '--json')
+FLAGS = ('-s', 'read-only', '--skip-git-repo-check', '--ephemeral', '--json', '-C', '<fresh-empty-temp-dir>',
+         'tool-events=leakage-exit-86')
 MISSING = 'codex executable not found on PATH; install the Codex CLI or fix PATH'
 
 
@@ -146,13 +188,43 @@ def identity(model, effort, exe):
             'cli_version': codex_version(exe), 'flags': list(FLAGS)}
 
 
-def capture_record(*, model, effort, version, stdout, stderr, exit_code, timed_out):
+def capture_record(*, model, effort, version, stdout, stderr, exit_code, timed_out, workdir=None):
     """The durable raw capture, one JSON document: raw codex stdout (the JSONL event stream), stderr, exit status,
-    timeout flag, the effective model and effort, `codex --version`, and the usage read from turn.completed (kept even
-    when the exit code is non-zero; acceptance is decided by the exit code, not by this field)."""
+    timeout flag, the effective model and effort, `codex --version`, the usage read from turn.completed (kept even
+    when the exit code is non-zero; acceptance is decided by the exit code, not by this field), the isolated working
+    directory and every leakage event of the stream."""
     _, usage, _ = parse_events(stdout)
     return {'adapter': 'codex_cli_adapter', 'backend': 'codex', 'model': model, 'effort': effort, 'codex_version': version,
-            'exit_code': exit_code, 'timed_out': timed_out, 'stdout': stdout, 'stderr': stderr, 'usage': usage}
+            'exit_code': exit_code, 'timed_out': timed_out, 'stdout': stdout, 'stderr': stderr, 'usage': usage,
+            'workdir': workdir, 'leakage': leakage(stdout)}
+
+
+def _inside_repo(path):
+    """True when path or an ancestor holds .git or pyproject.toml (a checkout), or it lies under this adapter's repo."""
+    path = os.path.realpath(path)
+    here = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    try:
+        if os.path.commonpath([os.path.normcase(path), os.path.normcase(here)]) == os.path.normcase(here):
+            return True
+    except ValueError:
+        pass
+    probe = path
+    while True:
+        if os.path.exists(os.path.join(probe, '.git')) or os.path.isfile(os.path.join(probe, 'pyproject.toml')):
+            return True
+        parent = os.path.dirname(probe)
+        if parent == probe:
+            return False
+        probe = parent
+
+
+def empty_workdir():
+    """A fresh empty directory in the system temp area, outside every repository (else RuntimeError)."""
+    path = os.path.realpath(tempfile.mkdtemp(prefix='oz-codex-empty-'))
+    if os.listdir(path) or _inside_repo(path):
+        shutil.rmtree(path, ignore_errors=True)
+        raise RuntimeError(f'the isolated codex working directory {path} is not an empty directory outside any repo')
+    return path
 
 
 def main():
@@ -174,20 +246,35 @@ def main():
     limit = float(os.environ.get('OZ_CODEX_TIMEOUT', '900'))
     timed_out, code = False, None
     try:
-        proc = subprocess.run([exe, 'exec', '-m', model, '-c', f'model_reasoning_effort="{effort}"',
-                               '-s', 'read-only', '--skip-git-repo-check', '--ephemeral', '--json', '-'],
-                              input=request['system'] + chr(10) * 2 + request['prompt'], capture_output=True, text=True,
-                              encoding='utf-8', timeout=limit)
-        stdout, stderr, code = proc.stdout, proc.stderr, proc.returncode
-    except subprocess.TimeoutExpired as exc:
-        stdout, stderr, timed_out = _text(exc.stdout), _text(exc.stderr), True
+        workdir = empty_workdir()
+    except (OSError, RuntimeError) as exc:
+        sys.stderr.write(f'codex not launched: {exc}')
+        sys.exit(2)
+    try:
+        try:
+            proc = subprocess.run([exe, 'exec', '-m', model, '-c', f'model_reasoning_effort="{effort}"',
+                                   '-s', 'read-only', '--skip-git-repo-check', '--ephemeral', '--json', '-C', workdir,
+                                   '-'],
+                                  input=request['system'] + chr(10) * 2 + request['prompt'], capture_output=True,
+                                  text=True, encoding='utf-8', timeout=limit, cwd=workdir)
+            stdout, stderr, code = proc.stdout, proc.stderr, proc.returncode
+        except subprocess.TimeoutExpired as exc:
+            stdout, stderr, timed_out = _text(exc.stdout), _text(exc.stderr), True
+    finally:
+        shutil.rmtree(workdir, ignore_errors=True)
+    record = capture_record(model=model, effort=effort, version=version, stdout=stdout, stderr=stderr,
+                            exit_code=code, timed_out=timed_out, workdir=workdir)
     if os.environ.get('OZ_ENVELOPE_PATH'):
-        record = capture_record(model=model, effort=effort, version=version, stdout=stdout, stderr=stderr,
-                                exit_code=code, timed_out=timed_out)
         _publish(os.environ['OZ_ENVELOPE_PATH'], json.dumps(record, ensure_ascii=False).encode('utf-8'))
     if timed_out:
         sys.stderr.write(f'codex timed out after {limit:g} seconds')
         sys.exit(124)
+    if record['leakage']:
+        sys.stderr.write('oz-leakage: the codex event stream shows tool, command, file or web activity: '
+                         + json.dumps(record['leakage'][:20]))
+        if record['usage'] is not None:
+            sys.stderr.write(chr(10) + 'oz-usage-not-accepted: ' + json.dumps(record['usage']))
+        sys.exit(EXIT_LEAKAGE)
     if code:
         _, usage, _ = parse_events(stdout)
         sys.stderr.write(stderr[-2000:])

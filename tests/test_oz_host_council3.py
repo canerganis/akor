@@ -618,7 +618,7 @@ class B9Launch(unittest.TestCase):
 
     def pilot(self, **over):
         caps = {'fake': {'A': 2, 'reserve': 1}}
-        config = {'schema': oz_host.PILOT_SCHEMA, 'mode': 'dry', 'global_cap': 3, 'caps': caps, 'slots': 4,
+        config = {'schema': oz_host.PILOT_SCHEMA, 'mode': 'replay', 'global_cap': 3, 'caps': caps, 'slots': 4,
                   'max_records': 64, 'max_wait': 0.0, 'intake': {'producers': 1, 'per_producer': 3},
                   'limits': {'call_timeout_seconds': 60, 'deadline_seconds': 120, 'max_input_tokens': 100000},
                   'usage_semantics': 'replay', 'routes': {'fake': oz_host.identity_for(th.ROUTE)}}

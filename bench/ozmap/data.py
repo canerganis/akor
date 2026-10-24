@@ -350,12 +350,25 @@ def boolq(path=BOOLQ_FILE, expected_sha256=None):
                                  'dataset_id': did})
         labels[did] = rows[i]['label']
         texts.add(text_of(rows[i]))
-    admission = []
-    for n, i in enumerate(picked[BOOLQ_N:BOOLQ_N + 64]):
-        part = 'representative' if n < ADMISSION_REPRESENTATIVE else 'challenge'
-        admission.append((f'adm-boolq-{n:02d}', text_of(rows[i]), part, rows[i]['label']))
     if len(picked) < BOOLQ_N + 64:
         raise ValueError('too few distinct BoolQ texts after removing duplicates')
+    # Admission is separated from evaluation by passage, not only by text (council 3 close, B12): BoolQ asks several
+    # questions about one passage, so an admission row whose passage is also an evaluation passage is replaced by a
+    # seeded draw from the unpicked rows (the evaluation waves, and so their digest, are unchanged).
+    eval_passages = {rows[i]['passage'] for i in picked[:BOOLQ_N]}
+    spare = [i for i in range(len(rows)) if i not in set(picked)]
+    random.Random(sub_seed('boolq-admission-spare')).shuffle(spare)
+    chosen = []
+    for i in picked[BOOLQ_N:BOOLQ_N + 64]:
+        while rows[i]['passage'] in eval_passages or text_of(rows[i]) in {text_of(rows[j]) for j in chosen}:
+            if not spare:
+                raise ValueError('too few BoolQ rows with a passage outside the evaluation waves')
+            i = spare.pop()
+        chosen.append(i)
+    admission = []
+    for n, i in enumerate(chosen):
+        part = 'representative' if n < ADMISSION_REPRESENTATIVE else 'challenge'
+        admission.append((f'adm-boolq-{n:02d}', text_of(rows[i]), part, rows[i]['label']))
     return {'available': True, 'sha256': sha, 'source': BOOLQ_SOURCE, 'rows': len(rows), 'waves': waves,
             'labels': labels, 'admission': admission}
 

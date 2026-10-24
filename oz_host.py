@@ -36,10 +36,20 @@ batch id) and runs it in a child process (ChildLauncher: `python oz_host.py --ch
 the host never touches os.environ) or in process for callable fake adapters (InProcessLauncher). execute() caps the
 request at one physical call through oz_do's admit hook. Every request sets max_attempts 1 (A2.1). Before anything is
 parsed, the child's stdout, stderr, exit code and timeout flag are written under the physical attempt id. The child's
-timeout is the request's call_timeout_seconds plus a fixed margin; on timeout the whole process tree is killed
-(taskkill /T on Windows, the child's own session elsewhere). Before every launch: the launch gate, the route check
-(oz_route.verify of the frozen route in the real launch env, council 3 B11), the budget reservation and, when given, an
-experiment-wide physical slot (SlotPool) are taken, in that order; a refusal launches nothing.
+timeout is the request's call_timeout_seconds plus a fixed margin. The child's whole process tree is tracked (a Windows
+job object the child joins right after it starts, the child's own session elsewhere): on timeout, and whenever a
+descendant outlives the child, the tree is killed and its termination is VERIFIED (no live process left in the job or
+process group). ChildLauncher reports tree_killed True only after that verification; an unverified tree keeps its
+physical slot and its oz_quota reservation held, and the attempt unresolved, until a later check sees the tree gone
+(council 3 close, B9 and Astra blocker 2). Before every launch: the launch gate (pilot: global cap and the 99% weekly
+handoff stop), the route check (oz_route.verify of the frozen route in the real launch env, council 3 B11), an
+experiment-wide physical slot (SlotPool), its oz_quota reservation (when given) and the budget reservation are taken, in
+that order; a refusal launches nothing and releases what it took. Every child gets its own OZ_ENVELOPE_PATH under the
+attempt's evidence directory (the durable runner overrides it per receipt inside the run's captures directory); after
+every child the host harvests every adapter envelope of the request (the runner's captures, also of failed calls),
+keeps it immutably, folds the usage it shows into the call's resolved view when the core ledger lacks it, and checks
+it for tool use (leakage, council 3 close N1): a leaking call's answers are refused and the arm's efficiency is
+invalid.
 
 Ledgers (ledger.sqlite per host; append-only where it matters, council 3 B6, B7, B10).
   attempts     one row per physical attempt id: membership, bucket, FIRST raw evidence and elapsed (immutable once
@@ -50,7 +60,12 @@ Ledgers (ledger.sqlite per host; append-only where it matters, council 3 B6, B7,
                evidence hashes of reconciliation children, never overwriting the first evidence.
   calls        one immutable row per physical call id read from the core ledger (run_dir/calls.jsonl) after every
                child, also when the child returned nothing (Opus B): usage (unknown stays unknown, never zero) and the
-               call's job membership from call_start.job_map. The adapter capture is reconciled with it.
+               call's job membership from call_start.job_map. The adapter capture is reconciled with it. A later or
+               second-source observation (a re-read of the core ledger, an adapter envelope) never rewrites the row: a
+               request or membership conflict is a hard error whatever the usage; a compatible observation is kept in
+               call_observations and folded into the resolved view call() returns (with its source); an incompatible
+               one is kept as a conflict and fails reconciliation (council 3 close, B6).
+  envelopes    one immutable row per adapter envelope (receipt): exit code, sha256, kind, usage and leakage.
   allocations  one immutable row per (call, job, basis), membership from call_start.job_map (B7): share 1/n over the
                jobs the call really carried; "imported" rows charge the shared bootstrap analytically.
   plan, authority, deliveries (the first delivery of every terminal row with its wall and monotonic time: resume
@@ -83,22 +98,30 @@ Rule delivery (DRIVER rule 8, confirmed by council 3). With rule_delivery="after
 settled only after the wave's audits are decided; if a disagreement quarantined the rule, those undelivered rows fall
 back to the model. Delivered rows always stay as recorded.
 
-Timing (B8). Durations are monotonic within one process session (wall clock across sessions). The report keeps the
-measured makespan (first intake to last terminal delivery), the charged makespan (an importing arm adds the shared
-bootstrap's recorded elapsed and drops only its own wait for it), every phase duration, and the summed physical call
-seconds as a separate metric; dry_run adds the replay projection as its own field.
+Timing (B8, amendment 3 section 2). Durations are monotonic within one process session (wall clock across sessions).
+The report keeps the measured makespan (first intake to last terminal delivery: every admission, check, queue, wait and
+completion cost inside it), the charged makespan (measured makespan, plus, for an importing arm, the shared bootstrap's
+complete recorded elapsed; nothing is ever subtracted), every phase duration (an interrupted span, a start whose process
+session ended without its end, is kept and closed at the next stamp of the wave, wall clock, and listed as interrupted),
+and the summed physical call seconds as a separate metric; dry_run adds the replay projection as its own field.
 
 Pilot entry (B9). ArmHost(pilot=config) refuses to run without a complete frozen configuration (check_pilot): global
 and backend caps equal to the frozen budget, an experiment-wide slot pool of the frozen size, frozen batch limits and
 call timeouts, the frozen route of the backend with the launch-time route check, and the declared usage semantics.
+Modes: live (the paid pilot) and dry (the same driver with fake CLI executables) also need ChildLauncher children, the
+route check as the frozen oz_route.build result (a callable check is refused), an oz_quota store, the launch gate as
+the only hook, the usage components each CLI reports, and a route closure without unversioned entries; replay is the
+in-process unit-test helper below.
 
 Reports never say "correct": accepted_by_checks is runtime acceptance; gold scoring is a separate offline step.
-dry_run(matrix, recorded_usage) runs A/B/C with replay adapters and zero external calls.
+dry_run(matrix, recorded_usage) runs A/B/C with replay adapters in process and zero external calls: a unit-test
+helper only; the pilot's dry run is bench/ozmap/pilot.py dry (the live driver with fake CLI executables).
 """
 from __future__ import annotations
 
 import base64
 import hashlib
+import importlib
 import json
 import os
 from pathlib import Path
@@ -196,14 +219,75 @@ def _ledger_calls(run: Path) -> list:
         except ValueError:
             continue
         entry = calls.setdefault(record.get('call_id'), {'call_id': record.get('call_id'), 'outcome': None,
-                                                          'usage': None, 'elapsed_ms': None, 'jobs': []})
+                                                          'usage': None, 'elapsed_ms': None, 'jobs': [],
+                                                          'receipt': None, 'system_sha256': None,
+                                                          'prompt_sha256': None})
         if record.get('event') == 'call_start':
             entry['jobs'] = [m.get('inbox_job_id') for m in record.get('job_map') or [] if isinstance(m, dict)]
+            entry.update(receipt=record.get('batch_id'), system_sha256=record.get('system_sha256'),
+                         prompt_sha256=record.get('prompt_sha256'))
         else:
             raw = (record.get('usage') or {}).get('raw')
             entry.update(outcome=record.get('outcome'), usage=raw if isinstance(raw, dict) else None,
                          elapsed_ms=record.get('elapsed_ms'))
     return [c for c in calls.values() if c['call_id']]
+
+
+def _example(name):
+    """An examples/ module (the adapters' own parsers), imported by name."""
+    if str(EXAMPLES) not in sys.path:
+        sys.path.insert(0, str(EXAMPLES))
+    return importlib.import_module(name)
+
+
+def envelope_evidence(raw) -> dict:
+    """{kind, usage, leakage} of one adapter envelope: a codex_cli_adapter capture (usage and tool events recomputed
+    from its raw JSONL stdout), a Claude CLI result envelope (usage from modelUsage, tool use from num_turns and
+    permission_denials), or unknown (no usage, no verdict)."""
+    out = {'kind': 'unknown', 'usage': None, 'leakage': []}
+    try:
+        doc = json.loads(raw.decode('utf-8') if isinstance(raw, bytes) else raw)
+    except (ValueError, UnicodeError, AttributeError, TypeError):
+        return dict(out, kind='unparsed')
+    if not isinstance(doc, dict):
+        return out
+    if doc.get('adapter') == 'codex_cli_adapter':
+        codex = _example('codex_cli_adapter')
+        stdout = doc.get('stdout') if isinstance(doc.get('stdout'), str) else ''
+        recorded = doc.get('leakage') if isinstance(doc.get('leakage'), list) else []
+        out.update(kind='codex', usage=codex.parse_events(stdout)[1], leakage=codex.leakage(stdout) or recorded)
+    elif 'modelUsage' in doc or doc.get('type') == 'result':
+        claude = _example('claude_map_adapter')
+        out.update(kind='claude', usage=claude.frozen.usage_from_envelope(doc), leakage=claude.tool_use(doc))
+    return out
+
+
+def _run_envelopes(run: Path, extra=()) -> dict:
+    """{receipt: {receipt, exit_code, raw}} for every adapter envelope of a request run: the durable runner's
+    captures/<receipt>.done (envelope_b64, also of failed calls), a captures/<receipt>.envelope the runner did not fold
+    (a runner that was killed), and the given extra (key, path) files (the per-attempt OZ_ENVELOPE_PATH)."""
+    found = {}
+    captures = run / 'captures'
+    for done in sorted(captures.glob('*.done')) if captures.is_dir() else ():
+        try:
+            record = json.loads(done.read_text(encoding='utf-8'))
+            raw = base64.b64decode(record['envelope_b64']) if record.get('envelope_b64') else None
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+        receipt = record.get('receipt') or done.name[:-len('.done')]
+        found[receipt] = {'receipt': receipt, 'exit_code': record.get('exit_code'), 'raw': raw}
+    for env in sorted(captures.glob('*.envelope')) if captures.is_dir() else ():
+        receipt = env.name[:-len('.envelope')]
+        if (found.get(receipt) or {}).get('raw') is None:
+            try:
+                found.setdefault(receipt, {'receipt': receipt, 'exit_code': None, 'raw': None})['raw'] = env.read_bytes()
+            except OSError:
+                continue
+    for key, path in extra:
+        path = Path(path)
+        if path.is_file():
+            found[key] = {'receipt': key, 'exit_code': None, 'raw': path.read_bytes()}
+    return {k: v for k, v in found.items() if v.get('raw') is not None}
 
 
 def _job_calls(run: Path) -> dict:
@@ -291,6 +375,9 @@ def _write_raw(evidence_dir: Path, raw: dict) -> dict:
     meta = {'exit_code': raw['exit_code'], 'timed_out': raw['timed_out'],
             'stdout_sha256': hashlib.sha256(raw['stdout']).hexdigest(),
             'stderr_sha256': hashlib.sha256(raw['stderr']).hexdigest()}
+    for key in ('tree', 'tree_killed'):
+        if key in raw:
+            meta[key] = raw[key]
     _publish(evidence_dir / 'exit.json', json.dumps(meta).encode('utf-8'))
     return meta
 
@@ -304,35 +391,129 @@ def child_timeout(limits: dict) -> float:
     return float((limits or {}).get('call_timeout_seconds', DEFAULT_CALL_TIMEOUT)) + CHILD_MARGIN
 
 
-def _kill_tree(proc) -> None:
-    """Kill the child and every process it started: taskkill /T on Windows, the child's own session elsewhere."""
-    if os.name == 'nt':
+class ProcessTree:
+    """The whole process tree of one child. Windows: a job object the child is assigned to right after it starts; every
+    process it or its descendants start joins the job (none may break away), so the job's live process count is the
+    tree. Elsewhere: the child's own session (process group). count() is the number of live processes (None when it
+    cannot be known), kill() kills the tree, gone(timeout) polls until count() is 0 and says whether that was VERIFIED."""
+
+    def __init__(self, proc):
+        self.proc, self.job, self.k32 = proc, None, None
+        self.mode = 'pgroup' if os.name != 'nt' else 'unverifiable'
+        if os.name == 'nt':
+            try:
+                import ctypes
+                from ctypes import wintypes
+                k32 = ctypes.WinDLL('kernel32', use_last_error=True)
+                k32.CreateJobObjectW.restype = wintypes.HANDLE
+                k32.CreateJobObjectW.argtypes = (ctypes.c_void_p, wintypes.LPCWSTR)
+                k32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+                k32.QueryInformationJobObject.argtypes = (wintypes.HANDLE, ctypes.c_int, ctypes.c_void_p,
+                                                          wintypes.DWORD, ctypes.c_void_p)
+                k32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+                k32.CloseHandle.argtypes = (wintypes.HANDLE,)
+                job = k32.CreateJobObjectW(None, None)
+                if job and k32.AssignProcessToJobObject(job, int(proc._handle)):
+                    self.job, self.k32, self.mode = job, k32, 'job'
+                elif job:
+                    k32.CloseHandle(job)
+            except (OSError, AttributeError, ValueError):
+                self.job = None
+
+    def count(self):
+        if self.mode == 'job':
+            import ctypes
+            from ctypes import wintypes
+
+            class Accounting(ctypes.Structure):
+                _fields_ = [('user', ctypes.c_int64), ('kernel', ctypes.c_int64), ('period_user', ctypes.c_int64),
+                            ('period_kernel', ctypes.c_int64), ('page_faults', wintypes.DWORD),
+                            ('total', wintypes.DWORD), ('active', wintypes.DWORD), ('terminated', wintypes.DWORD)]
+            info = Accounting()
+            if not self.k32.QueryInformationJobObject(self.job, 1, ctypes.byref(info), ctypes.sizeof(info), None):
+                return None
+            return int(info.active)
+        if self.mode == 'pgroup':
+            try:
+                os.killpg(self.proc.pid, 0)
+                return 1
+            except ProcessLookupError:
+                return 0
+            except OSError:
+                return None
+        return None
+
+    def kill(self) -> None:
+        if self.mode == 'job':
+            self.k32.TerminateJobObject(self.job, 1)
+        if os.name == 'nt':
+            try:
+                subprocess.run(['taskkill', '/F', '/T', '/PID', str(self.proc.pid)], capture_output=True,
+                               stdin=subprocess.DEVNULL, timeout=60)
+            except (OSError, subprocess.SubprocessError):
+                pass
+        else:
+            import signal
+            try:
+                os.killpg(self.proc.pid, signal.SIGKILL)
+            except OSError:
+                pass
         try:
-            subprocess.run(['taskkill', '/F', '/T', '/PID', str(proc.pid)], capture_output=True,
-                           stdin=subprocess.DEVNULL, timeout=60)
-        except (OSError, subprocess.SubprocessError):
-            pass
-    else:
-        import signal
-        try:
-            os.killpg(proc.pid, signal.SIGKILL)
+            self.proc.kill()
         except OSError:
             pass
+
+    def gone(self, timeout: float = 30.0) -> bool:
+        """True only when the tree is verified empty within timeout."""
+        deadline = time.monotonic() + timeout
+        while True:
+            n = self.count()
+            if n == 0:
+                return True
+            if n is None or time.monotonic() >= deadline:
+                return False
+            time.sleep(0.05)
+
+    def close(self) -> None:
+        if self.job is not None:
+            self.k32.CloseHandle(self.job)
+            self.job = None
+
+
+def _kill_tree(proc) -> bool:
+    """Kill the child and every process it started; True only when the termination is verified."""
+    tree = ProcessTree(proc)
     try:
-        proc.kill()
-    except OSError:
-        pass
+        tree.kill()
+        return tree.gone()
+    finally:
+        tree.close()
 
 
 class ChildLauncher:
     """Each physical attempt is a child process `python oz_host.py --child SPEC` running one oz_do request with the
     adapter JSON file, under the explicit env the host built. The timeout is spec["child_timeout"] (the host ties it to
-    call_timeout_seconds), else the constructor's, else oz_do's default call timeout plus CHILD_MARGIN. On timeout the
-    whole process tree is killed, so a CLI grandchild cannot keep spending."""
+    call_timeout_seconds), else the constructor's, else oz_do's default call timeout plus CHILD_MARGIN. On timeout, and
+    when any descendant outlives the child, the whole process tree is killed and its termination verified, so a CLI
+    grandchild cannot keep spending. meta["tree"] = {mode, killed, survivors_after_exit, verified}; meta["tree_killed"]
+    is True only for a kill whose termination was verified, False for an unverified kill, None when nothing was
+    killed."""
 
     def __init__(self, adapter, *, timeout: float | None = None, python: str | None = None):
         self.adapter = Path(adapter).resolve()
         self.timeout, self.python = timeout, python or sys.executable
+        self.unverified = {}  # evidence dir -> ProcessTree whose termination is not verified yet
+
+    def settled(self, evidence) -> bool:
+        """True when the retained tree of this attempt is now verified gone (its job handle is then closed)."""
+        tree = self.unverified.get(str(evidence))
+        if tree is None:
+            return True
+        if tree.count() == 0:
+            tree.close()
+            del self.unverified[str(evidence)]
+            return True
+        return False
 
     def __call__(self, spec: dict, env: dict, evidence_dir: Path) -> tuple:
         evidence_dir.mkdir(parents=True, exist_ok=True)
@@ -351,17 +532,33 @@ class ChildLauncher:
             proc = subprocess.Popen([self.python, str(HOST_FILE), '--child', str(spec_file)], **options)
         except OSError as exc:
             raise oz_spool.LaunchNotStarted(f'cannot start the child process: {exc}') from None
+        tree = ProcessTree(proc)
+        killed, verified = False, None
         try:
-            stdout, stderr = proc.communicate(timeout=timeout)
-            raw = {'exit_code': proc.returncode, 'timed_out': False, 'stdout': stdout, 'stderr': stderr}
-        except subprocess.TimeoutExpired:
-            _kill_tree(proc)
             try:
-                stdout, stderr = proc.communicate(timeout=60)
+                stdout, stderr = proc.communicate(timeout=timeout)
+                raw = {'exit_code': proc.returncode, 'timed_out': False, 'stdout': stdout, 'stderr': stderr}
             except subprocess.TimeoutExpired:
-                stdout, stderr = b'', b''
-            raw = {'exit_code': None, 'timed_out': True, 'stdout': stdout or b'', 'stderr': stderr or b'',
-                   'tree_killed': True}
+                tree.kill()
+                killed = True
+                try:
+                    stdout, stderr = proc.communicate(timeout=60)
+                except subprocess.TimeoutExpired:
+                    stdout, stderr = b'', b''
+                raw = {'exit_code': None, 'timed_out': True, 'stdout': stdout or b'', 'stderr': stderr or b''}
+            survivors = tree.count()
+            if survivors:  # a descendant outlived the child: it could keep spending
+                tree.kill()
+                killed = True
+            verified = tree.gone() if killed else (None if survivors is None else survivors == 0)
+            raw['tree'] = {'mode': tree.mode, 'killed': killed, 'survivors_after_exit': survivors,
+                           'verified': verified}
+            raw['tree_killed'] = (verified is True) if killed else None
+        finally:
+            if verified is False:
+                self.unverified[str(evidence_dir)] = tree  # kept open: the host re-checks before releasing capacity
+            else:
+                tree.close()
         meta = _write_raw(evidence_dir, raw)
         execution = None
         if raw['exit_code'] == 0 and out.exists():
@@ -392,17 +589,54 @@ class SlotPool:
         self.slots = slots
 
     def acquire(self, poll: float = 0.02):
+        """The lock of one free slot (blocking); lock.slot is its index."""
         while True:
             for k in range(self.slots):
                 try:
-                    return oz_spool.HostLock(self.dir / f'slot{k}.lock').acquire()
+                    lock = oz_spool.HostLock(self.dir / f'slot{k}.lock').acquire()
                 except oz_spool.HostLocked:
                     continue
+                lock.slot = k
+                return lock
             time.sleep(poll)
 
     @staticmethod
     def release(lock) -> None:
         lock.release()
+
+
+class QuotaStore:
+    """oz_quota reservations usable from the Scheduler's launch threads: every acquire and release opens its own
+    oz_quota.Quota connection (an sqlite connection belongs to one thread). path None is the per-user store
+    (AKOR_QUOTA_DB, else ~/.akor/quota.sqlite), shared with every other AKOR tool."""
+
+    def __init__(self, path=None):
+        self.path = path
+        self.lock = threading.Lock()
+
+    def _run(self, method, *args, **kw):
+        import oz_quota
+        with self.lock:
+            quota = oz_quota.Quota(self.path)
+            try:
+                return getattr(quota, method)(*args, **kw)
+            finally:
+                quota.close()
+
+    def acquire(self, group, *, run_dir, receipt) -> dict:
+        return self._run('acquire', group, run_dir=run_dir, receipt=receipt)
+
+    def release(self, group, token) -> bool:
+        return self._run('release', group, token)
+
+    def holder(self, group):
+        return self._run('holder', group)
+
+    def events(self, group=None) -> list:
+        return self._run('events', group)
+
+    def close(self) -> None:
+        pass
 
 
 class InProcessLauncher:
@@ -517,8 +751,14 @@ CREATE TABLE IF NOT EXISTS violations(
 CREATE TABLE IF NOT EXISTS timeline(
     seq INTEGER PRIMARY KEY, wave TEXT NOT NULL, phase TEXT NOT NULL, edge TEXT NOT NULL CHECK(edge IN ('start','end')),
     at REAL NOT NULL, mono REAL, session TEXT);
+CREATE TABLE IF NOT EXISTS call_observations(
+    seq INTEGER PRIMARY KEY, call_id TEXT NOT NULL, attempt_id TEXT, source TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('folded','conflict')), data TEXT NOT NULL, at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS envelopes(
+    receipt TEXT PRIMARY KEY, attempt_id TEXT NOT NULL, request_id TEXT NOT NULL, call_id TEXT, exit_code INTEGER,
+    sha256 TEXT NOT NULL, kind TEXT NOT NULL, usage TEXT, leakage TEXT NOT NULL, at REAL NOT NULL);
 ''' + ''.join(_keep(t) for t in ('events', 'calls', 'allocations', 'plan', 'authority', 'deliveries', 'violations',
-                                 'timeline'))
+                                 'timeline', 'call_observations', 'envelopes'))
 
 
 def _usage_columns(usage) -> tuple:
@@ -622,10 +862,68 @@ class Ledger:
                 *_usage_columns(c.get('usage')), c.get('elapsed_ms'),
                 json.dumps(c['jobs']) if c.get('jobs') is not None else None)
 
+    OBS_FIELDS = ('outcome', 'usage', 'elapsed_ms', 'jobs')
+
+    @staticmethod
+    def _first(row) -> dict:
+        jobs = json.loads(row['jobs']) if row['jobs'] else None
+        return {'outcome': row['outcome'], 'usage': json.loads(row['usage']) if row['usage'] else None,
+                'elapsed_ms': row['elapsed_ms'], 'jobs': jobs or None}
+
+    @staticmethod
+    def _compatible(have, new, field) -> bool:
+        if have is None or new is None:
+            return True
+        if field == 'usage':
+            return (isinstance(have, dict) and isinstance(new, dict)
+                    and all(have[k] == new[k] for k in set(have) & set(new)))
+        return have == new
+
+    def _resolve(self, db, row) -> tuple:
+        """(resolved fields, {field: source}, observations) of one call: the first record, with every field it lacks
+        (and every usage component it lacks) taken from the earliest compatible observation."""
+        view, sources = self._first(row), {}
+        obs = [dict(r, data=json.loads(r['data'])) for r in
+               db.execute('SELECT * FROM call_observations WHERE call_id=? ORDER BY seq', (row['call_id'],))]
+        for o in obs:
+            if o['status'] != 'folded':
+                continue
+            for field in self.OBS_FIELDS:
+                value = o['data'].get(field)
+                if value is None:
+                    continue
+                if field == 'usage' and isinstance(view['usage'], dict):
+                    add = {k: v for k, v in value.items() if k not in view['usage']}
+                    if add:
+                        view['usage'] = dict(view['usage'], **add)
+                        sources['usage'] = o['source']
+                elif view[field] is None:
+                    view[field] = value
+                    sources[field] = o['source']
+        return view, sources, obs
+
+    def _observe(self, db, call_id, attempt_id, source, data, at) -> str:
+        """Record an observation of a recorded call: "same" (nothing new; not stored), "folded" (compatible and adds a
+        field or usage component the resolved view lacks) or "conflict" (kept as evidence; fails reconciliation)."""
+        row = db.execute('SELECT * FROM calls WHERE call_id=?', (call_id,)).fetchone()
+        view, _, _ = self._resolve(db, row)
+        data = {k: (data.get(k) or None) if k == 'jobs' else data.get(k) for k in self.OBS_FIELDS}
+        data = {k: v for k, v in data.items() if v is not None}
+        if not all(self._compatible(view[k], v, k) for k, v in data.items()):
+            status = 'conflict'
+        elif any(view[k] is None or (k == 'usage' and set(v) - set(view[k])) for k, v in data.items()):
+            status = 'folded'
+        else:
+            return 'same'
+        db.execute('INSERT INTO call_observations(call_id, attempt_id, source, status, data, at) VALUES (?,?,?,?,?,?)',
+                   (call_id, attempt_id, source, status, json.dumps(data, sort_keys=True, default=str), at))
+        return status
+
     def _attribute(self, db, attempt_id, request_id, core_calls) -> list:
-        """Insert the core-ledger calls of this request not yet in the ledger, attributed to this attempt. A call
-        already recorded with complete usage and different content is a hard error; one recorded incomplete (usage
-        unknown) stays as first recorded and the later observation becomes an event."""
+        """Insert the core-ledger calls of this request not yet in the ledger, attributed to this attempt. For a call
+        already recorded (council 3 close, B6): another request, another job membership or a differing usage
+        component is a hard error whatever the usage completeness; anything else becomes an observation that a
+        compatible view folds in (call() returns the resolved view) and an incompatible one keeps as a conflict."""
         mine = []
         for c in core_calls or []:
             values = self._call_values(c, attempt_id, request_id)
@@ -636,14 +934,54 @@ class Ledger:
                 continue
             if row['request_id'] != request_id:
                 raise Error(f"call {c['call_id']} is recorded under request {row['request_id']}, not {request_id}")
+            first = self._first(row)
+            jobs = c.get('jobs') or None
+            if first['jobs'] is not None and jobs is not None and list(first['jobs']) != list(jobs):
+                raise Error(f"conflicting duplicate of call {c['call_id']}: its job membership differs from the first "
+                            'record')
+            if not self._compatible(first['usage'], c.get('usage'), 'usage'):
+                raise Error(f"conflicting duplicate of call {c['call_id']}: a recorded usage component differs")
             if row['attempt_id'] == attempt_id:
                 mine.append(c['call_id'])
-            if tuple(row)[3:] != values[3:]:
-                if row['usage_known'] and values[5]:
-                    raise Error(f"conflicting duplicate of call {c['call_id']}: a complete call record differs")
-                self._event(db, row['attempt_id'], 'call_observation', {'call_id': c['call_id'], 'later': c},
+            if self._observe(db, c['call_id'], attempt_id, 'core_ledger', c, time.time()) == 'conflict':
+                self._event(db, row['attempt_id'], 'call_observation_conflict', {'call_id': c['call_id'], 'later': c},
                             time.time())
         return mine
+
+    def record_envelope(self, *, receipt, attempt_id, request_id, call_id, exit_code, raw, evidence, at) -> tuple:
+        """Keep one adapter envelope immutably (a different envelope for the same receipt is a hard error) and fold
+        the usage it shows into its call's resolved view. Returns (observation status or "no_call", the attempt id
+        that recorded the envelope first)."""
+        sha = hashlib.sha256(raw).hexdigest()
+        with self.lock, self.tx() as db:
+            have = db.execute('SELECT sha256, attempt_id FROM envelopes WHERE receipt=?', (receipt,)).fetchone()
+            if have is None:
+                db.execute('INSERT INTO envelopes VALUES (?,?,?,?,?,?,?,?,?,?)',
+                           (receipt, attempt_id, request_id, call_id, exit_code if type(exit_code) is int else None,
+                            sha, evidence['kind'], json.dumps(evidence['usage'], sort_keys=True)
+                            if evidence['usage'] is not None else None, json.dumps(evidence['leakage']), at))
+                owner = attempt_id
+            elif have[0] != sha:
+                raise Error(f'adapter envelope {receipt} differs from the one recorded first')
+            else:
+                owner = have[1]
+            if call_id is None or db.execute('SELECT 1 FROM calls WHERE call_id=?', (call_id,)).fetchone() is None:
+                return 'no_call', owner
+            if evidence['usage'] is None:
+                return 'same', owner
+            return self._observe(db, call_id, owner, 'adapter_envelope:' + receipt, {'usage': evidence['usage']},
+                                 at), owner
+
+    def envelopes(self, attempt_ids=None) -> list:
+        rows = [dict(r, usage=json.loads(r['usage']) if r['usage'] else None, leakage=json.loads(r['leakage']))
+                for r in self.db.execute('SELECT * FROM envelopes ORDER BY rowid')]
+        return rows if attempt_ids is None else [r for r in rows if r['attempt_id'] in set(attempt_ids)]
+
+    def observations(self, call_id=None, status=None) -> list:
+        rows = [dict(r, data=json.loads(r['data'])) for r in
+                self.db.execute('SELECT * FROM call_observations ORDER BY seq')]
+        return [r for r in rows if (call_id is None or r['call_id'] == call_id)
+                and (status is None or r['status'] == status)]
 
     def _outcome(self, db, attempt_id, outcome) -> None:
         db.execute("UPDATE attempts SET outcome=? WHERE attempt_id=? AND (outcome IS NULL OR outcome='unresolved')",
@@ -653,9 +991,10 @@ class Ledger:
         return [r[0] for r in db.execute('SELECT call_id FROM calls WHERE attempt_id=? ORDER BY rowid', (attempt_id,))]
 
     def finished(self, attempt_id, *, meta, execution, core_calls, elapsed, at, mono=None, session=None,
-                 error=None) -> list:
+                 error=None, unresolved=False) -> list:
         """The first capture of an attempt: its raw evidence and elapsed (written once), its core-ledger calls and its
-        outcome. Returns the call ids attributed to it."""
+        outcome (unresolved=True keeps it unresolved: its process tree was not verified gone). Returns the call ids
+        attributed to it."""
         with self.lock, self.tx() as db:
             request_id = db.execute('SELECT request_id FROM attempts WHERE attempt_id=?', (attempt_id,)).fetchone()[0]
             db.execute('UPDATE attempts SET state=?, exit_code=?, timed_out=?, stdout_sha256=?, stderr_sha256=?, '
@@ -665,8 +1004,8 @@ class Ledger:
             self._attribute(db, attempt_id, request_id, core_calls)
             calls = self._call_ids(db, attempt_id)
             db.execute('UPDATE attempts SET call_ids=? WHERE attempt_id=?', (json.dumps(calls), attempt_id))
-            self._outcome(db, attempt_id, 'physical' if calls else 'no_call' if execution is not None else
-                          'unresolved')
+            self._outcome(db, attempt_id, 'unresolved' if unresolved else 'physical' if calls else
+                          'no_call' if execution is not None else 'unresolved')
             self._event(db, attempt_id, 'captured' if execution is not None else 'failed',
                         {'meta': meta, 'core_calls': [c['call_id'] for c in core_calls or []],
                          'capture_calls': [c['call_id'] for c in (execution or {}).get('calls') or []],
@@ -709,11 +1048,18 @@ class Ledger:
         return [self.attempt(r[0]) for r in rows.fetchall()]
 
     def call(self, call_id) -> dict | None:
+        """The resolved view of one call (B6): the first record with compatible observations folded in; "first",
+        "resolved_from" and "observations" keep the audit trail."""
         row = self.db.execute('SELECT * FROM calls WHERE call_id=?', (call_id,)).fetchone()
         if row is None:
             return None
-        return dict(row, usage=json.loads(row['usage']) if row['usage'] else None,
-                    jobs=json.loads(row['jobs']) if row['jobs'] else None)
+        with self.lock:
+            view, sources, obs = self._resolve(self.db, row)
+        out = dict(row)
+        out.update(view)
+        out.update(zip(('usage_known', *USAGE_FIELDS), _usage_columns(view['usage'])))
+        out['first'], out['resolved_from'], out['observations'] = self._first(row), sources, obs
+        return out
 
     # allocations
     def allocate(self, rows) -> None:
@@ -774,6 +1120,11 @@ class Ledger:
                 self.db.execute('SELECT * FROM authority WHERE job=? ORDER BY seq', (job,)))
         return [dict(r) for r in rows]
 
+    def grants(self, wave, round_) -> dict:
+        """{(job, item id): generation} of the execution grants persisted for one round (the last one per item)."""
+        return {(r['job'], r['item_id']): r['generation'] for r in
+                self.db.execute('SELECT * FROM authority WHERE wave=? AND round=? ORDER BY seq', (wave, round_))}
+
     # deliveries
     STABLE = ('status', 'source', 'value_text', 'error', 'phase')
 
@@ -815,15 +1166,40 @@ class Ledger:
     def timeline(self, wave) -> list:
         return [dict(r) for r in self.db.execute('SELECT * FROM timeline WHERE wave=? ORDER BY seq', (wave,))]
 
-    def phase_seconds(self, wave) -> dict:
-        """{phase: seconds} summed over every closed start..end span (monotonic within a session)."""
-        out, open_ = {}, {}
-        for r in self.timeline(wave):
+    def phase_spans(self, wave, current=None) -> list:
+        """Every span of the wave: [{phase, session, seconds, interrupted}]. A start closed by its end in the same
+        session is one span (monotonic). A start whose session ended without its end (a crash or kill) is an
+        interrupted span; it is kept, closed at the next later stamp of the wave in another session (wall clock, so the
+        interruption itself counts), else at the last stamp of its own session (B8, never dropped). An open start of
+        the current session is still running and not a span yet."""
+        rows = self.timeline(wave)
+        spans, open_ = [], {}
+        for r in rows:
             key = (r['phase'], r['session'])
             if r['edge'] == 'start':
+                if key in open_:  # a second start without an end in one session: the first one was interrupted
+                    first = open_.pop(key)
+                    spans.append({'phase': first['phase'], 'session': first['session'], 'interrupted': True,
+                                  'seconds': max(0.0, _span(first, r) or 0.0)})
                 open_[key] = r
             elif key in open_:
-                out[r['phase']] = out.get(r['phase'], 0.0) + (_span(open_.pop(key), r) or 0.0)
+                spans.append({'phase': r['phase'], 'session': r['session'], 'interrupted': False,
+                              'seconds': max(0.0, _span(open_.pop(key), r) or 0.0)})
+        for (phase, session), start in open_.items():
+            if current is not None and session == current:
+                continue
+            later = [r for r in rows if r['seq'] > start['seq'] and r['session'] != session]
+            own = [r for r in rows if r['seq'] > start['seq'] and r['session'] == session]
+            end = later[0] if later else own[-1] if own else start
+            spans.append({'phase': phase, 'session': session, 'interrupted': True,
+                          'seconds': max(0.0, end['at'] - start['at'])})
+        return spans
+
+    def phase_seconds(self, wave, current=None) -> dict:
+        """{phase: seconds} summed over every span, interrupted spans included (monotonic within a session)."""
+        out = {}
+        for s in self.phase_spans(wave, current):
+            out[s['phase']] = out.get(s['phase'], 0.0) + s['seconds']
         return {k: round(v, 6) for k, v in out.items()}
 
 
@@ -908,22 +1284,36 @@ PILOT_SCHEMA = 'oz.host.pilot/1'
 PILOT_KEYS = ('schema', 'mode', 'global_cap', 'caps', 'slots', 'max_records', 'max_wait', 'intake', 'limits',
               'usage_semantics', 'routes')
 PILOT_LIMITS = ('call_timeout_seconds', 'deadline_seconds', 'max_input_tokens')
+# live: the paid pilot. dry: the same driver with fake CLI executables (child processes, route check, quota, launch
+# gate). replay: the in-process unit-test helper (dry_run), never a pilot record.
+PILOT_MODES = ('live', 'dry', 'replay')
+PILOT_HOOKS = ('launch_gate',)
+
+
+def semantics_for(config, backend):
+    """The declared usage semantics of one backend: config["usage_semantics"] is one string for every backend or a
+    {backend: string} map (a backend's own telemetry never certifies another backend)."""
+    value = config.get('usage_semantics') if isinstance(config, dict) else None
+    return value.get(backend) if isinstance(value, dict) else value
 
 
 def check_pilot(config, *, backend, budget, slot_pool, slots, max_records, max_wait, identity, launcher, limits,
-                route_check) -> None:
+                route_check, hooks=None, quota=None) -> None:
     """Refuse (Error) a pilot host whose frozen configuration is missing or does not match what it would run with
     (council 3, B9): caps and global cap frozen in the budget, the experiment-wide slot pool, batch limits, call
-    timeouts, intake shape, the backend's frozen route (the whole oz_route.build result) and, for a live run, a child
-    launcher with the launch-time route check."""
+    timeouts, intake shape, the backend's frozen route (the whole oz_route.build result) and the declared usage
+    semantics of this backend. A live or dry pilot (council 3 close, N2, N3, B11) also needs a child launcher, the
+    launch-time route check as the frozen build result (a callable check would bypass oz_route.verify), an oz_quota
+    reservation store, the launch gate and no other hook, and a frozen route whose dependency closure has no
+    unresolved or unversioned entry."""
     problems = []
     if not isinstance(config, dict) or config.get('schema') != PILOT_SCHEMA:
         raise Error(f'pilot launch refused: the frozen configuration must be a {PILOT_SCHEMA} object')
     missing = [k for k in PILOT_KEYS if k not in config]
     if missing:
         raise Error('pilot launch refused: the frozen configuration lacks ' + ', '.join(missing))
-    if config['mode'] not in ('live', 'dry'):
-        problems.append('mode is live or dry')
+    if config['mode'] not in PILOT_MODES:
+        problems.append('mode is live, dry or replay')
     caps, cap = config['caps'], config['global_cap']
     if type(cap) is not int or not isinstance(caps, dict) or any(
             not isinstance(b, dict) or any(type(n) is not int or n < 0 for n in b.values()) for b in caps.values()):
@@ -952,13 +1342,36 @@ def check_pilot(config, *, backend, budget, slot_pool, slots, max_records, max_w
     route = (config['routes'] or {}).get(backend) if isinstance(config['routes'], dict) else None
     if not isinstance(route, dict) or route.get('worker_hash') != identity.get('worker_hash'):
         problems.append(f'the frozen route of {backend} (oz_route.build result) is missing or names another worker')
-    if not isinstance(config['usage_semantics'], str) or not config['usage_semantics']:
-        problems.append('usage_semantics must be declared')
-    if config['mode'] == 'live':
+    semantics = semantics_for(config, backend)
+    if not isinstance(semantics, str) or not semantics:
+        problems.append(f'usage_semantics must be declared for {backend}')
+    if config['mode'] in ('live', 'dry'):
+        word = 'a live pilot' if config['mode'] == 'live' else 'a pilot dry run'
         if not isinstance(launcher, ChildLauncher):
-            problems.append('a live pilot launches child processes only')
-        if route_check is None:
-            problems.append('a live pilot needs the launch-time route check')
+            problems.append(f'{word} launches child processes only')
+        if not isinstance(route_check, dict) or not isinstance(route_check.get('frozen'), dict) \
+                or not route_check.get('adapter'):
+            problems.append(f'{word} needs the launch-time route check (the frozen oz_route.build result and the '
+                            'adapter; a callable check is a bypass)')
+        if quota is None:
+            problems.append(f'{word} reserves every launch through oz_quota')
+        extra = sorted(set(hooks or {}) - set(PILOT_HOOKS))
+        if extra:
+            problems.append(f'{word} takes no hook but launch_gate (got {", ".join(extra)})')
+        components = (config.get('usage_components') or {}).get(backend)
+        if not isinstance(components, list) or not components or any(c not in USAGE_FIELDS for c in components):
+            problems.append(f'{word} declares the usage components {backend} must report (usage_components)')
+        if not callable((hooks or {}).get('launch_gate')):
+            problems.append(f'{word} needs the launch gate (global cap and the 99% weekly handoff stop)')
+        launch = route.get('launch') if isinstance(route, dict) else None
+        externals = (launch or {}).get('externals') if isinstance(launch, dict) else None
+        if not isinstance(externals, list):
+            problems.append(f'the frozen route of {backend} has no dependency closure (launch.externals)')
+        else:
+            loose = [e for e in externals if not isinstance(e, list) or len(e) != 3 or e[2] in ('unversioned', None)
+                     or e[1] == 'declared-external']
+            if loose:
+                problems.append(f'the frozen route of {backend} has unresolved or unversioned dependencies: {loose}')
     if problems:
         raise Error('pilot launch refused: ' + '; '.join(problems))
 
@@ -977,7 +1390,8 @@ class ArmHost:
                  slots=4, max_records=64, max_wait=1.0, rule_delivery='after_audits', audit_retry=True,
                  allow_experimental=False, experimental_sizes=(), limits=None, do_workspace=None, rule_store=None,
                  wall=time.time, clock=time.monotonic, bootstrap_wait=1800.0, hooks=None, owner=None, base_env=None,
-                 expected_intake=None, slot_pool=None, route_check=None, pilot=None, usage_semantics='unverified'):
+                 expected_intake=None, slot_pool=None, route_check=None, pilot=None, usage_semantics='unverified',
+                 quota=None, quota_group='oz-host'):
         from oz_accept import pin
         if arm not in ARMS:
             raise Error('arm must be A, B or C')
@@ -1018,6 +1432,9 @@ class ArmHost:
         self.base_env = base_env
         self.slot_pool, self.route_check, self.pilot = slot_pool, route_check, pilot
         self.usage_semantics = usage_semantics
+        # oz_quota reservation of every physical launch (council 3 close, N3): one quota group per physical slot.
+        self.quota, self.quota_group = quota, quota_group
+        self._retained = []  # launches whose process tree is not verified gone: slot and quota stay held
         self.expected_intake = expected_intake if pilot is None else pilot.get('intake')
         self.session = os.urandom(8).hex()
         self.map_contract = (digest({'ops': ops, 'goal': goal, 'checks': self.pinned, 'profile': PROFILE})
@@ -1038,8 +1455,8 @@ class ArmHost:
             if pilot is not None:
                 check_pilot(pilot, backend=self.backend, budget=self.budget, slot_pool=slot_pool, slots=slots,
                             max_records=max_records, max_wait=max_wait, identity=identity, launcher=launcher,
-                            limits=self.limits, route_check=route_check)
-                if usage_semantics != pilot['usage_semantics']:
+                            limits=self.limits, route_check=route_check, hooks=self.hooks, quota=quota)
+                if usage_semantics != semantics_for(pilot, self.backend):
                     raise Error('pilot launch refused: usage_semantics differs from the frozen configuration')
             if producers_expected * bootstrap_per_producer > max_records and arm in ('B', 'C'):
                 raise Error('the bootstrap must fit one batch: producers x per producer exceeds max_records')
@@ -1231,6 +1648,7 @@ class ArmHost:
         if not items:
             return {}
         stored = self.ledger.plan(wave, round_)
+        resumed = bool(stored)
         extras = []
         if stored:
             wanted = {i['id']: i for i in items}
@@ -1245,11 +1663,18 @@ class ArmHost:
             stored = [self._plan_row(wave, round_, n, i, group_kind) for n, i in enumerate(items)]
             self.ledger.add_plan(stored, self.wall())
         planned = [self._register(r) for r in stored]
-        # Execution authority before dispatch (B5): the generation every answer of this round will settle with.
+        # Execution authority before dispatch (B5): the generation every answer of this round will settle with. A
+        # replayed stored round settles with the ORIGINAL persisted grant (council 3 close, B5); only an item whose
+        # grant was never persisted claims now. A grant fenced meanwhile is refused by the settlement (stale).
         if self.store is not None:
             grants = []
+            granted = self.ledger.grants(wave, round_) if resumed else {}
             for item in planned:
                 if item['kind'] in SETTLING:
+                    original = granted.get((item['job']['name'], item['id']))
+                    if original is not None:
+                        self._gen[item['job']['name']] = original
+                        continue
                     generation = self.store.claim(item['job']['name'])
                     self._gen[item['job']['name']] = generation
                     if generation is not None:
@@ -1342,6 +1767,8 @@ class ArmHost:
         check = self.route_check if self.route_check is not None else self.hooks.get('route_verify')
         if check is None:
             return None
+        if callable(check) and self.pilot is not None and self.pilot.get('mode') in ('live', 'dry'):
+            return 'route_unverified: a callable route check is not oz_route.verify (refused in a pilot)'
         try:
             if callable(check):
                 check(env)
@@ -1387,19 +1814,22 @@ class ArmHost:
 
         buckets = (['bootstrap', self.arm, 'reserve'] if group['kind'] == 'bootstrap' else
                    [self.arm, 'reserve'] if not group['round'].startswith(('r2', 'r3')) else ['reserve', self.arm])
+        evidence = self.arm_dir / 'attempts' / aid
         try:
-            extra = None
+            # Every child keeps its adapter envelope per attempt (the durable runner overrides it per receipt).
+            extra = {'OZ_ENVELOPE_PATH': str(evidence / 'adapter-envelope.json')}
             if group['kind'] == 'bootstrap':
                 config = self._check_config(self._bootstrap_config())
                 self.side_dir.mkdir(parents=True, exist_ok=True)
                 _publish(self.side_dir / f'{aid}.config.json', json.dumps(config, ensure_ascii=False).encode('utf-8'))
-                extra = {'OZ_BOOTSTRAP_ATTEMPT': aid, 'OZ_BOOTSTRAP_DIR': str(self.side_dir)}
+                extra.update(OZ_BOOTSTRAP_ATTEMPT=aid, OZ_BOOTSTRAP_DIR=str(self.side_dir))
             env = child_env(model=self.model, effort=self.effort, extra=extra, base=self.base_env)
             spec = self._spec(self._request(rid, records), 1)
         except Exception as exc:  # nothing was launched: a proven-unlaunched refusal
             return refuse(f'prelaunch_failed: {type(exc).__name__}: {str(exc)[:200]}')
-        # The launch gate (for example oz_quota) and the route check run before the reservation: a refusal consumes
-        # no budget. The 55% weekly guard is suspended (owner decision 1, amendment 3); caps still bind.
+        self._reap()
+        # The launch gate (pilot: global cap and the 99% weekly handoff stop) and the route check run before anything
+        # is held: a refusal consumes no budget. The 55% weekly guard is suspended (owner decision 1, amendment 3).
         gate = self.hooks.get('launch_gate')
         refusal = gate(view) if gate is not None else None
         if refusal:
@@ -1407,11 +1837,23 @@ class ArmHost:
         mismatch = self._verify_route(env)
         if mismatch:
             return refuse(mismatch)
+        lock = self.slot_pool.acquire() if self.slot_pool is not None else None
+        ticket = None
+        if self.quota is not None:
+            group_name = f"{self.quota_group}-slot{getattr(lock, 'slot', 0)}"
+            try:
+                got = self.quota.acquire(group_name, run_dir=self.do_workspace / 'do' / rid, receipt=aid)
+            except Exception as exc:  # noqa: BLE001 - a quota store failure refuses the launch
+                got = {'status': 'error', 'reason': f'{type(exc).__name__}: {str(exc)[:200]}'}
+            if got.get('status') != 'acquired':
+                self._release(lock, None)
+                return refuse(f"quota_held: {got.get('reason')}")
+            ticket = (group_name, got['token'])
         bucket = self.budget.reserve(rid, backend=self.backend, buckets=buckets, arm=self.arm, kind=group['kind'])
         if bucket is None:
+            self._release(lock, ticket)
             return refuse('budget_exhausted')
-        lock = self.slot_pool.acquire() if self.slot_pool is not None else None
-        evidence = self.arm_dir / 'attempts' / aid
+        keep = False
         try:
             s = self._stamp()
             self.ledger.launched(**common, bucket=bucket, evidence_dir=evidence, at=s['at'], mono=s['mono'],
@@ -1423,14 +1865,23 @@ class ArmHost:
                 self.ledger.event(aid, 'not_started', {'error': str(exc)}, self.wall(), self.clock(), self.session)
                 raise
             elapsed = self.clock() - started
+            # A process tree that is not verified gone keeps its slot and quota reservation (council 3 close, B9).
+            keep = (meta.get('tree') or {}).get('verified') is False
         finally:
-            if lock is not None:
-                self.slot_pool.release(lock)
+            if keep:
+                self._retained.append({'attempt_id': aid, 'lock': lock, 'ticket': ticket, 'evidence': str(evidence)})
+            else:
+                self._release(lock, ticket)
         core = self._core_calls(rid)
         s = self._stamp()
         self.ledger.finished(aid, meta=meta, execution=execution, core_calls=core, elapsed=elapsed, at=s['at'],
-                             mono=s['mono'], session=s['session'],
+                             mono=s['mono'], session=s['session'], unresolved=keep,
                              error=None if execution is not None else f"child exit {meta['exit_code']}")
+        if keep:
+            self.ledger.event(aid, 'termination_unverified', {'tree': meta.get('tree')}, self.wall(), self.clock(),
+                              self.session)
+            self._violate('incomplete', 'process_tree_unverified:' + aid, group['wave'])
+        leaked = self._harvest(aid, rid, core, evidence, group['wave'])
         if execution is not None:
             # The adapter capture (the child's call list and every job's call id) against the core ledger the parent
             # read itself.
@@ -1443,7 +1894,73 @@ class ArmHost:
             self.hooks['after_execute'](view, execution)
         if execution is None:
             raise RuntimeError(f"child for {rid} failed (exit {meta['exit_code']}, timed_out {meta['timed_out']})")
-        return self._capture(records, execution)
+        capture = self._capture(records, execution)
+        if leaked:  # a call that used a tool never contributes an answer (N1)
+            capture['results'] = {k: {'status': 'failed', 'error': 'tool_use_leakage: the call used or tried a tool',
+                                      'call_id': (v or {}).get('call_id')} for k, v in capture['results'].items()}
+        return capture
+
+    def _release(self, lock, ticket) -> None:
+        if ticket is not None:
+            try:
+                self.quota.release(*ticket)
+            except Exception:  # noqa: BLE001 - a stale token is the quota store's own reconciliation
+                pass
+        if lock is not None:
+            self.slot_pool.release(lock)
+
+    def _reap(self) -> list:
+        """Release the slot and quota of every retained launch whose process tree is now verified gone."""
+        done = []
+        settled = getattr(self.launcher, 'settled', None)
+        for entry in list(self._retained):
+            if settled is not None and settled(entry['evidence']):
+                with self.ledger.lock:  # launch threads reap concurrently: release each entry once
+                    if entry not in self._retained:
+                        continue
+                    self._retained.remove(entry)
+                self._release(entry['lock'], entry['ticket'])
+                self.ledger.event(entry['attempt_id'], 'termination_verified', {}, self.wall(), self.clock(),
+                                  self.session)
+                done.append(entry['attempt_id'])
+        return done
+
+    def _harvest(self, aid, rid, core, evidence, wave) -> list:
+        """Keep every adapter envelope of the request, fold its usage into its call, and return the leakage of the
+        envelopes this attempt recorded (tool use: efficiency invalid, the answers refused)."""
+        receipts = {c.get('receipt'): c['call_id'] for c in core or [] if c.get('receipt')}
+        mine = (self.ledger.attempt(aid) or {}).get('call_ids') or []
+        leaked = []
+        envelopes = _run_envelopes(self.do_workspace / 'do' / rid, [('attempt:' + aid,
+                                                                      Path(evidence) / 'adapter-envelope.json')])
+        for receipt, env in envelopes.items():
+            ev = envelope_evidence(env['raw'])
+            # A runner receipt names its call; the per-attempt envelope (OZ_ENVELOPE_PATH of a non-durable child)
+            # belongs to the attempt's one call. Receipts are unique per request only, so the key carries both.
+            if receipt.startswith('attempt:'):
+                call_id = mine[0] if len(mine) == 1 else None
+            else:
+                call_id = receipts.get(receipt)
+            key = receipt if receipt.startswith('attempt:') else f'{rid}/{receipt}'
+            try:
+                status, owner = self.ledger.record_envelope(
+                    receipt=key, attempt_id=aid, request_id=rid, call_id=call_id,
+                    exit_code=env['exit_code'], raw=env['raw'], evidence=ev, at=self.wall())
+            except Error:
+                self._violate('incomplete', 'envelope_conflict:' + key, wave)
+                continue
+            if status == 'conflict':
+                self._violate('incomplete', 'envelope_usage_conflict:' + key, wave)
+            if ev['leakage'] and owner == aid:
+                leaked.append({'receipt': key, 'kind': ev['kind'], 'leakage': ev['leakage']})
+        if leaked:
+            self.ledger.event(aid, 'leakage', {'envelopes': leaked}, self.wall(), self.clock(), self.session)
+            self._violate('efficiency_invalid', 'tool_use_leakage:' + aid, wave)
+        return leaked
+
+    def leakage(self) -> list:
+        """Every envelope of this host that shows tool use (the run manifest derives gold_accessed_during_run)."""
+        return [e for e in self.ledger.envelopes() if e['leakage']]
 
     @staticmethod
     def _capture(records, execution) -> dict:
@@ -1483,9 +2000,12 @@ class ArmHost:
             except Exception as exc:
                 execution, meta = None, {'exit_code': None, 'timed_out': False, 'error': repr(exc)[:300]}
             s = self._stamp()
+            core = self._core_calls(rid)
             self.ledger.reconciled(entry['attempt_id'], meta=meta, execution=execution,
-                                   core_calls=self._core_calls(rid), evidence_dir=evidence, at=s['at'],
+                                   core_calls=core, evidence_dir=evidence, at=s['at'],
                                    mono=s['mono'], session=s['session'])
+            first = self.ledger.attempt(entry['attempt_id'])
+            self._harvest(entry['attempt_id'], rid, core, first['evidence_dir'] or evidence, first['wave'])
             if execution is None:
                 continue
             self.scheduler.reconcile(entry['attempt_id'], self._capture(records, execution))
@@ -1706,7 +2226,18 @@ class ArmHost:
             active[o] = (rule, reuse, why, without)
             if rule and warm and not reuse:
                 self._violate('efficiency_invalid', 'warm_reuse_blocked:' + (f'{o}:' if self.multi else '') + why)
-        staged, covered, fallback = {}, {}, []
+        staged, covered, fallback, continued = {}, {}, [], []
+        # Resume (council 3 close, B4): a job whose persisted decision was a staged rule value, or a commit refusal,
+        # continues where it stopped: its rule is re-staged while it is still admitted, else the job takes the
+        # rule-8 r3 continuation (never the closed r1 round). A job in the stored r3 plan always continues there.
+        last = {}
+        for d in store.decisions():
+            last[d['job']] = d
+        in_r3 = {r['original'] for r in self.ledger.plan(wave, 'r3')}
+        # A job the stored r1 round already sends as a fallback keeps that decision and its persisted grant: a new
+        # rule attempt would claim a new generation and fence the original execution authority (B5).
+        in_r1 = {r['original']: json.loads(r['extra']).get('reason') for r in self.ledger.plan(wave, 'r1')
+                 if r['kind'] == 'fallback'}
         for job in rest:
             s = store.settlement(job['name'])
             if s['state'] in ('settled', 'failed'):
@@ -1714,6 +2245,19 @@ class ArmHost:
                 if row['source'] == 'rule':
                     covered[job['name']] = (job, row['value_text'])
                 continue
+            if job['name'] in in_r1:
+                fallback.append((job, in_r1[job['name']]))
+                continue
+            d = last.get(job['name'])
+            was_staged = d is not None and (d['decision'] == 'staged' or
+                                            str(d.get('reason') or '').startswith('commit_refused:'))
+            if job['name'] in in_r3 or was_staged:
+                prior = store.rule(d['rule']) if d is not None and d.get('rule') is not None else None
+                if job['name'] in in_r3 or prior is None or prior['status'] != 'admitted':
+                    state = prior['status'] if prior is not None else 'not_admitted'
+                    continued.append((job, 'commit_refused:' + ('quarantined' if state == 'quarantined' else
+                                                                'not_admitted')))
+                    continue
             rule, reuse, why, without = active[job['op']]
             if rule is None:
                 fallback.append((job, without))
@@ -1782,7 +2326,9 @@ class ArmHost:
                      for i in retry]
             self._decide_audits(again, self._dispatch(wave, 'r2', again))
         # 5. Deliver staged rule rows; a rule quarantined meanwhile makes the undelivered rows fall back (rule 8).
-        late = []
+        if 'before_staged_delivery' in self.hooks:
+            self.hooks['before_staged_delivery'](wave, staged)
+        late = list(continued)
         for name, (job, d) in staged.items():
             got = learners[job['op']].commit(d, evaluate=self.hooks.get('evaluate', rp.oz_rule.evaluate),
                                              before_commit=self.hooks.get('before_commit'))
@@ -1974,7 +2520,8 @@ class ArmHost:
                   'payloads': self._payloads(jobs, answers), 'side': side,
                   'side_sha256': hashlib.sha256(side_bytes).hexdigest() if side_bytes else None,
                   'attempt': current[0], 'attempts': attempts, 'calls': call_rows, 'one_call': one_call,
-                  'failures': failures, 'elapsed_seconds': self.ledger.phase_seconds(wave).get('bootstrap', 0.0),
+                  'failures': failures,
+                  'elapsed_seconds': self.ledger.phase_seconds(wave, self.session).get('bootstrap', 0.0),
                   'status': status, 'efficiency_valid': status == 'ok'}
         self.experiment.record_bootstrap(self.backend, self.workload, self.owner, record)
         return record
@@ -2071,6 +2618,12 @@ class ArmHost:
             if set(call.get('jobs') or []) != members.get(cid, set()):
                 problems.append(f'call {cid} carried {len(call.get("jobs") or [])} jobs but '
                                 f'{len(members.get(cid, ()))} are allocated')
+            for o in call.get('observations') or []:
+                if o['status'] == 'conflict':
+                    problems.append(f"call {cid}: conflicting observation from {o['source']}")
+        for entry in self._retained:
+            if entry['attempt_id'] in {a['attempt_id'] for a in attempts}:
+                problems.append(f"attempt {entry['attempt_id']}: process tree not verified gone")
         imported = sorted({a['call_id'] for a in allocations if a['basis'] == 'imported'})
         planned = sum(len(a['records']) for a in launched)
         dispatched = sum(len(c.get('jobs') or []) for c in physical.values())
@@ -2097,11 +2650,15 @@ class ArmHost:
         audits = {'selected': 0, 'agree': 0, 'disagree': 0, 'inconclusive': 0, 'pending': 0, 'population': 0}
         quarantined = False
         if self.store is not None:
-            if notes['audits']:
-                audits.update(population=notes['audits']['population'])
-                for a in self.store.audits(notes['audits']['wave_id']):
-                    audits['selected'] += 1
-                    audits[a['verdict']] += 1
+            # Every persisted audit row of this wave counts, whatever the current rule selection (council 3 close,
+            # B10): a rule quarantined before a restart leaves no active rule, yet its open audits stay open.
+            wave_key = rp.wave_id(self.backend, self.workload, wave)
+            populations = [len(w['population']) for w in self.experiment.waves() if w['wave_id'] == wave_key]
+            audits.update(population=notes['audits']['population'] if notes['audits'] else
+                          max(populations, default=0))
+            for a in self.store.audits(wave_key):
+                audits['selected'] += 1
+                audits[a['verdict']] += 1
             quarantined = any(r['status'] == 'quarantined' for lr in self.learners.values()
                               for r in self.store.rules(lr.key))
         # Evidence completeness, derived from settlement, audits, launch reconciliation and accounting together, plus
@@ -2128,8 +2685,13 @@ class ArmHost:
         if rec['charged_calls'] and charged['usage'] != 'complete':
             invalid.append('usage_' + charged['usage'])
             state.append('usage_incomplete')
-        if self.pilot is not None and charged["components_missing"]:
-            state.append('usage_components_unknown:' + ','.join(sorted(charged['components_missing'])))
+        # The frozen configuration may name the components each backend's CLI reports (usage_components); one it
+        # does not report (the Claude CLI has no reasoning counter: thinking is billed inside output_tokens) is not
+        # evidence of a gap. Any required component missing from a call leaves the evidence incomplete.
+        required = ((self.pilot or {}).get('usage_components') or {}).get(self.backend)
+        gaps = sorted(k for k in charged['components_missing'] if required is None or k in required)
+        if self.pilot is not None and gaps:
+            state.append('usage_components_unknown:' + ','.join(gaps))
         if self.pilot is not None and self.usage_semantics == 'unverified':
             state.append('usage_semantics_unverified')
         mine = {a['attempt_id'] for a in attempts}
@@ -2147,19 +2709,24 @@ class ArmHost:
         for r in fallback_rows:
             reasons[r.get('fallback_reason')] = reasons.get(r.get('fallback_reason'), 0) + 1
         queue = [r['queue_s'] for r in rows if r.get('queue_s') is not None]
-        # Timing (B8): measured makespan from the first intake to the last terminal delivery; an importing arm is
-        # charged the shared bootstrap's recorded elapsed in full and drops only its own wait for it.
+        # Timing (B8, amendment 3): measured makespan from the first intake to the last terminal delivery, every
+        # wait inside it; an importing arm is charged the shared bootstrap's complete recorded elapsed on top. Nothing
+        # is subtracted.
         intake = [s['stamp'] for s in self.ledger.intake(wave)]
         delivered = [{'at': d['at'], 'mono': d['mono'], 'session': d['session']} for d in self.ledger.deliveries(wave)
                      if d['job'] in {j['name'] for j in jobs}]
         first = min(intake, key=lambda s: s['at']) if intake else None
         last = max(delivered, key=lambda s: s['at']) if delivered else None
         measured = max(0.0, _span(first, last) or 0.0)
-        phases = self.ledger.phase_seconds(wave)
+        phases = self.ledger.phase_seconds(wave, self.session)
+        interrupted = [s for s in self.ledger.phase_spans(wave, self.session) if s['interrupted']]
         boot = notes['bootstrap'] or {}
         charged_makespan = measured
         if boot.get('imported'):
-            charged_makespan = measured - phases.get('bootstrap_wait', 0.0) + float(boot.get('elapsed') or 0.0)
+            charged_makespan = measured + float(boot.get('elapsed') or 0.0)
+        leakage = [e for e in self.ledger.envelopes({a['attempt_id'] for a in attempts}) if e['leakage']]
+        if leakage and not any(r.startswith('tool_use_leakage') for r in invalid):
+            invalid.append('tool_use_leakage')
         count = lambda **kv: sum(1 for r in rows if all(r.get(k) == v for k, v in kv.items()))
         accepted_with_call = sum(1 for r in rows if r['status'] == 'accepted' and r.get('call_id'))
         report = {
@@ -2182,6 +2749,9 @@ class ArmHost:
                               'max': round(max(queue), 6) if queue else 0.0},
             'measured_makespan_seconds': round(measured, 6), 'makespan_seconds': round(measured, 6),
             'charged_makespan_seconds': round(charged_makespan, 6), 'phase_seconds': phases,
+            'interrupted_spans': interrupted,
+            'leakage': [{'receipt': e['receipt'], 'attempt_id': e['attempt_id'], 'kind': e['kind'],
+                         'leakage': e['leakage']} for e in leakage],
             'summed_call_seconds': round(sum(a['elapsed'] or 0.0 for a in attempts), 6),
             'budget': self.budget.usage(),
             'reconciliation': {k: rec[k] for k in ('ok', 'problems', 'physical_calls', 'imported_calls',
