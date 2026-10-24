@@ -633,7 +633,7 @@ def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float, 
     proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ws,
                             env=env)
     out, err = [], []
-    st = {'stop': None, 'peak': 0, 'done': False}
+    st = {'stop': None, 'peak': 0, 'done': False, 'bad_line': False}
     msgs, lock = {}, threading.Lock()
 
     def check():
@@ -645,7 +645,7 @@ def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float, 
             worker = worker_spend(ws, envelopes)
             st['peak'] = max(st['peak'], caller + (worker or 0))
             write_state(state, caller)
-            why = guard_decision(ordered, worker)
+            why = 'usage' if st['bad_line'] else guard_decision(ordered, worker)
             if why is None and (Path(state) / 'STOP').exists():
                 why = 'usage'
             if why:
@@ -663,11 +663,18 @@ def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float, 
     def read_out():
         for line in proc.stdout:
             out.append(line)
+            # a terminated line that is not UTF-8, not JSON, not an object or of a rejected shape is unknown spend;
+            # only the unterminated final line at end of stream is left alone (re-review 3)
+            terminated = line.endswith(b'\n')
             try:
-                ev = json.loads(line)
+                ev = json.loads(line.decode('utf-8'))
             except ValueError:
-                continue
-            if not isinstance(ev, dict):
+                ev = None
+            if not isinstance(ev, dict) or event_problems(ev):
+                if terminated:
+                    with lock:
+                        st['bad_line'] = True
+                    check()
                 continue
             if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
                 m = _obj(ev.get('message'))
@@ -781,6 +788,59 @@ def _blocks(message) -> list:
     return [b for b in content if isinstance(b, dict)] if isinstance(content, list) else []
 
 
+STRING_FIELDS = ('id', 'tool_use_id', 'text', 'thinking')   # block fields used as keys or joined as text
+
+
+def event_problems(ev) -> list:
+    """Shape problems of one transcript object that accounting cannot trust: a caller message that is not an object
+    or has no non-empty string id, content that is not a list of objects, a block field in STRING_FIELDS that is
+    present but not a string."""
+    problems = []
+    if ev.get('type') in ('assistant', 'user') and 'message' in ev:
+        m = ev.get('message')
+        if not isinstance(m, dict):
+            return ['message is not an object']
+        if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id') and not (
+                isinstance(m.get('id'), str) and m.get('id')):
+            problems.append('message id is not a non-empty string')
+        content = m.get('content')
+        if 'content' in m and not isinstance(content, (list, str)):
+            problems.append('content is not a list')
+        for b in content if isinstance(content, list) else []:
+            if not isinstance(b, dict):
+                problems.append('content block is not an object')
+                continue
+            for k in STRING_FIELDS:
+                if k in b and not isinstance(b[k], str):
+                    problems.append(f'block {k} is not a string')
+    return problems
+
+
+def transcript_problems(raw: bytes) -> list:
+    """Every reason a recorded transcript cannot be read whole (re-review 3): not UTF-8, an unterminated final line,
+    a blank, unparseable or non-object line, or an event shape event_problems rejects. Any problem makes the caller's
+    accounting incomplete. (Only the live guard may wait on one unterminated final line.)"""
+    try:
+        text = raw.decode('utf-8')
+    except UnicodeDecodeError:
+        return ['transcript is not UTF-8']
+    problems = []
+    lines = text.split('\n')
+    if lines[-1] != '':
+        problems.append('unterminated final line')
+    for n, line in enumerate(lines[:-1] + ([lines[-1]] if lines[-1] else []), 1):
+        try:
+            ev = json.loads(line)
+        except ValueError:
+            problems.append(f'line {n}: not JSON')
+            continue
+        if not isinstance(ev, dict):
+            problems.append(f'line {n}: not an object')
+            continue
+        problems += [f'line {n}: {p}' for p in event_problems(ev)]
+    return problems
+
+
 def clean_transcript(text: str) -> str:
     """The transcript reduced to shapes bench/live/pilot_k2.parse_stream (pinned by another freeze, not edited here)
     reads without raising: object lines only, message an object, content a list of objects, usage an object of
@@ -792,9 +852,12 @@ def clean_transcript(text: str) -> str:
         if 'message' in ev:
             m = dict(_obj(ev['message']))
             if 'content' in m:
-                m['content'] = _blocks(m)
+                m['content'] = [{k: v for k, v in b.items() if k not in STRING_FIELDS or isinstance(v, str)}
+                                for b in _blocks(m)]
             if 'usage' in m:
                 m['usage'] = {k: v for k, v in _obj(m['usage']).items() if _count(v)}
+            if 'id' in m and not isinstance(m['id'], str):
+                del m['id']                           # parse_stream keys its message table by id
             ev['message'] = m
         if ev.get('type') == 'result':
             ev['modelUsage'] = {name: {k: v for k, v in entry.items() if _count(v)}
@@ -952,7 +1015,7 @@ def partial_model_usage(mu) -> int:
                if k in dict(COUNTERS) and type(v) is int and v >= 0)
 
 
-def caller_usage(text: str) -> dict:
+def caller_usage(text: str, problems=()) -> dict:
     """Caller accounting from the transcript, never raising: per-message usage (the largest valid value seen per
     message ID per counter) gives a lower bound; the final envelope's modelUsage gives the total only when every
     caller message carried strict usage, every modelUsage counter is present and valid, and the total is not below
@@ -976,9 +1039,10 @@ def caller_usage(text: str) -> dict:
     lower = sum(billed(m) for m in msgs.values())
     sums = strict_model_usage((final or {}).get('modelUsage'))
     total = None if sums is None else sum(sums.values())
-    complete = total is not None and total >= lower and messages_strict
+    complete = total is not None and total >= lower and messages_strict and not problems
     return {'complete': complete, 'total': total if complete else None, 'lower_bound': lower,
             'final_lower_bound': partial_model_usage((final or {}).get('modelUsage')),
+            'transcript_problems': list(problems),
             'envelope_total': total, 'counters': sums, 'model_calls': len(msgs),
             'models': sorted((final or {}).get('modelUsage') or {}) if isinstance((final or {}).get('modelUsage'),
                                                                                   dict) else []}
@@ -1016,10 +1080,11 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
     """The record of one run from its raw files only (transcript, caller envelope, oz archive, worker packets and
     envelopes, ledgers, meta). Judged against spec['pack'] alone."""
     run_dir = Path(run_dir)
-    text = (run_dir / 'transcript.jsonl').read_bytes().decode('utf-8', 'replace')
+    raw = (run_dir / 'transcript.jsonl').read_bytes()
+    text = raw.decode('utf-8', 'replace')
     meta = json.loads((run_dir / 'meta.json').read_text(encoding='utf-8'))
     parsed = K.parse_stream(clean_transcript(text))
-    cu = caller_usage(text)
+    cu = caller_usage(text, transcript_problems(raw))
     final = next((e for e in reversed(_events(text)) if e.get('type') == 'result'), None)
     inputs, results = tool_texts(text)
     wu = read_ledgers(run_dir)
@@ -1064,7 +1129,8 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
                    if cu['counters'] else None,
                    'in_uncached': c.get('in_uncached'), 'cache_read': c.get('cache_read'),
                    'cache_write': c.get('cache_write'), 'out': c.get('out'), 'models': cu['models'],
-                   'usage_complete': cu['complete'], 'envelope_total': cu['envelope_total'],
+                   'usage_complete': cu['complete'], 'transcript_problems': cu['transcript_problems'][:20],
+                   'envelope_total': cu['envelope_total'],
                    'per_message_lower_bound': cu['lower_bound'], 'envelope': final is not None,
                    'subtype': (final or {}).get('subtype'), 'bash_calls': parsed['bash_calls'],
                    'oz_do_calls': parsed['oz_do_calls']},

@@ -861,6 +861,130 @@ class MalformedUsageTests(unittest.TestCase):
             self.assertEqual(P.admission(P.state(out), '46')['spent_tokens'], recs[0]['charged_tokens'], name)
 
 
+class TranscriptShapeTests(unittest.TestCase):
+    """Re-review 3: (a) a dropped or unparseable transcript line makes caller accounting incomplete, on the first
+    record and on recovery (only the live guard may wait on one unterminated final line); (b) a non-string message,
+    tool or tool-result id (unhashable in pilot_k2.parse_stream), or non-string text, never raises and makes the
+    accounting incomplete. Each case corrupts only the transcript of an otherwise complete 5,900-token run."""
+
+    MSG, MU, RAW, WMU, FULL = (MalformedUsageTests.MSG, MalformedUsageTests.MU, MalformedUsageTests.RAW,
+                               MalformedUsageTests.WMU, MalformedUsageTests.FULL)
+    write = MalformedUsageTests.write
+
+    def check(self, name, rec, complete):
+        """An injected assistant message may carry its own valid usage, which rightly raises the per-message bound,
+        so the bound is checked from below here."""
+        if complete:
+            return MalformedUsageTests.check(self, name, rec, complete)
+        self.assertFalse(rec['accounting_complete'], name)
+        self.assertIsNone(rec['total_tokens'], name)
+        self.assertTrue(rec['caller']['transcript_problems'], name)
+        self.assertGreaterEqual(rec['lower_bound_tokens'], self.FULL, name)
+        self.assertEqual(rec['charged_tokens'], max(P.RUN_RESERVE, rec['lower_bound_tokens']), name)
+
+    LINES = {'invalid json': b'{"type": "assistant", "message": {\n', 'number': b'5\n', 'list': b'[1, 2]\n',
+             'string': b'"text"\n', 'null': b'null\n', 'blank': b'\n', 'spaces': b'   \n',
+             'bad utf-8': b'{"type": "system", "note": "\xff\xfe"}\n'}
+
+    def shape_events(self):
+        msg = lambda **kw: {'type': 'assistant', 'message': dict({'id': 'm2', 'usage': self.MSG,
+                                                                  'content': [{'type': 'text', 'text': ''}]}, **kw)}
+        tool = lambda **kw: {'type': 'assistant', 'message': {'id': 'm2', 'usage': self.MSG, 'content': [
+            dict({'type': 'tool_use', 'id': 't1', 'name': 'Bash', 'input': {'command': 'ls'}}, **kw)]}}
+        result = lambda **kw: {'type': 'user', 'message': {'content': [
+            dict({'type': 'tool_result', 'tool_use_id': 't1', 'content': 'x'}, **kw)]}}
+        return {'list id, null usage': msg(id=['m1'], usage=None), 'list id': msg(id=['m1']),
+                'dict id': msg(id={'a': 1}), 'int id': msg(id=7), 'missing id': {'type': 'assistant', 'message': {
+                    'usage': self.MSG, 'content': []}},
+                'list tool id': tool(id=['t1']), 'dict tool id': tool(id={'t': 1}),
+                'list tool_use_id': result(tool_use_id=['t1']), 'dict tool_use_id': result(tool_use_id={'t': 1}),
+                'list text': msg(content=[{'type': 'text', 'text': ['a']}]),
+                'dict thinking': msg(content=[{'type': 'thinking', 'thinking': {'a': 1}}])}
+
+    def corrupted(self, base: Path, name: str) -> Path:
+        run = self.write(base)
+        t = run / 'transcript.jsonl'
+        data = t.read_bytes()
+        if name == 'unterminated final line':
+            t.write_bytes(data.rstrip(b'\n'))
+        elif name in self.LINES:
+            first, rest = data.split(b'\n', 1)
+            t.write_bytes(first + b'\n' + self.LINES[name] + rest)
+        else:
+            first, rest = data.split(b'\n', 1)
+            t.write_bytes(first + b'\n' + json.dumps(self.shape_events()[name]).encode() + b'\n' + rest)
+        return run
+
+    def names(self):
+        return list(self.LINES) + ['unterminated final line'] + list(self.shape_events())
+
+    def test_the_uncorrupted_run_is_complete_below_the_reserve(self):
+        base = Path(tempfile.mkdtemp(prefix='crt-'))
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        rec = P.build_record(P.build_spec('A', 'I'), self.write(base / 'good'))
+        self.check('good', rec, True)
+        self.assertLess(rec['charged_tokens'], P.RUN_RESERVE)
+
+    def test_each_corrupted_transcript_on_the_first_record(self):
+        base = Path(tempfile.mkdtemp(prefix='crt-'))
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        for n, name in enumerate(self.names()):
+            with self.subTest(name):
+                try:
+                    rec = P.build_record(P.build_spec('A', 'I'), self.corrupted(base / f'r{n}', name))
+                except Exception as exc:                              # noqa: BLE001
+                    self.fail(f'{name}: {type(exc).__name__}: {exc}')
+                self.check(name, rec, False)
+                self.assertEqual(rec['charged_tokens'], P.RUN_RESERVE, name)
+
+    def test_each_corrupted_transcript_on_recovery(self):
+        base = Path(tempfile.mkdtemp(prefix='crt-'))
+        self.addCleanup(shutil.rmtree, base, ignore_errors=True)
+        for n, name in enumerate(self.names()):
+            with self.subTest(name):
+                out = base / f'o{n}'
+                out.mkdir()
+                self.corrupted(out / 'A-I', name)
+                (out / 'attempts.jsonl').write_text(json.dumps({'attempt': 'A-I#1', 'tag': 'A-I', 'admitted': True,
+                                                                'quota_before': 46.0}) + '\n', encoding='utf-8')
+                try:
+                    with contextlib.redirect_stdout(io.StringIO()):
+                        P.recover(out, 'd' * 64)
+                except Exception as exc:                              # noqa: BLE001
+                    self.fail(f'{name}: {type(exc).__name__}: {exc}')
+                recs = [json.loads(x) for x in (out / 'runs.jsonl').read_text(encoding='utf-8').splitlines()]
+                self.assertEqual(len(recs), 1, name)
+                self.check(name, recs[0], False)
+                self.assertEqual(P.admission(P.state(out), '46')['spent_tokens'], P.RUN_RESERVE, name)
+
+    def live(self, body: str):
+        tmp = Path(tempfile.mkdtemp(prefix='crl-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        (tmp / 'state').mkdir()
+        (tmp / 'ws').mkdir()
+        script = tmp / 'caller.py'
+        script.write_text('import sys, time\nw = sys.stdout.write\n' + body, encoding='utf-8')
+        P.write_state(tmp / 'state', 0)
+        _, _, meta = P.launch([sys.executable, str(script)], b'', tmp / 'ws', tmp / 'state', dict(os.environ), 60,
+                              envelopes=tmp / 'env')
+        return meta
+
+    def test_the_live_guard_stops_on_a_bad_terminated_line(self):
+        good = json.dumps({'type': 'assistant', 'message': {'id': 'm1', 'usage': self.MSG, 'content': []}})
+        meta = self.live(f'w({good!r} + "\\n"); sys.stdout.flush()\nw("garbage\\n"); sys.stdout.flush()\n'
+                         'time.sleep(20)\n')
+        self.assertEqual(meta['stop_reason'], 'usage')
+        self.assertLess(meta['wall_s'], 15)
+        ids = json.dumps({'type': 'assistant', 'message': {'id': ['m1'], 'usage': self.MSG, 'content': []}})
+        meta = self.live(f'w({ids!r} + "\\n"); sys.stdout.flush()\ntime.sleep(20)\n')
+        self.assertEqual(meta['stop_reason'], 'usage')
+
+    def test_the_live_guard_waits_on_one_unterminated_final_line(self):
+        good = json.dumps({'type': 'assistant', 'message': {'id': 'm1', 'usage': self.MSG, 'content': []}})
+        meta = self.live(f'w({good!r} + "\\n")\nw("{{\\"type\\": \\"res")\n')
+        self.assertIsNone(meta['stop_reason'])
+
+
 class SnapshotTests(unittest.TestCase):
     """Fix 5 and fix 2: a run imports only an immutable snapshot inside its own run root, and nothing it can name
     leads back to the repository."""
