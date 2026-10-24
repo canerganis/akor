@@ -174,7 +174,9 @@ def render_session(directory: Path) -> str:
     """One recorded pilot_k2 session (prompt.txt and the stream-json transcript) as a plain-text log."""
     d = ROOT / directory
     out = ['[user]', (d / 'prompt.txt').read_bytes().decode('utf-8').replace('\r\n', '\n').strip('\n')]
-    for line in (d / 'transcript.jsonl').read_bytes().decode('utf-8').replace('\r\n', '\n').splitlines():
+    for line in (d / 'transcript.jsonl').read_bytes().decode('utf-8').replace('\r\n', '\n').split('\n'):
+        if not line:
+            continue
         ev = json.loads(line)
         if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
             for b in ev['message'].get('content', []):
@@ -769,7 +771,7 @@ def _remove(path: Path) -> None:
 def _events(text: str) -> list:
     """The JSON object lines of a transcript; any other line (unparsable, or not an object) is left out."""
     out = []
-    for line in text.splitlines():
+    for line in text.split('\n'):   # the same splitter as transcript_problems; splitlines() also splits at U+2028
         try:
             ev = json.loads(line)
         except ValueError:
@@ -864,7 +866,8 @@ def clean_transcript(text: str) -> str:
                                 for name, entry in _obj(ev.get('modelUsage')).items() if isinstance(entry, dict)}
             if not isinstance(ev.get('result'), str):
                 ev['result'] = ''
-        out.append(J(ev))
+        # ASCII escapes keep U+2028 and U+2029 out of the text, so parse_stream's splitlines() sees one event per line.
+        out.append(json.dumps(ev, ensure_ascii=True, separators=(',', ':')))
     return '\n'.join(out) + '\n' if out else ''
 
 
@@ -1149,7 +1152,7 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
 # ---- state, admission, counted runs ----
 
 def _jsonl(path: Path) -> list:
-    return [json.loads(x) for x in path.read_text(encoding='utf-8').splitlines() if x.strip()] if path.exists() else []
+    return [json.loads(x) for x in path.read_text(encoding='utf-8').split('\n') if x.strip()] if path.exists() else []
 
 
 def state(out: Path) -> dict:

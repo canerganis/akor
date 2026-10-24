@@ -1228,5 +1228,29 @@ class FreezeTests(unittest.TestCase):
         self.assertEqual(plan.count('pilot.py run --expect ' + digest), 4)
 
 
+class LineSeparatorTests(unittest.TestCase):
+    """Re-review 4: one splitter everywhere. A U+2028 or U+2029 inside a JSON string must not split an event, so its
+    usage is neither dropped nor hidden from transcript_problems, and the cleaned transcript handed to parse_stream
+    carries no raw separator."""
+
+    def test_a_line_separator_inside_a_string_keeps_the_event_whole(self):
+        for sep in (' ', ' '):
+            ev = {'type': 'assistant', 'message': {'id': 'm1', 'content': [{'type': 'text', 'text': 'a' + sep + 'b'}],
+                                                   'usage': {'input_tokens': 1, 'output_tokens': 2,
+                                                             'cache_read_input_tokens': 0,
+                                                             'cache_creation_input_tokens': 0}}}
+            text = json.dumps(ev, ensure_ascii=False) + '\n'
+            self.assertIn(sep, text)
+            self.assertEqual(len(P._events(text)), 1)
+            self.assertEqual(P.transcript_problems(text.encode('utf-8')), [])
+            cleaned = P.clean_transcript(text)
+            self.assertNotIn(sep, cleaned)
+            self.assertEqual(json.loads(cleaned.split('\n')[0])['message']['content'][0]['text'], 'a' + sep + 'b')
+
+    def test_no_reader_uses_splitlines(self):
+        source = Path(P.__file__).read_text(encoding='utf-8')
+        self.assertNotIn('.splitlines(', source)
+
+
 if __name__ == '__main__':
     unittest.main()

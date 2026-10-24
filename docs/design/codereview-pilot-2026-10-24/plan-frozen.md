@@ -1,6 +1,6 @@
 # Code-review sizing pilot: frozen run plan
 
-Status: frozen at digest `c635880f27dce6e52081defe0b17b24183337f0bc6e5c3d18bce7b49a2a615e1` (`bench/codereview/freeze.json`,
+Status: frozen at digest `ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838` (`bench/codereview/freeze.json`,
 CLI 2.1.306), not run, runnable. The witness domains are frozen: Astra answered the six questions as a new
 evaluator file, `DOMAINS.md` (Astra revision 2), which changes no module, span or reference.
 
@@ -159,6 +159,11 @@ its response without unseeded findings is exactly `[]`. No model scores anything
    `bench/live/data` pass this check, and each corrupt case has its own test, which corrupts only the transcript of an
    otherwise complete 5,900-token run, on the first record and on recovery.
 
+8. One splitter (fourth review). Every reader of the transcript, ledgers and records splits on the newline byte only,
+   never with `splitlines()`, which also splits at U+2028 and U+2029 inside a JSON string and could drop an event's
+   usage. The transcript handed to pilot_k2.parse_stream is re-serialized with ASCII escapes, so it carries no raw line
+   separator. A test pins both, and checks that no reader in pilot.py calls `.splitlines(`.
+
 ## Caps (review finding 1, second review finding 1): exact rule
 
 Structural limit, stated plainly: `claude -p` on CLI 2.1.306 has no option that limits a call's output tokens (its
@@ -249,16 +254,16 @@ and put it in place of `PCT`; after each run, read it again and settle it.
 1. Check: `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/verify.py`
    and `.venv/Scripts/python.exe bench/codereview/pilot.py freeze` must print ALL PASS and freeze holds.
 2. Run 1 (A-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect c635880f27dce6e52081defe0b17b24183337f0bc6e5c3d18bce7b49a2a615e1 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 3. Run 2 (A-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect c635880f27dce6e52081defe0b17b24183337f0bc6e5c3d18bce7b49a2a615e1 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 4. Run 3 (B-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect c635880f27dce6e52081defe0b17b24183337f0bc6e5c3d18bce7b49a2a615e1 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 5. Run 4 (B-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect c635880f27dce6e52081defe0b17b24183337f0bc6e5c3d18bce7b49a2a615e1 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 6. `pilot.py report` prints the per-run table (caller turns, caller tokens, cache reads and writes, worker tokens,
    total, lower bound, charged, time, correctness, recall, false positives, unproven) and the fill-slope estimates for
