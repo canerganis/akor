@@ -12,9 +12,10 @@ Rule store (one SQLite file per arm host, never the memo store).
                the status only moves admitted -> quarantined, rows are never deleted; an idempotent insert with a
                different payload raises.
   settlements  the authoritative per-job settlement record (blocker 1): immutable payload, binding and required-check
-               hashes, an execution generation, a state open / awaiting_verification / settled and exactly one winner,
-               rule or model. Opening a job again validates its identity; a mismatch raises. A settled row never
-               changes again.
+               hashes, an execution generation, a state open / awaiting_verification / settled / failed and exactly one
+               winner (rule or model) when settled. Opening a job again validates its identity; a mismatch raises. A
+               settled row never changes again; neither does a failed one (council 3, Opus A: a model answer that
+               fails a pinned check is a terminal failure, so a resumed host never sends that job again).
   emissions    every value ever produced for a job (rule or model), with its check evidence and outcome: settled,
                refused, awaiting_verification, failed. Never updated or deleted: the history of earlier emissions.
   results      the rule-winner rows (adopt_rule), immutable.
@@ -45,6 +46,9 @@ Experiment store (one SQLite file per experiment directory, shared by the B and 
   audit_waves  per evaluation wave (wave id = canonical([backend, workload, wave])) and rule (its AST SHA256): the
                complete eligible population of frozen dataset ids and the min(32, covered) selection, persisted before
                any audit dispatch. A second arm reads the same row, so B and C audit identical dataset ids.
+  wave_manifests  the sealed manifest of one (backend, workload, wave), written by the first arm before any call:
+               every dataset id bound to exactly one operation, input hash, producer and key (council 3, B12). Every
+               later arm must derive the identical manifest or it refuses to run; A, B and C consume the same data.
 
 READING notes are marked "READING" below.
 """
@@ -65,8 +69,8 @@ import oz_registry
 from oz_registry import CheckUnavailable, RegistryError, canonical, digest
 import oz_rule
 
-SCHEMA_VERSION = 'oz.rulestore/2'
-EXPERIMENT_SCHEMA = 'oz.experiment/1'
+SCHEMA_VERSION = 'oz.rulestore/3'
+EXPERIMENT_SCHEMA = 'oz.experiment/2'
 RECORD_SCHEMA = 'oz.bootstrap.record/1'
 CONFIG_SCHEMA = 'oz.bootstrap.config/2'
 SIDE_SCHEMA = 'oz.bootstrap.side/2'
@@ -99,13 +103,14 @@ CREATE TRIGGER IF NOT EXISTS rules_quarantine BEFORE UPDATE OF quarantined_at, q
 CREATE TRIGGER IF NOT EXISTS rules_keep BEFORE DELETE ON rules BEGIN SELECT RAISE(ABORT, 'rules are kept'); END;
 CREATE TABLE IF NOT EXISTS settlements(
     job TEXT PRIMARY KEY, payload_sha256 TEXT NOT NULL, bindings_sha256 TEXT NOT NULL, required TEXT NOT NULL,
-    generation INTEGER NOT NULL, state TEXT NOT NULL CHECK(state IN ('open','awaiting_verification','settled')),
+    generation INTEGER NOT NULL,
+    state TEXT NOT NULL CHECK(state IN ('open','awaiting_verification','settled','failed')),
     winner TEXT CHECK(winner IN ('rule','model')), emission INTEGER, opened_at REAL NOT NULL, settled_at REAL,
     CHECK((state = 'settled') = (winner IS NOT NULL)));
 CREATE TRIGGER IF NOT EXISTS settlements_identity BEFORE UPDATE OF job, payload_sha256, bindings_sha256, required,
     opened_at ON settlements BEGIN SELECT RAISE(ABORT, 'settlement identity is immutable'); END;
-CREATE TRIGGER IF NOT EXISTS settlements_final BEFORE UPDATE ON settlements WHEN OLD.state = 'settled'
-    BEGIN SELECT RAISE(ABORT, 'a settled job never changes'); END;
+CREATE TRIGGER IF NOT EXISTS settlements_final BEFORE UPDATE ON settlements WHEN OLD.state IN ('settled','failed')
+    BEGIN SELECT RAISE(ABORT, 'a settled or failed job never changes'); END;
 CREATE TRIGGER IF NOT EXISTS settlements_keep BEFORE DELETE ON settlements
     BEGIN SELECT RAISE(ABORT, 'settlements are kept'); END;
 CREATE TABLE IF NOT EXISTS emissions(
@@ -162,7 +167,14 @@ CREATE TABLE IF NOT EXISTS audit_waves(
 CREATE TRIGGER IF NOT EXISTS audit_waves_frozen BEFORE UPDATE ON audit_waves
     BEGIN SELECT RAISE(ABORT, 'an audit wave is frozen'); END;
 CREATE TRIGGER IF NOT EXISTS audit_waves_keep BEFORE DELETE ON audit_waves
-    BEGIN SELECT RAISE(ABORT, 'audit waves are kept'); END
+    BEGIN SELECT RAISE(ABORT, 'audit waves are kept'); END;
+CREATE TABLE IF NOT EXISTS wave_manifests(
+    backend TEXT NOT NULL, workload TEXT NOT NULL, wave TEXT NOT NULL, manifest TEXT NOT NULL, sha256 TEXT NOT NULL,
+    at REAL NOT NULL, PRIMARY KEY(backend, workload, wave));
+CREATE TRIGGER IF NOT EXISTS wave_manifests_frozen BEFORE UPDATE ON wave_manifests
+    BEGIN SELECT RAISE(ABORT, 'a sealed wave manifest is frozen'); END;
+CREATE TRIGGER IF NOT EXISTS wave_manifests_keep BEFORE DELETE ON wave_manifests
+    BEGIN SELECT RAISE(ABORT, 'sealed wave manifests are kept'); END
 '''
 
 
@@ -431,9 +443,11 @@ class RuleStore:
         return self.settlement(job)
 
     def claim(self, job: str) -> int | None:
-        """A new execution generation for an unsettled job (fences every older execution), or None if settled."""
+        """A new execution generation for an open or awaiting job (fences every older execution), or None when the job
+        is settled or failed (terminal)."""
         with self.transaction() as db:
-            cur = db.execute("UPDATE settlements SET generation=generation+1 WHERE job=? AND state!='settled'", (job,))
+            cur = db.execute("UPDATE settlements SET generation=generation+1 WHERE job=? AND state NOT IN "
+                             "('settled','failed')", (job,))
             if cur.rowcount != 1:
                 return None
             return db.execute('SELECT generation FROM settlements WHERE job=?', (job,)).fetchone()[0]
@@ -447,6 +461,8 @@ class RuleStore:
             return None, 'identity_mismatch'
         if row['state'] == 'settled':
             return None, 'already_settled:' + row['winner']
+        if row['state'] == 'failed':
+            return None, 'already_failed'
         if row['generation'] != generation:
             return None, 'stale_generation'
         return row, None
@@ -479,6 +495,7 @@ class RuleStore:
             kind, detail = evidence_problem(json.loads(row['required']), checks)
             if kind == 'failed':
                 self._emit(db, outcome='failed', reason=detail, **emit)
+                db.execute("UPDATE settlements SET state='failed', settled_at=? WHERE job=?", (self.clock(), job))
                 return 'failed', detail
             if kind == 'awaiting_verification':
                 self._emit(db, outcome='awaiting_verification', reason=detail, **emit)
@@ -489,13 +506,31 @@ class RuleStore:
                        (seq, self.clock(), job))
             return 'settled', seq
 
-    def mark_awaiting(self, job: str, *, generation: int, source: str, value_text: str, type_, checks, reason, rule=None,
-                      phase='rule') -> None:
-        """Record a value whose checks are not all available: the job awaits verification, nothing is accepted."""
+    def mark_awaiting(self, job: str, *, generation: int, payload_sha256: str, bindings_sha256: str, source: str,
+                      value_text: str, type_, checks, reason, rule=None, phase='rule') -> tuple:
+        """Record a value whose checks are not all available: the job awaits verification, nothing is accepted.
+        Fenced like every settlement (council 3, B5): identity, terminal state and generation are checked in the same
+        transaction. Returns ("awaiting_verification", reason) or ("refused", why); a refusal is kept as an emission."""
         with self.transaction() as db:
-            self._emit(db, job=job, generation=generation, source=source, phase=phase, type_=type_, value=value_text,
-                       checks=checks, outcome='awaiting_verification', reason=reason, rule=rule)
-            db.execute("UPDATE settlements SET state='awaiting_verification' WHERE job=? AND state!='settled'", (job,))
+            row, refused = self._authority(db, job, generation, payload_sha256, bindings_sha256)
+            emit = dict(job=job, generation=generation, source=source, phase=phase, type_=type_, value=value_text,
+                        checks=checks, rule=rule)
+            if row is None:
+                self._emit(db, outcome='refused', reason=refused, **emit)
+                return 'refused', refused
+            self._emit(db, outcome='awaiting_verification', reason=reason, **emit)
+            db.execute("UPDATE settlements SET state='awaiting_verification' WHERE job=?", (job,))
+            return 'awaiting_verification', reason
+
+    def verify_identity(self, job: str, *, payload_sha256: str, bindings_sha256: str) -> dict:
+        """The settlement row when its immutable identity equals this one, else Error (council 3, B5: every resume path
+        validates the job identity before it returns an existing result)."""
+        row = self.settlement(job)
+        if row is None:
+            raise Error(f'job {job} has no settlement record')
+        if (row['payload_sha256'], row['bindings_sha256']) != (payload_sha256, bindings_sha256):
+            raise Error(f'settlement identity of job {job} differs (payload or bindings); refusing to return its result')
+        return row
 
     # ---------------------------------------------------------------------------------------------- results
 
@@ -531,11 +566,21 @@ class RuleStore:
         with self.transaction() as db:
             if before_commit is not None:
                 before_commit(db)
-            present = db.execute('SELECT job FROM results WHERE job=?', (job,)).fetchone()
-            if present is not None:
-                return 'present', None
             emit = dict(job=job, generation=generation, source='rule', phase='rule', type_=first.get('type'),
                         value=value, checks=checks, rule=rule['id'])
+            present = db.execute('SELECT * FROM results WHERE job=?', (job,)).fetchone()
+            if present is not None:
+                # Idempotent only for the identical job identity, rule, bindings, input and value (council 3, B5).
+                s = db.execute('SELECT * FROM settlements WHERE job=?', (job,)).fetchone()
+                same = (s is not None
+                        and (s['payload_sha256'], s['bindings_sha256']) == (payload_sha256, bindings_sha256)
+                        and s['winner'] == 'rule' and present['rule'] == rule['id']
+                        and present['binding_key'] == binding_key and present['resolved_sha256'] == resolved_sha256
+                        and present['value'] == value)
+                if not same:
+                    self._emit(db, outcome='refused', reason='present_identity_mismatch', **emit)
+                    return 'refused', 'present_identity_mismatch'
+                return 'present', None
 
             def refuse(reason):
                 self._emit(db, outcome='refused', reason=reason, **emit)
@@ -741,6 +786,10 @@ class Learner:
 
         done = self.store.result(job)
         if done is not None:
+            # A resumed job returns its existing rule result only under the identical identity (council 3, B5).
+            self.store.verify_identity(job, payload_sha256=payload_sha256, bindings_sha256=bindings_sha256)
+            if (done['rule'], done['binding_key'], done['resolved_sha256']) != (rule['id'], self.key, resolved_sha256):
+                raise Error(f'job {job} already holds a rule result under another rule, binding or input')
             return {'decision': 'rule', 'row': done, 'resumed': True}
         if self.package is None:
             return fallback('ineligible')
@@ -753,8 +802,12 @@ class Learner:
         if kind == 'failed':
             return fallback(detail.replace('check_failed:', 'check_failed:', 1))
         if kind == 'awaiting_verification':
-            self.store.mark_awaiting(job, generation=generation, source='rule', value_text=value_text,
-                                     type_=first['type'], checks=checks, reason=detail, rule=rule['id'])
+            state, why = self.store.mark_awaiting(job, generation=generation, payload_sha256=payload_sha256,
+                                                  bindings_sha256=bindings_sha256, source='rule',
+                                                  value_text=value_text, type_=first['type'], checks=checks,
+                                                  reason=detail, rule=rule['id'])
+            if state == 'refused':
+                return fallback('awaiting_refused:' + why)
             self.store.decide(job, rule['id'], 'awaiting_verification', detail)
             return {'decision': 'awaiting_verification', 'reason': detail}
         staged = {'decision': 'staged', 'rule': rule, 'job': job, 'text': text, 'resolved_sha256': resolved_sha256,
@@ -870,6 +923,29 @@ class ExperimentStore:
         return {'wave_id': wave, 'rule_sha256': rule_sha256, 'seed': row['seed'],
                 'population': json.loads(row['population']), 'selection': json.loads(row['selection']),
                 'mismatch': row['population_sha256'] != sha256_text(text)}
+
+    def seal_wave(self, backend: str, workload: str, wave: str, manifest: dict) -> str:
+        """Seal (first arm) or verify (every later arm) the immutable wave manifest {dataset id: {op, input_sha256,
+        producer, key}}. Returns its SHA256; a different manifest raises Error before any call (council 3, B12)."""
+        text = J(manifest)
+        with _Tx(self.db) as db:
+            row = db.execute('SELECT manifest FROM wave_manifests WHERE backend=? AND workload=? AND wave=?',
+                             (backend, workload, wave)).fetchone()
+            if row is None:
+                db.execute('INSERT INTO wave_manifests VALUES (?,?,?,?,?,?)',
+                           (backend, workload, wave, text, sha256_text(text), self.clock()))
+            elif row[0] != text:
+                theirs = json.loads(row[0])
+                diff = sorted(set(theirs) ^ set(manifest)) + sorted(d for d in set(theirs) & set(manifest)
+                                                                    if theirs[d] != manifest[d])
+                raise Error(f'wave {backend}/{workload}/{wave} differs from its sealed manifest '
+                            f'({len(diff)} dataset ids, first {diff[:3]}); every arm must consume the same data')
+        return sha256_text(text)
+
+    def wave_manifest(self, backend: str, workload: str, wave: str) -> dict | None:
+        row = self.db.execute('SELECT manifest FROM wave_manifests WHERE backend=? AND workload=? AND wave=?',
+                              (backend, workload, wave)).fetchone()
+        return json.loads(row[0]) if row else None
 
     def waves(self) -> list:
         return [dict(r, population=json.loads(r['population']), selection=json.loads(r['selection']))

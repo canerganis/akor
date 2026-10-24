@@ -471,6 +471,7 @@ class Scheduler:
         self._inflight = {}
         self._seen = {}
         self._deadline = None
+        self._closing = False
         self.host = spool.acquire_host()
         try:
             self._recover()
@@ -499,7 +500,24 @@ class Scheduler:
                 c.execute('INSERT INTO rejections(at, attempt_id, reason, detail) VALUES(?, ?, ?, ?)',
                           (now, a['attempt_id'], 'unknown_outcome', 'launched without capture at host restart'))
 
-    def close(self):
+    def close(self, timeout=None):
+        """Stop new launches, wait for every in-flight worker (and so the child process it runs) to return, store and
+        deliver what they captured, and only then release the host lock (council 3, B9). With a timeout and a worker
+        still running, SpoolError is raised and the lock is kept: a live launch never loses its owner."""
+        with self._lock:
+            self._closing = True
+            threads = list(self._inflight.values())
+        for thread in threads:
+            thread.join(timeout)
+        alive = [t.name for t in threads if t.is_alive()]
+        if alive:
+            raise SpoolError(f'{len(alive)} launch(es) still running; the host lock is kept until they return')
+        if not self.host.closed:
+            try:
+                with self._lock:
+                    self._harvest({'reserved': 0, 'launched': 0, 'captured': 0, 'delivered': 0})
+            except (SpoolError, sqlite3.Error):
+                pass  # recovery on the next start turns anything not captured into 'unknown'
         self.host.close()
         self._wake.set()
 
@@ -573,7 +591,7 @@ class Scheduler:
     # -- launch --
     def _launch_free(self, stats):
         with self._lock:
-            while len(self._inflight) < self.slots:
+            while not self._closing and len(self._inflight) < self.slots:
                 view = self._mark_launched()
                 if view is None:
                     return

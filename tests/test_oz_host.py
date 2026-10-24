@@ -55,7 +55,8 @@ def extract(text):
 
 def producer_jobs(p, n=40, missing=9, tag=''):
     return [{'key': f'k{tag}{i}', 'op': 'e', 'dataset_id': f'd{tag}{p}-{i}',
-             'text': (f'length={p}.{i:02d}{tag} mm; n=3\n' if i % missing else f'width={i} mm\n')} for i in range(n)]
+             'text': (f'length={p}.{i:02d}{tag} mm; n=3\n' if missing is None or i % missing else f'width={i} mm\n')}
+            for i in range(n)]
 
 
 class Base(unittest.TestCase):
@@ -81,9 +82,9 @@ class Base(unittest.TestCase):
         self.hosts.append(h)
         return h
 
-    def cold(self, host, wave='cold', producers=4, n=40, tag=''):
+    def cold(self, host, wave='cold', producers=4, n=40, tag='', missing=9):
         for p in range(producers):
-            host.submit(f'p{p}', f's{host.arm}{wave}{p}', producer_jobs(p, n, tag=tag), wave=wave)
+            host.submit(f'p{p}', f's{host.arm}{wave}{p}', producer_jobs(p, n, missing, tag=tag), wave=wave)
         return host.run_wave(wave)
 
 
@@ -91,7 +92,8 @@ class SharedBootstrap(Base):
     def test_one_bootstrap_of_16_per_producer_is_shared_by_b_and_c_and_never_repeated(self):
         b_adapter, c_adapter = oz_host.ReplayAdapter(extract, {'e': FIELD}), oz_host.ReplayAdapter(extract, {'e': FIELD})
         b, c = self.host('B', b_adapter), self.host('C', c_adapter)
-        rb, rc = self.cold(b), self.cold(c)
+        # Every answer passes its check here: a bootstrap is ok only after all 64 answers settle (council 3, B3).
+        rb, rc = self.cold(b, missing=None), self.cold(c, missing=None)
         boots = b_adapter.calls(bootstrap=True)
         self.assertEqual(len(boots), 1)
         self.assertEqual(len(boots[0]['ids']), 64)
@@ -120,7 +122,7 @@ class SharedBootstrap(Base):
                              if a['round'] != 'bootstrap' for c_ in a['calls']))
         # Never re-learned: a second learning wave in both arms makes no bootstrap call.
         for h, adapter in ((b, b_adapter), (c, c_adapter)):
-            again = self.cold(h, wave='cold2', tag='x')
+            again = self.cold(h, wave='cold2', tag='x', missing=None)
             self.assertEqual(adapter.calls(bootstrap=True), boots if h is b else [])
             self.assertIsNone(again['bootstrap'])
             self.assertGreater(again['rule_hits'], 0)
@@ -424,6 +426,113 @@ class ChildProcesses(Base):
                                'PYTHONIOENCODING': 'utf-8', 'PYTHONUTF8': '1'})
         extra = oz_host.child_env(model='m', effort='e', base={}, extra={'OZ_BOOTSTRAP_ATTEMPT': 'a1'})
         self.assertEqual(extra['OZ_BOOTSTRAP_ATTEMPT'], 'a1')
+
+
+COUNT = '{"lang":"oz-rule/1","expr":["field","n"]}'
+
+
+def two_op_registry():
+    """Operations e (the length) and n (the count), each with its own 64 cases, both quoted_span checked."""
+    checks = {'span': {'name': 'quoted_span', 'version': 1, 'kind': 'consumer', 'params': {}}}
+    ops = {}
+    for op, value in (('e', lambda i: f'{i}.{i % 100:02d} mm'), ('n', lambda i: str(1000 + i))):
+        cases = [{'id': f'{op}{i}', 'text': f'length={i}.{i % 100:02d} mm; n={1000 + i}',
+                  'partition': 'representative' if i < 48 else 'challenge',
+                  'expected': {'type': 'string', 'value': value(i)}} for i in range(64)]
+        ops[op] = {'contract': {'name': f'extract_{op}', 'deterministic': True}, 'checks': ['span'], 'permissions': {},
+                   'input_policy': dict(POLICY), 'route': dict(ROUTE), 'cases': cases, 'provenance': dict(PROV)}
+    return reg.Registry(reg.build_manifest(ops, checks, 'owner@example'))
+
+
+class SeveralOperations(Base):
+    """One host runs a workload of several operations: one shared bootstrap with a rule per operation, mixed batches,
+    and one min(32, covered) audit selection over every operation of the wave."""
+
+    def jobs(self, p, n=40):
+        out, answers = [], {}
+        for i in range(n):
+            op = 'e' if i % 2 else 'n'
+            text = f'length={p}.{i:02d} mm; n={2000 + 100 * p + i}'
+            out.append({'key': f'k{i}', 'op': op, 'dataset_id': f'd{p}-{i}', 'text': text + '\n'})
+            answers[(text, op)] = f'{p}.{i:02d} mm' if op == 'e' else str(2000 + 100 * p + i)
+        return out, answers
+
+    def host2(self, arm, adapter):
+        h = oz_host.ArmHost(arm=arm, backend='fake', workload='two', experiment_dir=self.dir,
+                            launcher=oz_host.InProcessLauncher(shim.CallableShim(adapter)),
+                            op={'e': 'Extract the length.', 'n': 'Extract n.'}, op_text=None, model='m-test',
+                            effort='low', identity=oz_host.identity_for(ROUTE), registry=two_op_registry(),
+                            seed=20261024 if arm != 'A' else None, allow_experimental=True, max_wait=0.0)
+        self.hosts.append(h)
+        return h
+
+    def test_one_bootstrap_rules_per_operation_mixed_batches_and_one_audit_wave(self):
+        table = {}
+        producers = {}
+        for p in range(4):
+            producers[f'p{p}'], answers = self.jobs(p)
+            table.update(answers)
+        seen_ops = []
+
+        class Answer:
+            def __init__(self):
+                self.by_text = {}
+                for (text, op), value in table.items():
+                    self.by_text.setdefault(text, value)
+
+            def __call__(self, text):
+                return self.by_text[text]
+
+        # one text per job, so the replay answer is a function of the text
+        self.assertEqual(len({t for t, _ in table}), len(table))
+        adapters = {arm: oz_host.ReplayAdapter(Answer(), {'e': FIELD, 'n': COUNT}) for arm in 'ABC'}
+        reports = {}
+        for arm in 'BCA':
+            h = self.host2(arm, adapters[arm])
+            for p, jobs in producers.items():
+                h.submit(p, f's{arm}{p}', jobs, wave='cold')
+            reports[arm] = h.run_wave('cold')
+            for a in h.ledger.attempts('cold'):
+                seen_ops.append((arm, a['round'], sorted({h._items[i]['job']['op'] for i in a['records']})))
+        boots = adapters['B'].calls(bootstrap=True)
+        self.assertEqual((len(boots), adapters['C'].calls(bootstrap=True)), (1, []))
+        config = json.loads(next((self.dir / 'bootstrap' / 'fake-two' / 'side').glob('*.config.json')).read_text())
+        self.assertEqual((config['ops'], sorted(config['contracts'])), (['e', 'n'], ['e', 'n']))
+        for arm in 'BC':
+            h = next(x for x in self.hosts if x.arm == arm)
+            rules = {o: h.store.active(lr.key) for o, lr in h.learners.items()}
+            self.assertEqual({o: r['ast'] for o, r in rules.items()},
+                             {'e': FIELD.encode('utf-8'), 'n': COUNT.encode('utf-8')})
+            self.assertEqual(reports[arm]['audits']['selected'], 32)
+            self.assertEqual(reports[arm]['rule_hits'], 160 - 64)
+            self.assertEqual(reports[arm]['accepted_by_checks'], 160)
+            self.assertTrue(reports[arm]['reconciliation']['ok'])
+        picked = [sorted(a['dataset_id'] for a in h.store.audits()) for h in self.hosts if h.arm in 'BC']
+        self.assertEqual(picked[0], picked[1])
+        by_op = {}
+        for d in picked[0]:
+            by_op[int(d.split('-')[1]) % 2] = by_op.get(int(d.split('-')[1]) % 2, 0) + 1
+        self.assertEqual(sorted(by_op), [0, 1])  # one selection across both operations
+        self.assertEqual(sum(by_op.values()), 32)
+        # A pools the two operations into the same 64-record calls.
+        a_calls = [ops for arm, rnd, ops in seen_ops if arm == 'A']
+        self.assertEqual(len(a_calls), 3)
+        self.assertIn(['e', 'n'], a_calls)
+        self.assertEqual(reports['A']['accepted_by_checks'], 160)
+        a_rows = [r for h in self.hosts if h.arm == 'A' for p in producers for r in h.collect(p, f'sA{p}')]
+        self.assertEqual({r['op'] for r in a_rows}, {'e', 'n'})
+        for r in a_rows:
+            text = next(j['text'] for j in producers[r['producer']] if j['key'] == r['key'])
+            self.assertEqual(json.loads(r['value_text']), table[(text[:-1], r['op'])])
+
+    def test_op_map_validation_and_a_foreign_operation_is_refused(self):
+        with self.assertRaises(Error):
+            oz_host.ArmHost(arm='A', backend='fake', workload='two', experiment_dir=self.dir,
+                            launcher=oz_host.InProcessLauncher(lambda r: None), op={'e': 'x'}, op_text='y',
+                            model='m', effort='low', identity=oz_host.identity_for(ROUTE))
+        h = self.host2('A', oz_host.ReplayAdapter(lambda t: 'x'))
+        with self.assertRaises(Error):
+            h.submit('p0', 's1', [{'key': 'k', 'op': 'z', 'text': 'a', 'dataset_id': 'd'}], wave='w')
 
 
 def matrix(experiment_dir=None, caps=None, global_cap=50):

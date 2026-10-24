@@ -12,7 +12,7 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from oz import Error
 from oz_route import (NOT_APPLICABLE, ROUTE_FIELDS, adapter_hash, build, canonical, environment_hash, probe,
-                      reconcile, source_manifest, worker_hash)
+                      reconcile, source_manifest, worker_hash, external_manifest, verify)
 
 ROOT = Path(__file__).resolve().parents[1]
 CAPS = {'protocols': ['oz.adapter/3'], 'languages': ['OZ/9']}
@@ -173,6 +173,156 @@ class ProbeAndBuildTests(Dir):
         first = build(self.script(body), model='m', effort='e', env={})['worker_hash']
         second = build(self.script(body + '# edited\n'), model='m', effort='e', env={})['worker_hash']
         self.assertNotEqual(first, second)
+
+
+IDENT = ("import json, os, sys\njson.dump({'backend': %(backend)r, 'model': os.environ['OZ_MODEL'], "
+         "'effort': os.environ['OZ_EFFORT'], 'cli_version': os.environ.get('PROBE_MARK', '2')}, sys.stdout)\n")
+
+
+class LaunchClosureTests(Dir):
+    def tree(self, files):
+        for name, text in files.items():
+            target = self.dir / name
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(text, encoding='utf-8')
+
+    def names(self, path):
+        return [n for n, _ in source_manifest(path)]
+
+    def test_env_reaches_the_identity_probe(self):
+        path = self.adapter(files={'a.py': IDENT % {'backend': 'fake'}})
+        env = dict(os.environ, PROBE_MARK='from-env')
+        self.assertEqual(probe(path, model='m', effort='e', env=env)['cli_version'], 'from-env')
+        self.assertEqual(build(path, model='m', effort='e', env=env)['route']['cli_version'], 'from-env')
+        self.assertEqual(build(path, model='m', effort='e', env=dict(env, PROBE_MARK='other'))['route']['cli_version'],
+                         'other')
+
+    def test_package_parent_relative_and_absolute_imports_are_followed(self):
+        self.tree({'a.py': 'import pkg.sub.mod\n', 'pkg/__init__.py': '', 'pkg/util.py': 'U = 1\n',
+                   'pkg/sub/__init__.py': 'import json\n',
+                   'pkg/sub/mod.py': 'from .. import util\nfrom . import helper\nfrom ..util import U\n',
+                   'pkg/sub/helper.py': 'H = 1\n', 'pkg/unused.py': 'X = 1\n'})
+        path = self.adapter(files={'a.py': 'import pkg.sub.mod\n'})
+        self.assertEqual(self.names(path), ['a.py', 'pkg/__init__.py', 'pkg/sub/__init__.py', 'pkg/sub/helper.py',
+                                            'pkg/sub/mod.py', 'pkg/util.py'])
+        before = adapter_hash(path)
+        for name in ('pkg/__init__.py', 'pkg/util.py'):
+            (self.dir / name).write_text('# edit\n', encoding='utf-8')
+            self.assertNotEqual(adapter_hash(path), before, name)
+            before = adapter_hash(path)
+
+    def test_a_script_inside_a_package_includes_the_parent_package_inits(self):
+        self.tree({'pkg/__init__.py': 'A = 1\n', 'pkg/sub/__init__.py': '', 'pkg/sub/run.py': 'x = 1\n'})
+        path = self.dir / 'adapter.json'
+        path.write_text(json.dumps({'argv': [sys.executable, 'pkg/sub/run.py'], **CAPS}), encoding='utf-8')
+        self.assertEqual(self.names(path), ['pkg/__init__.py', 'pkg/sub/__init__.py', 'pkg/sub/run.py'])
+
+    def test_stdlib_and_third_party_are_recorded_by_name_and_version(self):
+        path = self.adapter(files={'a.py': 'import json, os.path\nfrom collections import abc\n'})
+        got = {name: (kind, version) for name, kind, version in external_manifest(path)}
+        self.assertEqual(set(got), {'json', 'os', 'collections'})
+        self.assertEqual({kind for kind, _ in got.values()}, {'stdlib'})
+
+    def test_an_unresolved_import_blocks_unless_declared_external(self):
+        path = self.adapter(files={'a.py': 'import no_such_module_xyz\n'})
+        for call in (source_manifest, adapter_hash, external_manifest):
+            with self.assertRaisesRegex(Error, 'unresolved import'):
+                call(path)
+        with self.assertRaisesRegex(Error, 'unresolved'):
+            build(self.adapter(files={'a.py': IDENT % {'backend': 'fake'} + 'import no_such_module_xyz\n'}),
+                  model='m', effort='e', env={})
+        declared = self.adapter(files={'a.py': "OZ_ROUTE_DATA = ('external:no_such_module_xyz',)\n"
+                                               "import no_such_module_xyz\n"})
+        self.assertEqual(external_manifest(declared), [['no_such_module_xyz', 'declared-external', 'unversioned']])
+        adapter_hash(declared)
+
+    def test_unresolved_local_and_relative_imports_block(self):
+        self.tree({'pkg/__init__.py': '', 'pkg/m.py': 'from . import nothing_here_either\nfrom .gone import x\n'})
+        path = self.dir / 'adapter.json'
+        path.write_text(json.dumps({'argv': [sys.executable, 'pkg/m.py'], **CAPS}), encoding='utf-8')
+        with self.assertRaisesRegex(Error, 'unresolved'):
+            source_manifest(path)
+        self.tree({'pkg/m.py': 'import pkg.gone\n'})
+        with self.assertRaisesRegex(Error, 'unresolved'):
+            source_manifest(path)
+
+    def test_a_syntax_error_in_a_source_blocks(self):
+        with self.assertRaisesRegex(Error, 'cannot parse'):
+            source_manifest(self.adapter(files={'a.py': 'def (:\n'}))
+
+    def fake_claude(self, text):
+        name = 'claude.cmd' if os.name == 'nt' else 'claude'
+        (self.dir / 'bin').mkdir(exist_ok=True)
+        (self.dir / 'bin' / name).write_text(text, encoding='utf-8')
+        return dict(os.environ, PATH=str(self.dir / 'bin') + os.pathsep + os.environ['PATH'])
+
+    def test_executable_hash_change_changes_the_worker_hash(self):
+        path = self.adapter(files={'a.py': IDENT % {'backend': 'claude'}})
+        env = self.fake_claude('one')
+        first = build(path, model='m', effort='e', env=env)
+        roles = {e['role']: e for e in first['launch']['executables']}
+        self.assertEqual(set(roles), {'program', 'backend-cli'})
+        self.assertEqual(roles['program']['sha256'], hashlib.sha256(Path(sys.executable).resolve().read_bytes()).hexdigest())
+        self.assertTrue(roles['backend-cli']['path'].startswith((self.dir / 'bin').resolve().as_posix()))
+        self.assertEqual(build(path, model='m', effort='e', env=env)['worker_hash'], first['worker_hash'])
+        self.fake_claude('two')
+        second = build(path, model='m', effort='e', env=env)
+        self.assertNotEqual(second['worker_hash'], first['worker_hash'])
+        self.assertNotEqual(second['route']['environment_hash'], first['route']['environment_hash'])
+        self.assertEqual(second['route']['adapter_hash'], first['route']['adapter_hash'])
+
+    def test_a_missing_backend_cli_blocks_launch(self):
+        path = self.adapter(files={'a.py': IDENT % {'backend': 'codex'}})
+        empty = self.dir / 'empty'
+        empty.mkdir()
+        env = dict(os.environ, PATH=str(empty))
+        with self.assertRaisesRegex(Error, 'executable not found'):
+            build(path, model='m', effort='e', env=env)
+
+    def test_verify_matches_and_names_what_changed(self):
+        self.tree({'lib.py': 'X = 1\n'})
+        path = self.adapter(files={'a.py': 'import lib\n' + IDENT % {'backend': 'claude'}})
+        env = self.fake_claude('one')
+        env.update(OZ_MODEL='m', OZ_EFFORT='high')
+        frozen = build(path, model='m', effort='high', env=env)
+        self.assertEqual(verify(frozen['worker_hash'], path, env), frozen['route'])
+        self.assertEqual(verify(frozen, {'adapter': path}, env), frozen['route'])
+        self.assertEqual(verify(frozen['worker_hash'], {'adapter': path, 'model': 'm', 'effort': 'high'},
+                                {k: v for k, v in env.items() if k not in ('OZ_MODEL', 'OZ_EFFORT')}), frozen['route'])
+        (self.dir / 'lib.py').write_text('X = 2\n', encoding='utf-8')
+        self.fake_claude('two')
+        with self.assertRaises(Error) as ctx:
+            verify(frozen, path, env)
+        text = str(ctx.exception)
+        for part in ('worker route mismatch', 'adapter_hash', 'environment_hash', 'sources lib.py', 'executables backend-cli'):
+            self.assertIn(part, text)
+        self.assertNotIn('executables program', text)
+        self.assertNotIn('backend:', text)
+        # The hash alone still fails closed and prints the recomputed route.
+        with self.assertRaisesRegex(Error, 'recomputed route'):
+            verify(frozen['worker_hash'], path, env)
+        with self.assertRaisesRegex(Error, 'frozen worker hash'):
+            verify('', path, env)
+
+    def test_verify_blocks_on_a_changed_effort_or_env(self):
+        path = self.adapter(files={'a.py': IDENT % {'backend': 'fake'}})
+        env = dict(os.environ, OZ_MODEL='m', OZ_EFFORT='high')
+        frozen = build(path, model='m', effort='high', env=env)
+        with self.assertRaisesRegex(Error, 'effort: frozen .high., now .low.'):
+            verify(frozen, {'adapter': path, 'effort': 'low'}, env)
+        with self.assertRaisesRegex(Error, 'env: frozen'):
+            verify(frozen, path, dict(env, OZ_CODEX_TIMEOUT='5'))
+
+    def test_worker_hash_is_stable_across_checkout_locations(self):
+        one = self.adapter(files={'a.py': 'import lib\n' + IDENT % {'backend': 'fake'}, 'lib.py': 'X = 1\n'})
+        other = tempfile.TemporaryDirectory()
+        self.addCleanup(other.cleanup)
+        for name in ('a.py', 'lib.py'):
+            (Path(other.name) / name).write_bytes((self.dir / name).read_bytes())
+        (Path(other.name) / 'adapter.json').write_bytes(one.read_bytes())
+        env = dict(os.environ, OZ_MODEL='m', OZ_EFFORT='e')
+        self.assertEqual(build(one, model='m', effort='e', env=env)['worker_hash'],
+                         build(Path(other.name) / 'adapter.json', model='m', effort='e', env=env)['worker_hash'])
 
 
 class ShippedAdapterIdentityTests(Dir):
