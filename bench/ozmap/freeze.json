@@ -299,7 +299,7 @@
      "codex_cli_adapter",
      "file",
      "c:\\users\\can02\\projects\\akor\\examples\\codex_cli_adapter.py",
-     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+     "de5e0c14fdf9bef07f5e431756810c82ca637843f0543419fc347ca7187b2f8b"
     ],
     [
      "collections",
@@ -1779,11 +1779,11 @@
   "bench/ozmap/data.py": "d94c6332de0aaf2208234eefddfb1a8ac95bd91648440680550343aa89040b62",
   "bench/ozmap/data/boolq-superglue-val.jsonl": "0c86a5045886e5795fe9052003873f7d94b88ed3028a33007c51d99e44fd66d9",
   "bench/ozmap/fake_cli.py": "0d51f9a634c1d8f617494c51740132c08c6fff3c61deb8a7fd4334c19e295137",
-  "bench/ozmap/identity.json": "d9f80f27dcdc9899ddd0b02f8236b7efb1100a0ec52677dd1878d08366bbd8bd",
+  "bench/ozmap/identity.json": "6283e28787956ee96bd9cfa63e4011636f6703d7de9ed1bb909e95617a315dcc",
   "bench/ozmap/oracle.py": "60446b93b39be10f2d57e1b65e77113c7e4dc20e301c6e7f3102f43c92325b4b",
   "bench/ozmap/pilot.py": "d51df3d748f67fcac7d8fc4d1b4276d6546cd9bb064c245e07e4adb68181c882",
-  "bench/ozmap/registry.json": "d24a00650067124ff4b4ae6eb1e0eadb3de493b0112ea4689e0391ad46a2cc0d",
-  "bench/ozmap/routes.json": "b30a75d0d0b14d6d4da526a82e24d5627c25b07e47a66207a74c2270e12056fb",
+  "bench/ozmap/registry.json": "2387df27db9d31234ab7481c66a691b4890b6c4a1c46cb447318777ab25678c7",
+  "bench/ozmap/routes.json": "3e9a960cf2e2e66888bcc0e843b3fa6f792c49ae1fa390edefffbb640ea64c19",
   "bench/ozmap/score.py": "bec7fe8221a3bd67aac79604e400c0f2b767e2c05fc00a62e830087cf48789aa",
   "docs/design/brainstorm-2026-10-24/05-joint-record.md": "a95705a71ff4864fa2dffe6692318f1df2636df59744eda70ddb4b623ae53851",
   "docs/design/ozmap-2026-10-24/amendment-2-and-step6-architecture.md": "a1a09450f02c943220adf63eeb97f3941a5d66fce86311dd76cb18f6da6606de",
@@ -1803,7 +1803,7 @@
   "examples/bootstrap_shim.py": "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae",
   "examples/claude_cli_adapter.py": "44bc195e5761c5603f6601437b38c2038379168796b4d5ade385119717845e64",
   "examples/claude_map_adapter.py": "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689",
-  "examples/codex_cli_adapter.py": "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578",
+  "examples/codex_cli_adapter.py": "de5e0c14fdf9bef07f5e431756810c82ca637843f0543419fc347ca7187b2f8b",
   "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
   "oz_accept.py": "e18ebb01e82d4d4329779300d23dd39a0015087f897b9fdee2c1340cf27716ca",
   "oz_batch.py": "6aa71ed131116c4f08c53a85c90df736740f7a84f3b4bbafc4ec323eaa4f1fc3",
@@ -1824,14 +1824,14 @@
   "oz_spool.py": "b55a93b4c2f0103735be791ce6f734e01f934b8cb7e88dd4372e370c094f17b9",
   "oz_worker.py": "3ab44597198e013771cdb19da774ff574a48034bdc2ba3bb9e04b618b8745dd6",
   "oz_workspace.py": "f708d6062c6c751d17aaea24c82aa333816adbcbaff0c34156ea8969b9931f5a",
-  "tests/test_ozmap_close.py": "aff4f4b3ca3fe34e3162fbb72b437c69186dd7355a4840b2d67a81f440171191",
+  "tests/test_ozmap_close.py": "142efa5c7fe9ee0606ed3725d35ee32b1cefcb04e7d827849aca0f165bb4cfd4",
   "tests/test_ozmap_pilot.py": "55f654717fe67dbc45da3bbca93e6e0f835ff74ada021b83b69dd403b1580325"
  },
  "gate_texts": {
   "boolq": "On the frozen Codex BoolQ cold evaluation, C MUST have no more gold errors than A, consume at most 1.10 times A’s total charged tokens, and have at most 1.10 times A’s measured makespan. C’s accounting MUST include the complete shared bootstrap charge and all required residual work. Makespan MUST include required admission, checking, queueing and completion costs. No bootstrap subtraction, floor adjustment or substitution of summed physical call seconds is permitted.",
   "materials_warm": "For each backend independently, warm C MUST preserve correctness, have measured makespan at most 0.90 times matched warm A, and consume at most 0.50 times A’s tokens per gold correct job. Score actual live measurements using the frozen timing boundaries and accounting rules."
  },
- "git_head": "db1e6429502dd60ab87a82efe1ef6c5bd096faaa",
+ "git_head": "d3dd443078c58aab000f30cda69f94cfa70387e6",
  "host": {
   "intake": {
    "per_producer": 64,
@@ -2221,7 +2221,7 @@
  },
  "plan_sha256": "84b1732b4603a58324e92b91df0e08c28a3a19031996b326167900c3ccb60700",
  "registry_manifest_sha256": {
-  "codex": "a9b2983c23a9e8993934a18cceaecfe4d3a8232a63fb89fe0b32eecb5c310b61",
+  "codex": "e168895169a616c22a9c463e0f337fd06dd45a8674f933fc6c8b2ceef9a1276e",
   "sonnet": "9696f546846bb730d6b96ae1ee5bab3dfcb48b464e3182f5f5090f31d9431e78"
  },
  "schema": "ozmap.freeze/2",
