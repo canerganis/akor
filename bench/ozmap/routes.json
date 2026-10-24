@@ -1,7 +1,7 @@
 {
  "codex": {
   "do_route": {
-   "adapter": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+   "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
    "cli_version": "codex-cli 0.160.0",
    "effort": "high",
    "model": "gpt-6.1-sol"
@@ -37,12 +37,22 @@
      "stdlib"
     ],
     [
+     "fcntl",
+     "stdlib",
+     "stdlib"
+    ],
+    [
      "hashlib",
      "stdlib",
      "stdlib"
     ],
     [
      "json",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "msvcrt",
      "stdlib",
      "stdlib"
     ],
@@ -115,19 +125,19 @@
     ],
     [
      "codex_cli_adapter.py",
-     "de5e0c14fdf9bef07f5e431756810c82ca637843f0543419fc347ca7187b2f8b"
+     "7cbde60a119dbeba9af550c6eec27e0454ee2bc6d96a2e19cfad00d57ce89cef"
     ]
    ]
   },
   "route": {
-   "adapter_hash": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+   "adapter_hash": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
    "backend": "codex",
    "cli_version": "codex-cli 0.160.0",
    "effort": "high",
    "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
    "model": "gpt-6.1-sol"
   },
-  "worker_hash": "c2feaa87f9f7b3a68dd18357801545dde9026ca4b5ac7893a8c9e80f21fe7a19"
+  "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
  },
  "sonnet": {
   "do_route": {

@@ -1,7 +1,7 @@
 {
  "boolq": "available",
  "manifest_sha256": {
-  "codex": "e168895169a616c22a9c463e0f337fd06dd45a8674f933fc6c8b2ceef9a1276e",
+  "codex": "d02d5dc01255142a4edfc749ac1a969f51ae9075f76ee40818203b728854532c",
   "sonnet": "9696f546846bb730d6b96ae1ee5bab3dfcb48b464e3182f5f5090f31d9431e78"
  },
  "manifests": {
@@ -954,14 +954,14 @@
       "rule_provenance": true
      },
      "route": {
-      "adapter_hash": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+      "adapter_hash": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
       "backend": "codex",
       "cli_version": "codex-cli 0.160.0",
       "effort": "high",
       "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
       "model": "gpt-6.1-sol"
      },
-     "worker_hash": "c2feaa87f9f7b3a68dd18357801545dde9026ca4b5ac7893a8c9e80f21fe7a19"
+     "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
     },
     "boolq": {
      "check_hash": "921575cf0adc43bf6058ac7aa8977f692a8bca79f6a09484f02aeba69660a2ee",
@@ -1578,14 +1578,14 @@
      "permission_hash": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
      "permissions": {},
      "route": {
-      "adapter_hash": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+      "adapter_hash": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
       "backend": "codex",
       "cli_version": "codex-cli 0.160.0",
       "effort": "high",
       "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
       "model": "gpt-6.1-sol"
      },
-     "worker_hash": "c2feaa87f9f7b3a68dd18357801545dde9026ca4b5ac7893a8c9e80f21fe7a19"
+     "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
     },
     "e": {
      "check_hash": "c5ff5f6a775a26ff4f3a2b967f096b6510cf7c698c0399b961a82a8b955d523e",
@@ -2655,14 +2655,14 @@
       "rule_provenance": true
      },
      "route": {
-      "adapter_hash": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+      "adapter_hash": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
       "backend": "codex",
       "cli_version": "codex-cli 0.160.0",
       "effort": "high",
       "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
       "model": "gpt-6.1-sol"
      },
-     "worker_hash": "c2feaa87f9f7b3a68dd18357801545dde9026ca4b5ac7893a8c9e80f21fe7a19"
+     "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
     },
     "m": {
      "check_hash": "d4ca70495202056c9797f910492a8beea292e7fd247fbca153f3d4617d4a3516",
@@ -3337,14 +3337,14 @@
       "rule_provenance": true
      },
      "route": {
-      "adapter_hash": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+      "adapter_hash": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
       "backend": "codex",
       "cli_version": "codex-cli 0.160.0",
       "effort": "high",
       "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
       "model": "gpt-6.1-sol"
      },
-     "worker_hash": "c2feaa87f9f7b3a68dd18357801545dde9026ca4b5ac7893a8c9e80f21fe7a19"
+     "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
     },
     "v": {
      "check_hash": "aa47797254f44b5a710a67ad6c157813bac9537570af08a4ad261473b0c04bdf",
@@ -3966,14 +3966,14 @@
       "rule_provenance": true
      },
      "route": {
-      "adapter_hash": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+      "adapter_hash": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
       "backend": "codex",
       "cli_version": "codex-cli 0.160.0",
       "effort": "high",
       "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
       "model": "gpt-6.1-sol"
      },
-     "worker_hash": "c2feaa87f9f7b3a68dd18357801545dde9026ca4b5ac7893a8c9e80f21fe7a19"
+     "worker_hash": "9ebe7f8d929895c155e8c7ac6a638e94a58fa71562804699484c11078ee1e336"
     }
    },
    "schema": "oz-registry/1"
