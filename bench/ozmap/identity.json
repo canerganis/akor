@@ -1,0 +1,123 @@
+{
+ "codex": {
+  "backend": "codex",
+  "bootstrap_shim": {
+   "adapter": "codex_cli_adapter.py",
+   "adapter_closure": [
+    [
+     "codex_cli_adapter.py",
+     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+    ]
+   ],
+   "adapter_sha256": "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578",
+   "closure": [
+    [
+     "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
+     "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+    ],
+    [
+     "bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ],
+    [
+     "codex_cli_adapter.py",
+     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+    ]
+   ],
+   "instruction_sha256": "ebb9183a89d8e44c66c9e1ca81fa50407af11449646ecd4be3ea0ae3a032fa87",
+   "shim_closure": [
+    [
+     "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
+     "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+    ],
+    [
+     "bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ]
+   ],
+   "shim_sha256": "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae",
+   "spec_excerpt_sha256": "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+  },
+  "cli_version": "codex-cli 0.160.0",
+  "effort": "medium",
+  "effort_applicable": true,
+  "flags": [
+   "-s",
+   "read-only",
+   "--skip-git-repo-check",
+   "--ephemeral",
+   "--json",
+   "-C",
+   "<fresh-empty-temp-dir>",
+   "tool-events=leakage-exit-86",
+   "bootstrap-shim=oz-bootstrap/1",
+   "bootstrap-spec-sha256=101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+  ],
+  "model": "gpt-6.1-sol"
+ },
+ "sonnet": {
+  "backend": "claude",
+  "bootstrap_shim": {
+   "adapter": "claude_map_adapter.py",
+   "adapter_closure": [
+    [
+     "claude_cli_adapter.py",
+     "44bc195e5761c5603f6601437b38c2038379168796b4d5ade385119717845e64"
+    ],
+    [
+     "claude_map_adapter.py",
+     "da1520ed98c4765cea8c0f1f8c0dc2f60bd0830286fdac75c3bba61b04cab540"
+    ]
+   ],
+   "adapter_sha256": "da1520ed98c4765cea8c0f1f8c0dc2f60bd0830286fdac75c3bba61b04cab540",
+   "closure": [
+    [
+     "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
+     "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+    ],
+    [
+     "bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ],
+    [
+     "claude_cli_adapter.py",
+     "44bc195e5761c5603f6601437b38c2038379168796b4d5ade385119717845e64"
+    ],
+    [
+     "claude_map_adapter.py",
+     "da1520ed98c4765cea8c0f1f8c0dc2f60bd0830286fdac75c3bba61b04cab540"
+    ]
+   ],
+   "instruction_sha256": "ebb9183a89d8e44c66c9e1ca81fa50407af11449646ecd4be3ea0ae3a032fa87",
+   "shim_closure": [
+    [
+     "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
+     "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+    ],
+    [
+     "bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ]
+   ],
+   "shim_sha256": "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae",
+   "spec_excerpt_sha256": "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+  },
+  "cli_version": "2.1.306 (Claude Code)",
+  "effort": "default",
+  "effort_applicable": true,
+  "flags": [
+   "-p",
+   "--tools",
+   "",
+   "--setting-sources",
+   "",
+   "--strict-mcp-config",
+   "--no-session-persistence",
+   "--output-format",
+   "json",
+   "bootstrap-shim=oz-bootstrap/1",
+   "bootstrap-spec-sha256=101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+  ],
+  "model": "claude-sonnet-5-5"
+ }
+}
