@@ -1,7 +1,7 @@
 {
  "codex": {
   "do_route": {
-   "adapter": "cb15ea806ec5b4398ae413dcb319011da55d5d0d99a9eccc2d5a095b56880671",
+   "adapter": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
    "cli_version": "codex-cli 0.160.0",
    "effort": "high",
    "model": "gpt-6.1-sol"
@@ -115,19 +115,19 @@
     ],
     [
      "codex_cli_adapter.py",
-     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+     "de5e0c14fdf9bef07f5e431756810c82ca637843f0543419fc347ca7187b2f8b"
     ]
    ]
   },
   "route": {
-   "adapter_hash": "cb15ea806ec5b4398ae413dcb319011da55d5d0d99a9eccc2d5a095b56880671",
+   "adapter_hash": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
    "backend": "codex",
    "cli_version": "codex-cli 0.160.0",
    "effort": "high",
    "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
    "model": "gpt-6.1-sol"
   },
-  "worker_hash": "3afcc548c4ac0f85e3135ad0ce9571243f19be7c5a071e8bcf8a663e39c05f1a"
+  "worker_hash": "c2feaa87f9f7b3a68dd18357801545dde9026ca4b5ac7893a8c9e80f21fe7a19"
  },
  "sonnet": {
   "do_route": {

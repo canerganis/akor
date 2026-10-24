@@ -6,10 +6,10 @@
    "adapter_closure": [
     [
      "codex_cli_adapter.py",
-     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+     "de5e0c14fdf9bef07f5e431756810c82ca637843f0543419fc347ca7187b2f8b"
     ]
    ],
-   "adapter_sha256": "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578",
+   "adapter_sha256": "de5e0c14fdf9bef07f5e431756810c82ca637843f0543419fc347ca7187b2f8b",
    "closure": [
     [
      "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
@@ -21,7 +21,7 @@
     ],
     [
      "codex_cli_adapter.py",
-     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+     "de5e0c14fdf9bef07f5e431756810c82ca637843f0543419fc347ca7187b2f8b"
     ]
    ],
    "instruction_sha256": "ebb9183a89d8e44c66c9e1ca81fa50407af11449646ecd4be3ea0ae3a032fa87",
