@@ -160,6 +160,16 @@ class N1CodexIsolation(Temp):
         self.assertEqual([x['type'] for x in cca.leakage(ev('tool.call'))], ['tool.call'])
         self.assertIn('-C', cca.FLAGS)
 
+    def test_n1_cli_warning_items_pass_but_error_items_with_more_fields_are_leakage(self):
+        notice = ev('item.completed', item={'id': 'item_0', 'type': 'error',
+                                            'message': 'Codex is ignoring 1 unrecognized configuration setting.'})
+        self.assertEqual(cca.leakage(notice), [])  # seen live in the first telemetry run
+        for item in ({'id': 'i', 'type': 'error', 'message': 'x', 'command': 'cat secret'},
+                     {'id': 'i', 'type': 'error', 'message': {'nested': 1}}):
+            with self.subTest(item=item):
+                self.assertEqual(len(cca.leakage(ev('item.completed', item=item))), 1)
+        self.assertEqual(len(cca.leakage(ev('item.started', item={'id': 'i', 'type': 'error', 'message': 'x'}))), 1)
+
 
 class N1Claude(Temp):
     def test_n1_claude_runs_with_every_tool_disabled(self):

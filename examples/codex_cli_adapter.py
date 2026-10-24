@@ -114,6 +114,11 @@ def leakage(stdout):
         item_type = item.get('type') if isinstance(item, dict) else None
         if kind in ITEM_EVENTS and item_type in ALLOWED_ITEMS:
             continue
+        # The CLI reports its own config and startup warnings as an error item holding only a message (seen live:
+        # ignored config keys, unstable features, hook timeouts). Anything with more fields stays leakage.
+        if (kind == 'item.completed' and item_type == 'error' and set(item) <= {'id', 'type', 'message'}
+                and isinstance(item.get('message'), str)):
+            continue
         found.append({'line': n, 'type': kind if isinstance(kind, str) else repr(kind),
                       'item_type': item_type if isinstance(item_type, str) else repr(item_type)})
     return found
