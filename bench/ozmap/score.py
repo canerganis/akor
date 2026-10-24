@@ -146,7 +146,9 @@ def summarize(jobs, counts, *, rule_errors, fallback_errors, rule_hits, report, 
            'correct_per_min': round(correct / (span / 60.0), 3) if span else None,
            'physical_calls': report['calls']['physical'], 'charged_calls': report['calls']['charged'],
            'evidence': report.get('evidence'), 'efficiency_valid': report.get('efficiency_valid'),
-           'efficiency_invalid': report.get('efficiency_invalid', []), 'incomplete': report.get('incomplete', [])}
+           'efficiency_invalid': report.get('efficiency_invalid', []), 'incomplete': report.get('incomplete', []),
+           'unverified_calls': report.get('unverified_calls', []),
+           'unavailable_claims': report.get('unavailable_claims', [])}
     if per_job is not None:
         out['per_job'] = per_job
     return out
@@ -325,6 +327,51 @@ def load_run(run_dir):
     return cells, budget, manifest
 
 
+def _envelope_usage(captures):
+    """The turn.completed usage in a codex adapter envelope kept under captures/, or None."""
+    import base64
+    for done in sorted(Path(captures).glob('*.done')) if Path(captures).is_dir() else ():
+        try:
+            record = json.loads(done.read_text(encoding='utf-8'))
+            envelope = json.loads(base64.b64decode(record['envelope_b64']).decode('utf-8'))
+            for line in (envelope.get('stdout') or '').splitlines():
+                event = json.loads(line)
+                if isinstance(event, dict) and event.get('type') == 'turn.completed'                         and isinstance(event.get('usage'), dict):
+                    return event['usage']
+        except (OSError, ValueError, KeyError, TypeError, AttributeError):
+            continue
+    return None
+
+
+def preparation_telemetry(runs_dir):
+    """Every telemetry run directory under the runs directory with its calls and tokens (Astra sign-off 5: all telemetry
+    attempts stay on the report as preparation cost, whatever their outcome). Read from each call ledger."""
+    out = []
+    for d in sorted(Path(runs_dir).glob('*')) if Path(runs_dir).is_dir() else ():
+        calls_dir = d / 'telemetry' / 'ws' / 'do'
+        if not calls_dir.is_dir():
+            continue
+        calls = []
+        for ledger in sorted(calls_dir.glob('*/calls.jsonl')):
+            usage = {}
+            for line in ledger.read_text(encoding='utf-8').splitlines():
+                try:
+                    rec = json.loads(line)
+                except ValueError:
+                    continue
+                raw = (rec.get('usage') or {}).get('raw') if isinstance(rec, dict) else None
+                if rec.get('event') != 'call_start' and isinstance(raw, dict):
+                    usage = raw
+            if not usage:  # a failed call keeps its usage only in the adapter envelope
+                usage = _envelope_usage(ledger.parent / 'captures') or {}
+            calls.append({'request': ledger.parent.name, 'usage': usage or None,
+                          'tokens': (usage.get('input_tokens', 0) + usage.get('output_tokens', 0)) if usage else None})
+        out.append({'run_dir': d.name, 'calls': len(calls), 'call_detail': calls,
+                    'tokens': sum(c['tokens'] or 0 for c in calls),
+                    'unknown_usage_calls': sum(1 for c in calls if c['tokens'] is None)})
+    return out
+
+
 def score_run(run_dir):
     cells, budget, manifest = load_run(run_dir)
     gold = gold_table()
@@ -334,6 +381,8 @@ def score_run(run_dir):
     leakage = list(manifest.get('leakage_problems', []))
     if manifest.get('gold_accessed_during_run') is not False:
         leakage.append('the run manifest does not attest that gold stayed inaccessible during execution')
+    summary['telemetry'] = manifest.get('telemetry')
+    summary['preparation_telemetry'] = preparation_telemetry(Path(run_dir).parent)
     summary['validity'] = {'leakage': leakage, 'bootstrap': bootstrap_checks(cells, gold),
                            'budget': dict(budget, over=budget_over(budget))}
     return summary
@@ -352,6 +401,29 @@ def report_md(summary, result):
         lines.append(f"| {k} | {c['jobs']} | {c['correct']} | {c['incorrect']} | {c['unresolved']} | "
                      f"{c['rule_errors']} | {c['fallback_errors']} | {c['coverage']} | {c['tokens']} | "
                      f"{c['tokens_per_correct']} | {c['makespan_s']} | {c['correct_per_min']} | {c['evidence']} |")
+    lines += ['', '## Usage evidence', '']
+    tele = summary.get('telemetry')
+    if tele:
+        lines.append(f"Telemetry for this run: status {tele.get('status')}, accepted {tele.get('accepted')}, cache "
+                     f"inclusion certified {tele.get('cache_certified')}. Reasons: {json.dumps(tele.get('reasons'))}")
+    lines.append('')
+    any_unverified = False
+    for k, c in sorted(summary['cells'].items()):
+        for u in c.get('unverified_calls') or []:
+            any_unverified = True
+            lines.append(f"- {k}: call {u['call_id']} ({u['basis']}) {u['kind']}: {u['reason']}")
+        for claim in c.get('unavailable_claims') or []:
+            lines.append(f"  - {k}: {claim}")
+    if not any_unverified:
+        lines.append('No Codex call has unverified reasoning or unverified cache accounting.')
+    prep = summary.get('preparation_telemetry') or []
+    lines += ['', '## Preparation cost: telemetry runs', '']
+    if prep:
+        lines += ['| run dir | calls | tokens | calls without usage |', '|---|---|---|---|']
+        lines += [f"| {t['run_dir']} | {t['calls']} | {t['tokens']} | {t['unknown_usage_calls']} |" for t in prep]
+        lines.append(f"Total: {sum(t['calls'] for t in prep)} calls, {sum(t['tokens'] for t in prep)} tokens.")
+    else:
+        lines.append('No telemetry run directory found.')
     lines += ['', '## Gates (ordered)', '']
     for g in result['gates']:
         lines.append(f"{g['gate']}. {g['name']}: {'PASS' if g['pass'] else 'FAIL'}. {json.dumps(g['detail'])}")

@@ -759,8 +759,10 @@ CREATE TABLE IF NOT EXISTS call_observations(
 CREATE TABLE IF NOT EXISTS envelopes(
     receipt TEXT PRIMARY KEY, attempt_id TEXT NOT NULL, request_id TEXT NOT NULL, call_id TEXT, exit_code INTEGER,
     sha256 TEXT NOT NULL, kind TEXT NOT NULL, usage TEXT, leakage TEXT NOT NULL, at REAL NOT NULL);
+CREATE TABLE IF NOT EXISTS call_audits(
+    receipt TEXT PRIMARY KEY, call_id TEXT, reasons TEXT NOT NULL, at REAL NOT NULL);
 ''' + ''.join(_keep(t) for t in ('events', 'calls', 'allocations', 'plan', 'authority', 'deliveries', 'violations',
-                                 'timeline', 'call_observations', 'envelopes'))
+                                 'timeline', 'call_observations', 'envelopes', 'call_audits'))
 
 
 def _usage_columns(usage) -> tuple:
@@ -973,6 +975,26 @@ class Ledger:
                 return 'same', owner
             return self._observe(db, call_id, owner, 'adapter_envelope:' + receipt, {'usage': evidence['usage']},
                                  at), owner
+
+    def record_audit(self, receipt, call_id, reasons, at) -> None:
+        """Keep the per-call usage audit of one envelope: [[kind, text], ...], empty when the call is verified."""
+        with self.lock, self.tx() as db:
+            db.execute('INSERT OR IGNORE INTO call_audits VALUES (?,?,?,?)',
+                       (receipt, call_id, json.dumps(reasons, sort_keys=True), at))
+
+    def audits(self, call_id) -> list | None:
+        """The audit reasons recorded for a call (every envelope of it, de-duplicated), or None when no envelope of
+        the call was audited."""
+        rows = [json.loads(r[0]) for r in self.db.execute('SELECT reasons FROM call_audits WHERE call_id=? '
+                                                          'ORDER BY rowid', (call_id,))]
+        if not rows:
+            return None
+        out = []
+        for reasons in rows:
+            for item in reasons:
+                if item not in out:
+                    out.append(item)
+        return out
 
     def envelopes(self, attempt_ids=None) -> list:
         rows = [dict(r, usage=json.loads(r['usage']) if r['usage'] else None, leakage=json.loads(r['leakage']))
@@ -1393,7 +1415,7 @@ class ArmHost:
                  allow_experimental=False, experimental_sizes=(), limits=None, do_workspace=None, rule_store=None,
                  wall=time.time, clock=time.monotonic, bootstrap_wait=1800.0, hooks=None, owner=None, base_env=None,
                  expected_intake=None, slot_pool=None, route_check=None, pilot=None, usage_semantics='unverified',
-                 quota=None, quota_group='oz-host'):
+                 quota=None, quota_group='oz-host', call_audit=None):
         from oz_accept import pin
         if arm not in ARMS:
             raise Error('arm must be A, B or C')
@@ -1434,6 +1456,9 @@ class ArmHost:
         self.base_env = base_env
         self.slot_pool, self.route_check, self.pilot = slot_pool, route_check, pilot
         self.usage_semantics = usage_semantics
+        # call_audit(envelope_evidence) -> [[kind, text], ...]: the per-call usage verdict of a pilot backend (Astra
+        # sign-off 5: the reasoning predicate on every Codex call, cache inclusion for positive cached counts).
+        self.call_audit = call_audit
         # oz_quota reservation of every physical launch (council 3 close, N3): one quota group per physical slot.
         self.quota, self.quota_group = quota, quota_group
         self._retained = []  # launches whose process tree is not verified gone: slot and quota stay held
@@ -1953,6 +1978,12 @@ class ArmHost:
                 continue
             if status == 'conflict':
                 self._violate('incomplete', 'envelope_usage_conflict:' + key, wave)
+            if self.call_audit is not None and ev['kind'] != 'unknown':
+                try:
+                    reasons = [list(r) for r in self.call_audit(ev)]
+                except Exception as exc:  # noqa: BLE001 - an audit that cannot run is an unverified call
+                    reasons = [['usage_unverified', f'the usage audit failed: {str(exc)[:120]}']]
+                self.ledger.record_audit(key, call_id, reasons, self.wall())
             if ev['leakage'] and owner == aid:
                 leaked.append({'receipt': key, 'kind': ev['kind'], 'leakage': ev['leakage']})
         if leaked:
@@ -2513,7 +2544,9 @@ class ArmHost:
             status = 'answers_failed'
         self._phase('bootstrap', 'end')
         call_rows = [dict(c, datasets=sorted(self._items[m]['dataset_id'] for m in (c.get('jobs') or [])
-                                             if m in self._items)) for c in calls]
+                                             if m in self._items),
+                          **({'audit': self._audit_reasons(c['call_id'])} if self.call_audit is not None else {}))
+                     for c in calls]
         record = {'backend': self.backend, 'workload': self.workload, 'owner': self.owner, 'wave': wave,
                   'binding_key': self.learn_key, 'binding_keys': {o: lr.key for o, lr in self.learners.items()},
                   'worker_hash': self.worker, 'assignment': assignment,
@@ -2577,6 +2610,12 @@ class ArmHost:
         return row
 
     # --------------------------------------------------------------------------------------------- report
+
+    def _audit_reasons(self, call_id) -> list:
+        """[[kind, text], ...] of one physical call of this host: the audit of its envelope(s), or an unevaluable
+        reasoning verdict when no envelope of the call was kept."""
+        found = self.ledger.audits(call_id)
+        return found if found is not None else [['reasoning_unverified', 'no adapter envelope was kept for the call']]
 
     def _record(self) -> dict:
         return (self.experiment.bootstrap(self.backend, self.workload) or {}).get('record') or {}
@@ -2690,6 +2729,16 @@ class ArmHost:
         # The frozen configuration may name the components each backend's CLI reports (usage_components); one it
         # does not report (the Claude CLI has no reasoning counter: thinking is billed inside output_tokens) is not
         # evidence of a gap. Any required component missing from a call leaves the evidence incomplete.
+        unverified = []
+        if self.call_audit is not None:
+            for basis, calls in (('physical', rec['physical']), ('imported', rec['imported'])):
+                for cid, call in sorted(calls.items()):
+                    audit = self._audit_reasons(cid) if basis == 'physical' else call.get(
+                        'audit', [['reasoning_unverified', 'the bootstrap record holds no audit of the call']])
+                    for kind, text in audit:
+                        unverified.append({'call_id': cid, 'basis': basis, 'kind': kind, 'reason': text})
+            for u in unverified:
+                state.append(f"{u['kind']}:{u['call_id']}: {u['reason']}")
         required = ((self.pilot or {}).get('usage_components') or {}).get(self.backend)
         gaps = sorted(k for k in charged['components_missing'] if required is None or k in required)
         if self.pilot is not None and gaps:
@@ -2760,6 +2809,10 @@ class ArmHost:
                                                    'charged_calls', 'unresolved_attempts', 'membership')},
             'efficiency_valid': not invalid, 'efficiency_invalid': invalid,
             'evidence': 'incomplete' if incomplete else 'complete', 'incomplete': incomplete,
+            'unverified_calls': unverified,
+            'unavailable_claims': (['claims that need complete usage accounting (token totals, tokens per correct, '
+                                    'token ratios; gates 3, 4 and 5) are unavailable for this cell'] if unverified
+                                   else []),
             'correctness': CORRECTNESS}
         _publish(self.arm_dir / 'reports' / f'{_b32([wave])[:16]}.json',
                  json.dumps(report, ensure_ascii=False, sort_keys=True, default=str).encode('utf-8'))

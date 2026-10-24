@@ -173,8 +173,10 @@ ASSUMPTIONS = [
     'gates score measured makespan live; summed physical call seconds are reported separately and never replace '
     'makespan (amendment 3 sections 2 and 3).',
     'Telemetry sends one identical prompt twice; Codex inclusive cached accounting is certified only when both calls '
-    'report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens grows. '
-    'Sonnet usage semantics are the adapter construction, not telemetry.',
+    'report every required component, the prompts hash the same, input_tokens is equal and cached_input_tokens differs. '
+    'Without that certification a Codex call with cached_input_tokens 0 is complete and one with positive cached counts '
+    'is usage unverified (its cell incomplete); the reasoning predicate is evaluated on every Codex call. Sonnet usage '
+    'semantics are the adapter construction, not telemetry.',
     'Gate readings: "preserves correctness" = C gold-correct count >= A; BoolQ "adds no gold errors" = C not-correct '
     'count <= A; the headline needs all five gates.',
 ]
@@ -861,18 +863,73 @@ def certify_codex(results, worker_hash):
     return ('ok' if not problems else 'unverified'), evidence
 
 
+CACHE_UNCHANGED = 'cached_input_tokens did not change'
+
+
+def telemetry_verdict(routes, doc, freeze_sha256=None):
+    """(accepted, cache_certified, reasons) of the paired Codex telemetry for this frozen route (and, live, this
+    freeze). Astra sign-off 5: telemetry is accepted when it ran for this freeze and route and its ONLY problem is the
+    single reason that cached_input_tokens did not change (cache inclusion not shown); every other problem (leakage, a
+    route mismatch, non-identical requests, a failed reasoning predicate, a missing usage component, no telemetry at
+    all) refuses. cache_certified is True only for status ok."""
+    if not isinstance(doc, dict):
+        return False, False, ['telemetry was never run (no telemetry document)']
+    reasons = list((doc.get('evidence') or {}).get('problems') or [])
+    if doc.get('backend') != 'codex':
+        return False, False, ['telemetry is not a codex telemetry'] + reasons
+    if doc.get('worker_hash') != (routes.get('codex') or {}).get('worker_hash'):
+        return False, False, ['telemetry ran on another codex route (route mismatch)'] + reasons
+    if freeze_sha256 is not None and doc.get('freeze_sha256') != freeze_sha256:
+        return False, False, ['telemetry was not run for this freeze'] + reasons
+    if doc.get('leakage'):
+        return False, False, ['telemetry found leakage (tool use in the event stream)'] + reasons
+    if doc.get('status') == 'ok' and not reasons:
+        return True, True, []
+    if len(reasons) == 1 and reasons[0].startswith(CACHE_UNCHANGED) and doc.get('status') == 'unverified':
+        return True, False, reasons
+    return False, False, reasons or [f"telemetry status {doc.get('status')}"]
+
+
 def usage_semantics(routes, doc, freeze_sha256=None):
-    """{backend: declared usage semantics}. Codex is certified only by its own telemetry on its own frozen route (and,
-    live, the same freeze); Sonnet is the adapter construction. Nothing certifies across backends."""
+    """{backend: declared usage semantics}. Codex: reasoning inclusion is evaluated on every Codex call from its own
+    reply (sign-off 3 predicate); a call with cached_input_tokens 0 is complete without cache certification, a call with
+    positive cached counts is usage unverified unless the paired telemetry of this frozen route and freeze certified
+    cache inclusion. Sonnet is the adapter construction. Nothing certifies across backends."""
     codex = 'unverified'
-    ok = (isinstance(doc, dict) and doc.get('status') == 'ok' and doc.get('backend') == 'codex'
-          and doc.get('worker_hash') == (routes.get('codex') or {}).get('worker_hash')
-          and (freeze_sha256 is None or doc.get('freeze_sha256') == freeze_sha256))
-    if ok:
+    accepted, certified, _ = telemetry_verdict(routes, doc, freeze_sha256)
+    if accepted and certified:
         codex = (f"inclusive cached accounting certified by paired identical-prompt telemetry {doc.get('run_dir')} on "
-                 f"worker {doc['worker_hash'][:12]}; reasoning inclusion in output_tokens certified on the same calls "
+                 f"worker {doc['worker_hash'][:12]}; reasoning inclusion in output_tokens is checked on every call "
                  '(output - reasoning equals the visible reply tokens); tokens = input_tokens + output_tokens')
+    elif accepted:
+        codex = (f"cache inclusion NOT certified by paired telemetry {doc.get('run_dir')} on worker "
+                 f"{doc['worker_hash'][:12]} (cached_input_tokens did not change): a call with cached_input_tokens 0 "
+                 'has complete input accounting; a call with cached_input_tokens above 0 is usage unverified and makes '
+                 'its cell incomplete; reasoning inclusion in output_tokens is checked on every call (output - '
+                 'reasoning equals the visible reply tokens), a failed or unevaluable check makes the call and its cell '
+                 'unverified; tokens = input_tokens + output_tokens')
     return {'codex': codex, 'sonnet': SONNET_SEMANTICS}
+
+
+def make_call_audit(cache_certified):
+    """The per-call usage audit of every Codex call (Astra sign-off 5), as ArmHost(call_audit=...): [[kind, text]] for
+    one envelope_evidence result. Reasoning inclusion is evaluated on the call's own usage and reply whatever the
+    telemetry said; positive cached_input_tokens need the telemetry's cache certification."""
+    def audit(ev):
+        out = []
+        usage = ev.get('usage')
+        if ev.get('kind') != 'codex':
+            return [['reasoning_unverified', f"the envelope is not a codex capture ({ev.get('kind')})"]]
+        if not isinstance(usage, dict) or any(type(usage.get(k)) is not int or usage[k] < 0 for k in CODEX_REQUIRED):
+            return [['reasoning_unverified', 'a required usage component is missing, so the reasoning check cannot run']]
+        issue = reasoning_inclusion(usage, visible_tokens(ev.get('reply')))
+        if issue:
+            out.append(['reasoning_unverified', issue])
+        if usage['cached_input_tokens'] > 0 and not cache_certified:
+            out.append(['usage_unverified', f"cached_input_tokens {usage['cached_input_tokens']} without certified "
+                                            'cache inclusion for the frozen route and freeze'])
+        return out
+    return audit
 
 
 def _guarded_call(ctx, *, key, buckets, request, evidence, backend='codex', arm='T', kind='telemetry'):
@@ -1014,12 +1071,17 @@ def drive(ctx):
     doc = ctx['registry']
     budget, pool, routes = ctx['budget'], ctx['pool'], ctx['routes']
     semantics = ctx['semantics']
+    accepted, cache_certified, reasons = telemetry_verdict(routes, ctx.get('telemetry'), ctx.get('freeze_sha256'))
     config = pilot_config(ctx['mode'], routes, semantics)
     q = data.boolq()
     mat = data.materials()
     manifest = {'mode': ctx['mode'], 'freeze_sha256': ctx.get('freeze_sha256'), 'session': ctx['session'],
                 'gold_accessed_during_run': None, 'leakage_problems': leakage_problems(),
-                'boolq': 'available' if q['available'] else q['reason'], 'started_at': time.time(), 'cells': []}
+                'boolq': 'available' if q['available'] else q['reason'], 'started_at': time.time(), 'cells': [],
+                'telemetry': {'status': (ctx.get('telemetry') or {}).get('status'), 'accepted': accepted,
+                              'cache_certified': cache_certified, 'reasons': reasons,
+                              'run_dir': (ctx.get('telemetry') or {}).get('run_dir'),
+                              'freeze_sha256': (ctx.get('telemetry') or {}).get('freeze_sha256')}}
     if manifest['leakage_problems']:
         raise SystemExit('refused: leakage or wave overlap before launch: ' + '; '.join(manifest['leakage_problems']))
     _write(run_dir / 'manifest.json', manifest)
@@ -1047,7 +1109,8 @@ def drive(ctx):
                         max_wait=HOST['max_wait'], limits=HOST['limits'], allow_experimental=True, slot_pool=pool,
                         route_check=route_check(backend, routes), pilot=config,
                         usage_semantics=oz_host.semantics_for(config, backend), hooks={'launch_gate': ctx['gate']},
-                        base_env=ctx['env'], quota=ctx['quota'], quota_group=QUOTA_GROUP)
+                        base_env=ctx['env'], quota=ctx['quota'], quota_group=QUOTA_GROUP,
+                        call_audit=make_call_audit(cache_certified) if backend == 'codex' else None)
                 for name, learn, arms in spec['waves']:
                     producers = mat['waves'][name] if spec['workload'] == 'materials' else q['waves'][name]
                     for arm in [a for a in order if a in (arms or order)]:
@@ -1635,11 +1698,12 @@ def run_live(args):
         print('refused: OZ_CODEX_TIMEOUT is set but not part of the frozen route environment')
         return 2
     doc = json.loads(TELEMETRY_FILE.read_text(encoding='utf-8')) if TELEMETRY_FILE.exists() else None
-    semantics = usage_semantics(_routes(), doc, _sha_file(FREEZE_FILE))
-    if semantics['codex'] == 'unverified':
-        print('refused: telemetry is not certified for this freeze and the frozen codex route (run `pilot.py '
-              'telemetry --i-have-approval --claude-weekly PCT` first)')
+    accepted, certified, reasons = telemetry_verdict(_routes(), doc, _sha_file(FREEZE_FILE))
+    if not accepted:
+        print('refused: telemetry is not acceptable for this freeze and the frozen codex route: '
+              + '; '.join(reasons) + ' (run `pilot.py telemetry --i-have-approval --claude-weekly PCT` first)')
         return 2
+    semantics = usage_semantics(_routes(), doc, _sha_file(FREEZE_FILE))
     ctx = _live_context(args)
     try:
         problems = preflight(ctx)

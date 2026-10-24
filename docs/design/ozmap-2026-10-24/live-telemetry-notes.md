@@ -22,3 +22,14 @@ output minus visible 31 > 8: passes the sign-off 3 predicate.
 
 Spend so far: 4 Codex telemetry calls (about 119k input tokens), all recorded in bench/ozmap/runs/live-6a518ece47ab
 and live-538bcde9a80b; they count as preparation cost in the report.
+
+Run 3 (freeze 33f8604): requests identical (input 29686 both, same workdir oz-codex-empty-0, equal system and
+prompt hashes); reasoning inclusion passed on both calls (residual 6); rejected only because cached was 0 on both,
+so cache inclusion could not be shown. Across six live Codex calls the cache hit occurred once (7296). The driver
+will not repeat telemetry hoping for a cache hit (cost, and choosing runs by outcome).
+Proposed rule (for Astra): when a Codex call reports cached_input_tokens = 0, inclusive and exclusive readings give
+the same total, so its usage is complete without cache certification; a call with cached_input_tokens > 0 is
+"usage unverified" unless the paired telemetry certified cache inclusion for the frozen route, and makes its cell's
+evidence incomplete. Reasoning inclusion stays certified per call by the sign-off 3 predicate (applied to every
+Codex call, not only telemetry). The live run no longer refuses for missing cache certification alone.
+Spend so far: 6 Codex telemetry calls across three run directories (about 178k input tokens).

@@ -1,0 +1,5 @@
+ACCEPT. When cached_input_tokens is zero, inclusive and exclusive accounting produce the same input total. That call needs no cache inclusion certification, but it does not certify the route’s behavior when caching occurs.
+
+For positive cached counts, require valid paired certification for the same frozen route. Otherwise mark the call “usage unverified” and its cell’s usage evidence incomplete. Execution may continue, but incomplete cells must not support claims requiring complete usage accounting. Preserve all telemetry attempts as preparation cost.
+
+Yes, apply the sign off 3 reasoning predicate to every Codex pilot call individually. A telemetry pass cannot certify subsequent calls. A failed or unevaluable predicate makes that call’s reasoning accounting unverified and its cell’s usage evidence incomplete.

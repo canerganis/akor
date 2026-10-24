@@ -564,6 +564,199 @@ class Telemetry(Temp):
         self.assertEqual(ctx['budget'].usage()['used']['codex'], {'telemetry': 1, 'reserve': 1})
 
 
+# --------------------------------------------------------------- Astra sign-off 5: per-call usage verdicts
+
+CACHE_ONLY = 'cached_input_tokens did not change on the identical repeat: inclusion not shown'
+
+
+class AuditAdapter(LeakyAdapter):
+    """A Codex-capture adapter whose usage is chosen per test: output_tokens is the visible reply tokens plus 40
+    reasoning tokens (inclusive), or the visible tokens alone (exclusive reading, which the predicate must reject)."""
+
+    def __init__(self, env=None, cached=0, inclusive=True, seen=None):
+        super().__init__(env, tool=None, seen=seen)
+        self.cached, self.inclusive = cached, inclusive
+
+    def bind_env(self, env):
+        return AuditAdapter(env, self.cached, self.inclusive, self.seen)
+
+    def __call__(self, req):
+        from oz_reply import encode_reply
+        body = json.loads(req['prompt'])
+        answers = {row[0]: th.extract(body['refs'][row[1]]) for block in body['jobs'] for row in block[1:]}
+        reply = encode_reply(answers)
+        visible = pilot.visible_tokens(reply)
+        usage = {'input_tokens': 900, 'cached_input_tokens': self.cached, 'cache_creation_input_tokens': 0,
+                 'output_tokens': visible + 40 if self.inclusive else visible,
+                 'reasoning_output_tokens': 40 if self.inclusive else 0}
+        events = '\n'.join([ev('thread.started', thread_id='t'), ev('turn.started'),
+                            ev('item.completed', item={'id': 'i2', 'type': 'agent_message', 'text': reply}),
+                            ev('turn.completed', usage={k: v for k, v in usage.items()
+                                                        if k != 'cache_creation_input_tokens'})]) + '\n'
+        path = self.env.get('OZ_ENVELOPE_PATH')
+        self.seen.append(path)
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        Path(path).write_text(json.dumps({'adapter': 'codex_cli_adapter', 'stdout': events, 'usage': usage,
+                                          'exit_code': 0}), encoding='utf-8')
+        return {'reply': reply, 'usage': usage}
+
+
+class CallVerdicts(th.Base):
+    def run_one(self, *, cached, certified, inclusive=True):
+        adapter = AuditAdapter(cached=cached, inclusive=inclusive)
+        a = self.host('A', None, launcher=oz_host.InProcessLauncher(adapter),
+                      call_audit=pilot.make_call_audit(certified))
+        a.submit('p0', 's0', th.producer_jobs(0, 3, None), wave='w')
+        return a.run_wave('w')
+
+    def kinds(self, report):
+        return sorted({u['kind'] for u in report['unverified_calls']})
+
+    def test_a_zero_cache_call_is_complete_without_cache_certification(self):
+        report = self.run_one(cached=0, certified=False)
+        self.assertEqual((report['evidence'], report['unverified_calls'], report['unavailable_claims']),
+                         ('complete', [], []), report['incomplete'])
+
+    def test_a_positive_cache_call_without_certification_is_usage_unverified_and_its_cell_incomplete(self):
+        report = self.run_one(cached=300, certified=False)
+        self.assertEqual(report['evidence'], 'incomplete')
+        self.assertEqual(self.kinds(report), ['usage_unverified'])
+        self.assertTrue(any(x.startswith('usage_unverified:') for x in report['incomplete']))
+        self.assertTrue(report['unavailable_claims'])
+        self.assertEqual(report['accepted_by_checks'], 3)  # execution continues
+
+    def test_a_positive_cache_call_with_certification_is_complete(self):
+        report = self.run_one(cached=300, certified=True)
+        self.assertEqual((report['evidence'], report['unverified_calls']), ('complete', []), report['incomplete'])
+
+    def test_a_failing_reasoning_predicate_makes_the_call_unverified_whatever_the_telemetry_said(self):
+        report = self.run_one(cached=0, certified=True, inclusive=False)  # output equals the visible reply alone
+        self.assertEqual(report['evidence'], 'incomplete')
+        self.assertEqual(self.kinds(report), ['reasoning_unverified'])
+        self.assertTrue(any(x.startswith('reasoning_unverified:') for x in report['incomplete']))
+
+    def test_the_audit_is_unverified_without_a_reply_usage_or_codex_capture(self):
+        audit = pilot.make_call_audit(True)
+        reply = 'x ' * 50
+        good = {'kind': 'codex', 'reply': reply, 'usage': u(900, 0, out=pilot.visible_tokens(reply) + 40,
+                                                            reasoning=40)}
+        self.assertEqual(audit(good), [])
+        self.assertEqual(audit(dict(good, reply=None))[0][0], 'reasoning_unverified')
+        self.assertEqual(audit(dict(good, usage={'input_tokens': 1}))[0][0], 'reasoning_unverified')
+        self.assertEqual(audit(dict(good, kind='claude'))[0][0], 'reasoning_unverified')
+        cached = dict(good, usage=dict(good['usage'], cached_input_tokens=5))
+        self.assertEqual([k for k, _ in pilot.make_call_audit(False)(cached)], ['usage_unverified'])
+        self.assertEqual(pilot.make_call_audit(True)(cached), [])
+
+
+class LiveTelemetryAcceptance(Temp):
+    ROUTES = {'codex': {'worker_hash': 'w'}}
+
+    def doc(self, problems=(), status=None, **kw):
+        base = {'status': status or ('unverified' if problems else 'ok'), 'backend': 'codex', 'worker_hash': 'w',
+                'freeze_sha256': 'f', 'run_dir': 'r', 'leakage': [], 'evidence': {'problems': list(problems)}}
+        return dict(base, **kw)
+
+    def test_only_the_unchanged_cache_reason_is_accepted_and_it_does_not_certify_the_cache(self):
+        self.assertEqual(pilot.telemetry_verdict(self.ROUTES, self.doc(), 'f')[:2], (True, True))
+        accepted, certified, reasons = pilot.telemetry_verdict(self.ROUTES, self.doc([CACHE_ONLY]), 'f')
+        self.assertEqual((accepted, certified, reasons), (True, False, [CACHE_ONLY]))
+        text = pilot.usage_semantics(self.ROUTES, self.doc([CACHE_ONLY]), 'f')['codex']
+        self.assertNotEqual(text, 'unverified')
+        self.assertIn('cache inclusion NOT certified', text)
+        self.assertIn('cached_input_tokens 0', text)
+        self.assertIn('every call', text)
+
+    def test_every_other_telemetry_problem_refuses(self):
+        cases = {
+            'never run': None,
+            'leakage': self.doc([CACHE_ONLY], leakage=[{'x': 1}]),
+            'route mismatch': self.doc([CACHE_ONLY], worker_hash='other'),
+            'other freeze': self.doc([CACHE_ONLY], freeze_sha256='g'),
+            'non-identical requests': self.doc(['the two telemetry prompts are not identical (system and prompt '
+                                               'hashes)', CACHE_ONLY]),
+            'changed input': self.doc(['input_tokens changed on the identical repeat (1 -> 2): not inclusive or not '
+                                       'identical', CACHE_ONLY]),
+            'reasoning predicate': self.doc(['call t1: output_tokens - reasoning_output_tokens = 1 does not match the '
+                                             'visible reply (9 tokens, tolerance 8): reasoning inclusion not shown']),
+            'missing usage component': self.doc(['call t1: a required usage component is missing or not a count []']),
+            'refused call': self.doc(['t1: refused (quota_handoff_99: 99% reached)']),
+            'unverified without reasons': self.doc([], status='unverified'),
+            'other backend': self.doc([CACHE_ONLY], backend='sonnet'),
+        }
+        for name, doc in cases.items():
+            with self.subTest(name):
+                accepted, _, reasons = pilot.telemetry_verdict(self.ROUTES, doc, 'f')
+                self.assertFalse(accepted)
+                self.assertTrue(reasons)
+                self.assertEqual(pilot.usage_semantics(self.ROUTES, doc, 'f')['codex'], 'unverified')
+
+    def run_live(self, doc):
+        from unittest import mock
+        file = self.dir / 'telemetry.json'
+        if doc is not None:
+            file.write_text(json.dumps(doc), encoding='utf-8')
+        reached = RuntimeError('reached the live context')
+        args = types.SimpleNamespace(command='run', live=True)
+        with mock.patch.multiple(pilot, guard=lambda a: None, TELEMETRY_FILE=file, _routes=lambda: self.ROUTES,
+                                 _sha_file=lambda p: 'f', _live_context=mock.Mock(side_effect=reached)):
+            with mock.patch.dict(os.environ):
+                os.environ.pop('OZ_CODEX_TIMEOUT', None)
+                try:
+                    return pilot.run_live(args)
+                except RuntimeError as exc:
+                    self.assertIs(exc, reached)
+                    return 'accepted'
+
+    def test_the_live_run_is_accepted_when_the_only_telemetry_problem_is_the_unchanged_cache(self):
+        self.assertEqual(self.run_live(self.doc([CACHE_ONLY])), 'accepted')
+        self.assertEqual(self.run_live(self.doc()), 'accepted')
+
+    def test_the_live_run_refuses_every_other_telemetry_problem(self):
+        for name, doc in {'never run': None, 'leakage': self.doc([CACHE_ONLY], leakage=[{'x': 1}]),
+                          'route': self.doc([CACHE_ONLY], worker_hash='x'),
+                          'reasoning': self.doc(['call t1: reasoning inclusion not shown']),
+                          'mixed': self.doc(['input_tokens changed', CACHE_ONLY])}.items():
+            with self.subTest(name):
+                self.assertEqual(self.run_live(doc), 2)
+
+
+class PreparationReport(Temp):
+    def test_the_report_lists_every_telemetry_run_dir_with_its_calls_and_tokens(self):
+        runs = self.dir / 'runs'
+        for name, tokens in (('live-aaa', (1000, 40)), ('live-bbb', (2000, 60))):
+            for k in (1, 2):
+                d = runs / name / 'telemetry' / 'ws' / 'do' / f'telemetry-{k}'
+                d.mkdir(parents=True)
+                (d / 'calls.jsonl').write_text('\n'.join(json.dumps(x) for x in (
+                    {'event': 'call_start', 'call_id': f'c{k}'},
+                    {'event': 'call_end', 'call_id': f'c{k}', 'outcome': 'ok',
+                     'usage': {'raw': {'input_tokens': tokens[0], 'cached_input_tokens': 0,
+                                       'output_tokens': tokens[1], 'reasoning_output_tokens': 5}}})) + '\n',
+                    encoding='utf-8')
+        (runs / 'live-ccc').mkdir()  # a run without telemetry is not listed
+        prep = score.preparation_telemetry(runs)
+        self.assertEqual([(t['run_dir'], t['calls'], t['tokens']) for t in prep],
+                         [('live-aaa', 2, 2080), ('live-bbb', 2, 4120)])
+        cell = {'jobs': 1, 'correct': 1, 'incorrect': 0, 'unresolved': 0, 'rule_errors': 0, 'fallback_errors': 0,
+                'coverage': 0, 'tokens': 1, 'tokens_per_correct': 1, 'makespan_s': 1, 'correct_per_min': 1,
+                'evidence': 'incomplete',
+                'unverified_calls': [{'call_id': 'cX', 'basis': 'physical', 'kind': 'usage_unverified',
+                                      'reason': 'cached_input_tokens 7 without certified cache inclusion'}],
+                'unavailable_claims': ['claims that need complete usage accounting are unavailable for this cell']}
+        summary = {'cells': {'codex/materials/cold/A': cell}, 'boolq_available': True, 'preparation_telemetry': prep,
+                   'telemetry': {'status': 'unverified', 'accepted': True, 'cache_certified': False,
+                                 'reasons': [CACHE_ONLY]}}
+        text = score.report_md(summary, {'verdict': 'v', 'gates': [], 'headline_permitted': False})
+        for needle in ('live-aaa', 'live-bbb', 'call cX', 'usage_unverified', 'unavailable for this cell',
+                       'cache inclusion certified False', 'Total: 4 calls, 6200 tokens'):
+            self.assertIn(needle, text)
+
+    def test_the_real_runs_directory_is_read_without_error(self):
+        for t in score.preparation_telemetry(pilot.RUNS):
+            self.assertEqual(t['calls'], len(t['call_detail']))
+
+
 # --------------------------------------------------------------------------------------------------- B4, B5
 
 class B4B5Resume(th.Base):
