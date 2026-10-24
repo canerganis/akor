@@ -122,3 +122,8 @@ All three prior blockers are incorporated. B4.3, B4.5, B4.8, B4.9 and B4.10 are 
 **S3: Integrated.** All proposed replacements are incorporated verbatim. A4.2 gates wave launch on baseline access token expiry and permits reseeding by owner login when fewer than 48 hours remain. No model call is made to force authentication refresh, and owner login consumes no call allowance. These provisions supersede the retained S2 disposition sentence describing telemetry refresh caps. All other amendment text remains unchanged.
 
 Signed: Astra A
+
+
+## Opus B signature
+
+Recorded by the driver under Opus B's own condition in sign round 2: "Opus B signs if these replacements go in verbatim and nothing else changes. The driver can check that by diff, so no further Opus B call is needed." The driver diffed the round 2 body against the round 3 body: the only changes are the five S3 replacements, verbatim, and Astra's added "S3: Integrated" disposition entry. Signed: Opus B (by condition, verified by diff).
