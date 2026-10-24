@@ -1,0 +1,263 @@
+{
+ "codex": {
+  "do_route": {
+   "adapter": "cb15ea806ec5b4398ae413dcb319011da55d5d0d99a9eccc2d5a095b56880671",
+   "cli_version": "codex-cli 0.160.0",
+   "effort": "high",
+   "model": "gpt-6.1-sol"
+  },
+  "launch": {
+   "env": {
+    "OZ_EFFORT": "high",
+    "OZ_MODEL": "gpt-6.1-sol"
+   },
+   "executables": [
+    {
+     "name": "python.exe",
+     "path": "C:/Users/can02/AppData/Local/Programs/Python/Python312/python.exe",
+     "role": "program",
+     "sha256": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a"
+    },
+    {
+     "name": "codex.exe",
+     "path": "C:/Users/can02/.codex/packages/standalone/releases/0.160.0-x86_64-pc-windows-msvc/bin/codex.exe",
+     "role": "backend-cli",
+     "sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d"
+    }
+   ],
+   "externals": [
+    [
+     "ast",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "base64",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "hashlib",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "json",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "os",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "pathlib",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "re",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "shutil",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "subprocess",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "sys",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "tempfile",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "time",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "uuid",
+     "stdlib",
+     "stdlib"
+    ]
+   ],
+   "flags": [
+    "-s",
+    "read-only",
+    "--skip-git-repo-check",
+    "--ephemeral",
+    "--json",
+    "-C",
+    "<fresh-empty-temp-dir>",
+    "tool-events=leakage-exit-86",
+    "bootstrap-shim=oz-bootstrap/1",
+    "bootstrap-spec-sha256=101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+   ],
+   "sources": [
+    [
+     "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
+     "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+    ],
+    [
+     "bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ],
+    [
+     "codex_cli_adapter.py",
+     "e106540f4322d9083ab5ccf42fa675efd612484ab3f93beaabbdbd8248dda578"
+    ]
+   ]
+  },
+  "route": {
+   "adapter_hash": "cb15ea806ec5b4398ae413dcb319011da55d5d0d99a9eccc2d5a095b56880671",
+   "backend": "codex",
+   "cli_version": "codex-cli 0.160.0",
+   "effort": "high",
+   "environment_hash": "c7402beafb9dea4d029c19ff0dab7b76fd9f78aa18af38e1a19b9a6accc5adb7",
+   "model": "gpt-6.1-sol"
+  },
+  "worker_hash": "3afcc548c4ac0f85e3135ad0ce9571243f19be7c5a071e8bcf8a663e39c05f1a"
+ },
+ "sonnet": {
+  "do_route": {
+   "adapter": "d3dde81bf629b3ae8c04c02bbec0130296b08057234c2b109bdfc0e3030687ef",
+   "cli_version": "2.1.306 (Claude Code)",
+   "effort": "default",
+   "model": "claude-sonnet-5-5"
+  },
+  "launch": {
+   "env": {
+    "OZ_EFFORT": "default",
+    "OZ_MODEL": "claude-sonnet-5-5"
+   },
+   "executables": [
+    {
+     "name": "python.exe",
+     "path": "C:/Users/can02/AppData/Local/Programs/Python/Python312/python.exe",
+     "role": "program",
+     "sha256": "4d6f5f81a4bca11191c4c7c6b43632694d0a4ce74e068619d8fdc161d469859a"
+    },
+    {
+     "name": "claude.exe",
+     "path": "C:/Users/can02/.local/bin/claude.exe",
+     "role": "backend-cli",
+     "sha256": "f6bc9de38f507c36c9a3bb0085a59a27e32156e2208252bf1707c4e3ef309114"
+    }
+   ],
+   "externals": [
+    [
+     "ast",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "base64",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "hashlib",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "json",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "os",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "pathlib",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "re",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "shutil",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "subprocess",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "sys",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "time",
+     "stdlib",
+     "stdlib"
+    ],
+    [
+     "uuid",
+     "stdlib",
+     "stdlib"
+    ]
+   ],
+   "flags": [
+    "-p",
+    "--tools",
+    "",
+    "--setting-sources",
+    "",
+    "--strict-mcp-config",
+    "--no-session-persistence",
+    "--output-format",
+    "json",
+    "--effort",
+    "bootstrap-shim=oz-bootstrap/1",
+    "bootstrap-spec-sha256=101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+   ],
+   "sources": [
+    [
+     "../docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt",
+     "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14"
+    ],
+    [
+     "bootstrap_shim.py",
+     "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae"
+    ],
+    [
+     "claude_cli_adapter.py",
+     "44bc195e5761c5603f6601437b38c2038379168796b4d5ade385119717845e64"
+    ],
+    [
+     "claude_map_adapter.py",
+     "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689"
+    ]
+   ]
+  },
+  "route": {
+   "adapter_hash": "d3dde81bf629b3ae8c04c02bbec0130296b08057234c2b109bdfc0e3030687ef",
+   "backend": "claude",
+   "cli_version": "2.1.306 (Claude Code)",
+   "effort": "default",
+   "environment_hash": "2d6b3f9a7ba99e7f35ca3628c8690c6090bc4fbab127bae46e0c623916b7e452",
+   "model": "claude-sonnet-5-5"
+  },
+  "worker_hash": "5bb863af9626dc2e528f54ea7be01647668602f0a3200fb367e27005c688a407"
+ }
+}
