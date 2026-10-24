@@ -2,7 +2,7 @@
 
 argv: [scenario.json]. The scenario maps module paths to the value each job returns ({"values": {path: value}}, a
 value {"error": [code, message]} gives a model failure record) and module paths to the sha256 of their text
-({"texts": {path: sha256}}); a job's module is the reference whose text has one of those digests. It writes a
+({"texts": {path: sha256}}); "drop_counter" leaves one modelUsage counter out; a job's module is the reference whose text has one of those digests. It writes a
 provider-style envelope with modelUsage to OZ_ENVELOPE_PATH (set by cr_adapter.py) and prints the reduced response
 through the same function as examples/claude_cli_adapter.py.
 """
@@ -48,9 +48,11 @@ def main():
                 lines.append(json.dumps({row[0]: value}, ensure_ascii=False, separators=(',', ':')))
     reply = '\n'.join(lines)
     usage = scenario.get('usage', {'input': 4000, 'output': 900})
+    counters = {'inputTokens': usage['input'], 'outputTokens': usage['output'], 'cacheReadInputTokens': 0,
+                'cacheCreationInputTokens': 0}
+    counters.pop(scenario.get('drop_counter'), None)          # stands for a provider envelope with missing usage
     envelope = {'type': 'result', 'subtype': 'success', 'is_error': False, 'result': reply,
-                'modelUsage': {'fixture-worker-1': {'inputTokens': usage['input'], 'outputTokens': usage['output'],
-                                                    'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0}}}
+                'modelUsage': {'fixture-worker-1': counters}}
     raw = json.dumps(envelope).encode('utf-8')
     if os.environ.get('OZ_ENVELOPE_PATH'):
         adapter._publish(os.environ['OZ_ENVELOPE_PATH'], raw)

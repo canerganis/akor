@@ -1,5 +1,5 @@
 {
- "digest": "704ed5c61441d045d9720deb6dbddb87507cbd10b518df1b269d5602988e2a50",
+ "digest": "a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934",
  "environment": {
   "cli_version": "2.1.306 (Claude Code)",
   "base_python": "3.12.10"
@@ -21,8 +21,8 @@
    "oz_workspace.py": "3744801c027a7df7da56af7cf43a751eed903b86baa0f66641228634c7613e4c",
    "bench/live/k2_wrap.py": "67e586aadce6e5a3aa8c300edf2dacd54e5714e271a046e29497e6bced434e89",
    "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
-   "bench/codereview/cr_adapter.py": "dd54cb85cb109abf96a1a1f7aab60fda6d975c788a05bda97ba3bed236972581",
-   "bench/codereview/fixture_worker.py": "fbe96c095a147e7e8590783665fdc58a1bd513890d02a250a25ccb7071fe1406"
+   "bench/codereview/cr_adapter.py": "a2dd32571c828d61602d4b41eedbc3d092159a24d40746a4ca36e35b8843b1c9",
+   "bench/codereview/fixture_worker.py": "f968e67f32e31a2f5dfb940112f8fa0fe13c8fc3e9797fddc8105e73d75ea4c8"
   },
   "site": {
    "tiktoken/__init__.py": "40b2a86380c85866a7f9b655d23cf70af8b8f2a9ce76c2a4902bc5a0f1541140",
@@ -92,5 +92,5 @@
    }
   ]
  ],
- "frozen_at": "2026-10-24T02:24:34"
+ "frozen_at": "2026-10-24T03:04:45"
 }

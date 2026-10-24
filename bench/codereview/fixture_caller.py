@@ -4,7 +4,8 @@ The scenario file named by CR_FIXTURE_CALLER (outside the workspace) scripts wha
 workspace it is started in, and writes a stream-json transcript with per-message usage and a final result envelope:
   {"steps": [{"cat": [paths]} | {"oz": <oz.do/1 request>}, ...],
    "answer": "<final text>" | {"from_oz": {"<module path>": "<job ID>"}} | null,
-   "final": "success" | "max_turns" | "none" (no result event), "usage": {per-message usage}, "sleep": seconds,
+   "final": "success" | "max_turns" | "none" (no result event), "usage": {per-message usage, a counter may be left
+   out to stand for missing usage}, "sleep": seconds,
    "log": "<file that gets one line per invocation>"}
 A {"cat": ...} step reads the files and returns their text; an {"oz": ...} step runs the `oz` shim's command from PATH
 (its export lines and exec line) with the request on stdin, exactly as Bash would.
@@ -74,7 +75,7 @@ if final == 'success':
                                            'usage': usage}})
     n += 1
 if final != 'none':
-    total = lambda k: usage[k] * n
+    total = lambda k: usage.get(k, 0) * n
     counters = {'inputTokens': total('input_tokens'), 'cacheReadInputTokens': total('cache_read_input_tokens'),
                 'cacheCreationInputTokens': total('cache_creation_input_tokens'),
                 'outputTokens': total('output_tokens')}

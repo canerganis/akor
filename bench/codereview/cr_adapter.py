@@ -10,10 +10,14 @@ and exit code come back untouched. In addition:
      least one byte, plus run.json's worker output allowance) would exceed run.json's cap. A refused call prints a
      response with an empty reply and zero usage (nothing was called) and keeps a refusal envelope, so the ledger and
      the envelopes still agree.
-  2. The delegate gets OZ_ENVELOPE_PATH=DIR/envelopes/NNNN.json, where examples/claude_cli_adapter.py publishes the raw
+  2. Unknown spend stops the run (review 2, finding 1): an unreadable or malformed guard state, an earlier envelope
+     that is empty, unreadable or lacks a strict counter, or a request whose size cannot be bounded refuses the launch
+     and writes STATE/STOP; a call that returns without an envelope holding strict counters writes STATE/STOP after it,
+     so nothing further is launched. The harness guard treats that STOP as a 'usage' stop. Nothing is read as zero.
+  3. The delegate gets OZ_ENVELOPE_PATH=DIR/envelopes/NNNN.json, where examples/claude_cli_adapter.py publishes the raw
      CLI envelope (modelUsage included) before it prints its reduced response.
 DIR/packets.jsonl gets one line per call: the request, its sha256, the raw delegate stdout, the exit code, the elapsed
-time, the envelope file name and any guard refusal.
+time, the envelope file name, any guard refusal and whether the call's usage is known.
 """
 import hashlib
 import json
@@ -27,31 +31,76 @@ ZERO = {'input_tokens': 0, 'cached_input_tokens': 0, 'cache_creation_input_token
 COUNTERS = ('inputTokens', 'cacheReadInputTokens', 'cacheCreationInputTokens', 'outputTokens')
 
 
-def spent(envelopes: Path) -> int:
+def strict(mu):
+    """Summed counters of a modelUsage object, or None when it is missing, empty, or any entry lacks a counter or
+    holds a non-integer, negative or boolean value."""
+    if not isinstance(mu, dict) or not mu:
+        return None
     total = 0
-    for path in envelopes.glob('*.json'):
-        try:
-            mu = json.loads(path.read_text(encoding='utf-8')).get('modelUsage') or {}
-        except (OSError, ValueError):
-            continue
-        for entry in mu.values():
-            total += sum(v for k, v in entry.items() if k in COUNTERS and type(v) is int)
+    for entry in mu.values():
+        if not isinstance(entry, dict):
+            return None
+        for key in COUNTERS:
+            value = entry.get(key)
+            if type(value) is not int or value < 0:
+                return None
+            total += value
     return total
 
 
-def refusal(state: Path, envelopes: Path, request) -> str | None:
+def envelope_total(path: Path):
+    """Strict token total of one kept envelope, or None when it is empty, unreadable or not strict."""
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None
+    return strict(data.get('modelUsage')) if isinstance(data, dict) else None
+
+
+def spent(envelopes: Path, own: Path):
+    """Worker tokens already spent in this run, or None when any earlier envelope's usage is unknown."""
+    total = 0
+    for path in envelopes.glob('*.json'):
+        if path == own:
+            continue
+        value = envelope_total(path)
+        if value is None:
+            return None
+        total += value
+    return total
+
+
+def _count(value) -> bool:
+    return type(value) is int and value >= 0
+
+
+def refusal(state: Path, envelopes: Path, own: Path, request):
+    """(reason, unknown) for a call that must not launch, or (None, False). unknown marks a refusal for unknown
+    spend, which also stops the run."""
     if (state / 'STOP').exists():
-        return 'stop flag set by the harness guard'
+        return 'stop flag set by the harness guard', False
     try:
         run = json.loads((state / 'run.json').read_text(encoding='utf-8'))
     except (OSError, ValueError):
-        return 'no readable guard state'
-    if not isinstance(request, dict):
-        return None
-    bound = sum(len(str(request.get(k) or '').encode('utf-8')) for k in ('system', 'prompt')) + run['worker_out']
-    if run['caller_tokens'] + spent(envelopes) + bound > run['cap']:
-        return 'call bound %d would cross the run cap %d' % (bound, run['cap'])
-    return None
+        return 'no readable guard state', True
+    if not isinstance(run, dict) or not all(_count(run.get(k)) for k in ('caller_tokens', 'cap', 'worker_out')):
+        return 'malformed guard state', True
+    if not isinstance(request, dict) or not all(isinstance(request.get(k, ''), str) for k in ('system', 'prompt')):
+        return 'the request size cannot be bounded', True
+    already = spent(envelopes, own)
+    if already is None:
+        return 'an earlier worker call has unknown usage', True
+    bound = sum(len(request.get(k, '').encode('utf-8')) for k in ('system', 'prompt')) + run['worker_out']
+    if run['caller_tokens'] + already + bound > run['cap']:
+        return 'call bound %d would cross the run cap %d' % (bound, run['cap']), False
+    return None, False
+
+
+def stop(state: Path) -> None:
+    try:
+        (state / 'STOP').write_text('usage', encoding='utf-8')
+    except OSError:
+        pass
 
 
 def main(argv):
@@ -74,7 +123,10 @@ def main(argv):
         request = json.loads(raw.decode('utf-8'))
     except ValueError:
         request = None
-    refused = refusal(state, envelopes, request)
+    refused, unknown = refusal(state, envelopes, envelope, request)
+    if unknown:
+        stop(state)
+    usage_known = True
     if refused:
         envelope.write_text(json.dumps({'refused_by_guard': refused, 'modelUsage': {'guard-refusal': dict.fromkeys(
             COUNTERS, 0)}}), encoding='utf-8')
@@ -84,12 +136,16 @@ def main(argv):
         proc = subprocess.run(delegate, input=raw, capture_output=True, env=dict(os.environ,
                                                                                     OZ_ENVELOPE_PATH=str(envelope)))
         stdout, stderr, code = proc.stdout, proc.stderr, proc.returncode
+        usage_known = envelope.exists() and envelope_total(envelope) is not None
+        if not usage_known:
+            stop(state)
     entry = {'time': time.time(), 'elapsed_s': round(time.monotonic() - started, 3),
              'request_sha256': hashlib.sha256(raw).hexdigest(), 'request': request,
              'request_raw': None if request is not None else raw.decode('utf-8', 'replace'),
              'exit': code, 'stdout': stdout.decode('utf-8', 'replace'),
              'stderr_tail': stderr.decode('utf-8', 'replace')[-2000:],
-             'envelope': envelope.name if envelope.exists() else None, 'refused_by_guard': refused}
+             'envelope': envelope.name if envelope.exists() else None, 'refused_by_guard': refused,
+             'usage_known': usage_known}
     with (archive / 'packets.jsonl').open('a', encoding='utf-8') as file:
         file.write(json.dumps(entry, ensure_ascii=False) + '\n')
     sys.stdout.buffer.write(stdout)

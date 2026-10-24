@@ -484,8 +484,8 @@ class GuardTests(unittest.TestCase):
                 'output_tokens': out, 'tool_uses': tools}
 
     def test_next_call_bound(self):
-        self.assertEqual(P.next_call_bound(self.msg(12000, 500, 1)), 12000 + 500 + 8000 + 8000)
-        self.assertEqual(P.next_call_bound(self.msg(12000, 500, 2)), 12000 + 500 + 16000 + 8000)
+        self.assertEqual(P.next_call_bound(self.msg(12000, 500, 1)), 12000 + 500 + P.TOOL_ALLOW + P.OUT_ALLOW)
+        self.assertEqual(P.next_call_bound(self.msg(12000, 500, 2)), 12000 + 500 + 2 * P.TOOL_ALLOW + P.OUT_ALLOW)
         self.assertEqual(P.next_call_bound(self.msg(12000, 500, 0)), 0)   # final message: no next call
 
     def test_guard_decision(self):
@@ -509,6 +509,103 @@ class GuardTests(unittest.TestCase):
         self.assertEqual(P.charge(None, 30000), P.RUN_RESERVE)
         self.assertEqual(P.charge(None, 150000), 150000)
         self.assertEqual(P.charge(41000, 41000), 41000)
+
+    def test_missing_or_malformed_caller_usage_stops(self):
+        """Review 2, finding 1: unknown spend is never read as zero; the guard stops at once."""
+        full = {'input_tokens': 10, 'cache_read_input_tokens': 0, 'cache_creation_input_tokens': 0,
+                'output_tokens': 5}
+        self.assertEqual(P.strict_message_usage(full), full)
+        for bad in (None, {}, dict(full, output_tokens=None), dict(full, input_tokens=True),
+                    dict(full, cache_read_input_tokens=-1), dict(full, input_tokens=1.5),
+                    {k: v for k, v in full.items() if k != 'cache_creation_input_tokens'}):
+            self.assertIsNone(P.strict_message_usage(bad), bad)
+        unknown = dict(self.msg(1000, 10), usage_unknown=True)
+        self.assertEqual(P.guard_decision([unknown], worker_tokens=0), 'usage')
+        self.assertEqual(P.guard_decision([self.msg(1000, 10)], worker_tokens=None), 'usage')
+        self.assertEqual(P.guard_decision([], worker_tokens=None), 'usage')
+
+    def test_guard_stops_at_the_first_message_over_the_cap(self):
+        under = [self.msg(30000, 0, 0), self.msg(P.RUN_CAP - 30000 - 1, 0, 0)]
+        self.assertIsNone(P.guard_decision(under, worker_tokens=0))
+        over = [self.msg(30000, 0, 0), self.msg(P.RUN_CAP - 30000, 0, 0)]
+        self.assertEqual(P.guard_decision(over, worker_tokens=0), 'cap')
+        self.assertEqual(P.guard_decision([self.msg(1000, 0, 0)], worker_tokens=P.RUN_CAP - 1000), 'cap')
+
+    def test_worker_sources_are_strict_in_the_live_guard(self):
+        tmp = Path(tempfile.mkdtemp(prefix='crg-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        ledger = tmp / 'ws' / 'do' / 'h1' / 'calls.jsonl'
+        ledger.parent.mkdir(parents=True)
+        end = lambda u: json.dumps({'event': 'call_end', 'usage': {'raw': u}}) + '\n'
+        ledger.write_text(json.dumps({'event': 'call_start'}) + '\n' + end({'input_tokens': 700, 'output_tokens': 30})
+                          + '{"event": "call_e', encoding='utf-8')            # unterminated line: still being written
+        self.assertEqual(P.ledger_tokens(tmp / 'ws'), 730)
+        for bad in (None, {'input_tokens': 700}, {'input_tokens': 700, 'output_tokens': None}):
+            ledger.write_text(end(bad), encoding='utf-8')
+            self.assertIsNone(P.ledger_tokens(tmp / 'ws'), bad)
+        ledger.write_text('not json\n', encoding='utf-8')
+        self.assertIsNone(P.ledger_tokens(tmp / 'ws'))
+        env = tmp / 'envelopes'
+        env.mkdir()
+        counters = {'inputTokens': 100, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0, 'outputTokens': 9}
+        (env / '0000.json').write_text(json.dumps({'modelUsage': {'m': counters}}), encoding='utf-8')
+        (env / '0001.json').write_text('', encoding='utf-8')                  # reserved name, call in flight
+        self.assertEqual(P.envelope_tokens(env), 109)
+        (env / '0002.json').write_text(json.dumps({'modelUsage': {'m': {'inputTokens': 100}}}), encoding='utf-8')
+        self.assertIsNone(P.envelope_tokens(env))
+        self.assertEqual(P.envelope_tokens(tmp / 'missing'), 0)
+
+    def test_output_allowance_rests_on_the_measured_maximum(self):
+        """claude -p (2.1.306) has no output limit, so the allowances are margins over the largest single-call
+        output of claude-sonnet-5-5 recorded in this repository, never claimed as enforced bounds."""
+        rows = []
+        for path in sorted((ROOT / 'bench' / 'live' / 'data').glob('*.jsonl')):
+            for line in path.read_text(encoding='utf-8').splitlines():
+                r = json.loads(line) if line.strip() else {}
+                if r.get('model') == 'claude-sonnet-5-5' and type(r.get('out')) is int and not r.get('spawns'):
+                    rows.append(r['out'])
+        self.assertGreater(len(rows), 500)
+        self.assertEqual(max(rows), P.MEASURED_OUT_MAX)
+        self.assertGreaterEqual(P.OUT_ALLOW, 2 * P.MEASURED_OUT_MAX)
+        self.assertGreaterEqual(P.WORKER_OUT_ALLOW, 2 * P.MEASURED_OUT_MAX)
+        self.assertEqual(P.RACE, P.RACE_CONTEXT + P.TOOL_ALLOW + P.OUT_ALLOW)
+        self.assertEqual(P.RUN_RESERVE, P.RUN_CAP + P.RACE)
+
+    @unittest.skipUnless(os.name == 'nt', WINDOWS)
+    def test_adapter_refuses_and_stops_on_unknown_spend(self):
+        """Review 2, finding 1, adapter side: a malformed earlier envelope, an unreadable guard state or a request
+        whose size cannot be bounded refuses the launch and sets STOP; a call that returns without known usage
+        sets STOP so nothing further is launched."""
+        tmp = Path(tempfile.mkdtemp(prefix='crg-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        marker = tmp / 'launched'
+        good = tmp / 'good.py'
+        good.write_text('import json, os\nopen(%r, "w").write("x")\nopen(os.environ["OZ_ENVELOPE_PATH"], "w")'
+                        '.write(json.dumps({"modelUsage": {"m": {"inputTokens": 5, "cacheReadInputTokens": 0, '
+                        '"cacheCreationInputTokens": 0, "outputTokens": 1}}}))\nprint("{}")\n' % str(marker),
+                        encoding='utf-8')
+        silent = tmp / 'silent.py'
+        silent.write_text('open(%r, "w").write("x")\nprint("{}")\n' % str(marker), encoding='utf-8')
+        request = json.dumps({'system': 's', 'prompt': 'p'}).encode()
+        run_ok = {'caller_tokens': 1000, 'cap': P.RUN_CAP, 'worker_out': P.WORKER_OUT_ALLOW}
+        bad_env = json.dumps({'modelUsage': {'m': {'inputTokens': 70000}}})
+        cases = [('malformed envelope', run_ok, bad_env, request, good, True),
+                 ('bad guard state', dict(run_ok, caller_tokens=None), None, request, good, True),
+                 ('unbounded request', run_ok, None, b'[1, 2]', good, True),
+                 ('no usage returned', run_ok, None, request, silent, False),
+                 ('clean call', run_ok, None, request, good, False)]
+        for n, (name, run, earlier, req, delegate, refused) in enumerate(cases):
+            state, arc = tmp / f'state{n}', tmp / f'arc{n}'
+            state.mkdir()
+            (state / 'run.json').write_text(json.dumps(run), encoding='utf-8')
+            if earlier:
+                (arc / 'envelopes').mkdir(parents=True)
+                (arc / 'envelopes' / '0000.json').write_text(earlier, encoding='utf-8')
+            marker.unlink(missing_ok=True)
+            subprocess.run([sys.executable, str(CR / 'cr_adapter.py'), '--archive', str(arc), '--state', str(state),
+                            '--', sys.executable, str(delegate)], input=req, capture_output=True)
+            self.assertEqual(marker.exists(), not refused, name)
+            self.assertEqual((state / 'STOP').exists(), name != 'clean call', name)
 
     @unittest.skipUnless(os.name == 'nt', WINDOWS)
     def test_worker_call_refused_before_launch(self):
@@ -575,6 +672,52 @@ class AccountingTests(unittest.TestCase):
         self.assertFalse(u['complete'])
         self.assertEqual(u['lower_bound'], 1200)
 
+    def run_dir(self, model_usage, envelope, ledger_end, stop_reason=None):
+        run = Path(tempfile.mkdtemp(prefix='cra-'))
+        self.addCleanup(shutil.rmtree, run, ignore_errors=True)
+        (run / 'transcript.jsonl').write_text(self.stream(model_usage), encoding='utf-8')
+        (run / 'meta.json').write_text(json.dumps({'wall_s': 1.0, 'exit_code': 0, 'stop_reason': stop_reason}),
+                                       encoding='utf-8')
+        (run / 'archive' / 'worker' / 'envelopes').mkdir(parents=True)
+        (run / 'archive' / 'worker' / 'envelopes' / '0000.json').write_text(json.dumps(envelope), encoding='utf-8')
+        calls = run / 'do' / 'h1' / 'calls.jsonl'
+        calls.parent.mkdir(parents=True)
+        rows = [{'event': 'call_start', 'call_id': 'c1'}] + ([ledger_end] if ledger_end else [])
+        calls.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')
+        return run
+
+    def test_lower_bound_is_the_max_over_every_source(self):
+        """Review 2, finding 2: a preserved 120k worker envelope with no ledger completion, and a caller final total
+        above the per-message usage, both raise the lower bound; the run is charged max(reserve, lower bound)."""
+        spec = P.build_spec('A', 'I')
+        partial_final = {'m': {'inputTokens': 50000, 'outputTokens': 900}}          # cache counters missing
+        big = {'modelUsage': {'w': {'inputTokens': 119000, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0,
+                                    'outputTokens': 1000}}}
+        rec = P.build_record(spec, self.run_dir(partial_final, big, None))
+        self.assertFalse(rec['accounting_complete'])
+        self.assertEqual(rec['lower_bound_tokens'], 50900 + 120000)
+        self.assertEqual(rec['charged_tokens'], 50900 + 120000)
+        self.assertEqual(rec['lower_bound_sources'], {'caller_messages': 1200, 'caller_final': 50900,
+                                                      'worker_ledger': 0, 'worker_envelopes': 120000})
+        # the ledger above the envelopes, an envelope with a broken entry still counts its valid counters
+        broken = {'modelUsage': {'w': {'inputTokens': 3000, 'outputTokens': None}}}
+        end = {'event': 'call_end', 'usage': {'raw': {'input_tokens': 4000, 'output_tokens': 700}}}
+        rec = P.build_record(spec, self.run_dir(None, broken, end))
+        self.assertEqual(rec['lower_bound_sources']['worker_envelopes'], 3000)
+        self.assertEqual(rec['lower_bound_tokens'], 1200 + 4700)
+        self.assertEqual(rec['charged_tokens'], P.RUN_RESERVE)
+
+    def test_a_usage_stop_is_charged_the_reserve(self):
+        spec = P.build_spec('A', 'I')
+        full = {'m': {'inputTokens': 1000, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0,
+                      'outputTokens': 200}}
+        env = {'modelUsage': {'w': {'inputTokens': 10, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0,
+                                    'outputTokens': 1}}}
+        end = {'event': 'call_end', 'usage': {'raw': {'input_tokens': 10, 'output_tokens': 1}}}
+        rec = P.build_record(spec, self.run_dir(full, env, end, stop_reason='usage'))
+        self.assertFalse(rec['accounting_complete'])
+        self.assertEqual(rec['charged_tokens'], P.RUN_RESERVE)
+
 
 class SnapshotTests(unittest.TestCase):
     """Fix 5 and fix 2: a run imports only an immutable snapshot inside its own run root, and nothing it can name
@@ -612,6 +755,43 @@ class SnapshotTests(unittest.TestCase):
                 or 'regex' in Path(f).parts]
         self.assertTrue(ours)
         for f in ours:
+            self.assertTrue(Path(f).resolve().is_relative_to(run_root.resolve()), f)
+        for f in files:
+            self.assertFalse(Path(f).resolve().is_relative_to(ROOT), f)
+
+    @unittest.skipUnless(os.name == 'nt', WINDOWS)
+    def test_init_imports_resolve_inside_the_run_root(self):
+        """Review 2, finding 3: the workspace init runs `python -c`, whose sys.path starts with its cwd. Probe with
+        exactly the interpreter flags, cwd and environment setup() gives that call, from the repository as cwd (the
+        harness's own cwd), so a working-tree oz_cli.py would be found first if the init could reach it."""
+        tmp = Path(tempfile.mkdtemp(prefix='crs-'))
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
+        old = os.getcwd()
+        os.chdir(ROOT)
+        self.addCleanup(os.chdir, old)
+        real, seen = subprocess.run, []
+
+        def spy(argv, *a, **kw):
+            if '-c' in list(argv):
+                seen.append((list(argv), dict(kw)))
+            return real(argv, *a, **kw)
+
+        with mock.patch.object(P.subprocess, 'run', side_effect=spy):
+            ws, run_root, env = P.setup(tmp, P.build_spec('A', 'D'))
+        self.assertEqual(len(seen), 1)
+        argv, kw = seen[0]
+        cwd = Path(kw.get('cwd') or os.getcwd()).resolve()
+        self.assertTrue(cwd.is_relative_to(run_root.resolve()), cwd)
+        probe = ('import json, sys, oz_cli, oz_do, oz_workspace, tiktoken\n'
+                 'print(json.dumps(sorted({m.__file__ for m in list(sys.modules.values()) '
+                 'if getattr(m, "__file__", None)})))\n')
+        proc = real([*argv[:argv.index('-c')], '-c', probe], cwd=kw.get('cwd'), env=kw['env'], capture_output=True,
+                    text=True)
+        self.assertEqual(proc.returncode, 0, proc.stderr[-800:])
+        files = json.loads(proc.stdout)
+        oz = [f for f in files if Path(f).name.startswith('oz')]
+        self.assertTrue(oz)
+        for f in oz:
             self.assertTrue(Path(f).resolve().is_relative_to(run_root.resolve()), f)
         for f in files:
             self.assertFalse(Path(f).resolve().is_relative_to(ROOT), f)
@@ -677,8 +857,8 @@ class EndToEndTests(unittest.TestCase):
         self.assertTrue(self.res['ok'])
         names = set(self.res['scenarios'])
         for need in ('I-clean', 'D-mixed', 'D-violation', 'I-truncated', 'I-malformed', 'D-unseeded',
-                     'I-oz-violation', 'I-cap', 'D-worker-cap', 'I-missing-counter', 'I-out-of-domain',
-                     'I-rejection-witness'):
+                     'I-oz-violation', 'I-cap', 'D-worker-cap', 'I-missing-usage', 'D-worker-no-usage',
+                     'I-missing-counter', 'I-out-of-domain', 'I-rejection-witness'):
             self.assertIn(need, names)
 
     def test_rejudge_gives_zero_mismatches(self):

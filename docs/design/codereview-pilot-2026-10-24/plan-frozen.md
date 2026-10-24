@@ -1,13 +1,15 @@
 # Code-review sizing pilot: frozen run plan
 
-Status: frozen at digest `704ed5c61441d045d9720deb6dbddb87507cbd10b518df1b269d5602988e2a50` (`bench/codereview/freeze.json`,
+Status: frozen at digest `a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934` (`bench/codereview/freeze.json`,
 CLI 2.1.306), not run, runnable. The witness domains are frozen: Astra answered the six questions as a new
 evaluator file, `DOMAINS.md` (Astra revision 2), which changes no module, span or reference.
 
 Sizing pilot only, as signed in [02](02-astra-pilot-prereg.md) with the five binding changes of
 [03](03-opus-changes.md), accepted in [04](04-astra-accept.md). No ranking, no winner, no adoption decision. Nothing
 was paid to prepare it. It answers Astra's review of the first harness (five findings, all fixed with failing tests first)
-and takes the domain specification from DOMAINS.md.
+and takes the domain specification from DOMAINS.md. Astra's second review left three findings open (caps, the
+accounting lower bound, the init import path); each is fixed below with failing tests first, and the structural limit
+on output is stated as such.
 
 ## What the digest pins
 
@@ -50,6 +52,13 @@ The run uses the base interpreter, never the repository's venv. The caller envir
 value names the repository and every PATH entry inside it, plus PYTHON*, OZ_*, CR_* and tiktoken variables. A
 concurrent edit of `oz_cli.py` or any other repository file cannot reach a running run, because the run imports only
 from `code/` (tested: every oz, tiktoken and regex module the runtime loads resolves inside the run root).
+
+The workspace init (`oz_cli init`) runs as `python -s -P -c ...` with its cwd set to the run root (second review,
+finding 3). Before, it ran with the harness's cwd, the repository root, and `python -c` puts its cwd on `sys.path`
+ahead of PYTHONPATH, so the init imported working-tree modules. The test now intercepts the init call setup() makes,
+from the repository as cwd, and probes with exactly its interpreter flags, cwd and environment: every oz module
+resolves inside the run root and nothing resolves inside the repository. Every other subprocess of a run already
+starts from a script inside `code/` with its cwd in `ws/`.
 
 A test performs the derivation a caller could attempt from inside the workspace: cwd and its parents, every
 environment variable, every file in the run root (adapter.json, the shim, the snapshot) and every existing file those
@@ -116,37 +125,69 @@ its response without unseeded findings is exactly `[]`. No model scores anything
    run's accounting is then incomplete.
 2. The per-message lower bound (the largest usage seen per message ID) is always reported.
 3. Worker: the `oz do` ledgers, which must agree exactly with the raw worker envelopes kept by cr_adapter.py, each
-   envelope held to the same counter rule. Missing or disagreeing makes the run's accounting incomplete.
+   envelope held to the same counter rule. Missing or disagreeing makes the run's accounting incomplete. A run the
+   guard stopped for unknown usage is incomplete whatever its files hold.
 4. Total = caller + worker + paid preparation (0). Caches count at full weight.
+5. Lower bound (second review, finding 2): the caller and the worker are disjoint spends, and each is taken at the
+   largest of its independent sources. Lower bound = max(caller per-message usage, caller final modelUsage) +
+   max(worker ledgers, raw worker envelopes), where an incomplete modelUsage contributes every counter it holds as a
+   non-negative integer. Each record lists the four sources (`lower_bound_sources`). A run with incomplete accounting
+   is charged max(101,000, lower bound); a preserved 120,000-token worker envelope with no ledger completion is
+   therefore charged at least 120,000 plus the caller's bound (tested).
 
-## Caps (review finding 1): exact rule
+## Caps (review finding 1, second review finding 1): exact rule
 
-Let R be the run's billed tokens so far: per-message caller usage plus worker ledger usage. The guard evaluates R on
-every caller stream event and every 0.25 s.
+Structural limit, stated plainly: `claude -p` on CLI 2.1.306 has no option that limits a call's output tokens (its
+help lists none; `--max-budget-usd` is a dollar budget, not an output bound, and is not used). The harness therefore
+cannot bound the output of any single call, caller or worker. Every output figure below is a margin over measured
+evidence, not an enforced limit. What the harness does enforce: it launches no further call once the known spend or
+its allowance reaches the cap, it stops the run at the first stream message whose usage takes it to the cap, and it
+stops on any unknown spend.
 
-1. Caller calls. At each caller message k that asks for a tool, the next caller call is allowed only if
-   R + B(k) <= 60,000 and k < 5, where B(k) = the input of k (uncached + cache read + cache write) + the output of k
-   + 8,000 per tool use in k + 8,000. Otherwise the guard writes STOP and kills the caller's process tree at once,
-   before the tool result exists, so no further caller call is requested. R >= 60,000 stops the run at any time.
-2. Worker calls. cr_adapter.py launches a worker call only when STOP is absent and caller tokens + worker tokens
+Measured evidence: the largest single-call output of claude-sonnet-5-5 recorded in this repository is 4,235 output
+tokens (`bench/live/data/live17_het_sonnet.jsonl`, a tool-free `claude -p` call, 2,510 of them thinking). Sources
+scanned: the 614 single-call rows in `bench/live/data/*.jsonl` (rows with subagent spawns, which sum many calls, are
+excluded); the pilot_k2 caller turns (largest 1,383), single-turn envelopes (2,768) and `oz do` ledgers (2,813); the
+`bench/o1/live1` ledgers (2,265). A test re-derives the 4,235 from the data and checks the allowances against it.
+
+Let R be the run's billed tokens so far: per-message caller usage plus worker usage, the latter the larger of the
+ledgers and the raw envelopes. The guard evaluates R on every caller stream event and every 0.25 s.
+
+1. Unknown spend stops. A caller message whose usage lacks any of the four counters, or holds a null, boolean,
+   negative or non-integer one; a finished ledger line that cannot be read or a call_end without integer input and
+   output counts; or a written envelope that is unreadable or lacks a strict counter: the guard writes STOP and kills
+   the caller's process tree at once (stop reason `usage`). Nothing is read as zero. The run is charged
+   max(101,000, lower bound).
+2. Caller calls. R >= 60,000 stops the run at once, so it stops at the first message whose usage takes it to the
+   cap. At each caller message k that asks for a tool, the next caller call is allowed only if R + B(k) <= 60,000
+   and k < 5, where B(k) = the input of k (uncached + cache read + cache write) + the output of k + 8,000 per tool
+   use in k + 9,000 (OUT_ALLOW). Otherwise the guard writes STOP and kills the caller's process tree at once, before
+   the tool result exists, so no further caller call is requested.
+3. Worker calls. cr_adapter.py launches a worker call only when STOP is absent and caller tokens + worker tokens
    already spent + (UTF-8 bytes of the packet's system and prompt, a sound input bound since every token covers at
-   least one byte) + 8,000 <= 60,000. A refused call is not made; it is recorded with zero usage and a refusal
+   least one byte) + 9,000 (WORKER_OUT_ALLOW) <= 60,000. It refuses and writes STOP when the guard state is
+   unreadable or malformed, when any earlier envelope is empty, unreadable or not strict, or when the request's size
+   cannot be bounded; and it writes STOP after a call that returns without an envelope holding strict counters. The
+   guard treats that STOP as a `usage` stop. A refused call is not made; it is recorded with zero usage and a refusal
    envelope.
-3. Overshoot. A run can pass 60,000 only through one call that is already in flight when the guard stops (the kill
-   racing a tool that finishes first), or through allowances exceeded by actual usage. The race allowance is
-   RACE = 40,000 (one call with a context up to 24,000 plus 16,000 of tool results and output), so the hard per-run
-   bound is RUN_RESERVE = 100,000.
-4. Admission reserves RUN_RESERVE: a run is admitted only if spent + 100,000 <= 250,000, where spent charges each
-   recorded run its total (or, with incomplete accounting, max(100,000, its lower bound)) and each admitted attempt
-   without a record 100,000. The 250,000 total cannot be crossed as long as no single run passes 100,000. Practical
-   effect: run 4 is admitted only if runs 1 to 3 were charged 150,000 or less together.
-5. The quota projection uses the same reserve: before + factor x 100,000 + 1 point of rounding must stay below 58%
+4. Allowances. OUT_ALLOW = WORKER_OUT_ALLOW = 9,000, twice the measured 4,235 rounded up to a thousand. TOOL_ALLOW =
+   8,000 per tool result and RACE_CONTEXT = 24,000 remain assumptions, not measurements and not enforced.
+5. Overshoot. A run can pass 60,000 through one call already in flight when the guard stops (the kill racing a tool
+   that finishes first), or through a call whose actual output or tool result exceeds its allowance. The race
+   reserve is RACE = 24,000 + 8,000 + 9,000 = 41,000, so the per-run reserve is RUN_RESERVE = 101,000. This is a
+   reserve, not a hard bound: since output cannot be limited, a run can exceed it, and that is visible in its record
+   (charged at its lower bound when larger) and is a stop condition.
+6. Admission reserves RUN_RESERVE: a run is admitted only if spent + 101,000 <= 250,000, where spent charges each
+   recorded run its total (or, with incomplete accounting, max(101,000, its lower bound)) and each admitted attempt
+   without a record 101,000. Practical effect: run 4 is admitted only if runs 1 to 3 were charged 149,000 or less
+   together.
+7. The quota projection uses the same reserve: before + factor x 101,000 + 1 point of rounding must stay below 58%
    (factor 2 points per 55,000 tokens, rising with observed movement, never falling), so the first run needs a
-   reading below 53.36%. Unsettled or missing readings refuse. 60% is the ceiling.
+   reading of 53.32% or less (edge 53.327). Unsettled or missing readings refuse. 60% is the ceiling.
 
 ## Truncation
 
-Reported as incomplete: `error_max_turns`, the guard's `turns` or `cap` stop, the 1,800 s wall timeout, or no
+Reported as incomplete: `error_max_turns`, the guard's `turns`, `cap` or `usage` stop, the 1,800 s wall timeout, or no
 result envelope. A truncated or refused run is recorded with its cost (refusals with 0, nothing launched).
 
 ## Findings size against the inline limit
@@ -156,7 +197,7 @@ under the 4,096-byte inline limit. No artifact read turn is expected.
 
 ## Dry gate (zero tokens, fixture caller and fixture worker, the same run-root code path)
 
-`pilot.py dry` passes all twelve scenarios with 0 rejudge mismatches (inside the gate and as a separate
+`pilot.py dry` passes all fourteen scenarios with 0 rejudge mismatches (inside the gate and as a separate
 `pilot.py rejudge` of the dry directory):
 
 | Scenario | Exercises | Result |
@@ -168,9 +209,11 @@ under the 4,096-byte inline limit. No artifact read turn is expected.
 | I-malformed | fenced findings JSON | answer invalid, 0/3 |
 | D-unseeded | a real unseeded defect with a registered fix | unseeded, 3/3, FP 0 |
 | I-oz-violation | arm I runs `oz do` | protocol_violation |
-| I-cap | a call whose allowance would cross 60,000 | stopped after the first call, charged 100,000 |
-| D-worker-cap | a worker call reports 70,900 tokens | stopped by the timer before any further caller call, charged 100,000 |
-| I-missing-counter | the caller envelope lacks cacheReadInputTokens | inconclusive accounting, lower bound 15,600, charged 100,000 |
+| I-cap | a call whose allowance would cross 60,000 | stopped after the first call, charged 101,000 |
+| D-worker-cap | a worker call reports 70,900 tokens | stopped by the timer before any further caller call, charged 101,000 |
+| I-missing-usage | a caller stream message lacks cache_creation_input_tokens | `usage` stop at that message, charged 101,000 |
+| D-worker-no-usage | the worker envelope lacks outputTokens | cr_adapter.py sets STOP, `usage` stop, charged 101,000 |
+| I-missing-counter | the caller envelope lacks cacheReadInputTokens | inconclusive accounting, lower bound 15,600, charged 101,000 |
 | I-out-of-domain | `rotate_left([], true)` reported for seed B2 | out_of_domain, no seed credit, 2/3 |
 | I-rejection-witness | `page_count(3, 0)` with ValueError, and with a return expectation | the first admitted and executed (unproven), the second out_of_domain; 3/3, FP 2 |
 
@@ -182,23 +225,23 @@ and put it in place of `PCT`; after each run, read it again and settle it.
 1. Check: `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/verify.py`
    and `.venv/Scripts/python.exe bench/codereview/pilot.py freeze` must print ALL PASS and freeze holds.
 2. Run 1 (A-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 704ed5c61441d045d9720deb6dbddb87507cbd10b518df1b269d5602988e2a50 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 3. Run 2 (A-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 704ed5c61441d045d9720deb6dbddb87507cbd10b518df1b269d5602988e2a50 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 4. Run 3 (B-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 704ed5c61441d045d9720deb6dbddb87507cbd10b518df1b269d5602988e2a50 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 5. Run 4 (B-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect 704ed5c61441d045d9720deb6dbddb87507cbd10b518df1b269d5602988e2a50 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect a7f2e23d41fa100a121e121a86fcc61eb6c3407ff24f4f56e9c5525762287934 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 6. `pilot.py report` prints the per-run table (caller turns, caller tokens, cache reads and writes, worker tokens,
    total, lower bound, charged, time, correctness, recall, false positives, unproven) and the fill-slope estimates for
    60k and 120k fills. `pilot.py rejudge` rebuilds every record from its raw data and must report 0 mismatches.
 
 Each `run` command runs the next unrecorded run of the schedule. After a crash, the same command first rebuilds a run
-whose raw data was kept (never re-running it) or records an attempt without raw data as aborted, charged 100,000;
+whose raw data was kept (never re-running it) or records an attempt without raw data as aborted, charged 101,000;
 that run is repeated only after its after-reading is settled. Stop at once if a reading reaches 58%, if admission
 refuses, or if a run shows an isolation breach or an unseeded review item.
 
@@ -208,7 +251,9 @@ refuses, or if a run shows an isolation breach or an unseeded review item.
    goes to review; otherwise a clean control could hide a false positive behind any wrong expectation.
 2. Literal 02 rule for defective files: unproven extra findings do not make a defective file incorrect; they count as
    false positives and unproven.
-3. The 8,000-token allowances and RACE are frozen assumptions about one Bash result and one call's output; they are
-   not enforced by the CLI. A run that passes 100,000 anyway is visible in its record and would be a stop condition.
+3. No call's output can be bounded by this harness (structural limit above). OUT_ALLOW and WORKER_OUT_ALLOW are
+   margins over the measured 4,235; TOOL_ALLOW and RACE_CONTEXT are frozen assumptions about one Bash result and one
+   racing call's context. None is enforced by the CLI. A run that passes 101,000 anyway is visible in its record, is
+   charged at its lower bound, and is a stop condition.
 4. `--max-turns` is not listed in `claude --help` for 2.1.306, but the option parser accepts it. The guard enforces
    five model calls independently, before the sixth starts.

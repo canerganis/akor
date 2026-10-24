@@ -87,11 +87,20 @@ CODE = ('bench/codereview/pilot.py', 'bench/codereview/oracle.py', 'bench/codere
         'bench/codereview/verify.py', 'bench/codereview/fixture_caller.py', 'bench/live/pilot_k2.py',
         'bench/live/run_live.py', 'bench/o1/sandbox.py')
 # Review fix 1: the cap guard and the overshoot reserve (exact rule in guard_decision, next_call_bound, admission).
-TOOL_ALLOW = 8_000                    # allowance per tool result carried into the next caller call
-OUT_ALLOW = 8_000                     # allowance for the next caller call's own output
-WORKER_OUT_ALLOW = 8_000              # allowance for a worker call's output (its input is bounded by packet bytes)
-RACE = 40_000                         # one racing call: context up to 24,000 plus 16,000 of allowances
-RUN_RESERVE = RUN_CAP + RACE          # the hard per-run bound admission reserves and incomplete runs are charged
+# Structural limit (review 2, finding 1): `claude -p` 2.1.306 has no per-call output limit, so no call's output is
+# bounded by this harness. The output allowances are margins over measured evidence, not enforced bounds:
+# MEASURED_OUT_MAX is the largest single-call output_tokens of claude-sonnet-5-5 in this repository's recorded live
+# data (bench/live/data/live17_het_sonnet.jsonl, a tool-free `claude -p` call with 2,510 thinking tokens; 614
+# single-call rows in bench/live/data, the pilot_k2 caller turns, single-turn envelopes and oz ledgers, and the
+# bench/o1/live1 ledgers all stay at or below it). The allowances are twice that, rounded up to a thousand.
+MEASURED_OUT_MAX = 4_235
+OUT_ALLOW = 9_000                     # allowance for the next caller call's own output (>= 2 x MEASURED_OUT_MAX)
+WORKER_OUT_ALLOW = 9_000              # allowance for a worker call's output (its input is bounded by packet bytes)
+TOOL_ALLOW = 8_000                    # allowance per tool result carried into the next caller call (assumption)
+RACE_CONTEXT = 24_000                 # context of the one call that can race the kill (assumption)
+RACE = RACE_CONTEXT + TOOL_ALLOW + OUT_ALLOW
+RUN_RESERVE = RUN_CAP + RACE          # the per-run reserve admission holds and incomplete runs are charged at least
+USAGE_KEYS = ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'output_tokens')
 POLL_S = 0.25
 # Review fix 5: the runtime a run imports, copied into its run root at admission. Committed files come from the git
 # object store at FROZEN_COMMIT (immune to edits of the working tree by any session); the pilot's own helpers from the
@@ -426,8 +435,10 @@ def setup(run_root, spec, delegate=None, extra_env=None, pins=None):
     snapshot(code, pins)
     shim = shim_command(run_root)
     py = shim['argv'][0]
-    subprocess.run([py, '-s', '-c', 'import sys, oz_cli; sys.exit(oz_cli.main())', 'init', str(ws)],
-                   env=dict(os.environ, **shim['env']), check=True, capture_output=True)
+    # Review 2, finding 3: `python -c` puts its cwd first on sys.path, ahead of PYTHONPATH. -P drops that entry and
+    # the cwd is the run root anyway, so the init imports only the snapshot, whatever the harness's own cwd is.
+    subprocess.run([py, '-s', '-P', '-c', 'import sys, oz_cli; sys.exit(oz_cli.main())', 'init', str(ws)],
+                   cwd=run_root, env=dict(os.environ, **shim['env']), check=True, capture_output=True)
     cfg = json.loads((ws / 'oz.json').read_text(encoding='utf-8'))
     cfg['max_tokens'] = spec['ws_max_tokens']
     (ws / 'oz.json').write_text(json.dumps(cfg, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
@@ -477,10 +488,28 @@ def next_call_bound(m: dict) -> int:
     return ctx + m.get('output_tokens', 0) + TOOL_ALLOW * m['tool_uses'] + OUT_ALLOW
 
 
-def guard_decision(msgs: list, worker_tokens: int):
-    """None to continue, 'cap' or 'turns' to stop now (frozen rule): stop when the running billed tokens reach
-    RUN_CAP, when the last caller message asks for a next call whose allowance would cross RUN_CAP, or when a next
-    call would exceed MAX_TURNS."""
+def strict_message_usage(u):
+    """The four usage counters of one caller stream message, or None when any is missing, negative, boolean or not
+    an integer (unknown spend, never read as zero)."""
+    if not isinstance(u, dict):
+        return None
+    out = {}
+    for k in USAGE_KEYS:
+        v = u.get(k)
+        if type(v) is not int or v < 0:
+            return None
+        out[k] = v
+    return out
+
+
+def guard_decision(msgs: list, worker_tokens):
+    """None to continue, 'usage', 'cap' or 'turns' to stop now (frozen rule): stop when any caller message carries
+    missing or malformed usage or the worker spend is unknown (worker_tokens None); when the running billed tokens
+    reach RUN_CAP, which is checked on every stream event, so the run stops at the first message whose usage takes it
+    there; when the last caller message asks for a next call whose allowance would cross RUN_CAP; or when a next call
+    would exceed MAX_TURNS."""
+    if worker_tokens is None or any(m.get('usage_unknown') for m in msgs):
+        return 'usage'
     running = sum(billed(m) for m in msgs) + worker_tokens
     if running >= RUN_CAP:
         return 'cap'
@@ -493,8 +522,8 @@ def guard_decision(msgs: list, worker_tokens: int):
 
 
 def charge(total, lower_bound: int) -> int:
-    """Tokens a run is charged against the total cap: its total when accounting is complete, else the hard per-run
-    bound RUN_RESERVE or the observed lower bound when that is larger."""
+    """Tokens a run is charged against the total cap: its total when accounting is complete, else
+    max(RUN_RESERVE, lower bound), the lower bound being the largest of every independent usage source."""
     return total if total is not None else max(RUN_RESERVE, lower_bound)
 
 
@@ -507,28 +536,70 @@ def kill_tree(proc) -> None:
         proc.kill()
 
 
-def ledger_tokens(ws: Path) -> int:
+def ledger_tokens(ws: Path):
+    """Worker tokens of every finished call in the `oz do` ledgers, or None when any finished line is unreadable or
+    a call_end lacks integer input and output counts (unknown spend). Only an unterminated last line, still being
+    written, is left for the next look."""
     total = 0
     for ledger in Path(ws).glob('do/*/calls.jsonl'):
         try:
-            lines = ledger.read_text(encoding='utf-8').splitlines()
-        except OSError:
-            continue
+            text = ledger.read_bytes().decode('utf-8')
+        except (OSError, UnicodeDecodeError):
+            return None
+        lines = text.split('\n')[:-1]                 # the part after the last newline is still being written
         for line in lines:
+            if not line.strip():
+                continue
             try:
                 ev = json.loads(line)
             except ValueError:
+                return None
+            if not isinstance(ev, dict):
+                return None
+            if ev.get('event') != 'call_end':
                 continue
-            u = (ev.get('usage') or {}).get('raw') if ev.get('event') == 'call_end' else None
-            if isinstance(u, dict):
-                total += u.get('input_tokens', 0) + u.get('output_tokens', 0)
+            u = (ev.get('usage') or {}).get('raw') if isinstance(ev.get('usage'), dict) else None
+            if not isinstance(u, dict) or any(type(u.get(k)) is not int or u.get(k) < 0
+                                              for k in ('input_tokens', 'output_tokens')):
+                return None
+            total += u['input_tokens'] + u['output_tokens']
     return total
 
 
-def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float):
-    """Run the caller under the guard. On every stream event and every POLL_S seconds (worker ledgers) the guard
-    applies guard_decision; on a stop it writes state/STOP (cr_adapter.py then refuses any worker call before launch)
-    and kills the caller's process tree at once, before the tool result of the deciding message can reach a new call.
+def envelope_tokens(envelopes: Path):
+    """Worker tokens of the raw envelopes cr_adapter.py keeps, or None when any written envelope is unreadable or
+    its modelUsage is not strict (unknown spend). An empty file is a name reserved by a call still in flight
+    (envelopes are published whole, by rename)."""
+    total = 0
+    for path in sorted(Path(envelopes).glob('*.json')):
+        try:
+            raw = path.read_bytes()
+        except OSError:
+            return None
+        if not raw:
+            continue
+        try:
+            sums = strict_model_usage(json.loads(raw.decode('utf-8')).get('modelUsage'))
+        except (ValueError, UnicodeDecodeError, AttributeError):
+            return None
+        if sums is None:
+            return None
+        total += sum(sums.values())
+    return total
+
+
+def worker_spend(ws: Path, envelopes):
+    """The live guard's worker tokens: the larger of the ledgers and the envelopes, None when either is unknown."""
+    ledger = ledger_tokens(ws)
+    env = envelope_tokens(envelopes) if envelopes is not None else 0
+    return None if ledger is None or env is None else max(ledger, env)
+
+
+def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float, envelopes=None):
+    """Run the caller under the guard. On every stream event and every POLL_S seconds (worker ledgers and envelopes)
+    the guard applies guard_decision; a STOP written by cr_adapter.py (a worker call returned without known usage) is
+    a 'usage' stop too. On a stop it writes state/STOP (cr_adapter.py then refuses any worker call before launch) and
+    kills the caller's process tree at once, before the tool result of the deciding message can reach a new call.
     Returns (stdout bytes, stderr bytes, meta)."""
     proc = subprocess.Popen(argv, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=ws,
                             env=env)
@@ -542,10 +613,12 @@ def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float):
                 return
             ordered = list(msgs.values())
             caller = sum(billed(m) for m in ordered)
-            worker = ledger_tokens(ws)
-            st['peak'] = max(st['peak'], caller + worker)
+            worker = worker_spend(ws, envelopes)
+            st['peak'] = max(st['peak'], caller + (worker or 0))
             write_state(state, caller)
             why = guard_decision(ordered, worker)
+            if why is None and (Path(state) / 'STOP').exists():
+                why = 'usage'
             if why:
                 st['stop'] = why
                 (Path(state) / 'STOP').write_text(why, encoding='utf-8')
@@ -569,9 +642,11 @@ def launch(argv, data: bytes, ws: Path, state: Path, env: dict, timeout: float):
                 m = ev.get('message') or {}
                 with lock:
                     cur = msgs.setdefault(m.get('id') or 'anon%d' % len(msgs), {'tool_ids': set()})
-                    for k, v in (m.get('usage') or {}).items():
-                        if type(v) is int and k in ('input_tokens', 'cache_read_input_tokens',
-                                                    'cache_creation_input_tokens', 'output_tokens'):
+                    u = m.get('usage')
+                    if strict_message_usage(u) is None:
+                        cur['usage_unknown'] = True       # stops the run; valid counters still enter the peak
+                    for k, v in (u.items() if isinstance(u, dict) else ()):
+                        if k in USAGE_KEYS and type(v) is int and v >= 0:
                             cur[k] = max(v, cur.get(k, 0))
                     cur['tool_ids'] |= {b.get('id') for b in m.get('content') or [] if b.get('type') == 'tool_use'}
                     cur['tool_uses'] = len(cur['tool_ids'])
@@ -622,7 +697,7 @@ def run_one(spec, run_dir, claude=None, delegate=None, timeout=TIMEOUT, extra_en
         (run_dir / 'ws_start.json').write_text(json.dumps(tree_digest(ws), indent=1), encoding='utf-8')
         started = time.time()
         out, err, meta = launch(caller_argv(claude or L.CLAUDE), spec['prompt'].encode('utf-8'), ws,
-                                run_root / 'state', env, timeout)
+                                run_root / 'state', env, timeout, envelopes=run_root / 'arc' / 'worker' / 'envelopes')
         meta.update(started=started, run_root=str(run_root))
         (run_dir / 'transcript.jsonl').write_bytes(out)
         (run_dir / 'stderr.txt').write_bytes(err)
@@ -801,6 +876,15 @@ def strict_model_usage(mu):
     return sums
 
 
+def partial_model_usage(mu) -> int:
+    """A lower bound from a modelUsage object that may be incomplete: the sum of its counters that are non-negative
+    integers (0 when there are none)."""
+    if not isinstance(mu, dict):
+        return 0
+    return sum(v for entry in mu.values() if isinstance(entry, dict) for k, v in entry.items()
+               if k in dict(COUNTERS) and type(v) is int and v >= 0)
+
+
 def caller_usage(text: str) -> dict:
     """Caller accounting from the transcript: per-message usage (the largest value seen per message ID, any missing
     counter contributing nothing) gives a lower bound; the final envelope's modelUsage gives the total only when every
@@ -821,19 +905,30 @@ def caller_usage(text: str) -> dict:
     total = None if sums is None else sum(sums.values())
     complete = total is not None and total >= lower
     return {'complete': complete, 'total': total if complete else None, 'lower_bound': lower,
+            'final_lower_bound': partial_model_usage((final or {}).get('modelUsage')),
             'envelope_total': total, 'counters': sums, 'model_calls': len(msgs),
             'models': sorted((final or {}).get('modelUsage') or {}) if isinstance((final or {}).get('modelUsage'),
                                                                                   dict) else []}
 
 
 def envelope_usage(run_dir: Path) -> dict:
-    calls = inn = out = 0
+    """The raw worker envelopes: strict sums (complete only when every envelope holds strict counters) and, as an
+    independent lower bound, the sum of every valid counter they hold."""
+    calls = inn = out = lower = 0
     complete = True
     refused = 0
     for path in sorted((run_dir / 'archive' / 'worker' / 'envelopes').glob('*.json')):
-        data = json.loads(path.read_text(encoding='utf-8'))
         calls += 1
+        try:
+            data = json.loads(path.read_text(encoding='utf-8'))
+        except ValueError:
+            complete = False
+            continue
+        if not isinstance(data, dict):
+            complete = False
+            continue
         refused += bool(data.get('refused_by_guard'))
+        lower += partial_model_usage(data.get('modelUsage'))
         sums = strict_model_usage(data.get('modelUsage'))
         if sums is None:
             complete = False
@@ -841,7 +936,7 @@ def envelope_usage(run_dir: Path) -> dict:
         inn += sums['in_uncached'] + sums['cache_read'] + sums['cache_write']
         out += sums['out']
     return {'envelopes': calls, 'envelopes_complete': complete, 'envelope_in': inn, 'envelope_out': out,
-            'refused_by_guard': refused}
+            'envelope_lower_bound': lower, 'refused_by_guard': refused}
 
 
 def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
@@ -859,9 +954,16 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
     agree = (ev['envelopes_complete'] and ev['envelopes'] == wu['worker_calls']
              and ev['envelope_in'] == wu['worker_in'] and ev['envelope_out'] == wu['worker_out'])
     worker_ok = wu['worker_calls'] == wu['worker_calls_with_usage'] and agree
-    complete = cu['complete'] and worker_ok
+    # Review 2, finding 2: the lower bound is the largest of the independent sources for each disjoint spend (the
+    # caller's per-message usage and its final total; the worker ledgers and the raw worker envelopes), summed.
+    sources = {'caller_messages': cu['lower_bound'], 'caller_final': cu['final_lower_bound'],
+               'worker_ledger': wu['worker_in'] + wu['worker_out'], 'worker_envelopes': ev['envelope_lower_bound']}
+    lower = (max(sources['caller_messages'], sources['caller_final'])
+             + max(sources['worker_ledger'], sources['worker_envelopes']))
+    complete = cu['complete'] and worker_ok and meta.get('stop_reason') != 'usage'
     total = cu['total'] + wu['worker_in'] + wu['worker_out'] if complete else None
-    lower = cu['lower_bound'] + wu['worker_in'] + wu['worker_out']
+    if total is not None and total < lower:
+        complete, total = False, None
     truncation = []
     if (final or {}).get('subtype') == 'error_max_turns':
         truncation.append('max_turns')
@@ -897,7 +999,7 @@ def build_record(spec, run_dir, root=FIX, fixes=None) -> dict:
                    'in': wu['worker_in'], 'cached_in': wu['worker_cached_in'], 'out': wu['worker_out'], **ev,
                    'sources_agree': agree, 'oz_invocations': len(oz_invocations(run_dir))},
         'accounting_complete': complete, 'total_tokens': total, 'lower_bound_tokens': lower,
-        'charged_tokens': charge(total, lower), 'prep_tokens': 0,
+        'lower_bound_sources': sources, 'charged_tokens': charge(total, lower), 'prep_tokens': 0,
         'wall_s': meta['wall_s'], 'exit_code': meta['exit_code'], 'stop_reason': meta.get('stop_reason'),
         'peak_running_tokens': meta.get('peak_running_tokens'),
         'score': score, 'messages': parsed['messages'],
@@ -1331,6 +1433,18 @@ def dry(base=None) -> dict:
                                                'answer': {'from_oz': jobs('A')}, 'sleep': 1.5},
                          {'values': _perfect('A'), 'texts': a_text, 'usage': {'input': 70000, 'output': 900}},
                          {'status': 'truncated', 'stop_reason': 'cap', 'model_calls': 1, 'worker_calls': 1}),
+        # review 2, finding 1: unknown spend stops at once and is charged the reserve, caller side and worker side
+        'I-missing-usage': ('A', 'I', FIX, None, {'steps': [{'cat': [FORMAT]}] * 3, 'answer': J(_perfect('A')),
+                                                  'usage': {'input_tokens': 1500, 'cache_read_input_tokens': 6000,
+                                                            'output_tokens': 300}, 'sleep': 0.5}, None,
+                            {'status': 'truncated', 'stop_reason': 'usage', 'complete': False, 'model_calls': 1,
+                             'charged': RUN_RESERVE}),
+        'D-worker-no-usage': ('A', 'D', FIX, None, {'steps': [{'oz': _oz_request('A')}, {'cat': [FORMAT]},
+                                                              {'cat': [FORMAT]}],
+                                                    'answer': {'from_oz': jobs('A')}, 'sleep': 1.5},
+                              {'values': _perfect('A'), 'texts': a_text, 'drop_counter': 'outputTokens'},
+                              {'status': 'truncated', 'stop_reason': 'usage', 'complete': False, 'worker_calls': 1,
+                               'charged': RUN_RESERVE}),
         'I-missing-counter': ('A', 'I', FIX, None, {'steps': [{'cat': [FORMAT]}], 'answer': J(_perfect('A')),
                                                     'drop_counter': 'cacheReadInputTokens'}, None,
                               {'status': 'inconclusive_accounting', 'complete': False, 'correct': 3,
@@ -1365,7 +1479,7 @@ def dry(base=None) -> dict:
             problems.append('isolation breach: ' + '; '.join(rec['breaches']))
         if rec['accounting_complete'] and rec['total_tokens'] != rec['charged_tokens']:
             problems.append('charged tokens differ from the total of a complete run')
-        if rec['worker']['calls'] and not rec['worker']['sources_agree']:
+        if rec['worker']['calls'] and not rec['worker']['sources_agree'] and want.get('complete') is not False:
             problems.append('worker ledger and envelopes disagree')
         if rec['charged_tokens'] > TOTAL_CAP or (rec['total_tokens'] or 0) > RUN_RESERVE and name != 'D-worker-cap':
             problems.append('a run exceeded its reserve')
