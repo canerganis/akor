@@ -61,3 +61,15 @@ Opus B: pending (confirmation by diff of the ruling text above).
 ## Astra sign-off
 
 Not signed. Astra A raised BLOCKER P3 on 2026-10-25 (rulings/signoff-astra.md): quota.coverage_gate accepts a reading without an account hash. Closing needs the gate to require both hashes and a regression test. Addressed by the repair of 2026-10-25 above; a re-sign request to Astra A is pending.
+
+## Astra sign-off 2 (2026-10-25)
+
+Signed: Astra A P3
+
+Source: rulings/signoff-astra-2.md. The earlier account hash blocker is closed by repair 62285ac. Astra CHANGE: the signature does not approve D5 or the proposed 60 minute freshness rule. The manifest status `not_established` for causal coverage stays, and dependent dispatch stays closed until causal coverage, freshness and the persistence and harvesting certification are complete.
+
+## Opus B sign-off 2 (2026-10-25)
+
+Signed: Opus B opusb2-20261025T033012Z
+
+Source: rulings/signoff-opus-2.md. Confirmed by diff: the text above equals lines 205 to 217 and 307 to 321 of council-build-deadlock-r2-joint.md (sha256 fae12460). OB-P3 is closed by repair 62285ac (reproductions in signoff-opus-2.md). The signature covers this text and the annex 3646deac with status `not_established`; it does not approve D5 or the 60 minute freshness rule, and a new manifest needs a new Opus B line. Opus B position on D5 for that manifest: an owner reading covers an attempt only when its own request started after the attempt ended; form (i) never covers its own attempt.

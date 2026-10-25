@@ -52,3 +52,15 @@ Astra A signed D1 on 2026-10-25 (rulings/signoff-astra.md) on the unchanged stri
 Opus B ruling and confirmation by diff (2026-10-25): the text above equals lines 251 to 264 of council-build-deadlock-r2-joint.md (sha256 fae12460cd9e64fe76716ad7b612f1f2e51663a4258eccda31ebfbca9b5c4324) byte for byte. Ruling on D1: a complete credential access trace (Process Monitor or similar) is not required. Attribution is established by the differential on the actual route: the telemetry certificate runs the frozen exec argv at a worker path with auth.json holding the baseline account metadata and tokens no server accepts, and requires an authentication failure without reply or usage before the charged call (isolation.telemetry_certificate, run.py TelemetryRun.arm). A source keyed by account metadata or by path would authenticate that probe; a source keyed by token bytes can only hold tokens from the prepared auth.json. With the file store argument and the secret_auth_storage disable enforced by argv_check and verify_launch, this closes D1. telemetry_certificate stays false whenever the probe does not end in an authentication failure. Annex checked: the codex.exe sha256 and the seven static string counts reproduce; the only Codex entry of the Windows credential store is secrets|0218800dc2c5837c.codex, and 0218800dc2c5837c is the first 16 hex of sha256 over \?\<owner home>\.codex (the baseline path gives 841add2be2e6febe, which has no entry). This position relaxes the operative requirement stated by Astra. Astra A signed this file on the unchanged strict requirement and rejected the probe as a substitute (rulings/signoff-astra.md, D1 CHANGE note), so the signatories disagree on what the slot means.
 
 Not signed by Opus B (rulings/signoff-opus.md, blocker OB-D1): with both signature lines present, rulings.ruling_problems treats the slot as settled, and isolation.telemetry_certificate never consults the attribution annex, so the certificate would pass on the probe alone, which is Opus B's reading and not the signed strict one. The dispute goes to the owner under A4.14.3, or one signatory adopts the other's text.
+
+## Astra sign-off 2 (2026-10-25)
+
+Signed: Astra A D1
+
+Source: rulings/signoff-astra-2.md. The signature covers the text amended under owner decision 4, with the exec route differential accepted as complete attribution evidence and annex status `complete`. Astra CHANGE: the valid file condition in the annex is a check to be run, not a completed successful call. `telemetry_certificate` cannot count as passed until the live scrambled and valid conditions are met.
+
+## Opus B sign-off 2 (2026-10-25)
+
+Signed: Opus B opusb2-20261025T033012Z
+
+Source: rulings/signoff-opus-2.md. OB-D1 is closed: owner decision 4 amends the operative text to the exec route differential, isolation.telemetry_certificate requires the scrambled probe's authentication failure and the valid call's success, and the annex 4f8e7b49 records status `complete`. Confirmed by diff: the verbatim block above equals lines 251 to 264 of council-build-deadlock-r2-joint.md (sha256 fae12460).

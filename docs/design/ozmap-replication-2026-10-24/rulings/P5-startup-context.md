@@ -80,3 +80,11 @@ Opus B: pending (confirmation by diff of the ruling text above).
 ## Astra countersignature
 
 Astra A signed P5 on 2026-10-25 (rulings/signoff-astra.md) with the previous annexes (60d3fe06, 622b373e). That signature does not cover the route arguments and annexes of the repair above; a re-sign request is pending.
+
+## Astra sign-off 2 (2026-10-25)
+
+Not signed. Astra A raised BLOCKER P5 (rulings/signoff-astra-2.md): the certification generator can produce `established` without checking an exact match with the approved effective context. The decision in evidence/p5-probe/gen_p5.py (line 241) ignores `same_items` and writes the harness input description as a fixed string. Fix requested: make a full comparison of approved base instructions, all additional messages, tool schemas and the harness input a condition of `established`, pin or verify live model metadata, add rejection tests for an extra instruction, a changed input and a tool change. Until then the annex verdict must read `not_established`. Astra's earlier signature (signoff-astra.md) covered the previous annexes only.
+
+## Opus B sign-off 2 (2026-10-25)
+
+Opus B: not signed (rulings/signoff-opus-2.md, blocker OB-P5b, opusb2-20261025T033012Z). OB-P5 as written is closed: the captured request of the frozen route holds no owner content. The new blocker agrees with Astra's P5 blocker: the evidence was captured with /models answered 404 and over the HTTP fallback, while the live route gets the real model catalog (which can carry base instructions) and sends over WebSocket first, and the `established` decision does not compare the request items with an approved list. Fix: pin the model metadata, capture on the live transport, and require item by item equality with rejection tests.
