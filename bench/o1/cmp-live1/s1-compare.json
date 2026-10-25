@@ -1,0 +1,194 @@
+{
+ "kind": "live",
+ "rows": [
+  {
+   "arm": "direct",
+   "stage": "cold",
+   "launches": 1,
+   "input_tokens": 7465,
+   "output_tokens": 3676,
+   "tokens": 11141,
+   "cached_input_tokens": 0,
+   "thinking_tokens": 1613,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 28.87,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 7465,
+      "cached_input_tokens": 0,
+      "cache_creation_input_tokens": 7463,
+      "output_tokens": 3676
+     },
+     "thinking": 1613,
+     "seconds": 26.54,
+     "failure": null
+    }
+   ],
+   "order": "direct,akor"
+  },
+  {
+   "arm": "direct",
+   "stage": "revision",
+   "launches": 1,
+   "input_tokens": 3512,
+   "output_tokens": 927,
+   "tokens": 4439,
+   "cached_input_tokens": 0,
+   "thinking_tokens": 462,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 12.15,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 3512,
+      "cached_input_tokens": 0,
+      "cache_creation_input_tokens": 3510,
+      "output_tokens": 927
+     },
+     "thinking": 462,
+     "seconds": 10.94,
+     "failure": null
+    }
+   ],
+   "order": "direct,akor"
+  },
+  {
+   "arm": "akor",
+   "stage": "cold",
+   "launches": 3,
+   "input_tokens": 15054,
+   "output_tokens": 6094,
+   "tokens": 21148,
+   "cached_input_tokens": 4546,
+   "thinking_tokens": 2873,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 58.24,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 4574,
+      "cached_input_tokens": 0,
+      "cache_creation_input_tokens": 4572,
+      "output_tokens": 2148
+     },
+     "thinking": 1000,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "core_A",
+      "core_B",
+      "core_C",
+      "core_D"
+     ]
+    },
+    {
+     "usage": {
+      "input_tokens": 4570,
+      "cached_input_tokens": 3943,
+      "cache_creation_input_tokens": 625,
+      "output_tokens": 1837
+     },
+     "thinking": 717,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "core_A",
+      "core_B",
+      "core_C",
+      "core_D"
+     ]
+    },
+    {
+     "usage": {
+      "input_tokens": 5910,
+      "cached_input_tokens": 603,
+      "cache_creation_input_tokens": 5305,
+      "output_tokens": 2109
+     },
+     "thinking": 1156,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "adapter_A",
+      "adapter_B",
+      "adapter_C",
+      "adapter_D"
+     ]
+    }
+   ],
+   "launches_flow_usage": 3,
+   "tokens_flow_usage": 21148,
+   "order": "direct,akor"
+  },
+  {
+   "arm": "akor",
+   "stage": "revision",
+   "launches": 2,
+   "input_tokens": 5396,
+   "output_tokens": 840,
+   "tokens": 6236,
+   "cached_input_tokens": 1206,
+   "thinking_tokens": 411,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 22.13,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 2524,
+      "cached_input_tokens": 603,
+      "cache_creation_input_tokens": 1919,
+      "output_tokens": 701
+     },
+     "thinking": 411,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "core_A"
+     ]
+    },
+    {
+     "usage": {
+      "input_tokens": 2872,
+      "cached_input_tokens": 603,
+      "cache_creation_input_tokens": 2267,
+      "output_tokens": 139
+     },
+     "thinking": 0,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "adapter_A"
+     ]
+    }
+   ],
+   "launches_flow_usage": 2,
+   "tokens_flow_usage": 6236,
+   "order": "direct,akor"
+  }
+ ]
+}

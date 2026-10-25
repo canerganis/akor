@@ -1,0 +1,177 @@
+{
+ "kind": "live",
+ "rows": [
+  {
+   "arm": "akor",
+   "stage": "cold",
+   "launches": 2,
+   "input_tokens": 10442,
+   "output_tokens": 3531,
+   "tokens": 13973,
+   "cached_input_tokens": 4546,
+   "thinking_tokens": 1416,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 33.24,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 4567,
+      "cached_input_tokens": 3943,
+      "cache_creation_input_tokens": 622,
+      "output_tokens": 2002
+     },
+     "thinking": 921,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "core_A",
+      "core_B",
+      "core_C",
+      "core_D"
+     ]
+    },
+    {
+     "usage": {
+      "input_tokens": 5875,
+      "cached_input_tokens": 603,
+      "cache_creation_input_tokens": 5270,
+      "output_tokens": 1529
+     },
+     "thinking": 495,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "adapter_A",
+      "adapter_B",
+      "adapter_C",
+      "adapter_D"
+     ]
+    }
+   ],
+   "launches_flow_usage": 2,
+   "tokens_flow_usage": 13973,
+   "order": "akor,direct"
+  },
+  {
+   "arm": "akor",
+   "stage": "revision",
+   "launches": 2,
+   "input_tokens": 5420,
+   "output_tokens": 840,
+   "tokens": 6260,
+   "cached_input_tokens": 2501,
+   "thinking_tokens": 390,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 20.47,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 2526,
+      "cached_input_tokens": 1898,
+      "cache_creation_input_tokens": 626,
+      "output_tokens": 704
+     },
+     "thinking": 390,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "core_A"
+     ]
+    },
+    {
+     "usage": {
+      "input_tokens": 2894,
+      "cached_input_tokens": 603,
+      "cache_creation_input_tokens": 2289,
+      "output_tokens": 136
+     },
+     "thinking": 0,
+     "seconds": null,
+     "failure": null,
+     "members": [
+      "adapter_A"
+     ]
+    }
+   ],
+   "launches_flow_usage": 2,
+   "tokens_flow_usage": 6260,
+   "order": "akor,direct"
+  },
+  {
+   "arm": "direct",
+   "stage": "cold",
+   "launches": 1,
+   "input_tokens": 7464,
+   "output_tokens": 3546,
+   "tokens": 11010,
+   "cached_input_tokens": 6809,
+   "thinking_tokens": 1421,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 27.89,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 7464,
+      "cached_input_tokens": 6809,
+      "cache_creation_input_tokens": 653,
+      "output_tokens": 3546
+     },
+     "thinking": 1421,
+     "seconds": 25.9,
+     "failure": null
+    }
+   ],
+   "order": "akor,direct"
+  },
+  {
+   "arm": "direct",
+   "stage": "revision",
+   "launches": 1,
+   "input_tokens": 3515,
+   "output_tokens": 982,
+   "tokens": 4497,
+   "cached_input_tokens": 2860,
+   "thinking_tokens": 570,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 12.57,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 3515,
+      "cached_input_tokens": 2860,
+      "cache_creation_input_tokens": 653,
+      "output_tokens": 982
+     },
+     "thinking": 570,
+     "seconds": 11.59,
+     "failure": null
+    }
+   ],
+   "order": "akor,direct"
+  }
+ ]
+}
