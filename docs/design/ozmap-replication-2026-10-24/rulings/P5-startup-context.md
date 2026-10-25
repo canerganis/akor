@@ -111,3 +111,15 @@ Live path. The request content travels over TLS to the vendor and the harness ca
 Disclosed: the catalog path in the argv lies below the owner profile (the repository); the CLI reads that one file, and no owner path occurs in any captured request. P5-E3 (multi_agent items and the collaboration and exec tools) is now pinned by the item hashes of the approved list, the condition Opus B named in signoff-opus-2.md.
 
 Open before binding: both signatories, on the ruling text, the two annexes above and the approved effective context and catalog they name.
+
+## Astra sign-off 3 (2026-10-25)
+
+Astra A signed P5 after repair commit e29891f (rulings/signoff-astra-3.md), covering this ruling text, the repair 2 annexes and the effective context and catalog they name. It does not approve D5 and does not replace Opus B's countersignature.
+
+Signed: Astra A P5
+
+## Opus B sign-off 3 (2026-10-25)
+
+Opus B signed P5 after repair commit e29891f (rulings/signoff-opus-3.md, opusb3-20261025T035816Z), covering this ruling text, the startup manifest 20ea5c90, the effective context evidence 3b2f341c, the approved effective context 9f84be50 and the pinned catalog 1d39994d. OB-P5b is closed. Change OB-P5c stays open: with a live style answer to the prewarm the CLI sends the turn as a continuation on the same connection (previous_response_id, five items); the prewarm and continuation items together equal the approved list (rulings/evidence/opusb3-p5/), but that serialization is not yet a frozen transport of effective_context.TRANSPORTS. A changed annex, approved list or catalog needs a new Opus B line.
+
+Signed: Opus B P5

@@ -469,8 +469,21 @@ def plain(*extra):
                                                        'output_tokens': 1, 'reasoning_output_tokens': 0}})
 
 
-def test_item32_the_cli_notice_is_inactive_until_its_annex_is_approved():
-    assert events.classify_stream(plain(notice_event()))['verdict'] == 'uncertain'
+def test_item32_the_cli_notice_is_inactive_until_its_annex_is_approved(monkeypatch):
+    # P4 is bound since 2026-10-25, so the unapproved state is set explicitly: any one missing value keeps it inactive
+    for name, empty in (('SIGNED_CLI_NOTICES', ()), ('SIGNED_CLI_NOTICE_EVENT_KEYS', None),
+                        ('SIGNED_CLI_NOTICE_ID_RE', None)):
+        with monkeypatch.context() as m:
+            m.setattr(config, name, empty)
+            assert events.classify_stream(plain(notice_event()))['verdict'] == 'uncertain', name
+
+
+def test_item32_the_bound_cli_notice_is_the_signed_annex():
+    annex = config.SIGNED_RULINGS['P4']['annexes']['cli_notice_annex']
+    doc = json.loads((config.REPO / annex['path']).read_text(encoding='utf-8'))
+    assert doc == rulings.cli_notice_config()
+    assert events.classify_stream(plain(notice_event()))['verdict'] == 'plain'
+    assert events.classify_stream(plain(notice_event(item={'id': 'item_01'})))['verdict'] == 'uncertain'
 
 
 def test_item32_an_approved_notice_is_plain_and_every_variant_is_not(monkeypatch):

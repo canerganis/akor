@@ -598,3 +598,43 @@ the approved list). The boundary probe ties those inputs to the approved items.
 | `python -m pytest bench/ozmap_rep -q` | 669 passed |
 | dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
 | `gen_p5.py` (6 request boundary probes, no model call) | verdict established, every comparison empty, 0 external requests, 0 /models requests with the pin, 2 in the control |
+
+## Binding of the signed rulings P1 to P5 and D1 (2026-10-25)
+
+`config.SIGNED_RULINGS` now binds P1, P2, P3, P4, P5 and D1, each with the sha256 of the countersigned ruling bytes and
+of every annex the ruling names. D6 stays unbound.
+
+| slot | ruling sha256 | annexes | signatures |
+|---|---|---|---|
+| P1 | 0a9a47e5 | none | signoff-astra.md, signoff-opus.md |
+| P2 | 94ac6d63 | none | signoff-astra.md, signoff-opus.md |
+| P3 | 58d42547 | quota_source_manifest 3646deac | signoff-astra-2.md, signoff-opus-2.md |
+| P4 | 905cc3eb | cli_notice_annex 70b8b55a | signoff-astra.md, signoff-opus.md |
+| P5 | a020813e | startup_manifest 20ea5c90, effective_context_evidence 3b2f341c | signoff-astra-3.md, signoff-opus-3.md |
+| D1 | 90f2a5ce | attribution_evidence 4f8e7b49 | signoff-astra-2.md, signoff-opus-2.md |
+
+P4 annex: `SIGNED_CLI_NOTICES` holds the Code Mode notice, `SIGNED_CLI_NOTICE_EVENT_KEYS` is `('item', 'type')` and
+`SIGNED_CLI_NOTICE_ID_RE` is `item_(?:0|[1-9][0-9]*)`, which equals the annex (`rulings.cli_notice_config`). The notice
+predicate is therefore active, so `code_mode_host` stays disabled and `SIGNED_OMITTED_DISABLES` stays empty. P1 stays
+the empty registry as signed.
+
+Disclosed: P3 still reports a readiness problem after binding. Both signatories signed the P3 annex with
+`freshness_and_causal_coverage.status` `not_established` (D5 and the 60 minute freshness rule are not approved), and
+`rulings.ANNEX_STATUS` refuses the slot until a re-signed manifest records `established`. That gate is the one both
+signatories relied on when signing, so it is not relaxed here. `readiness_problems()` reports the P3 annex status and
+the unbound D6.
+
+### Tests
+
+* `tests/test_council_r2.py::test_item32_the_cli_notice_is_inactive_until_its_annex_is_approved` assumed the unbound
+  default. It now sets each of the three P4 values to its unapproved state and checks the notice stays uncertain.
+* New: `test_item32_the_bound_cli_notice_is_the_signed_annex` checks that the bound predicate equals the annex file and
+  accepts the fixture notice but not `item_01`. No acceptance or red team test changed.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 670 passed |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
+| `rulings.readiness_problems()` | two problems: P3 annex status `not_established`, D6 not settled |

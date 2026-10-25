@@ -146,9 +146,11 @@ LIVE_RUN_DIR_DEFAULT = Path(Path.home().anchor or '/') / 'ozmap_rep' / 'runs' / 
 LIVE_LEDGER_DEFAULT = RUNS_DEFAULT / 'live-calls.jsonl'
 
 # Signed exceptions (council rounds 1 and 2). Each entry needs a prospective ruling signed by Astra A and Opus B before
-# the freeze; all are empty until then, which is the strict reading of A4.2 and A4.3. The round 2 deadlock texts P1 to
-# P5 are signed by Astra A only (council-build-deadlock-r2-joint.md section 3) and bind after Opus B confirms them by
-# diff; freeze_command refuses until every slot in REQUIRED_RULINGS names its countersigned file (rulings.py).
+# the freeze; an entry stays empty until then, which is the strict reading of A4.2 and A4.3. The round 2 deadlock texts
+# P1 to P5 and D1 are countersigned by Astra A and Opus B (rulings/signoff-astra*.md, signoff-opus*.md) and bound below;
+# freeze_command refuses until every slot in REQUIRED_RULINGS names its countersigned file (rulings.py).
+#
+# P1 stays the empty registry as signed. P4 is active with its signed annex. SIGNED_OMITTED_DISABLES stays empty.
 #
 # P1 (A4.3): complete transport event messages (exact match, never a prefix) that are transport events when the stream
 # holds no tool item. Astra's P1: empty for codex-cli 0.160.0; every reconnect or fallback event is uncertain.
@@ -156,11 +158,15 @@ SIGNED_TRANSPORT_NOTICES = ()
 # P4 (A4.3, A4.2): complete CLI notice messages (exact match) of an `item.completed` error item. Inactive until the
 # outer event fixture (SIGNED_CLI_NOTICE_EVENT_KEYS) and the identifier syntax (SIGNED_CLI_NOTICE_ID_RE) are approved
 # by both signatories; the candidate text is archived in build-notes.md (Fable F6).
-SIGNED_CLI_NOTICES = ()
-SIGNED_CLI_NOTICE_EVENT_KEYS = None
-SIGNED_CLI_NOTICE_ID_RE = None
 P4_CANDIDATE_NOTICE = ('Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; '
                        'enable `features.code_mode_host` and install `codex-code-mode-host`.')
+# Bound 2026-10-25: P4 is signed by Astra A and Opus B (rulings/P4-cli-notice.md) with the annex
+# rulings/P4-cli-notice-annex.json (sha256 70b8b55a), which approves the outer event keys exactly {item, type} and the
+# identifier syntax item_(?:0|[1-9][0-9]*) under re.fullmatch. rulings.annex_problems refuses the binding unless these
+# three values equal the annex.
+SIGNED_CLI_NOTICES = (P4_CANDIDATE_NOTICE,)
+SIGNED_CLI_NOTICE_EVENT_KEYS = ('item', 'type')
+SIGNED_CLI_NOTICE_ID_RE = 'item_(?:0|[1-9][0-9]*)'
 # Disable options that may be left out of the frozen argv, with the signed document that authorizes it (item 8). The
 # joint decision keeps code_mode_host disabled, so this stays empty.
 SIGNED_OMITTED_DISABLES = {}
@@ -176,7 +182,39 @@ INSTRUCTION_BEARING = ('AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', '*.md', '
 # Closure round 1 (O5, Astra 32): D6, the focused verification and the independent operation attestation, is a
 # launch prerequisite bound like the other slots (rulings.ANNEXES_REQUIRED, rulings.d6_problems).
 REQUIRED_RULINGS = ('P1', 'P2', 'P3', 'P4', 'P5', 'D1', 'D6')
-SIGNED_RULINGS = {}
+# Bound 2026-10-25: P1, P2, P3, P4, P5 and D1 carry both signatures (rulings/signoff-astra*.md, signoff-opus*.md); each
+# sha256 is the exact countersigned bytes, each annex hash is named in its ruling text. The P3 annex records causal
+# coverage `not_established` as both signatories signed it (D5 and the freshness rule are not approved), so
+# rulings.annex_problems keeps refusing P3 until a re-signed manifest records `established`. D6 is not bound.
+SIGNED_RULINGS = {
+    'P1': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P1-transport-notices.md',
+           'sha256': '0a9a47e54bc40e5bc5c48b8a3c529b45cd6fa825acf1756251f7110d8e1f1504'},
+    'P2': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P2-unknown-usage.md',
+           'sha256': '94ac6d63949384b64bfdbfecc55d0e00f8979540ae840d064acf88f9211b5f4c'},
+    'P3': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-observation.md',
+           'sha256': '58d425477403e2fecf6029904acda71fe60210fe5e3605809bfcbadcd92cea34',
+           'annexes': {'quota_source_manifest': {
+               'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json',
+               'sha256': '3646deacbbf5afee8130bf6c79dc8858a9159502af0825f166fc978bb8ce51de'}}},
+    'P4': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P4-cli-notice.md',
+           'sha256': '905cc3eb0f4a9e927e293a08983efef68ea5458bf3a38c59cccd9b21f1c5cdfb',
+           'annexes': {'cli_notice_annex': {
+               'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P4-cli-notice-annex.json',
+               'sha256': '70b8b55a59cddfd8037948eabf59d9d394f96f77bf9389d7a85013df63a7e693'}}},
+    'P5': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P5-startup-context.md',
+           'sha256': 'a020813e24075d93bf41f7c10b5469cc48313885fac85941391291fb2d781b7d',
+           'annexes': {'startup_manifest': {
+               'path': 'bench/ozmap_rep/startup-manifest.json',
+               'sha256': '20ea5c908886ead5a7b5d8eeacb7fd1dbf7f41e105b2637c11f42485da710e26'},
+               'effective_context_evidence': {
+               'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P5-effective-context-evidence.json',
+               'sha256': '3b2f341c479a141dc639bf23f5c127ba9618a97a74f530b510aba514d71a9844'}}},
+    'D1': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/D1-auth-attribution.md',
+           'sha256': '90f2a5ceb024c93a347d99fb5d5def9b0f38435e42aa0129cc17cd43fa293ab1',
+           'annexes': {'attribution_evidence': {
+               'path': 'docs/design/ozmap-replication-2026-10-24/rulings/D1-attribution-evidence.json',
+               'sha256': '4f8e7b49fda7c29d05d8479d28ca4cda247e80718cfb9f5f124d4aff559f6671'}}},
+}
 # P3 (A4.12): worker calls keep `--ephemeral`: A4.2 names it in the frozen arguments and the blind acceptance suite
 # tests it. Omitting it needs P3 countersigned by Opus B, which only permits it with a certified persistence and
 # harvest lifecycle. Isolation.finish harvests the quota metadata of any worker rollout before the home is emptied.
