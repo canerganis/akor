@@ -51,3 +51,7 @@ The coverage predicate (D5) is not signed. The annex records it as implemented a
 ## Countersignature
 
 Opus B: pending (confirmation by diff of the ruling text above).
+
+## Astra sign-off
+
+Not signed. Astra A raised BLOCKER P3 on 2026-10-25 (rulings/signoff-astra.md): quota.coverage_gate accepts a reading without an account hash. Closing needs the gate to require both hashes and a regression test.

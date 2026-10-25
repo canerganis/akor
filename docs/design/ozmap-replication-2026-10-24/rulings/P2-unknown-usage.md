@@ -23,3 +23,11 @@ None required: rulings.ANNEXES_REQUIRED lists none for this slot.
 ## Countersignature
 
 Opus B: pending (confirmation by diff of the ruling text above).
+
+## Astra countersignature
+
+Signed: Astra A P2 (2026-10-25, rulings/signoff-astra.md)
+
+Opus B confirmation by diff (2026-10-25): the ruling text above equals lines 195 to 203 of council-build-deadlock-r2-joint.md (sha256 fae12460cd9e64fe76716ad7b612f1f2e51663a4258eccda31ebfbca9b5c4324) byte for byte, and those lines equal the P2 text of council-build-deadlock-r2-astra-critique.md. No annex. The full bench/ozmap_rep suite passes (605 tests).
+
+Signed: Opus B opusb-20261025T020225Z

@@ -66,3 +66,7 @@ The effective context annex has the verdict not_established and records blocking
 ## Countersignature
 
 Opus B: pending (confirmation by diff of the ruling text above).
+
+## Astra countersignature
+
+Signed: Astra A P5 (2026-10-25, rulings/signoff-astra.md)
