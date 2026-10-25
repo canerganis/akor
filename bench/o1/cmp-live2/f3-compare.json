@@ -1,0 +1,147 @@
+{
+ "kind": "live",
+ "rows": [
+  {
+   "arm": "fused",
+   "stage": "cold",
+   "launches": 1,
+   "input_tokens": 6431,
+   "output_tokens": 4991,
+   "tokens": 11422,
+   "cached_input_tokens": 0,
+   "thinking_tokens": 2942,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 33.12,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 6431,
+      "cached_input_tokens": 0,
+      "cache_creation_input_tokens": 6429,
+      "output_tokens": 4991
+     },
+     "thinking": 2942,
+     "seconds": 31.12,
+     "failure": null,
+     "jobs": [
+      "cA",
+      "aA",
+      "cB",
+      "aB",
+      "cC",
+      "aC",
+      "cD",
+      "aD"
+     ]
+    }
+   ],
+   "order": "fused,direct"
+  },
+  {
+   "arm": "fused",
+   "stage": "revision",
+   "launches": 1,
+   "input_tokens": 3451,
+   "output_tokens": 1125,
+   "tokens": 4576,
+   "cached_input_tokens": 0,
+   "thinking_tokens": 730,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 13.04,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 3451,
+      "cached_input_tokens": 0,
+      "cache_creation_input_tokens": 3449,
+      "output_tokens": 1125
+     },
+     "thinking": 730,
+     "seconds": 12.06,
+     "failure": null,
+     "jobs": [
+      "cA",
+      "aA"
+     ]
+    }
+   ],
+   "order": "fused,direct"
+  },
+  {
+   "arm": "direct",
+   "stage": "cold",
+   "launches": 1,
+   "input_tokens": 7467,
+   "output_tokens": 3572,
+   "tokens": 11039,
+   "cached_input_tokens": 6809,
+   "thinking_tokens": 1544,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 27.59,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 7467,
+      "cached_input_tokens": 6809,
+      "cache_creation_input_tokens": 656,
+      "output_tokens": 3572
+     },
+     "thinking": 1544,
+     "seconds": 25.62,
+     "failure": null
+    }
+   ],
+   "order": "fused,direct"
+  },
+  {
+   "arm": "direct",
+   "stage": "revision",
+   "launches": 1,
+   "input_tokens": 3515,
+   "output_tokens": 946,
+   "tokens": 4461,
+   "cached_input_tokens": 2860,
+   "thinking_tokens": 555,
+   "thinking_unknown": 0,
+   "calls_without_usage": 0,
+   "failed_calls": 0,
+   "elapsed_seconds": 11.27,
+   "on_time": true,
+   "verified": true,
+   "verified_on_time": true,
+   "errors": [],
+   "calls": [
+    {
+     "usage": {
+      "input_tokens": 3515,
+      "cached_input_tokens": 2860,
+      "cache_creation_input_tokens": 653,
+      "output_tokens": 946
+     },
+     "thinking": 555,
+     "seconds": 10.31,
+     "failure": null
+    }
+   ],
+   "order": "fused,direct"
+  }
+ ]
+}
