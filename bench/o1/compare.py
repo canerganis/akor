@@ -11,7 +11,9 @@ revision 1) followed by a revision (ticket A at revision 2); each arm keeps its 
           is a new flow in the same memo namespace whose source A starts at revision 2.
 
     python bench/o1/compare.py run --workspace DIR --order direct,akor [--kind fixture|live]
-Live runs need O1_LIVE_CONFIRM=1. Results: DIR/compare.json (one row per delivery).
+Live runs need O1_LIVE_CONFIRM=1. Results: DIR/compare.json (one row per delivery). The five-minute limit is a
+scoring deadline (verified_on_time), not a kill: the executor keeps its own deadlines unchanged, the shared caps bound
+spend.
 """
 from __future__ import annotations
 
@@ -255,9 +257,12 @@ def akor_calls(ws: Path, request_id: str) -> list:
     for d in O.trace_of(ws, request_id):
         done = ws / d['run_dir'] / 'captures' / f"{d['receipt']}.done"
         envelope = O.envelope_of(json.loads(done.read_text(encoding='utf-8'))) if done.exists() else None
+        seen = sorted((envelope or {}).get('modelUsage') or {})
+        failure = ('no retained envelope' if not envelope else
+                   None if seen == [O.spec()['route']['model']] else 'unexpected model(s): ' + ', '.join(seen))
         out.append({'usage': usage_of(envelope) if envelope else None,
                     'thinking': O.thinking_tokens(envelope) if envelope else None, 'seconds': None,
-                    'failure': None if envelope else 'no retained envelope',
+                    'failure': failure,
                     'members': [m['id'] for m in d['members']]})
     return out
 
@@ -276,7 +281,8 @@ def akor_delivery(ws: Path, stage: str, kind: str, prefix: str, ledger) -> dict:
     here = [flow_usage(ws, x) for x in flows if x != request_id]
     budget = dict(O.allocation(),
                   max_launches=sum(u['launches'] for u in here) + ledger.left_launches(),
-                  max_tokens=sum(u['tokens_known'] for u in here) + ledger.left_tokens())
+                  max_tokens=sum(u['tokens_known'] + u['calls_without_usage'] * O.allocation()['reserve_per_launch']
+                                 for u in here) + ledger.left_tokens())
     budget.pop('max_launches_per_flow', None)
     quota = O.quota_store(ws, kind)
     started = time.time()
@@ -354,6 +360,7 @@ def row(arm: str, stage: str, calls: list, elapsed: float, verdict: dict) -> dic
             'thinking_tokens': sum(c['thinking'] or 0 for c in calls), 'thinking_unknown': thinking_unknown,
             'calls_without_usage': len(calls) - len(known), 'failed_calls': sum(1 for c in calls if c['failure']),
             'elapsed_seconds': elapsed, 'on_time': elapsed <= DEADLINE, 'verified': verdict['verified'],
+            'verified_on_time': verdict['verified'] and elapsed <= DEADLINE,
             'errors': verdict['errors'], 'calls': calls}
 
 
@@ -378,7 +385,7 @@ def run(ws: Path, order: list, kind: str, prefix: str, ledger_path: Path) -> dic
             r['order'] = ','.join(order)
             report['rows'].append(r)
             out_path.write_text(json.dumps(report, indent=1) + '\n', encoding='utf-8')
-            print(arm, stage, 'verified' if r['verified'] else 'FAILED', r['launches'], 'launches', r['tokens'],
+            print(arm, stage, 'verified' if r['verified'] else 'FAILED', '' if r['on_time'] else 'LATE', r['launches'], 'launches', r['tokens'],
                   'tokens', r['elapsed_seconds'], 's', flush=True)
     return report
 
@@ -402,7 +409,7 @@ def main(argv=None):
     ledger = args.ledger or args.workspace.resolve().parent / 'compare-ledger.json'
     report = run(args.workspace, order, args.kind, args.prefix, ledger)
     complete = len(report['rows']) == 4 and not report.get('stopped')
-    return 0 if complete and all(x['verified'] for x in report['rows']) else 3
+    return 0 if complete and all(x['verified_on_time'] for x in report['rows']) else 3
 
 
 if __name__ == '__main__':
