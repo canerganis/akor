@@ -191,15 +191,16 @@ REQUIRED_RULINGS = ('P1', 'P2', 'P3', 'P4', 'P5', 'D1', 'D6')
 # sha256 is the exact countersigned bytes, each annex hash is named in its ruling text. P3 is bound by owner decision 5
 # (owner-decisions.md item 5): its ruling text gains a section citing the decision, and its annex records
 # `freshness_and_causal_coverage.status` `established` with the static headroom bound (headroom_bound: factor, m and
-# sources), which replaces the D5 causal coverage; the P3 hashes are those of the amended files, not of new
-# signatures. D6 is not bound.
+# sources), which replaces the D5 causal coverage. Rebound 2026-10-25: the P3 ruling hash is that of the text with the
+# appended sign-offs of Opus B (rulings/signoff-opus-p3.md), Astra A after repair 1 (rulings/signoff-astra-P3-r1.md)
+# and Opus B after repair 1 (rulings/signoff-opus-P3-r1.md); the manifest hash is unchanged. D6 is not bound.
 SIGNED_RULINGS = {
     'P1': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P1-transport-notices.md',
            'sha256': '0a9a47e54bc40e5bc5c48b8a3c529b45cd6fa825acf1756251f7110d8e1f1504'},
     'P2': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P2-unknown-usage.md',
            'sha256': '94ac6d63949384b64bfdbfecc55d0e00f8979540ae840d064acf88f9211b5f4c'},
     'P3': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-observation.md',
-           'sha256': '51fd66026901e0cfc92dd653952c35af53601be986dfcafd2abf61765478363e',
+           'sha256': '54c8ab94fd8a27678696f33f640685a74c1ee87777119d7d5d9ccc72e0e1498c',
            'annexes': {'quota_source_manifest': {
                'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json',
                'sha256': '5ee1f954de3d639b3c80377b69d55f461980e9ac1c483d4870da6bdd89123a71'}}},

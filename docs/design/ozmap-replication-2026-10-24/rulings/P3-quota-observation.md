@@ -88,3 +88,28 @@ Source: docs/design/ozmap-replication-2026-10-24/owner-decisions.md, item 5 (com
 * The D5 pre-cell owner reading check stays as an additional gate: no owner reading, or an invalid, unattributable, future dated or stale one, stops before the bound is evaluated. A missing or invalid m stops.
 
 The annex records `freshness_and_causal_coverage.status` `established` on this basis, so rulings.annex_problems binds P3. The signatures above cover the text before this section and the earlier annex; this section and the new annex are bound by owner decision 5, not by a new signature of Astra A or Opus B. Regression tests: bench/ozmap_rep/tests/test_p3_headroom.py.
+
+## Opus B sign-off P3 (2026-10-25)
+
+Signed: Opus B P3
+
+Source: rulings/signoff-opus-p3.md. Checked at 6f053f8: the manifest's `established` status under owner decision 5
+follows from the preserved evidence (bracket readings 33 and 35 confirmed against every baseline reading of
+2026-10-24, 35 pilot calls equal to the pilot reservations, m 0.21 recomputed), the live gate implements the bound with
+the owner reading check first, 729 tests pass. Three CHANGE items, no blocker. The signature does not approve D5 as a
+launch gate.
+
+## Astra sign-off P3 r1 (2026-10-25)
+
+Signed: Astra A P3
+
+Source: rulings/signoff-astra-P3-r1.md. Re-check after repair commit 1bb148b; blockers P3-H1 and P3-H2 are closed. No CHANGE notes.
+
+## Opus B sign-off P3 after repair 1 (2026-10-25)
+
+Signed: Opus B P3
+
+Source: rulings/signoff-opus-P3-r1.md. Checked at 1bb148b: Astra A blockers P3-H1 and P3-H2 are closed. Their eight
+regression tests pass and all eight fail against the unfixed gate of 1bb148b^. The P3 tests and the full suite pass
+(737) with the committed ruling bytes. Three CHANGE items, no blocker. The ruling hash in config.SIGNED_RULINGS needs
+rebinding after the signature appends.

@@ -805,3 +805,21 @@ Astra A refused the P3 signature with two A4.14.2 blockers (rulings/signoff-astr
 |---|---|
 | `python -m pytest bench/ozmap_rep -q` | 737 passed (with the committed P3 ruling text) |
 | dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
+
+## Rebind of signed P3 (2026-10-25)
+
+The P3 ruling text now carries three appended sign-off sections: Opus B P3 (rulings/signoff-opus-p3.md), Astra A P3
+after repair 1 (rulings/signoff-astra-P3-r1.md) and Opus B P3 after repair 1 (rulings/signoff-opus-P3-r1.md). The
+first Astra A review (rulings/signoff-astra-p3.md) raised blockers P3-H1 and P3-H2, closed by commit 1bb148b.
+`config.SIGNED_RULINGS['P3']['sha256']` is rebound from 51fd6602 to
+54c8ab94fd8a27678696f33f640685a74c1ee87777119d7d5d9ccc72e0e1498c, the exact bytes of the signed text. The quota source
+manifest is unchanged (sha256 5ee1f954de3d639b3c80377b69d55f461980e9ac1c483d4870da6bdd89123a71). This closes Opus B
+CHANGE item 1 of signoff-opus-P3-r1.md. `rulings.readiness_problems()` now reports only D6 as unsettled.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 737 passed |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
+| `rulings.readiness_problems()` | one problem: ruling D6 is not settled |
