@@ -1,0 +1,129 @@
+{
+ "about": "D1 attribution evidence: local, non-model evidence on which credential source the pinned codex-cli 0.160.0 uses. No model call, no token text, no secret read; credential manager entries are recorded by target name shape only.",
+ "captured_at": "20261025T010224Z",
+ "cli_version": "codex-cli 0.160.0",
+ "executable": {
+  "note": "isolation.executable_identity of the codex launcher on PATH resolves to this native package binary",
+  "path": "~/.codex/packages/standalone/releases/0.160.0-x86_64-pc-windows-msvc/bin/codex.exe",
+  "sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d"
+ },
+ "not_established": [
+  "a complete credential access trace of the authenticated execution route: no file and registry access monitor is installed on this machine (Process Monitor absent), so none was recorded",
+  "binary and payload bound implementation analysis beyond string evidence"
+ ],
+ "os_credential_store": {
+  "codex_target_shape": "LegacyGeneric:target=secrets|<16 hex>.codex",
+  "codex_targets": 1,
+  "generic_targets_total": 22,
+  "key_derivation": "the 16 hex characters equal the first 16 of sha256 over the UTF-8 extended length path \\\\?\\<owner home>\\.codex",
+  "method": "cmdkey /list (target names only; no secret read), Windows Credential Manager of the owner",
+  "reading": "the only Codex entry in the OS credential store is keyed by a hash of the owner CODEX_HOME path (~/.codex), not by account data; no entry exists for the baseline path or any worker path. It belongs to secret_auth_storage, which the frozen route disables (--disable secret_auth_storage)"
+ },
+ "route_binding": [
+  "the frozen argv carries -c cli_auth_credentials_store=\"file\" and --disable secret_auth_storage (config.ROUTE_SECURITY_ARGS, config.DISABLE_FEATURES), enforced by isolation.argv_check and verify_launch",
+  "the telemetry certificate adds the scrambled token exec probe at a worker path (account metadata of the baseline kept, tokens no server accepts): an account indexed credential store would authenticate it; an authentication failure without reply or usage excludes that counterexample on the actual route"
+ ],
+ "static_strings": {
+  "counts": {
+   "Codex Auth": 1,
+   "auth.json": 5,
+   "cli_auth_credentials_store": 22,
+   "file_storage": 1,
+   "keyring_backend": 2,
+   "secret_auth_storage": 7,
+   "skip_host_skill_discovery": 7
+  },
+  "keyring_service": "the string Codex Auth sits next to the error text failed to delete auth from keyring: the OS keyring service name of the keyring store",
+  "method": "grep -a -o -F counts over the pinned codex.exe"
+ },
+ "status": "partial: this annex records static, black-box and credential store evidence. It meets Astra's D1 requirement only if Opus B rules this evidence, together with the telemetry scrambled token probe, acceptable (the joint decision names a credential access trace as the cheapest closing item)",
+ "store_selection_black_box": {
+  "method": "codex login status in fresh empty CODEX_HOME copies at a harness worker path (Isolation.empty_home, isolation.child_env, run.run_local), one fresh home per command",
+  "reading": "the configuration knob accepts exactly file, keyring, auto and ephemeral (a bogus value is refused); with no auth.json at the worker path no store, the OS keyring included, yields a credential for that path",
+  "results": {
+   "login_status_auto": {
+    "argv": [
+     "codex.EXE",
+     "-c",
+     "cli_auth_credentials_store=\"auto\"",
+     "login",
+     "status"
+    ],
+    "exit_code": 1,
+    "home_files_after": [
+     "tmp/arg0/codex-arg0W1w1Ch/.lock",
+     "tmp/arg0/codex-arg0W1w1Ch/apply_patch.bat",
+     "tmp/arg0/codex-arg0W1w1Ch/applypatch.bat"
+    ],
+    "stderr": "Not logged in",
+    "stdout": ""
+   },
+   "login_status_bogus": {
+    "argv": [
+     "codex.EXE",
+     "-c",
+     "cli_auth_credentials_store=\"bogus\"",
+     "login",
+     "status"
+    ],
+    "exit_code": 1,
+    "home_files_after": [
+     "tmp/arg0/codex-arg0fDtQI9/.lock",
+     "tmp/arg0/codex-arg0fDtQI9/apply_patch.bat",
+     "tmp/arg0/codex-arg0fDtQI9/applypatch.bat"
+    ],
+    "stderr": "Error loading configuration: unknown variant `bogus`, expected one of `file`, `keyring`, `auto`, `ephemeral`\nin `cli_auth_credentials_store`",
+    "stdout": ""
+   },
+   "login_status_default": {
+    "argv": [
+     "codex.EXE",
+     "login",
+     "status"
+    ],
+    "exit_code": 1,
+    "home_files_after": [
+     "tmp/arg0/codex-arg0DVLgPT/.lock",
+     "tmp/arg0/codex-arg0DVLgPT/apply_patch.bat",
+     "tmp/arg0/codex-arg0DVLgPT/applypatch.bat"
+    ],
+    "stderr": "Not logged in",
+    "stdout": ""
+   },
+   "login_status_file": {
+    "argv": [
+     "codex.EXE",
+     "-c",
+     "cli_auth_credentials_store=\"file\"",
+     "login",
+     "status"
+    ],
+    "exit_code": 1,
+    "home_files_after": [
+     "tmp/arg0/codex-arg0LOBfo2/.lock",
+     "tmp/arg0/codex-arg0LOBfo2/apply_patch.bat",
+     "tmp/arg0/codex-arg0LOBfo2/applypatch.bat"
+    ],
+    "stderr": "Not logged in",
+    "stdout": ""
+   },
+   "login_status_keyring": {
+    "argv": [
+     "codex.EXE",
+     "-c",
+     "cli_auth_credentials_store=\"keyring\"",
+     "login",
+     "status"
+    ],
+    "exit_code": 1,
+    "home_files_after": [
+     "tmp/arg0/codex-arg0BLE38o/.lock",
+     "tmp/arg0/codex-arg0BLE38o/apply_patch.bat",
+     "tmp/arg0/codex-arg0BLE38o/applypatch.bat"
+    ],
+    "stderr": "Not logged in",
+    "stdout": ""
+   }
+  }
+ }
+}

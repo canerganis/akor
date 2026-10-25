@@ -1,0 +1,636 @@
+{
+ "about": "P5 effective context evidence (annex effective_context_evidence): what the pinned codex-cli 0.160.0 renders as the model-visible prompt input, captured with the local non-model command `codex debug prompt-input` in fresh empty CODEX_HOME copies built by the harness isolation code. No model call, no auth.json, nothing copied from ~/.codex. Text is recorded by length and sha256 only.",
+ "blocking_findings": [
+  {
+   "finding": "host skill discovery reaches the owner profile: root r0 is the owner's ~/.agents/skills (45 skills) although CODEX_HOME, HOME and USERPROFILE all point at the worker home, so the pinned binary resolves the profile directory from the operating system, not from the environment",
+   "id": "P5-E1",
+   "status": "in the default assembly; whether --enable skip_host_skill_discovery removes it on the exec route is not established (the renderer ignores the flag)"
+  },
+  {
+   "finding": "the CODEX_HOME system skills written at startup (root r1: imagegen, openai-docs, skill-creator, skill-installer) are listed in the host_skills.instructions item of the default assembly; P5 says including bundled skill instructions needs a separate prospective amendment",
+   "id": "P5-E2",
+   "status": "not established for the exec route"
+  },
+  {
+   "finding": "multi_agent role and mode instructions are in the default assembly although multi_agent and multi_agent_v2 are disabled on the frozen route",
+   "id": "P5-E3",
+   "status": "not established for the exec route"
+  }
+ ],
+ "captured_at": "20261025T005939Z",
+ "cli_version": "codex-cli 0.160.0",
+ "default_assembly": {
+  "base_instructions": "not part of this rendering; they travel in the request instructions field. A 0.160.0 rollout session_meta carries base_instructions.{text, provenance{type, model}} (Fable F8)",
+  "codex_home_system_skills_listed": [
+   "imagegen",
+   "openai-docs",
+   "skill-creator",
+   "skill-installer"
+  ],
+  "harness_input": "the prompt is rendered as one user message with a single input_text equal to the exact prompt bytes (marker of 25 characters, no wrapper)",
+  "items": [
+   "developer: host_skills.instructions, permissions.instructions, collaboration_mode.instructions",
+   "developer: multi_agent.role_instructions",
+   "developer: multi_agent.mode_instructions",
+   "user: environments.environment_context",
+   "user: user.text (only when a prompt is given)"
+  ],
+  "skills_per_root": {
+   "r0": 45,
+   "r1": 4
+  },
+  "skills_roots": {
+   "r0": "~/.agents/skills",
+   "r1": "~/.ozmap_rep/annex-probes/p5-20261025T005939Z/homes/worker-0/skills/.system"
+  }
+ },
+ "executable_sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d",
+ "flag_sensitivity": {
+  "consequence": "the rendering shows the pinned binary's default context assembly, not the frozen exec route; it is not request boundary evidence for the frozen argv",
+  "finding": "debug prompt-input ignores -c, --enable and --disable: renderings with the frozen route arguments at the top level, at the debug level, at the prompt-input level, with no route arguments, with features.* set by -c, and with sandbox_mode unset, read-only or workspace-write are identical item by item within one home root (the first item differs between roots only because it names the home path). `features list` with the same arguments does report them (multi_agent false, skip_host_skill_discovery true, code_mode_host false), so the arguments parse but this renderer does not apply them",
+  "variants": {
+   "pi_cfg_features": {
+    "argv": [
+     "codex.EXE",
+     "debug",
+     "prompt-input",
+     "-c",
+     "features.multi_agent=false",
+     "-c",
+     "features.multi_agent_v2=false",
+     "-c",
+     "features.skip_host_skill_discovery=true",
+     "-c",
+     "features.skill_search=false",
+     "M"
+    ],
+    "content_sha256_prefixes": [
+     "08a0624c9d9f5f6e",
+     "2493dd1ae75230d9",
+     "bec8e7b5358a20b4",
+     "4709149093850595",
+     "6ded806e3cdbb355",
+     "740c0ecef6417bc0",
+     "08f271887ce94707"
+    ]
+   },
+   "pi_leaf_level": {
+    "argv": [
+     "codex.EXE",
+     "debug",
+     "prompt-input",
+     "-c",
+     "cli_auth_credentials_store=\"file\"",
+     "--enable",
+     "skip_host_skill_discovery",
+     "--disable",
+     "plugins",
+     "--disable",
+     "apps",
+     "--disable",
+     "memories",
+     "--disable",
+     "hooks",
+     "--disable",
+     "multi_agent",
+     "--disable",
+     "skill_search",
+     "--disable",
+     "browser_use",
+     "--disable",
+     "computer_use",
+     "--disable",
+     "image_generation",
+     "--disable",
+     "view_image",
+     "--disable",
+     "shell_tool",
+     "--disable",
+     "unified_exec",
+     "--disable",
+     "unified_exec_tty",
+     "--disable",
+     "browser_use_external",
+     "--disable",
+     "browser_use_full_cdp_access",
+     "--disable",
+     "in_app_browser",
+     "--disable",
+     "code_mode_host",
+     "--disable",
+     "remote_plugin",
+     "--disable",
+     "plugin_sharing",
+     "--disable",
+     "recommended_plugins",
+     "--disable",
+     "skill_mcp_dependency_install",
+     "--disable",
+     "tool_suggest",
+     "--disable",
+     "tool_call_mcp_elicitation",
+     "--disable",
+     "sleep_tool",
+     "--disable",
+     "multi_agent_v2",
+     "--disable",
+     "shell_snapshot",
+     "--disable",
+     "workspace_dependencies",
+     "--disable",
+     "secret_auth_storage",
+     "-c",
+     "project_doc_max_bytes=0",
+     "-c",
+     "model=\"gpt-6.1-sol\"",
+     "-c",
+     "model_reasoning_effort=\"high\"",
+     "-c",
+     "sandbox_mode=\"read-only\"",
+     "HARNESS_INPUT_MARKER_7f3a"
+    ],
+    "content_sha256_prefixes": [
+     "a451849074a55085",
+     "2493dd1ae75230d9",
+     "bec8e7b5358a20b4",
+     "4709149093850595",
+     "6ded806e3cdbb355",
+     "0cc5b608bfcb4248",
+     "7c1a56c077f7c87e"
+    ]
+   },
+   "pi_no_route": {
+    "argv": [
+     "codex.EXE",
+     "debug",
+     "prompt-input",
+     "-c",
+     "model=\"gpt-6.1-sol\"",
+     "-c",
+     "model_reasoning_effort=\"high\"",
+     "-c",
+     "sandbox_mode=\"read-only\"",
+     "HARNESS_INPUT_MARKER_7f3a"
+    ],
+    "content_sha256_prefixes": [
+     "a451849074a55085",
+     "2493dd1ae75230d9",
+     "bec8e7b5358a20b4",
+     "4709149093850595",
+     "6ded806e3cdbb355",
+     "0cc5b608bfcb4248",
+     "7c1a56c077f7c87e"
+    ]
+   },
+   "pi_no_sandbox": {
+    "argv": [
+     "codex.EXE",
+     "debug",
+     "prompt-input",
+     "M"
+    ],
+    "content_sha256_prefixes": [
+     "08a0624c9d9f5f6e",
+     "2493dd1ae75230d9",
+     "bec8e7b5358a20b4",
+     "4709149093850595",
+     "6ded806e3cdbb355",
+     "740c0ecef6417bc0",
+     "08f271887ce94707"
+    ]
+   },
+   "pi_top_level": {
+    "argv": [
+     "codex.EXE",
+     "-c",
+     "cli_auth_credentials_store=\"file\"",
+     "--enable",
+     "skip_host_skill_discovery",
+     "--disable",
+     "plugins",
+     "--disable",
+     "apps",
+     "--disable",
+     "memories",
+     "--disable",
+     "hooks",
+     "--disable",
+     "multi_agent",
+     "--disable",
+     "skill_search",
+     "--disable",
+     "browser_use",
+     "--disable",
+     "computer_use",
+     "--disable",
+     "image_generation",
+     "--disable",
+     "view_image",
+     "--disable",
+     "shell_tool",
+     "--disable",
+     "unified_exec",
+     "--disable",
+     "unified_exec_tty",
+     "--disable",
+     "browser_use_external",
+     "--disable",
+     "browser_use_full_cdp_access",
+     "--disable",
+     "in_app_browser",
+     "--disable",
+     "code_mode_host",
+     "--disable",
+     "remote_plugin",
+     "--disable",
+     "plugin_sharing",
+     "--disable",
+     "recommended_plugins",
+     "--disable",
+     "skill_mcp_dependency_install",
+     "--disable",
+     "tool_suggest",
+     "--disable",
+     "tool_call_mcp_elicitation",
+     "--disable",
+     "sleep_tool",
+     "--disable",
+     "multi_agent_v2",
+     "--disable",
+     "shell_snapshot",
+     "--disable",
+     "workspace_dependencies",
+     "--disable",
+     "secret_auth_storage",
+     "-c",
+     "project_doc_max_bytes=0",
+     "-c",
+     "model=\"gpt-6.1-sol\"",
+     "-c",
+     "model_reasoning_effort=\"high\"",
+     "-c",
+     "sandbox_mode=\"read-only\"",
+     "debug",
+     "prompt-input",
+     "HARNESS_INPUT_MARKER_7f3a"
+    ],
+    "content_sha256_prefixes": [
+     "a451849074a55085",
+     "2493dd1ae75230d9",
+     "bec8e7b5358a20b4",
+     "4709149093850595",
+     "6ded806e3cdbb355",
+     "0cc5b608bfcb4248",
+     "7c1a56c077f7c87e"
+    ]
+   },
+   "pi_ws_sandbox": {
+    "argv": [
+     "codex.EXE",
+     "debug",
+     "prompt-input",
+     "-c",
+     "sandbox_mode=\"workspace-write\"",
+     "--disable",
+     "multi_agent",
+     "M"
+    ],
+    "content_sha256_prefixes": [
+     "08a0624c9d9f5f6e",
+     "2493dd1ae75230d9",
+     "bec8e7b5358a20b4",
+     "4709149093850595",
+     "6ded806e3cdbb355",
+     "740c0ecef6417bc0",
+     "08f271887ce94707"
+    ]
+   }
+  }
+ },
+ "renderings": {
+  "frozen_route_flags_no_prompt": {
+   "argv": [
+    "codex.EXE",
+    "debug",
+    "-c",
+    "cli_auth_credentials_store=\"file\"",
+    "--enable",
+    "skip_host_skill_discovery",
+    "--disable",
+    "plugins",
+    "--disable",
+    "apps",
+    "--disable",
+    "memories",
+    "--disable",
+    "hooks",
+    "--disable",
+    "multi_agent",
+    "--disable",
+    "skill_search",
+    "--disable",
+    "browser_use",
+    "--disable",
+    "computer_use",
+    "--disable",
+    "image_generation",
+    "--disable",
+    "view_image",
+    "--disable",
+    "shell_tool",
+    "--disable",
+    "unified_exec",
+    "--disable",
+    "unified_exec_tty",
+    "--disable",
+    "browser_use_external",
+    "--disable",
+    "browser_use_full_cdp_access",
+    "--disable",
+    "in_app_browser",
+    "--disable",
+    "code_mode_host",
+    "--disable",
+    "remote_plugin",
+    "--disable",
+    "plugin_sharing",
+    "--disable",
+    "recommended_plugins",
+    "--disable",
+    "skill_mcp_dependency_install",
+    "--disable",
+    "tool_suggest",
+    "--disable",
+    "tool_call_mcp_elicitation",
+    "--disable",
+    "sleep_tool",
+    "--disable",
+    "multi_agent_v2",
+    "--disable",
+    "shell_snapshot",
+    "--disable",
+    "workspace_dependencies",
+    "--disable",
+    "secret_auth_storage",
+    "-c",
+    "project_doc_max_bytes=0",
+    "-c",
+    "model=\"gpt-6.1-sol\"",
+    "-c",
+    "model_reasoning_effort=\"high\"",
+    "-c",
+    "sandbox_mode=\"read-only\"",
+    "prompt-input"
+   ],
+   "items": [
+    {
+     "content": [
+      {
+       "chars": 22162,
+       "opening_tag": "<skills_instructions>",
+       "sha256": "4133c523325db47e24ebc075fd7fa061e114968c81dc825600ab7598b1624bda",
+       "type": "input_text"
+      },
+      {
+       "chars": 3939,
+       "opening_tag": "<permissions instructions>",
+       "sha256": "2493dd1ae75230d95acdb8e77fb10d51138de63d95c10d2a647b76d59060d4d7",
+       "type": "input_text"
+      },
+      {
+       "chars": 920,
+       "opening_tag": "<collaboration_mode>",
+       "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "host_skills.instructions",
+      "permissions.instructions",
+      "collaboration_mode.instructions"
+     ],
+     "role": "developer",
+     "type": "message"
+    },
+    {
+     "content": [
+      {
+       "chars": 2429,
+       "opening_tag": "<multi_agent_role>",
+       "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "multi_agent.role_instructions"
+     ],
+     "role": "developer",
+     "type": "message"
+    },
+    {
+     "content": [
+      {
+       "chars": 271,
+       "opening_tag": "<multi_agent_mode>",
+       "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "multi_agent.mode_instructions"
+     ],
+     "role": "developer",
+     "type": "message"
+    },
+    {
+     "content": [
+      {
+       "chars": 537,
+       "opening_tag": "<environment_context>",
+       "sha256": "fd550bd3d1561dc6182befee5aff7cbe48619de3860c89cf886e0e397ec3d8b9",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "environments.environment_context"
+     ],
+     "role": "user",
+     "type": "message"
+    }
+   ]
+  },
+  "frozen_route_flags_with_marker": {
+   "argv": [
+    "codex.EXE",
+    "debug",
+    "-c",
+    "cli_auth_credentials_store=\"file\"",
+    "--enable",
+    "skip_host_skill_discovery",
+    "--disable",
+    "plugins",
+    "--disable",
+    "apps",
+    "--disable",
+    "memories",
+    "--disable",
+    "hooks",
+    "--disable",
+    "multi_agent",
+    "--disable",
+    "skill_search",
+    "--disable",
+    "browser_use",
+    "--disable",
+    "computer_use",
+    "--disable",
+    "image_generation",
+    "--disable",
+    "view_image",
+    "--disable",
+    "shell_tool",
+    "--disable",
+    "unified_exec",
+    "--disable",
+    "unified_exec_tty",
+    "--disable",
+    "browser_use_external",
+    "--disable",
+    "browser_use_full_cdp_access",
+    "--disable",
+    "in_app_browser",
+    "--disable",
+    "code_mode_host",
+    "--disable",
+    "remote_plugin",
+    "--disable",
+    "plugin_sharing",
+    "--disable",
+    "recommended_plugins",
+    "--disable",
+    "skill_mcp_dependency_install",
+    "--disable",
+    "tool_suggest",
+    "--disable",
+    "tool_call_mcp_elicitation",
+    "--disable",
+    "sleep_tool",
+    "--disable",
+    "multi_agent_v2",
+    "--disable",
+    "shell_snapshot",
+    "--disable",
+    "workspace_dependencies",
+    "--disable",
+    "secret_auth_storage",
+    "-c",
+    "project_doc_max_bytes=0",
+    "-c",
+    "model=\"gpt-6.1-sol\"",
+    "-c",
+    "model_reasoning_effort=\"high\"",
+    "-c",
+    "sandbox_mode=\"read-only\"",
+    "prompt-input",
+    "HARNESS_INPUT_MARKER_7f3a"
+   ],
+   "items": [
+    {
+     "content": [
+      {
+       "chars": 22162,
+       "opening_tag": "<skills_instructions>",
+       "sha256": "4133c523325db47e24ebc075fd7fa061e114968c81dc825600ab7598b1624bda",
+       "type": "input_text"
+      },
+      {
+       "chars": 3939,
+       "opening_tag": "<permissions instructions>",
+       "sha256": "2493dd1ae75230d95acdb8e77fb10d51138de63d95c10d2a647b76d59060d4d7",
+       "type": "input_text"
+      },
+      {
+       "chars": 920,
+       "opening_tag": "<collaboration_mode>",
+       "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "host_skills.instructions",
+      "permissions.instructions",
+      "collaboration_mode.instructions"
+     ],
+     "role": "developer",
+     "type": "message"
+    },
+    {
+     "content": [
+      {
+       "chars": 2429,
+       "opening_tag": "<multi_agent_role>",
+       "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "multi_agent.role_instructions"
+     ],
+     "role": "developer",
+     "type": "message"
+    },
+    {
+     "content": [
+      {
+       "chars": 271,
+       "opening_tag": "<multi_agent_mode>",
+       "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "multi_agent.mode_instructions"
+     ],
+     "role": "developer",
+     "type": "message"
+    },
+    {
+     "content": [
+      {
+       "chars": 537,
+       "opening_tag": "<environment_context>",
+       "sha256": "fd550bd3d1561dc6182befee5aff7cbe48619de3860c89cf886e0e397ec3d8b9",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "environments.environment_context"
+     ],
+     "role": "user",
+     "type": "message"
+    },
+    {
+     "content": [
+      {
+       "chars": 25,
+       "opening_tag": null,
+       "sha256": "7c1a56c077f7c87e2e34d7c50ef5d19b238676d2420f03b3414e2916cc6b8d8a",
+       "type": "input_text"
+      }
+     ],
+     "content_item_kinds": [
+      "user.text"
+     ],
+     "role": "user",
+     "type": "message"
+    }
+   ]
+  }
+ },
+ "verdict": "not_established",
+ "verdict_reason": "this evidence does not certify the effective context of the frozen exec route and it records two blocking findings; P5 certification and dependent evaluation launch stay blocked",
+ "what_would_close_it": [
+  "request boundary evidence or pinned implementation analysis for the frozen exec argv showing the complete effective instruction sources (base instructions, project instructions, skills, injected context) equal to the approved base instructions plus the exact harness input, with no host_skills, multi_agent or other item (D2)",
+  "a rollout inventory qualifies only with proof that it faithfully and completely records the effective request of the pinned route (P5); this annex does not supply that proof"
+ ]
+}

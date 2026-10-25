@@ -1,0 +1,10 @@
+{
+ "event_keys": [
+  "item",
+  "type"
+ ],
+ "id_re": "item_(?:0|[1-9][0-9]*)",
+ "notices": [
+  "Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`."
+ ]
+}

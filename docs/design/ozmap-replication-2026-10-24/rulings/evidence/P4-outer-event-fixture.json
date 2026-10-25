@@ -1,0 +1,95 @@
+{
+ "annex": "docs/design/ozmap-replication-2026-10-24/rulings/P4-cli-notice-annex.json",
+ "cli_version": "codex-cli 0.160.0",
+ "fixture": {
+  "event": {
+   "item": {
+    "id": "item_0",
+    "message": "Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`.",
+    "type": "error"
+   },
+   "type": "item.completed"
+  },
+  "item_keys": [
+   "id",
+   "message",
+   "type"
+  ],
+  "line": "{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"error\",\"message\":\"Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`.\"}}",
+  "line_number": 2,
+  "line_sha256": "18b6a7a9622434a670ebb9d8b11914772655a9406eeb47b5c902ef44e7c5b72e",
+  "origin": "the raw stdout of the build time no auth exec probe of codex-cli 0.160.0 (scratchpad rep/cliprobe/exec-noauth.out, 2026-10-24), copied byte for byte; it made no model request (empty CODEX_HOME, every request answered 401)",
+  "outer_keys": [
+   "item",
+   "type"
+  ],
+  "position": "second event of the stream: after thread.started, before turn.started",
+  "source": "docs/design/ozmap-replication-2026-10-24/rulings/evidence/P4-exec-noauth.out",
+  "source_sha256": "a73dc474d77594c2bed848746918c150f3feb917b78a3b4db429312dcfcb9ed4"
+ },
+ "identifier_syntax": {
+  "evidence": "every item identifier in the surveyed streams has the form item_<decimal counter> assigned in stream order from item_0; no other form was seen",
+  "id_re": "item_(?:0|[1-9][0-9]*)",
+  "id_shapes_seen": {
+   "item_<n>": 180
+  },
+  "match": "re.fullmatch (events.signed_cli_notice), so the expression is anchored at both ends"
+ },
+ "not_established": [
+  "whether the frozen exec argv of the replication (with --enable skip_host_skill_discovery and the route security arguments) emits the notice with the same outer schema; the telemetry stream is the first stream of that argv"
+ ],
+ "survey": {
+  "code_mode_notice_occurrences": 1,
+  "item_keys_by_item_type": {
+   "agent_message ['id', 'text', 'type']": 35,
+   "command_execution ['aggregated_output', 'command', 'exit_code', 'id', 'status', 'type']": 2,
+   "error ['id', 'message', 'type']": 143
+  },
+  "note": "the pilot streams ran without --disable code_mode_host, so the Code Mode notice occurs only in the cliprobe stream; every item.completed event in all streams has exactly the outer keys item and type",
+  "outer_keys_by_event": {
+   "item.completed ['item', 'type']": 179,
+   "item.started ['item', 'type']": 1
+  },
+  "sources": [
+   "bench/ozmap/runs/live-538bcde9a80b/telemetry/ws/do/telemetry-1/captures/1.envelope",
+   "bench/ozmap/runs/live-538bcde9a80b/telemetry/ws/do/telemetry-2/captures/1.envelope",
+   "bench/ozmap/runs/live-6a518ece47ab/telemetry/ws/do/telemetry-1/captures/1.envelope",
+   "bench/ozmap/runs/live-6a518ece47ab/telemetry/ws/do/telemetry-2/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-A/ws/do/qcljjl42hi7f6ny3ulwktmivhaiyzjjhphf4lqit3towlg57r4haa/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-A/ws/do/qrxysbjznuexhvoqydvt5sf7ephwsgfa4xcfamtcm6s3d322pfigq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-A/ws/do/qvfzzbm3wpohf7zhcfuueibrbgj5jupc2ebs3xfau33kpronsklla/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-A/ws/do/qwc54sntu7qthvqhc6qb3xr7wfmbn7obe3kijxvyqd7attmjq3qya/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-B/ws/do/q6s6bqri27oupm7n334exyoooevur4xh3c3cx3jqnrcszqwrcl3na/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-B/ws/do/qabvhstc222f2iyuae4rpfqk4wavxklomb3tphwgmjijx4zb6tyfa/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-B/ws/do/qcl5xr5y2bbjbkfrt7pqv77fq6lt5smjevtojlttbx7g6ctrkelza/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-B/ws/do/qxi4afqpkalugbm7gy6ijlimyk6lsvsvrcdh5wzxyvvjkvfyk7kaa/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-B/ws/do/qyipayn3bqsxzqh5tdebe4lgxosko3penquuo3om3qhw6szpvvpfa/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-C/ws/do/qhdm5zgaw77g5ealm5il6xzd4alxcfmr3ckyuaaofzc36b7xqpapq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-C/ws/do/qjty32x6krnhuocoj45pwxm6ovkzlcg33ff4tmwhdej5kjprmh6oa/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-boolq-C/ws/do/qqehfqnqgcgiqkb3x4cu2xhg5ifhopzqowgcs6dfp3pwjnawzwcta/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qfdge7cjuauws3isnafpi6efs7ubuseoc2rvz6pvn2yvpt673tidq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qglkgyh7ac4for6qx7xismovnqmwn4u5e5bmkuk73pluwzw3ttrnq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qiq6emrzssb6gu273nw5hyukh4uyg4gtc7nk4ybeqlvekmxlhplpa/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qitk3wo55rmurqamxvf4z6asantymwkfy6auljnliqopo2vlootzq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qoyut3ql5nieuqe3ecqxqar53ydm253yuea2bzumu6mnrojhlt2za/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qp7hofllzeeyjzg5sfqepr24v6rgjaqjkqe6ztec3q33gilpixpjq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qqz4ueglc2ecybkaxotbxynbcczuwmohof2lhfgrafaxu6phw7oca/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-A/ws/do/qr6qjrvfdu5d2prv67dxgg3d7ggdvsobvjeakwtbkmmqbeu6vmhdq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-B/ws/do/qcsws4m2gsb7s4iky2o3ejrt467f3jdv2xopln4yqvkngg4bpwafq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-B/ws/do/qejgwzkbmxwdfprvhu5lgcawld7esteldsevhfrf5g3bq3dectyla/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-B/ws/do/qesicq3regonzpmbhnxe7mfaknpik5oflykeerds4ccwa24ou2sba/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-B/ws/do/qiop53zwnlnmd77v5tb7j7ipibjdzhkzlswsp2wt2bg7xglgzgwva/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-B/ws/do/qkxf5t67ijhpkxxrvyepmqhun6awggopsl7boxj4qrh3favmlndjq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-C/ws/do/qbklvd27xkedgxj3ko5mwg54fgueckrsg6jtsgffovzkk63wzehua/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/arms/codex-materials-C/ws/do/qxkn37zr6ifgfbgyscyqxthzcovuckrzhdvvo2mibkye5utiruhmq/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/telemetry/ws/do/telemetry-1/captures/1.envelope",
+   "bench/ozmap/runs/live-bb76c7b0f329/telemetry/ws/do/telemetry-2/captures/1.envelope",
+   "bench/ozmap/runs/live-e744a1525dbf/telemetry/ws/do/telemetry-1/captures/1.envelope",
+   "bench/ozmap/runs/live-e744a1525dbf/telemetry/ws/do/telemetry-2/captures/1.envelope",
+   "scratchpad/rep/cliprobe/exec-noauth.out",
+   "scratchpad/rep/cliprobe/exec-noauth2.out"
+  ],
+  "streams": 37,
+  "what": "every preserved codex-cli 0.160.0 exec stream in the repository (envelopes under bench/ozmap/runs/live-*/, backend codex) plus the two cliprobe no auth streams; event keys and identifier shapes only"
+ }
+}

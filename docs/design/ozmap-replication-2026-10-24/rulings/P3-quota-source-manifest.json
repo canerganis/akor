@@ -1,0 +1,54 @@
+{
+ "about": "P3 quota source manifest: where the harness reads the Codex primary quota of the baseline account, how the account and bucket are identified, what the timestamps mean, and the coverage predicate the gate applies before every synchronized Codex dispatch group. Implemented in bench/ozmap_rep/quota.py (read_file, harvest_rollout, coverage_gate) and isolation.account_sha256.",
+ "account_field_mapping": {
+  "baseline": "isolation.account_sha256(baseline): sha256 of tokens.account_id of the baseline auth.json, else the chatgpt_account_id claim of its id_token or access_token",
+  "evidence": "the newest 30 owner rollouts, by CLI version and account attribution (hash comparison only, 2026-10-25): 0.163.0-alpha.11.2 account=none: 6 files, 0 readings; 0.160.0 account=baseline: 23 files, 69 readings; 0.164.0-alpha.11.1 account=baseline: 1 files, 180 readings. No rollout carries another account.",
+  "finding": "the owner sessions directory also receives rollouts of other CLI builds (0.163.0-alpha and 0.164.0-alpha, the desktop app). The 0.163.0-alpha rollouts carry no creator_account_id; they held no rate limit reading, but if the newest file were such a rollout with a reading, quota.coverage_gate would accept it, because it rejects an account mismatch only when both hashes are present. Under this manifest a reading without an account hash is not attributable and must block; the gate does not yet enforce that.",
+  "readings_from_other_cli_versions": "a reading from a CLI build other than the pinned one is accepted only with the same account hash, limit_id and window; its timestamp semantics are those of the pinned build only by assumption",
+  "rollout": "the session_meta event (type session_meta) payload.creator_account_id, hashed with sha256",
+  "rule": "a reading whose account hash differs from the baseline account hash blocks; a reading without an account hash is not attributable"
+ },
+ "bucket_identity": {
+  "bucket": "payload.rate_limits.primary",
+  "evidence": "249 readings in the newest 30 owner rollouts: limit_id always codex, primary.window_minutes always 10080, secondary always null",
+  "limit_id": "codex",
+  "path": "event_msg token_count events: payload.rate_limits",
+  "secondary": "null in every observed reading",
+  "stop_rule": "primary.used_percent >= 80 prevents dispatch (A4.12)",
+  "window_minutes": 10080
+ },
+ "cli_version": "codex-cli 0.160.0",
+ "coverage_predicate_implemented": {
+  "first_group": "the telemetry group has no previously completed attempt; it needs a valid latest owner reading of the baseline account",
+  "text": "before a synchronized Codex dispatch group, every previously completed live Codex attempt that could have consumed the baseline quota (quota.needs_coverage: every launched codex live attempt except one proven not launched and the telemetry probe with unaccepted tokens that ended in an authentication failure) is covered by (i) the validated last reading harvested from that attempt's own worker rollout, or (ii) a validated owner reading of the same account whose event timestamp is later than the attempt's ended_at (or ended_at_upper when recovered). The gate percent is the maximum of the covering readings and the latest owner reading. A concurrent sibling is never covered by another worker's reading."
+ },
+ "freshness_and_causal_coverage": {
+  "open": [
+   "D5: whether the last rate_limits event of an attempt's own rollout reflects that attempt's own consumption. The event is emitted before the call ends (Astra: do not assume a response generated reading occurs after local attempt completion), so form (i) of the predicate is causal coverage only if both signatories accept these semantics for codex-cli 0.160.0",
+   "whether the reported used_percent lags server side accounting; no evidence on lag exists without an added model call, which P3 forbids"
+  ],
+  "proposal_for_signatories": "the driver note of D5: for every attempt of every previously completed group, the last rate_limits event of that attempt's own rollout, with the gate using the maximum used_percent across those readings and any later owner readings of the same account. Not signed by either signatory.",
+  "status": "not_established"
+ },
+ "selection_and_validation": [
+  "select the latest relevant reading first, then validate it; a malformed latest reading blocks and an older valid reading is never substituted",
+  "reject missing evidence, booleans, nonnumeric or nonfinite values, values outside [0, 100], unexplained future timestamps, account or bucket mismatches",
+  "no model call is added, repeated or relabeled to obtain a reading; no stale reading or estimated headroom exception"
+ ],
+ "sources": {
+  "owner_rollout": "~/.codex/sessions/*/*/*/*.jsonl of the owner (same account): the newest file by modification time is selected (selection only, never freshness evidence) and its LAST rate_limits object is the reading",
+  "worker_rollout": "CODEX_HOME/sessions/YYYY/MM/DD/rollout-*.jsonl of the worker home of one attempt; exists only when the worker argv omits --ephemeral (P3); harvested by Isolation.finish before the home is emptied; only percent, event timestamp, account hash and CLI version leave the credential boundary"
+ },
+ "timestamp_semantics": {
+  "field": "the top level timestamp of the rollout event that carries rate_limits (ISO 8601, UTC, Z suffix)",
+  "future": "a timestamp more than 5 minutes after the gate time blocks",
+  "meaning": "when the CLI recorded the token_count event of a turn; it is emitted inside the call, before the call ends",
+  "never": "file modification times are never freshness evidence (P3)"
+ },
+ "value_semantics": {
+  "field": "primary.used_percent",
+  "monotonicity": "within one reset window (same primary.resets_at) no observed reading decreased across 249 readings",
+  "resolution": "every observed value is a whole number (float type), so the reading has one percentage point resolution",
+  "valid": "a finite JSON number in [0, 100] that is not a boolean (quota.valid_percent)"
+ }
+}

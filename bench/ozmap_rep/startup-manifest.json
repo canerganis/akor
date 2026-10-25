@@ -1,0 +1,700 @@
+{
+ "about": "P5 startup manifest: the instruction bearing files codex-cli 0.160.0 writes into an empty CODEX_HOME at startup, by canonical relative path (relative to CODEX_HOME, forward slashes), sha256 of the exact bytes, file type, origin and permitted role. isolation.startup_instruction_files accepts a runtime file only when its path AND sha256 are listed here. Entries under mutable_runtime_artifacts are not instruction bearing and are never accepted by this list; they are inventoried and removed after every call (Isolation.finish).",
+ "capture": {
+  "captured_at": "20261025T005939Z",
+  "commands": {
+   "features_list": {
+    "argv": [
+     "codex.EXE",
+     "-c",
+     "cli_auth_credentials_store=\"file\"",
+     "--enable",
+     "skip_host_skill_discovery",
+     "--disable",
+     "plugins",
+     "--disable",
+     "apps",
+     "--disable",
+     "memories",
+     "--disable",
+     "hooks",
+     "--disable",
+     "multi_agent",
+     "--disable",
+     "skill_search",
+     "--disable",
+     "browser_use",
+     "--disable",
+     "computer_use",
+     "--disable",
+     "image_generation",
+     "--disable",
+     "view_image",
+     "--disable",
+     "shell_tool",
+     "--disable",
+     "unified_exec",
+     "--disable",
+     "unified_exec_tty",
+     "--disable",
+     "browser_use_external",
+     "--disable",
+     "browser_use_full_cdp_access",
+     "--disable",
+     "in_app_browser",
+     "--disable",
+     "code_mode_host",
+     "--disable",
+     "remote_plugin",
+     "--disable",
+     "plugin_sharing",
+     "--disable",
+     "recommended_plugins",
+     "--disable",
+     "skill_mcp_dependency_install",
+     "--disable",
+     "tool_suggest",
+     "--disable",
+     "tool_call_mcp_elicitation",
+     "--disable",
+     "sleep_tool",
+     "--disable",
+     "multi_agent_v2",
+     "--disable",
+     "shell_snapshot",
+     "--disable",
+     "workspace_dependencies",
+     "--disable",
+     "secret_auth_storage",
+     "-c",
+     "project_doc_max_bytes=0",
+     "features",
+     "list"
+    ],
+    "exit_code": 0,
+    "files_written": []
+   },
+   "login_status": {
+    "argv": [
+     "codex.EXE",
+     "-c",
+     "cli_auth_credentials_store=\"file\"",
+     "login",
+     "status"
+    ],
+    "exit_code": 1,
+    "files_written": [
+     "tmp/arg0/codex-arg0xp5U2e/.lock",
+     "tmp/arg0/codex-arg0xp5U2e/apply_patch.bat",
+     "tmp/arg0/codex-arg0xp5U2e/applypatch.bat"
+    ]
+   },
+   "prompt_input_empty": {
+    "argv": [
+     "codex.EXE",
+     "debug",
+     "-c",
+     "cli_auth_credentials_store=\"file\"",
+     "--enable",
+     "skip_host_skill_discovery",
+     "--disable",
+     "plugins",
+     "--disable",
+     "apps",
+     "--disable",
+     "memories",
+     "--disable",
+     "hooks",
+     "--disable",
+     "multi_agent",
+     "--disable",
+     "skill_search",
+     "--disable",
+     "browser_use",
+     "--disable",
+     "computer_use",
+     "--disable",
+     "image_generation",
+     "--disable",
+     "view_image",
+     "--disable",
+     "shell_tool",
+     "--disable",
+     "unified_exec",
+     "--disable",
+     "unified_exec_tty",
+     "--disable",
+     "browser_use_external",
+     "--disable",
+     "browser_use_full_cdp_access",
+     "--disable",
+     "in_app_browser",
+     "--disable",
+     "code_mode_host",
+     "--disable",
+     "remote_plugin",
+     "--disable",
+     "plugin_sharing",
+     "--disable",
+     "recommended_plugins",
+     "--disable",
+     "skill_mcp_dependency_install",
+     "--disable",
+     "tool_suggest",
+     "--disable",
+     "tool_call_mcp_elicitation",
+     "--disable",
+     "sleep_tool",
+     "--disable",
+     "multi_agent_v2",
+     "--disable",
+     "shell_snapshot",
+     "--disable",
+     "workspace_dependencies",
+     "--disable",
+     "secret_auth_storage",
+     "-c",
+     "project_doc_max_bytes=0",
+     "-c",
+     "model=\"gpt-6.1-sol\"",
+     "-c",
+     "model_reasoning_effort=\"high\"",
+     "-c",
+     "sandbox_mode=\"read-only\"",
+     "prompt-input"
+    ],
+    "exit_code": 0,
+    "files_written": "51 files, listed below"
+   },
+   "prompt_input_marker": {
+    "argv": [
+     "codex.EXE",
+     "debug",
+     "-c",
+     "cli_auth_credentials_store=\"file\"",
+     "--enable",
+     "skip_host_skill_discovery",
+     "--disable",
+     "plugins",
+     "--disable",
+     "apps",
+     "--disable",
+     "memories",
+     "--disable",
+     "hooks",
+     "--disable",
+     "multi_agent",
+     "--disable",
+     "skill_search",
+     "--disable",
+     "browser_use",
+     "--disable",
+     "computer_use",
+     "--disable",
+     "image_generation",
+     "--disable",
+     "view_image",
+     "--disable",
+     "shell_tool",
+     "--disable",
+     "unified_exec",
+     "--disable",
+     "unified_exec_tty",
+     "--disable",
+     "browser_use_external",
+     "--disable",
+     "browser_use_full_cdp_access",
+     "--disable",
+     "in_app_browser",
+     "--disable",
+     "code_mode_host",
+     "--disable",
+     "remote_plugin",
+     "--disable",
+     "plugin_sharing",
+     "--disable",
+     "recommended_plugins",
+     "--disable",
+     "skill_mcp_dependency_install",
+     "--disable",
+     "tool_suggest",
+     "--disable",
+     "tool_call_mcp_elicitation",
+     "--disable",
+     "sleep_tool",
+     "--disable",
+     "multi_agent_v2",
+     "--disable",
+     "shell_snapshot",
+     "--disable",
+     "workspace_dependencies",
+     "--disable",
+     "secret_auth_storage",
+     "-c",
+     "project_doc_max_bytes=0",
+     "-c",
+     "model=\"gpt-6.1-sol\"",
+     "-c",
+     "model_reasoning_effort=\"high\"",
+     "-c",
+     "sandbox_mode=\"read-only\"",
+     "prompt-input",
+     "HARNESS_INPUT_MARKER_7f3a"
+    ],
+    "exit_code": 0,
+    "files_written": "51 files, listed below"
+   },
+   "version": {
+    "argv": [
+     "codex.EXE",
+     "--version"
+    ],
+    "exit_code": 0,
+    "files_written": [
+     "tmp/arg0/codex-arg0LFFQqW/.lock",
+     "tmp/arg0/codex-arg0LFFQqW/apply_patch.bat",
+     "tmp/arg0/codex-arg0LFFQqW/applypatch.bat"
+    ]
+   }
+  },
+  "findings": [
+   "features list (the frozen route arguments and disable list) writes nothing into CODEX_HOME (Fable F4 reproduced); it cannot produce the startup inventory",
+   "--version and login status write only the PATH helper aliases tmp/arg0/codex-arg0<random>/{.lock, apply_patch.bat, applypatch.bat}",
+   "debug prompt-input (renders the model-visible prompt input, makes no model request) runs the startup install: it writes the 49 files under skills/.system listed in files, plus installation_id and .sandbox_migration",
+   "the 49 skills/.system files are byte identical (path and sha256) to those the build time no auth exec probe wrote into scratchpad rep/cliprobe/home (Fable F5), so an exec of 0.160.0 writes the same bundled skill set"
+  ],
+  "limits": [
+   "D4: the exec probe home predates the final argv (--enable skip_host_skill_discovery, route security arguments). Whether the final exec argv writes exactly this set is first observed by the telemetry probe; under the operative rule (Astra, D4) an inventory outside this manifest stops the run, the annex is approved again and the freeze is redone"
+  ],
+  "method": "local non-model commands of the pinned binary in fresh empty CODEX_HOME copies built by the harness isolation code (Isolation.empty_home at a worker path under ~/.ozmap_rep, isolation.child_env, run.run_local); no auth.json was placed in the home and nothing was copied from ~/.codex, so no authenticated request was possible"
+ },
+ "cli_version": "codex-cli 0.160.0",
+ "executable_sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d",
+ "files": [
+  {
+   "bytes": 16,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/.codex-system-skills.marker",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "2e64550a2a95f66ce48839dc86cf0d04a5a1550c7e97a993081099ad2487af20",
+   "type": "file"
+  },
+  {
+   "bytes": 10977,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/LICENSE.txt",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "44e03f7e263eb3ad256440c1eeab5e49168baff5a78ecef9a5447261cf3a91bc",
+   "type": "file"
+  },
+  {
+   "bytes": 19516,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/SKILL.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "706d4d96e1d5c9e6023fe3ccabba1bb34b364024d344fd25b8515ec7d28fe3c4",
+   "type": "file"
+  },
+  {
+   "bytes": 281,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/agents/openai.yaml",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "1797be4076717806df54aa9331c07ac8eebe32c69f32132d5858712b05406146",
+   "type": "file"
+  },
+  {
+   "bytes": 2894,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/assets/imagegen-small.svg",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "087c1632a3b8a2ed4d6218952e7ba7ae2221a979f84233667ed2c587998784da",
+   "type": "file"
+  },
+  {
+   "bytes": 1711,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/assets/imagegen.png",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "95952f644064eb9e890f98d8db07216347186526e4c41ad66d3420629eb86e20",
+   "type": "file"
+  },
+  {
+   "bytes": 9897,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/references/cli.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "29dc8c1e3e5d9a20aee587fedb46a464552b6ec118d93bbd90c8d86e30502c8c",
+   "type": "file"
+  },
+  {
+   "bytes": 1812,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/references/codex-network.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "cba3b4d24d30f38adf8021b6e9b49ec5261a9e45e7df31047ec451c916c99b0a",
+   "type": "file"
+  },
+  {
+   "bytes": 6162,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/references/image-api.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "695909437b792aff171477dba127476a11235c220beb06533cce7c1495a042c8",
+   "type": "file"
+  },
+  {
+   "bytes": 8394,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/references/prompting.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "d957a45cb24fe2cf1a85858674fc533f15a5f4621355f559a13a93168999c2dd",
+   "type": "file"
+  },
+  {
+   "bytes": 18039,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/references/sample-prompts.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "76cc8a2988efb6e844a99ff9908b2b11cc07467510fc909002abcc0ee3f0701b",
+   "type": "file"
+  },
+  {
+   "bytes": 35697,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/scripts/image_gen.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "3666b807de3f0a1d0a4a767b886d612c0b8f71025c500bba6693d1c6995a0873",
+   "type": "file"
+  },
+  {
+   "bytes": 14354,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/imagegen/scripts/remove_chroma_key.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "fa2989807052b857bed08f7fee0caa2502b54c46afc0a6f28cd706c25f636630",
+   "type": "file"
+  },
+  {
+   "bytes": 10977,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/LICENSE.txt",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "44e03f7e263eb3ad256440c1eeab5e49168baff5a78ecef9a5447261cf3a91bc",
+   "type": "file"
+  },
+  {
+   "bytes": 5475,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/SKILL.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "8ce8021101bcea594ff92ee6cfd8ca7641a49ee66d7bc6070555f1a33fc239d9",
+   "type": "file"
+  },
+  {
+   "bytes": 376,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/agents/openai.yaml",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "0dd6c5ffa81a09782fd24cfa9fe1ec5c9633c90500b166ae18a462e613e876be",
+   "type": "file"
+  },
+  {
+   "bytes": 1094,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/assets/openai-small.svg",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "85ef0a2cde497872edec1525f1d538ccc42b33ff47acdbb88499a1631a4bdb21",
+   "type": "file"
+  },
+  {
+   "bytes": 1429,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/assets/openai.png",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "156cc84d7332bfe95b310350bd470b690d22aa33d65340cc6c2e06022946194c",
+   "type": "file"
+  },
+  {
+   "bytes": 7488,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/codex-self-knowledge.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "f945bf2a7cea6892d7a11ac38fb18b744fefd6d273654a8410c4c79e9f647fbe",
+   "type": "file"
+  },
+  {
+   "bytes": 2172,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/latest-model.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "c6908732acbf2c6732614d615856b5582964521a319da842cc9379f9822fbf34",
+   "type": "file"
+  },
+  {
+   "bytes": 2345,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/mcp-diagnostics.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "e9df2b2f8faa28930db4a2937cdb3665b4548ac958e80a8601a5dd0da1e6fad0",
+   "type": "file"
+  },
+  {
+   "bytes": 5139,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/model-migration.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "e2dc95fa96cf68c1e16f5bae265ae660bede705940602ba86ab6219c514a976d",
+   "type": "file"
+  },
+  {
+   "bytes": 1356,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/model-selection.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "ce020100a28004500c927abcd57cff154c5c360eb72d918ef7d72492e2484cce",
+   "type": "file"
+  },
+  {
+   "bytes": 3362,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/official-docs.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "b2301d72b8092be5f5727d8d1cbc75740887d836f4f13b469f40c1db16b39fe3",
+   "type": "file"
+  },
+  {
+   "bytes": 10281,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/prompting-guide.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "7e7cd7ff89f6211d1f881b8d394e92f416febe6eae2fdfd230c5b5c346bf8a93",
+   "type": "file"
+  },
+  {
+   "bytes": 1049,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/upgrade-guide.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "fada5e0c951a50e21c8ee9f51891159b539b651bfbdb92385fada4cbac93dab5",
+   "type": "file"
+  },
+  {
+   "bytes": 19214,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/references/upgrading-to-gpt-6-astra.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "cf4ebc3c89a5e2062e553626dcd27fab13f4870d3046c631ed91a0bc301bb32d",
+   "type": "file"
+  },
+  {
+   "bytes": 16683,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/scripts/fetch-codex-manual.mjs",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "1b9a36d3e59ddff3317d1faa182e5cd4967db14ff993593a5f98d5682dbffbe4",
+   "type": "file"
+  },
+  {
+   "bytes": 1077,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/scripts/resolve-latest-model-info",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "8f5006efa15c034ede29821b627d7b86c43f7dfaab422d335f45b9be8d04e2d5",
+   "type": "file"
+  },
+  {
+   "bytes": 4102,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/openai-docs/scripts/resolve-latest-model-info.cjs",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "91eb045abbf96ffb361e6ec2d3606540570fb32383edb22061f5549381ce0ee5",
+   "type": "file"
+  },
+  {
+   "bytes": 2718,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/review-agent/SKILL.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "bb46315f6bc4b7051c05f807d19b1689b20418ac6c42590406d805c10fa2fd1a",
+   "type": "file"
+  },
+  {
+   "bytes": 258,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/review-agent/agents/openai.yaml",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "579774dde24f21ee57d5cb63f69c2fce0da04b81538c636a0e0dd37dc836c811",
+   "type": "file"
+  },
+  {
+   "bytes": 15540,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/SKILL.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "cccd291077ec57c6f50ca6529f0f3fb93212da09473effb2fcec808e81b21288",
+   "type": "file"
+  },
+  {
+   "bytes": 188,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/agents/openai.yaml",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "b750627cdd588fdbb5b46e854d3384d1a504fad3b8ed73ca5d7ead3804df78b6",
+   "type": "file"
+  },
+  {
+   "bytes": 1322,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/assets/skill-creator-small.svg",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "edb19a0c59f9a1b5253b9af6d2f9f03cac27b2fe6a0275ebccbbdbff07891a1a",
+   "type": "file"
+  },
+  {
+   "bytes": 1563,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/assets/skill-creator.png",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "a4024b0306ddb05847e1012879d37aaf1e658205199da596f5145ed7a88d9162",
+   "type": "file"
+  },
+  {
+   "bytes": 11560,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/license.txt",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5",
+   "type": "file"
+  },
+  {
+   "bytes": 2405,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/references/openai_yaml.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "7039d465b05342cbacf861f08d20192ab1eeee112bc5d8ff0fb66234756887a9",
+   "type": "file"
+  },
+  {
+   "bytes": 6900,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/scripts/generate_openai_yaml.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "30c73f1ea7d47dbab2b231bb92c5bf9026f1ad14ba8e3b3a4a544092c4d24ebe",
+   "type": "file"
+  },
+  {
+   "bytes": 10622,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/scripts/init_skill.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "74dfa9361a93bee6932d6cbb332ed19ac26a27ba3800e69fb07ba7512c1025f9",
+   "type": "file"
+  },
+  {
+   "bytes": 4376,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-creator/scripts/quick_validate.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "6068513d924ed3559e186dfcdead7439129828dcf402167fd925c06dffbf2806",
+   "type": "file"
+  },
+  {
+   "bytes": 11560,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/LICENSE.txt",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5",
+   "type": "file"
+  },
+  {
+   "bytes": 3425,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/SKILL.md",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "2892d8b2fb11631132118f340aed80ae17e59d5a571fc2c4f4a4a7e73f139d52",
+   "type": "file"
+  },
+  {
+   "bytes": 226,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/agents/openai.yaml",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "bd64b4d6893138706b3e3540f266ab809ccdcd08375652ae9f9d1e029fe50d02",
+   "type": "file"
+  },
+  {
+   "bytes": 926,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/assets/skill-installer-small.svg",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "099e5a4b5e5f0f918a8de0d2059f0a86211da623dbb75f86f13dc9f7c08c778d",
+   "type": "file"
+  },
+  {
+   "bytes": 1086,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/assets/skill-installer.png",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "d0a230b1a79b71b858b7c215a0fbb0768d6459c14ea4ef80c61592629bf0e605",
+   "type": "file"
+  },
+  {
+   "bytes": 680,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/scripts/github_utils.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "2f9702afb9f0da740181fa4a3214f663e460f80cd5cea2e7dcaab00ad269082e",
+   "type": "file"
+  },
+  {
+   "bytes": 12272,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/scripts/install-skill-from-github.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "110cc7e4e395c2c9ba070d47db7d21be5164591c35015ae364fc9c9905b08de8",
+   "type": "file"
+  },
+  {
+   "bytes": 3054,
+   "origin": "vendor: codex-cli 0.160.0 bundled system skill set (skills/.system), written by the pinned binary at startup",
+   "path": "skills/.system/skill-installer/scripts/list-skills.py",
+   "role": "created at startup by the pinned CLI; creation is permitted, loading into the model context is not authorized (P5: file creation permission does not authorize instruction loading); the established effective context must not contain it",
+   "sha256": "2cd6eecbaf9be7c86e80a14d7042f95d6abb83b6baee5f17dd075fa7a71c83de",
+   "type": "file"
+  }
+ ],
+ "mutable_runtime_artifacts": [
+  {
+   "pattern": "installation_id",
+   "role": "random installation identifier (36 bytes, differs per run); not instruction bearing",
+   "type": "file",
+   "validation": "single regular file at the home root; removed after every call"
+  },
+  {
+   "pattern": ".sandbox_migration",
+   "role": "sandbox migration marker (3 bytes); not instruction bearing",
+   "sha256_seen": "2d27fbdf4e8ca207afbfa388ca9172fbcc6c70e534af2476b3b704f87debadcf",
+   "type": "file",
+   "validation": "single regular file at the home root; removed after every call"
+  },
+  {
+   "pattern": "tmp/arg0/codex-arg0*/{.lock,apply_patch.bat,applypatch.bat}",
+   "role": "PATH helper aliases of the CLI; not instruction bearing",
+   "type": "file",
+   "validation": "apply_patch.bat and applypatch.bat equal sha256 93da9279f7c07f21dc84f50687b3d12c6b30dccfb12c143fd450b1a69c12a9f4; removed after every call"
+  },
+  {
+   "pattern": "{goals_1,logs_2,memories_1,queue_1,state_5}.sqlite{,-shm,-wal}",
+   "role": "CLI state databases written by exec (Fable F5); not instruction bearing",
+   "type": "file",
+   "validation": "regular files at the home root; removed after every call"
+  },
+  {
+   "pattern": "sessions/YYYY/MM/DD/rollout-*.jsonl",
+   "role": "session rollout, only when --ephemeral is omitted (P3); harvested for quota metadata, never loaded",
+   "type": "file",
+   "validation": "P3 lifecycle: harvested by Isolation.finish before cleanup, stays inside the credential boundary"
+  }
+ ]
+}
