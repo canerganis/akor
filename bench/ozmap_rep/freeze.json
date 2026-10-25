@@ -1,0 +1,328 @@
+{
+ "classification_sha256": "b6c2a50302a8b4d76ab1b6e2cdf5ff87c20b2b2c31071ffdbefef1b63fe3268a",
+ "codex": {
+  "argv_sha256": "54f7a1e1a6e98c900ebf3a4bc1ebaef3431ec0950967e6c8c0f36a0910d297c5",
+  "exe": "C:\\Users\\can02\\.codex\\packages\\standalone\\releases\\0.160.0-x86_64-pc-windows-msvc\\bin\\codex.exe",
+  "exe_sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d",
+  "identity": {
+   "kind": "native_package",
+   "package_root": "C:\\Users\\can02\\.codex\\packages\\standalone\\releases\\0.160.0-x86_64-pc-windows-msvc",
+   "path": "C:\\Users\\can02\\.codex\\packages\\standalone\\releases\\0.160.0-x86_64-pc-windows-msvc\\bin\\codex.exe",
+   "payload": {
+    "bin/codex-code-mode-host.exe": "1d448bfde19e7a280d600d8d0bcddf77afbe9feaec1e804905becc5f39bc9db6",
+    "codex-package.json": "0ccad88219ce824ea2eda63d64fb3618e81ea0345cc7281c2e1b5a8abd19964d",
+    "codex-path/rg.exe": "14231169855ec5205cf5a1b6f1db358ff4aed4247c86b69ce8aae647c77f6680",
+    "codex-resources/codex-command-runner.exe": "dd13f8e95faba5cf539d870dd3b64c226b00d062a5b523e7e08c44fdc8235224",
+    "codex-resources/codex-windows-sandbox-setup.exe": "8f91d62aca2aca87b0ebf446848b817720415dd3080905ffc3085c17b70bd57a",
+    "codex-resources/voice/NOTICE.md": "473fcf8ccb68ce726111d016d133f0555adba730d057591512f3f71fb46aeb6e",
+    "codex-resources/voice/bin/codex-voice-host.exe": "901ab16bbe9883387b8825d256b3cb9b600827e87afc8c98c5a56b3ed093fde4",
+    "codex-resources/voice/bin/gio-2.0-0.dll": "525f7845787fbb2565b2b009f4f71ce1b8b96cdc45e2f19b3da61d31e1892df9",
+    "codex-resources/voice/bin/glib-2.0-0.dll": "bc2a7b3ecb408aec308c2c0e9c8b0d78beb38657d3266230f302ae7a226c58de",
+    "codex-resources/voice/bin/gmodule-2.0-0.dll": "f043549efa79c50c6d4059d45b626a8a73d1fbcc93c18c33be57b19d234dbede",
+    "codex-resources/voice/bin/gobject-2.0-0.dll": "408d1dc208d4198ff8c88491dca3a0d55bf61f5529af5793638c3de7bb96cded",
+    "codex-resources/voice/bin/gstapp-1.0-0.dll": "0efbb661d10fa068fde7b67d33d5776c348e79062bf9dd8bbcb2acfc278b3302",
+    "codex-resources/voice/bin/gstapp.dll": "4b6eaf09b84f8622a643eabbe13886137b1f9e817f312c0b22f5aa36f93fb3bc",
+    "codex-resources/voice/bin/gstaudio-1.0-0.dll": "80659b811e1647fb32461648f19955f8082d8d956e1538ca8a6e232654673897",
+    "codex-resources/voice/bin/gstaudioconvert.dll": "f684851409b670269ab69fd64a238b0132ade7a64c18f4cccaca97babc267f18",
+    "codex-resources/voice/bin/gstaudioresample.dll": "fb7530843d5708f076cd4a92fe76ec019058e7fd410c234b8d7b87118d9d7a69",
+    "codex-resources/voice/bin/gstbase-1.0-0.dll": "9539c09e40723dd7c609d8e08e06e507fcd0341e632b9d5e7718cfd7fd2809a7",
+    "codex-resources/voice/bin/gstcoreelements.dll": "31a4bea4ee24910f6edfb6807b0a4b4b3fea105d805e5cc5c4c9461ee9615504",
+    "codex-resources/voice/bin/gstnet-1.0-0.dll": "4eb10027d84f91ad328dc020fb94467a19808c2337c710e79c069ef522b932e7",
+    "codex-resources/voice/bin/gstopus.dll": "2b5d094fe1b98ff19d509a852e858e5f326d53a64bdcf3cee3017dc8903980cc",
+    "codex-resources/voice/bin/gstpbutils-1.0-0.dll": "6f9d0e1f88c5c1ede7936f3d91de4488653f7820cd578889ed77f67ea01d3430",
+    "codex-resources/voice/bin/gstreamer-1.0-0.dll": "c90ec5f842ce48af1dbe50484061fb6b0b5fabf308b2fd0f6a23e7d4addac155",
+    "codex-resources/voice/bin/gstrtp-1.0-0.dll": "1f6dd44fe900c76656eb4b5d08df35ca9ce69b4a3744ac2d9ad6ae11b4c397d4",
+    "codex-resources/voice/bin/gstrtp.dll": "472d719426c7877a60fdc1b3939ce33332f2cb3d7a9669287f6e899978eaee8f",
+    "codex-resources/voice/bin/gstrtpmanager.dll": "97e03e54d37ba5796bb9b1d3439d88ad45d8495878fc171480dbcc1f8c43c93c",
+    "codex-resources/voice/bin/gsttag-1.0-0.dll": "784aade7c32a5817abb163b4d80b720fd189c89179cf92b3769cf48fa046194b",
+    "codex-resources/voice/bin/gstvideo-1.0-0.dll": "8c23a57c2b46071c96243fdf12a573cdb7bd7e1b193e1fd35b5b9a86f66784b0",
+    "codex-resources/voice/bin/intl-8.dll": "93799a88b4edbe1a796a356b5e9abf2e41acf8a5c5bf702046567dc17486227b",
+    "codex-resources/voice/bin/libffi-8.dll": "cfefb211e796b1b55d552ce3057262c000c0ac22bfbd99fa42966900dad6ef37",
+    "codex-resources/voice/bin/opus.dll": "0bfacf3d8b607f7c187488953cff5285a7fa0630ad522d90daeb0a4f15e30f26",
+    "codex-resources/voice/bin/pcre2-8.dll": "f5589c092f24759ddcd6bff32b403698b893c23e766a3ed3c4305f81bf2a70ac",
+    "codex-resources/voice/bin/vcruntime140.dll": "184146852727a9db4eea06178716bec3cdbb1015c911f6b0f915b184ad7775b2",
+    "codex-resources/voice/bin/z.dll": "4b3c5fcc0a42e741e9648c1a81c4879c85579989764f4ee399a3ca48a5c16ec6",
+    "codex-resources/voice/licenses/LGPL-2.1.txt": "c7ce1276717604c29c5469179a2f368eac42846557be671bb52f4e16e884b2ad",
+    "codex-resources/voice/licenses/Opus.txt": "cbd8bd07329a234413710c02b19d22c0cf78fc451882593e817130779b5455e3",
+    "codex-resources/voice/licenses/PCRE2.md": "4195c519dcfe4a4ffedc4b8ccc5d49e4dd02efd5ece6b69a4fba5d20080902a9",
+    "codex-resources/voice/licenses/libffi.txt": "e2a9b884b1c5d718efd6121457a1fbe7ece431352ca75c901260cef2e7d040e5",
+    "codex-resources/voice/licenses/proxy-libintl.txt": "aa092600e3f475f0a55821fb9c529583d8e23e41bf0461254f02fcf94d3a32c2",
+    "codex-resources/voice/licenses/sljit.txt": "37c7a090fc61388430d63fc97bf8a22ffce92d3ca2249aac572cfaf411d3070f",
+    "codex-resources/voice/licenses/zlib.txt": "439c75ab12b340c5362b9d4b08ff05ec3a4d0eb7667a6fff49a9b16d8795c78e",
+    "codex-resources/voice/manifest.json": "a3f338273c10b9f1b8da753c278f4addffbb6f74218c284f3e0a51b20ccd3dc4",
+    "codex-resources/voice/runtime.json": "077467eefdc5168c9ae92aee0e3da646a4068424af0b491afb8f26683031b79c",
+    "codex-resources/voice/sources.json": "e2f6b124f6277e7c3c4f5c7cc8830c66190f671ad65e972bb2cc9507dbfcb937",
+    "codex-resources/voice/windows-crt.json": "d16939bc85da395ded5411724fed84ffd36810b78d47c756cf094b0956bc3892"
+   },
+   "sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d",
+   "targets": [],
+   "unreadable": []
+  },
+  "version": "codex-cli 0.160.0"
+ },
+ "disable_options": [
+  "--disable",
+  "plugins",
+  "--disable",
+  "apps",
+  "--disable",
+  "memories",
+  "--disable",
+  "hooks",
+  "--disable",
+  "multi_agent",
+  "--disable",
+  "skill_search",
+  "--disable",
+  "browser_use",
+  "--disable",
+  "computer_use",
+  "--disable",
+  "image_generation",
+  "--disable",
+  "view_image",
+  "--disable",
+  "shell_tool",
+  "--disable",
+  "unified_exec",
+  "--disable",
+  "unified_exec_tty",
+  "--disable",
+  "browser_use_external",
+  "--disable",
+  "browser_use_full_cdp_access",
+  "--disable",
+  "in_app_browser",
+  "--disable",
+  "code_mode_host",
+  "--disable",
+  "remote_plugin",
+  "--disable",
+  "plugin_sharing",
+  "--disable",
+  "recommended_plugins",
+  "--disable",
+  "skill_mcp_dependency_install",
+  "--disable",
+  "tool_suggest",
+  "--disable",
+  "tool_call_mcp_elicitation",
+  "--disable",
+  "sleep_tool",
+  "--disable",
+  "multi_agent_v2",
+  "--disable",
+  "shell_snapshot",
+  "--disable",
+  "workspace_dependencies",
+  "--disable",
+  "secret_auth_storage",
+  "-c",
+  "project_doc_max_bytes=0"
+ ],
+ "files": {
+  "bench/ozmap/data.py": "d94c6332de0aaf2208234eefddfb1a8ac95bd91648440680550343aa89040b62",
+  "bench/ozmap/data/boolq-superglue-val.jsonl": "0c86a5045886e5795fe9052003873f7d94b88ed3028a33007c51d99e44fd66d9",
+  "bench/ozmap/pilot.py": "38d865099160808dafbcfac626869894d58782db5f13c75cc67a779f03752243",
+  "bench/ozmap/runs/live-6a518ece47ab/telemetry/ws/do/telemetry-1/captures/1.envelope": "9c0fffa04cf6f1ec5ab14a09e8c35222f82764e9ee60bda4587a81fe8b5c54bd",
+  "bench/ozmap/runs/live-6a518ece47ab/telemetry/ws/do/telemetry-2/captures/1.envelope": "db90ef6597e9f7526166943094f21baff2cae48459778c71556ca6a2dfbc0350",
+  "bench/ozmap_rep/acceptance/INTERFACE.md": "fc879f4d77126242bf7c3f835ca2d4a6fbd059339b6a79f0f7c79dd077b173d8",
+  "bench/ozmap_rep/acceptance/conftest.py": "c955e954a0b110273d5cc47362b52bf8f3e68ead7da14e75e6bf770cb41d2502",
+  "bench/ozmap_rep/acceptance/ozrep_helpers.py": "adc1fa27b192e59cf7260ebfc9b82d2549564117156402b7b1a697ca3b65b067",
+  "bench/ozmap_rep/acceptance/test_a4_10_a4_11_gates.py": "37ff3e27437ee3ad7bc5b74084213c7d1c3596e3853feed4a9aec2ec770c45fd",
+  "bench/ozmap_rep/acceptance/test_a4_12_quota.py": "a95383feecb43cc0e45c359a4a7d94c86f340c2aec7a0957b103e510423c230d",
+  "bench/ozmap_rep/acceptance/test_a4_13_prep_caps.py": "2e98860d4f4f52144b2f0db7116dff3fac78a5a1756c47053f92db7d902e6bd9",
+  "bench/ozmap_rep/acceptance/test_a4_1_scope.py": "a134c402060c81faf74b0ad153b021c58fa8037b7a9d1276b043f1df841e4fd7",
+  "bench/ozmap_rep/acceptance/test_a4_2_argv.py": "15c2954cca3350f2a03a25df90c91c3f234866cd70182555c7cddbcf9cb7c59d",
+  "bench/ozmap_rep/acceptance/test_a4_2_auth.py": "077d557505ed2287c84d5ea2dca1f14ce142bf91d6f6261b0a18fed8412e7e2d",
+  "bench/ozmap_rep/acceptance/test_a4_2_isolation.py": "c1f72ad13656abe38a84588dbd7a4e44df465bbad5ff1dd5573b4f33d8d1550d",
+  "bench/ozmap_rep/acceptance/test_a4_3_tool_events.py": "b39c02794da2ecc9b7a324f1fd9cd8a5ed053d612d89b273def0118157fa6411",
+  "bench/ozmap_rep/acceptance/test_a4_4_a4_5_budget.py": "6b4e5ef21b582696ae04844f9b0722c93d410f462254d5b2a7b66770705f2cb5",
+  "bench/ozmap_rep/acceptance/test_a4_6_bootstrap.py": "d700911f7bfcd60242c8aff7c6ad3638c2023c3da61929606e92059c42c3ee4d",
+  "bench/ozmap_rep/acceptance/test_a4_7_usage.py": "a9a516978419ceb006f0def7fb06211a6c4fc30c0ed18f531384474160440dfa",
+  "bench/ozmap_rep/acceptance/test_a4_8_operations.py": "66431070d55c4427bd258188c6f11e1d929823805697cf293cf3fedadca6ac70",
+  "bench/ozmap_rep/acceptance/test_a4_9_sonnet_prompt.py": "8f398844d178931ba92095db02be63f055d278954d0c1de306f77cfa2fee62eb",
+  "bench/ozmap_rep/acceptance/test_cli_plan_and_cells.py": "50cfc38fa74b4219200cb653f03eb82afdcc97b3085bac77752f672c385fb1f4",
+  "bench/ozmap_rep/acceptance/test_dry_run_and_score.py": "a46bc5c639a4e5d02b297fdae677e2118092fee002f6da8ea1d8cfdc1bb9c6d5",
+  "bench/ozmap_rep/baseline-inventory.json": "698b8986ceff60fbcf0cbf48645716abc96917274e340cb077502c10f671ff3e",
+  "bench/ozmap_rep/bootstrap.py": "a841e4a452ccc4d26badec348646a90a2203b686835b04adf0a07a7ad1ccee6e",
+  "bench/ozmap_rep/budget.py": "ec230deae12e2555f533d4bf01c0cdc38016e373b6d478132569dfb8b21e5cb9",
+  "bench/ozmap_rep/certificate/cache-certificate.json": "cb978338c432cf061776cd1c3ed1e35c85193bc83a719a961fe8bdf296483add",
+  "bench/ozmap_rep/classification.json": "0532a2aeeb99fd162bcc416932a7ca2f88fcaf5bc6507ba107e8d69b22e4ff71",
+  "bench/ozmap_rep/cli-flags.json": "f28d9ad7ea61b6028ecb247e5155f00f14d3eb2418783d41dc63e5152f06cc23",
+  "bench/ozmap_rep/config.py": "46b128ed15849d7d3068a839c2ce3a5576a3526cd6e6d3fd4f6a528c9c9f02ae",
+  "bench/ozmap_rep/effective-context.json": "9f84be5000505407dbc8c232fdf403de8aed2e6200416796d30d3e864d89bfab",
+  "bench/ozmap_rep/effective_context.py": "30c13f8cbf024f5c141e64a3b55192ee1660875ac44ddf9cc3221fa200e4d49d",
+  "bench/ozmap_rep/events.py": "f6bfb9130d15ac0bffdcda6e31aa72e89722798c9e66e283cf2f2b611a8e5299",
+  "bench/ozmap_rep/fake_cli.py": "fc71e76a0715549db0254b6f9bf8008261b6fe0bdd6a8c99ddda3413ff333e68",
+  "bench/ozmap_rep/gates.py": "5ca5526c68f57da84e89ba1bccb67be9386ef0d0b3c8a930d2d03736d3b2287a",
+  "bench/ozmap_rep/isolation.py": "ce75142dc45f466d23771720aab250f89f9028d5ffea3f3c3b1ab0cc27c361c7",
+  "bench/ozmap_rep/model-catalog.json": "719c75b77ed02c783263f8fe62532ecd0abc1d1ccf2c34b12e5d221d509995a1",
+  "bench/ozmap_rep/ops/__init__.py": "22e5257d6f40484911a29386f58b28ae7af89fd91f31cf07f7be013481725a11",
+  "bench/ozmap_rep/ops/data.py": "bdc8a19b76aefd95b8ef8d69abddda65425a150176df21c42c7936fe9927bd0c",
+  "bench/ozmap_rep/ops/ops.md": "7e82a4b2a9ec88e3406831e8576ced3e2d51e9720ecfe853de757aab7c172cc0",
+  "bench/ozmap_rep/ops/oracle.py": "94725a6aee4a280578ca7bd8522252ebd8331c09b1a760663ad9a022910e50d3",
+  "bench/ozmap_rep/ops/test_ops.py": "e34a34de362a6425d081a5258a00017df226fe67aecd2bac775fb89e710d08c9",
+  "bench/ozmap_rep/procs.py": "4c8a87e9be275e4dcf56b0c728a785f9ded8a3b53a7d022561ccc86c5dfa66d3",
+  "bench/ozmap_rep/prompts.py": "3943f2c840a7908fd2ebf2f569990e25713f3f8974656b25790bff8a156a5fd8",
+  "bench/ozmap_rep/quota.py": "53cc3066c503252888120253759c9eaa5c79922ee906db85b687f95e3613f8b6",
+  "bench/ozmap_rep/redact.py": "d58fbfa1ba7f2fadfa8ea1b8b80f130165b212210fc142761ec4a9e46e4e83d6",
+  "bench/ozmap_rep/redteam/test_redteam_closure1.py": "898aabc9c74f98baba1d5b15f6d97d76fe79b2297aff5dcb6a36f61a984719c4",
+  "bench/ozmap_rep/redteam/test_redteam_r1.py": "bff5cca57a638e8fcb2a5dd0757f00fdd0f16ba6c1dadd0f2a72f8161c4f1214",
+  "bench/ozmap_rep/redteam/test_redteam_r2.py": "2f7f21c2aa4c5229eacb2cf1c9aacf7a6478452ce1f3bfec788b3e6581be8a15",
+  "bench/ozmap_rep/redteam/test_redteam_r3.py": "fad4f1bc8a186b2aa3c8c1bfe5ba2b35ef02d4fb1560250d535c3ec11c2093f8",
+  "bench/ozmap_rep/rules.py": "ec09880a3f4fb189474f10586b695dc4de0a7f32cc6ba67f40d3c618d0b3b974",
+  "bench/ozmap_rep/rulings.py": "d3c9c5f0d9d2cbfc50604260d551d68c574a3981e8381bc0f8700d118dd73837",
+  "bench/ozmap_rep/run.py": "21a9d11c9aa8e40d7db204937b3b1f44f881109550b4c776cd51a8da264e30b2",
+  "bench/ozmap_rep/score.py": "a1f40cf2f37bfbac6d9b90305ebee675858bf9b08515b4c3bfe5fcefaf71b99c",
+  "bench/ozmap_rep/startup-manifest.json": "20ea5c908886ead5a7b5d8eeacb7fd1dbf7f41e105b2637c11f42485da710e26",
+  "bench/ozmap_rep/tests/fixtures/exec-noauth2.out": "24140f97097caa7c20f7c20efef9e169a14aac35499a6cff3faabba0dc0a4abd",
+  "bench/ozmap_rep/tests/test_a414_fail_closed.py": "37b8c2665097d1b7458d1bfdde1283b3756f1396ec62ccf6070bb5c0afca2c29",
+  "bench/ozmap_rep/tests/test_closure_r1.py": "c27bc64b13fb4e937e04a42999322129947382ab003110e8e51f2cee1cf13b86",
+  "bench/ozmap_rep/tests/test_closure_r2.py": "c31c6f9dee92057e85e8f7f3f11639f9ad11b4f30c81127267ab27111f87e36b",
+  "bench/ozmap_rep/tests/test_council_r1.py": "281a8dd92bfadc3b6d9dd06c1d8771846698bee6a96ea9d98dabe082d8504578",
+  "bench/ozmap_rep/tests/test_council_r2.py": "bd845f6a5fb5bcf410eab02d2c0b6c62f3cbfa73f202a0f938b1dcc42ed1ee5b",
+  "bench/ozmap_rep/tests/test_p3_d5_coverage.py": "315085639a6fb0db92a8445d97a60bc5d8bd08d66070bd39f585aa1f5c7cce9e",
+  "bench/ozmap_rep/tests/test_p3_headroom.py": "401de0576e9aa83fe5c225add7202757c757ce8708aad4dae2440dfaed7f4689",
+  "bench/ozmap_rep/tests/test_p5_effective_context.py": "5df58d2e5a449482c111033819050da7fb650218d6cd12c0b30fcc00b57a47ea",
+  "bench/ozmap_rep/tests/test_rule_path.py": "f61d1a240bafd1c344f18f57ffa9e41bed75c306bac3168272c56e7f98751a5d",
+  "bench/ozmap_rep/tests/test_ruling_repairs.py": "0ad364f19c45a938e800fb5ec18d290a079a7966c4c992bcead32e635811a4a9",
+  "bench/ozmap_rep/tokenizer.py": "ab8c7063c85e54f860f1f86a7cf3eae7e41097eb293fe691f1a69b27e701263c",
+  "bench/ozmap_rep/usage.py": "43c5ea4b23a5b64836dc23132f879916e07694038c424174f88ba95c7e84f44d",
+  "bench/ozmap_rep/workload.py": "4b44fb1cda9fd81d9936e46d38b7823c8b1bc9f1674df6e29e051f7d4048b888",
+  "docs/design/ozmap-2026-10-24/bootstrap-spec-excerpt.txt": "101d6ae09019c9d91cd267b8c700443db5af9d08dd7176bc59fc101f1816fd14",
+  "docs/design/ozmap-replication-2026-10-24/amendment-4-13-caps.md": "b8add2d87e58862dfade7176e347c2bcd92e16e5ffe646256a6dafd299515522",
+  "docs/design/ozmap-replication-2026-10-24/amendment-4.md": "5de28f0bdcc073dbc63db557572f3f39bc559b96398114fe1351aceac7fb3398",
+  "docs/design/ozmap-replication-2026-10-24/expressibility-review.md": "7bf22a6f1a330eae2788903de5f905d2e749c8ecb9e6897cbe3301f6121001c5",
+  "examples/bootstrap_shim.py": "669fc99839e3ae9b1ac8e9b375db3fb3ca872aa7f4faa7b36c03da18169482ae",
+  "examples/claude_cli_adapter.py": "deba48b9d68cb3717f642ece195a9aeec656225c926224386eb3ee887b3dd7fa",
+  "examples/claude_map_adapter.py": "e769320f5a68608e85aeb72822730da1060b7b44c4e8f2f3d17286088a9e4689",
+  "examples/codex_cli_adapter.py": "7cbde60a119dbeba9af550c6eec27e0454ee2bc6d96a2e19cfad00d57ce89cef",
+  "oz.py": "8916d427180eef65f1323391149e4eb860728d914a5ab81a9f77309f99b054a6",
+  "oz_batch.py": "50ecdd28f5dda7c4479a0160b8860b6cad87727dbb448f7eddc0f15553d622cb",
+  "oz_registry.py": "c5611e66e9535d3fab287e86a44ed15b50b45fdc25fd2c141220ea03541317a3",
+  "oz_reply.py": "dc58230288900c0eee17a2f230b30feaf993e15e90fda12d488b644505633ab4",
+  "oz_rule.py": "0859094f05e7198f2abf0e3dbd16b14192be87ad84cbc2ca0fc4dea592981313",
+  "oz_rulephase.py": "81e4c8d313d129ac9230f2f50a949484f2444534fe67af772c7a9227617242c8"
+ },
+ "interpreter": "C:\\Users\\can02\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+ "live_run_dir": "C:\\ozmap_rep\\runs\\replication",
+ "registry_manifest_sha256": "4c6f5db1180c0125c1fcded0c917698ca4825ca7494b8b580988ed620ee2b1ff",
+ "route_security_args": [
+  "-c",
+  "cli_auth_credentials_store=\"file\"",
+  "--enable",
+  "skip_host_skill_discovery",
+  "-c",
+  "skills.include_instructions=false",
+  "-c",
+  "skills.bundled.enabled=false",
+  "-c",
+  "model_catalog_json='C:\\Users\\can02\\Projects\\akor\\bench\\ozmap_rep\\model-catalog.json'"
+ ],
+ "schema": "ozmap-rep.freeze/2",
+ "signed_exceptions": {
+  "cli_notice_event_keys": [
+   "item",
+   "type"
+  ],
+  "cli_notice_id_re": "item_(?:0|[1-9][0-9]*)",
+  "cli_notices": [
+   "Code Mode is unavailable because code-mode host is disabled. Code mode will fail closed; enable `features.code_mode_host` and install `codex-code-mode-host`."
+  ],
+  "omitted_disables": {},
+  "rulings": {
+   "D1": {
+    "annexes": {
+     "attribution_evidence": {
+      "path": "docs/design/ozmap-replication-2026-10-24/rulings/D1-attribution-evidence.json",
+      "sha256": "4f8e7b49fda7c29d05d8479d28ca4cda247e80718cfb9f5f124d4aff559f6671"
+     }
+    },
+    "path": "docs/design/ozmap-replication-2026-10-24/rulings/D1-auth-attribution.md",
+    "sha256": "90f2a5ceb024c93a347d99fb5d5def9b0f38435e42aa0129cc17cd43fa293ab1"
+   },
+   "D6": {
+    "annexes": {
+     "focused_verification": {
+      "path": "docs/design/ozmap-replication-2026-10-24/rulings/D6-focused-verification.json",
+      "sha256": "36954f40da0d37c91c9ebbfb955ea50dfec838864987e9029b3b5dd5d737486a"
+     },
+     "operation_attestation": {
+      "path": "docs/design/ozmap-replication-2026-10-24/rulings/D6-operation-attestation.json",
+      "sha256": "9098722ef623a501d60fdc7d91afa31cdd3418f51db154797afef21537772a71"
+     }
+    },
+    "path": "docs/design/ozmap-replication-2026-10-24/rulings/D6-review-before-freeze.md",
+    "sha256": "f3ad285ce9b5d8a190e9811352abdf497db2bcec48b4283f0ea8c99d30f8c850"
+   },
+   "P1": {
+    "annexes": null,
+    "path": "docs/design/ozmap-replication-2026-10-24/rulings/P1-transport-notices.md",
+    "sha256": "0a9a47e54bc40e5bc5c48b8a3c529b45cd6fa825acf1756251f7110d8e1f1504"
+   },
+   "P2": {
+    "annexes": null,
+    "path": "docs/design/ozmap-replication-2026-10-24/rulings/P2-unknown-usage.md",
+    "sha256": "94ac6d63949384b64bfdbfecc55d0e00f8979540ae840d064acf88f9211b5f4c"
+   },
+   "P3": {
+    "annexes": {
+     "quota_source_manifest": {
+      "path": "docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json",
+      "sha256": "5ee1f954de3d639b3c80377b69d55f461980e9ac1c483d4870da6bdd89123a71"
+     }
+    },
+    "path": "docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-observation.md",
+    "sha256": "54c8ab94fd8a27678696f33f640685a74c1ee87777119d7d5d9ccc72e0e1498c"
+   },
+   "P4": {
+    "annexes": {
+     "cli_notice_annex": {
+      "path": "docs/design/ozmap-replication-2026-10-24/rulings/P4-cli-notice-annex.json",
+      "sha256": "70b8b55a59cddfd8037948eabf59d9d394f96f77bf9389d7a85013df63a7e693"
+     }
+    },
+    "path": "docs/design/ozmap-replication-2026-10-24/rulings/P4-cli-notice.md",
+    "sha256": "905cc3eb0f4a9e927e293a08983efef68ea5458bf3a38c59cccd9b21f1c5cdfb"
+   },
+   "P5": {
+    "annexes": {
+     "effective_context_evidence": {
+      "path": "docs/design/ozmap-replication-2026-10-24/rulings/P5-effective-context-evidence.json",
+      "sha256": "3b2f341c479a141dc639bf23f5c127ba9618a97a74f530b510aba514d71a9844"
+     },
+     "startup_manifest": {
+      "path": "bench/ozmap_rep/startup-manifest.json",
+      "sha256": "20ea5c908886ead5a7b5d8eeacb7fd1dbf7f41e105b2637c11f42485da710e26"
+     }
+    },
+    "path": "docs/design/ozmap-replication-2026-10-24/rulings/P5-startup-context.md",
+    "sha256": "a020813e24075d93bf41f7c10b5469cc48313885fac85941391291fb2d781b7d"
+   }
+  },
+  "startup_manifest_sha256": "20ea5c908886ead5a7b5d8eeacb7fd1dbf7f41e105b2637c11f42485da710e26",
+  "transport_notices": []
+ },
+ "sonnet": {
+  "exe": "C:\\Users\\can02\\.local\\bin\\claude.exe",
+  "exe_sha256": "f6bc9de38f507c36c9a3bb0085a59a27e32156e2208252bf1707c4e3ef309114",
+  "identity": {
+   "kind": "native",
+   "path": "C:\\Users\\can02\\.local\\bin\\claude.exe",
+   "payload": {},
+   "sha256": "f6bc9de38f507c36c9a3bb0085a59a27e32156e2208252bf1707c4e3ef309114",
+   "targets": [],
+   "unreadable": []
+  },
+  "version": "2.1.306 (Claude Code)"
+ },
+ "tokenizer": {
+  "encoding": "o200k_base",
+  "interpreter": "C:\\Users\\can02\\Projects\\akor\\.venv\\Scripts\\python.exe",
+  "tiktoken": "0.14.0",
+  "vocabulary_ok": true
+ },
+ "unsupported_options": [],
+ "workload_sha256": "9701d6e6fe98783eff9ba9974c8fc2b99f9c28c4b9b57e3bc5a2f95ec1c12266"
+}
