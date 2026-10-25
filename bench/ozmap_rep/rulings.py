@@ -44,6 +44,8 @@ ATTESTATION_CASES = {'representative_cases': 48, 'challenge_cases': 16}
 OPS_DIR = config.HERE / 'ops'
 # Ruling repairs of 2026-10-25 (blockers OB-P3, OB-P5, OB-D1): an annex binds only when its own verdict says the
 # point it carries is settled. {(ruling, annex kind): (dotted key path in the annex, required value)}.
+# P5 repair 2: the effective context evidence also names the approved effective context (config.EFFECTIVE_CONTEXT_FILE)
+# and the pinned model catalog it was compared with (annex_problems).
 ANNEX_STATUS = {('P3', 'quota_source_manifest'): ('freshness_and_causal_coverage.status', 'established'),
                 ('P5', 'effective_context_evidence'): ('verdict', 'established'),
                 ('D1', 'attribution_evidence'): ('status', 'complete')}
@@ -151,6 +153,15 @@ def annex_problems(name, entry, ruling_text):
                     and doc.get('route_security_args') != list(config.ROUTE_SECURITY_ARGS):
                 problems.append(f'ruling {name}: annex {kind} was not captured with the route security arguments '
                                 f'the harness uses now')
+            if kind == 'effective_context_evidence' and isinstance(doc, dict):
+                # P5 repair 2 (blockers P5 and OB-P5b): the evidence compared the requests with the approved
+                # effective context the harness checks now, captured with the pinned model catalog
+                approved = config.EFFECTIVE_CONTEXT_FILE
+                if not Path(approved).is_file() or doc.get('approved_context_sha256') != _sha(approved):
+                    problems.append(f'ruling {name}: annex {kind} was not compared with the approved effective '
+                                    f'context the harness uses now ({Path(approved).name})')
+                if doc.get('model_catalog_sha256') != config.MODEL_CATALOG_SHA256:
+                    problems.append(f'ruling {name}: annex {kind} was not captured with the pinned model catalog')
     return problems
 
 

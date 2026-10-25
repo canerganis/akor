@@ -87,6 +87,9 @@ def settled_annex(kind):
             node[keys[-1]] = want
     if kind == 'effective_context_evidence':  # captured on the route the harness uses now
         doc['route_security_args'] = list(config.ROUTE_SECURITY_ARGS)
+        # P5 repair 2: compared with the approved effective context, captured with the pinned model catalog
+        doc['approved_context_sha256'] = isolation.sha256_file(config.EFFECTIVE_CONTEXT_FILE)
+        doc['model_catalog_sha256'] = config.MODEL_CATALOG_SHA256
     return doc
 
 

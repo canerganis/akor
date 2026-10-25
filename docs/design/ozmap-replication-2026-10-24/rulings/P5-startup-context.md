@@ -56,8 +56,17 @@ it cannot serve as the manifest.
 
 | kind | path | sha256 |
 |---|---|---|
-| startup_manifest | bench/ozmap_rep/startup-manifest.json | c5a6c7415061e810490630cda0d08e33b8b45b89480396ec5ae06a51539e87bb |
-| effective_context_evidence | docs/design/ozmap-replication-2026-10-24/rulings/P5-effective-context-evidence.json | 56395a2b27acf6869d7a88f282817589461ad58a44ab746596051b32990462b1 |
+| startup_manifest | bench/ozmap_rep/startup-manifest.json | 20ea5c908886ead5a7b5d8eeacb7fd1dbf7f41e105b2637c11f42485da710e26 |
+| effective_context_evidence | docs/design/ozmap-replication-2026-10-24/rulings/P5-effective-context-evidence.json | 3b2f341c479a141dc639bf23f5c127ba9618a97a74f530b510aba514d71a9844 |
+
+Named by the effective context evidence and checked by rulings.annex_problems (not separate annex slots):
+
+| file | path | sha256 |
+|---|---|---|
+| approved effective context | bench/ozmap_rep/effective-context.json | 9f84be5000505407dbc8c232fdf403de8aed2e6200416796d30d3e864d89bfab |
+| pinned model catalog | bench/ozmap_rep/model-catalog.json | 1d39994d11492a3c692c060c621e5c0f01213e18f06fcb5407fcd7d824ebd536 |
+
+The annexes of repair 1 (startup manifest c5a6c741, context evidence 56395a2b) are replaced by those of repair 2 below.
 
 The previous annexes (startup manifest 60d3fe06a980be59358c50ea9dcc3676ea3a43f7731085f7182d2715d10a6e3f, context evidence 622b373e36b52bb06a0a862941d6625626dd98668afadcc168634914e38a1bd2, rendered with `codex debug prompt-input`) are replaced by the request boundary evidence below.
 
@@ -88,3 +97,17 @@ Not signed. Astra A raised BLOCKER P5 (rulings/signoff-astra-2.md): the certific
 ## Opus B sign-off 2 (2026-10-25)
 
 Opus B: not signed (rulings/signoff-opus-2.md, blocker OB-P5b, opusb2-20261025T033012Z). OB-P5 as written is closed: the captured request of the frozen route holds no owner content. The new blocker agrees with Astra's P5 blocker: the evidence was captured with /models answered 404 and over the HTTP fallback, while the live route gets the real model catalog (which can carry base instructions) and sends over WebSocket first, and the `established` decision does not compare the request items with an approved list. Fix: pin the model metadata, capture on the live transport, and require item by item equality with rejection tests.
+
+## Repair 2 of 2026-10-25 (blockers P5 of Astra A and OB-P5b of Opus B)
+
+Model metadata (OB-P5b fix 1). The frozen route now carries `-c model_catalog_json='<repo>/bench/ozmap_rep/model-catalog.json'` (config.ROUTE_SECURITY_ARGS, enforced by isolation.argv_check). The file is the model catalog bundled in the pinned codex.exe, byte for byte (found once in the executable, sha256 1d39994d). Probe: with the pin no probe sends GET /v1/models (0 requests in 5 pinned probes). Control: the same argv without the pin, with /models answered by the pinned catalog whose instruction template of gpt-6.1-sol starts with a canary, requests /models twice and its request carries the canary in the base instructions item and a changed tool schema. So without the pin a live /models answer would change the effective context, and with the pin the CLI never asks.
+
+Live transport (fix 2). The capture server now accepts the WebSocket upgrade and records every frame. The CLI sends a prewarm frame (`generate: false`, the tools item and the base instructions) on one connection and the turn frame on a second. The turn frame equals the HTTP fallback body item by item; the only transport field is `type: response.create`. Both transports are certified.
+
+Decision (fix 3 and Astra's P5). The verdict is bench/ozmap_rep/effective_context.certify. `established` needs every captured request of every pinned probe (WebSocket turn and prewarm, HTTP, no auth and scrambled ChatGPT auth, a one line and a multi line stdin with CRLF and a trailing newline) to equal the approved effective context (bench/ozmap_rep/effective-context.json) item by item: sha256 of every developer item, the tool schemas as canonical JSON, the environment context with only its working directory (a numbered slot directory, also its workspace root), date and time zone as placeholders, and the user item as the exact stdin bytes. Top level fields and client metadata keys are compared too; only per call identifiers vary. It also needs no /models request and no canary on a pinned probe, a control that shows the canary, a clean owner content scan and no external request. Rejection tests: tests/test_p5_effective_context.py (an extra instruction item, a changed or missing item, a changed user item, a changed tool schema, an unapproved field, each failure case of certify). The evidence records verdict `established` with every comparison empty.
+
+Live path. The request content travels over TLS to the vendor and the harness cannot observe it. isolation.verify_launch now checks before every Codex launch what determines it: the catalog file the argv names hashes to config.MODEL_CATALOG_SHA256, and the approved effective context exists and records the frozen model, CLI version, catalog and route arguments (effective_context.launch_problems). The freeze refuses a Codex executable other than the one the approved list was captured with (effective_context.executable_problems), and every launch checks the executable against the frozen one. rulings.annex_problems refuses an effective context annex that was not compared with the approved list the harness uses now or not captured with the pinned catalog.
+
+Disclosed: the catalog path in the argv lies below the owner profile (the repository); the CLI reads that one file, and no owner path occurs in any captured request. P5-E3 (multi_agent items and the collaboration and exec tools) is now pinned by the item hashes of the approved list, the condition Opus B named in signoff-opus-2.md.
+
+Open before binding: both signatories, on the ruling text, the two annexes above and the approved effective context and catalog they name.

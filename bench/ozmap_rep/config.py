@@ -49,8 +49,21 @@ DISABLE_FEATURES = ('plugins', 'apps', 'memories', 'hooks', 'multi_agent', 'skil
 # =false` removes the skills instructions item from the request and `skills.bundled.enabled=false` stops the bundled
 # skill set from being written or listed (rulings/P5-effective-context-evidence.json). Both are `-c` overrides, which
 # --ignore-user-config does not ignore.
+#
+# P5 repair 2 (2026-10-25, blocker OB-P5b fix 1): the model metadata is pinned. On the live route the CLI fetches
+# /models and the answer can change the base instructions and tools of the frozen model. MODEL_CATALOG_FILE holds the
+# catalog bundled in the pinned executable, byte for byte (extracted from codex.exe of codex-cli 0.160.0, sha256
+# MODEL_CATALOG_SHA256); `-c model_catalog_json=<that file>` makes the CLI use it and never fetch /models (request
+# boundary probe: no /models request with the pin, and a canary /models answer reaches the request only without it).
+# isolation.verify_launch checks the file's hash before every Codex launch.
+MODEL_CATALOG_FILE = HERE / 'model-catalog.json'
+MODEL_CATALOG_SHA256 = '1d39994d11492a3c692c060c621e5c0f01213e18f06fcb5407fcd7d824ebd536'
+MODEL_CATALOG_ARG = f"model_catalog_json='{MODEL_CATALOG_FILE}'"
 ROUTE_SECURITY_ARGS = ['-c', 'cli_auth_credentials_store="file"', '--enable', 'skip_host_skill_discovery',
-                       '-c', 'skills.include_instructions=false', '-c', 'skills.bundled.enabled=false']
+                       '-c', 'skills.include_instructions=false', '-c', 'skills.bundled.enabled=false',
+                       '-c', MODEL_CATALOG_ARG]
+# P5 repair 2 (fix 3): the approved effective context of the frozen route, item by item (effective_context.py).
+EFFECTIVE_CONTEXT_FILE = HERE / 'effective-context.json'
 PROJECT_DOC_OPTION = 'project_doc_max_bytes'
 PROJECT_DOC_ARG = 'project_doc_max_bytes=0'
 CLI_FLAGS_FILE = HERE / 'cli-flags.json'

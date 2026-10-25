@@ -3,8 +3,8 @@
  "cli_version": "codex-cli 0.160.0",
  "executable_sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d",
  "capture": {
-  "captured_at": "20261025T023424Z",
-  "method": "regenerated 2026-10-25 from the request boundary probes of the frozen exec argv (P5 effective context evidence, D4 route a): inventory of the worker home after each probe; the route now carries skills.bundled.enabled=false, so the pinned CLI writes no skills/.system file",
+  "captured_at": "20261025T034755Z",
+  "method": "regenerated 2026-10-25 (P5 repair 2) from the request boundary probes of the frozen exec argv, which now pins the model catalog: inventory of the worker home after each pinned probe; the route carries skills.bundled.enabled=false, so the pinned CLI writes no skills/.system file",
   "route_security_args": [
    "-c",
    "cli_auth_credentials_store=\"file\"",
@@ -13,7 +13,9 @@
    "-c",
    "skills.include_instructions=false",
    "-c",
-   "skills.bundled.enabled=false"
+   "skills.bundled.enabled=false",
+   "-c",
+   "model_catalog_json='C:\\Users\\can02\\Projects\\akor\\bench\\ozmap_rep\\model-catalog.json'"
   ],
   "disable_args": [
    "--disable",
@@ -76,7 +78,7 @@
    "project_doc_max_bytes=0"
   ],
   "inventories": {
-   "exec_no_auth": [
+   "exec_ws_no_auth": [
     {
      "path": "goals_1.sqlite",
      "type": "file",
@@ -87,37 +89,37 @@
      "path": "goals_1.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "ffe6393b0f5069ea806f8ad04678ec5ff2bf4db3d68b0ff8bf24983b35b8b39a"
+     "sha256": "a9d2bcc7db06fc9cff14751cbdefa988db4322293ce0a93d557c3830f4bc1d7c"
     },
     {
      "path": "goals_1.sqlite-wal",
      "type": "file",
      "bytes": 74192,
-     "sha256": "50174fb092d76b9e48fa6f987f05a4b56cec9b6c7a77f82f786392f87c7e2aa9"
+     "sha256": "e4b692cd62215bddf7b52a03f92269621e320cd13fd66706244e7833119739b4"
     },
     {
      "path": "installation_id",
      "type": "file",
      "bytes": 36,
-     "sha256": "26a168ceaec40ebafbaa450f13e18152e8f3913c825c864e3275dd6f622afd0d"
+     "sha256": "7175e4220621c851aeb6ee385e35921b2562c505b4c903563866cad2630c2946"
     },
     {
      "path": "logs_2.sqlite",
      "type": "file",
      "bytes": 49152,
-     "sha256": "dcea0fd212a68be72eed7cf150263e692f624b72502e1a929455641db38a4d55"
+     "sha256": "e1c4a55473b296e7d18228d740333851915353ff4e5a883abb50e3dabeb50002"
     },
     {
      "path": "logs_2.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "73182389b12fb39db1e7b03b027ac868c2724f410be37dcbd605d731ab18485d"
+     "sha256": "34bf7f8cc6189e6938d53782da4e1f12ce0d782df5d23535b1d4431b8a81b375"
     },
     {
      "path": "logs_2.sqlite-wal",
      "type": "file",
      "bytes": 115392,
-     "sha256": "d857109b041cf58ff4c2fc0fd9f51e075665b4553453b9a2dd2d630d85bcff21"
+     "sha256": "2462aa6ed05a5abdd112c6133415f0c6519065c642c4ae75a8f03ac5241a9ffa"
     },
     {
      "path": "memories_1.sqlite",
@@ -129,13 +131,13 @@
      "path": "memories_1.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "83725699ea2836c02a5de9a7e1531d9512f835d96192fed2f8c7b73b775561bc"
+     "sha256": "18a67a2260009a451d2ad737b126c092826ceb75ee78fc68649da792755fbd17"
     },
     {
      "path": "memories_1.sqlite-wal",
      "type": "file",
      "bytes": 86552,
-     "sha256": "640d82429ffb4041b3433a21fe53b9f358c52230e8191a3e9ecc85b631285d51"
+     "sha256": "d6b1df72dd4a4757142bc6f9cbf3e8a567c41f6c99c7344d83f70109fd98abb8"
     },
     {
      "path": "queue_1.sqlite",
@@ -147,13 +149,13 @@
      "path": "queue_1.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "63cb9550383754f36ae85023e37d89c1eec6dfafe792c4b3d0b074d291dc852e"
+     "sha256": "11eff3936b6238b4d571f9ca306114b919424ac27a43f63136888c735740619a"
     },
     {
      "path": "queue_1.sqlite-wal",
      "type": "file",
      "bytes": 82432,
-     "sha256": "47dfa066d5a523a3445195b5c8c3d4e4764e89159747f6de3c9f8bd18d239e6d"
+     "sha256": "cdeb6175566965dca5c036155975e85d6dc698dcfc1d00103f402af0c3e59be7"
     },
     {
      "path": "state_5.sqlite",
@@ -165,13 +167,13 @@
      "path": "state_5.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "22462be8dbc2bd3e408518f3c3996a639805cd7b5030b2cb47e5b141f1b82b8c"
+     "sha256": "a49163a3e1bde3341a963dac507c0d3f31c82bc76fb59ee2576499711cd40158"
     },
     {
      "path": "state_5.sqlite-wal",
      "type": "file",
      "bytes": 1989992,
-     "sha256": "b689eda99cc5460997b18599e88fca361586109757118478d2e66c8351ae26e1"
+     "sha256": "966401b167050c23bbfe99c916aa48006ce97c71d5b69dcd6313da7cbf921730"
     },
     {
      "path": "tmp",
@@ -182,29 +184,29 @@
      "type": "dir"
     },
     {
-     "path": "tmp/arg0/codex-arg0XzUGUx",
+     "path": "tmp/arg0/codex-arg0uE8cuI",
      "type": "dir"
     },
     {
-     "path": "tmp/arg0/codex-arg0XzUGUx/.lock",
+     "path": "tmp/arg0/codex-arg0uE8cuI/.lock",
      "type": "file",
      "bytes": 0,
      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-     "path": "tmp/arg0/codex-arg0XzUGUx/apply_patch.bat",
+     "path": "tmp/arg0/codex-arg0uE8cuI/apply_patch.bat",
      "type": "file",
      "bytes": 133,
      "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
     },
     {
-     "path": "tmp/arg0/codex-arg0XzUGUx/applypatch.bat",
+     "path": "tmp/arg0/codex-arg0uE8cuI/applypatch.bat",
      "type": "file",
      "bytes": 133,
      "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
     }
    ],
-   "exec_scrambled_auth": [
+   "exec_ws_scrambled_auth": [
     {
      "path": "goals_1.sqlite",
      "type": "file",
@@ -215,37 +217,37 @@
      "path": "goals_1.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "c62a10562dac82e6369f9909087a67f3a20737c4e33d7b38e4e38899b6ea84af"
+     "sha256": "642ea75294555793b34e8fd9b927c4d3dbd6374484d2a89b851d7d3deccd7a10"
     },
     {
      "path": "goals_1.sqlite-wal",
      "type": "file",
      "bytes": 74192,
-     "sha256": "4dddadaf238df6538268ca581f28110d14f63abfe1cbee6b99cef0c108e24bdb"
+     "sha256": "410ad56ebdc7316550b9e17540d7d4a579967302468108aa0d69f8091bb86333"
     },
     {
      "path": "installation_id",
      "type": "file",
      "bytes": 36,
-     "sha256": "753aeaa09f6fedeea0b44a735c7879984f4958cdaff2393f5b0bf252676596e0"
+     "sha256": "1cc1244b09e571e04400e23e285d1c228eb128fc6747baff781cc7fc40ef922e"
     },
     {
      "path": "logs_2.sqlite",
      "type": "file",
      "bytes": 49152,
-     "sha256": "ae3d2959664172f0dccacf645d508c3f90008915cd0ccab8f3609c820bc09bb5"
+     "sha256": "8bb8d4c85eb32123192a94688b88a394c2152f79d5f3327a0d93562bde6d169c"
     },
     {
      "path": "logs_2.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "85e86ce1b0a22f17cec9c66f7cec254bac089de4a0c0ae1f524b4b184524cbdd"
+     "sha256": "3192d3562e48daf6e6185e4ecf41828c383d39f3714b8dee93df7ed124ee9cbd"
     },
     {
      "path": "logs_2.sqlite-wal",
      "type": "file",
      "bytes": 115392,
-     "sha256": "7e10fb33da433b445e671f83e3a93314c9e39cea982ad35cd0b9890c2fa5cf8a"
+     "sha256": "1414642337daa5c2f196492501196b8bb3929e05efe636e80d95fb9b97e34856"
     },
     {
      "path": "memories_1.sqlite",
@@ -257,13 +259,13 @@
      "path": "memories_1.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "fd6efed6499be635edaa999246c8f87acbb7e80e98ae37ed16bd9ef653ee4e85"
+     "sha256": "8ad92f42b5a7329cc3a90f2c7b1ebca458edd87ca8e0503d6456cf6c65d2c823"
     },
     {
      "path": "memories_1.sqlite-wal",
      "type": "file",
      "bytes": 86552,
-     "sha256": "f7e9d279a9cda2e0b1cef733e49fba968fb85d4a8e0911b536f46753d7d86e05"
+     "sha256": "a8b1ca9af5da526bb671f77ceb6da925603fab8bb9cf6b23c12eef3540094640"
     },
     {
      "path": "queue_1.sqlite",
@@ -275,13 +277,13 @@
      "path": "queue_1.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "df7466d66890154136a00b46a72014d979c4d3bbcbc2950188e68f4b8cbe541a"
+     "sha256": "ea48860b4ec314f8dd403e96763ba957d8c958e60e2d7f310111d7f0a725428b"
     },
     {
      "path": "queue_1.sqlite-wal",
      "type": "file",
      "bytes": 82432,
-     "sha256": "7b943c27e3e88e226756bb30e5f112689063fb9cf1965bd4237bc9fddcd6d09a"
+     "sha256": "28a7e0a7287174a99dde003ee723a6f315bfe0943fc83007cae1e337007035a8"
     },
     {
      "path": "state_5.sqlite",
@@ -293,13 +295,13 @@
      "path": "state_5.sqlite-shm",
      "type": "file",
      "bytes": 32768,
-     "sha256": "f4033e4a6950d60dc6ccb54d37c568deb3d60ae5cb988d45a0eb40706ca38740"
+     "sha256": "88cceb7b96049aa568d14be636ea387fa3bc470d00d68c8ad7b9367b197cd389"
     },
     {
      "path": "state_5.sqlite-wal",
      "type": "file",
      "bytes": 1989992,
-     "sha256": "c7f6205396f5d24e394017c3e6c5c1cad4362fbba4feef028978c403ebc94c72"
+     "sha256": "c8fd2fb09a2377f5e3ab7dea385a12a058e70609e7735529c6c3ad4dd32c0a58"
     },
     {
      "path": "tmp",
@@ -310,23 +312,407 @@
      "type": "dir"
     },
     {
-     "path": "tmp/arg0/codex-arg0ofxBjd",
+     "path": "tmp/arg0/codex-arg0ktOVzD",
      "type": "dir"
     },
     {
-     "path": "tmp/arg0/codex-arg0ofxBjd/.lock",
+     "path": "tmp/arg0/codex-arg0ktOVzD/.lock",
      "type": "file",
      "bytes": 0,
      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
     },
     {
-     "path": "tmp/arg0/codex-arg0ofxBjd/apply_patch.bat",
+     "path": "tmp/arg0/codex-arg0ktOVzD/apply_patch.bat",
      "type": "file",
      "bytes": 133,
      "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
     },
     {
-     "path": "tmp/arg0/codex-arg0ofxBjd/applypatch.bat",
+     "path": "tmp/arg0/codex-arg0ktOVzD/applypatch.bat",
+     "type": "file",
+     "bytes": 133,
+     "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
+    }
+   ],
+   "exec_http_no_auth": [
+    {
+     "path": "goals_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "goals_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "cf66ef5ba50d252ae43182af57e3512bdd45a166fc533db2fec9fc8604e7b801"
+    },
+    {
+     "path": "goals_1.sqlite-wal",
+     "type": "file",
+     "bytes": 74192,
+     "sha256": "6a5fa4ce5237d5d5bcdde7dcaf6f4f74934a548d2f960a984e8c11db030bbc66"
+    },
+    {
+     "path": "installation_id",
+     "type": "file",
+     "bytes": 36,
+     "sha256": "d24360a2cb2ed3a08cd06f15662f20af0305e4cea82377c8c89daa192c61a643"
+    },
+    {
+     "path": "logs_2.sqlite",
+     "type": "file",
+     "bytes": 49152,
+     "sha256": "ee699ffafcb72ec5293b5c0d9a61ae377e78cab6feaa15ca8eed88d1e49e5b37"
+    },
+    {
+     "path": "logs_2.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "20d3f48cb2a7afcb280d01fe2d4b89d26a3e180737ea8a03ea0fc42785f734c9"
+    },
+    {
+     "path": "logs_2.sqlite-wal",
+     "type": "file",
+     "bytes": 115392,
+     "sha256": "38bcf054819c41fc6d6b5dac5f15dbe3bba5fd2a06608e46473f2c081178a3e9"
+    },
+    {
+     "path": "memories_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "memories_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "5f91435d0f6c7a4a9d76646956543a5a1ee438d3b36a384318896306805e6c16"
+    },
+    {
+     "path": "memories_1.sqlite-wal",
+     "type": "file",
+     "bytes": 86552,
+     "sha256": "84ad2fecde73da5dde8c842c1c773b3b90580cfef055ff169e1f94450a9c2aa9"
+    },
+    {
+     "path": "queue_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "queue_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "83f691e9f31d391bf4e1dae22f10065b965c9a4e8a761bd2707f6fdb6d1e8a69"
+    },
+    {
+     "path": "queue_1.sqlite-wal",
+     "type": "file",
+     "bytes": 82432,
+     "sha256": "875442875320d44c8522612b0aef6be4a8078d7394ada02d1d8356894abcea8f"
+    },
+    {
+     "path": "state_5.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "state_5.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "63e46eff344c3cdf9f71a1ed41396e29803b6829bbcd271ea850fa2710874eca"
+    },
+    {
+     "path": "state_5.sqlite-wal",
+     "type": "file",
+     "bytes": 1989992,
+     "sha256": "550842ea4df0dcf3be5b40c3f6a0d91c263dc9eb9c92cc3a1688b096191e1e92"
+    },
+    {
+     "path": "tmp",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0/codex-arg06DpP6Z",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0/codex-arg06DpP6Z/.lock",
+     "type": "file",
+     "bytes": 0,
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+     "path": "tmp/arg0/codex-arg06DpP6Z/apply_patch.bat",
+     "type": "file",
+     "bytes": 133,
+     "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
+    },
+    {
+     "path": "tmp/arg0/codex-arg06DpP6Z/applypatch.bat",
+     "type": "file",
+     "bytes": 133,
+     "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
+    }
+   ],
+   "exec_http_scrambled_auth": [
+    {
+     "path": "goals_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "goals_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "201cd67ba4bf702c3c35577dad86b49df06f393019c77ae01689dcce37e078b5"
+    },
+    {
+     "path": "goals_1.sqlite-wal",
+     "type": "file",
+     "bytes": 74192,
+     "sha256": "b54813b51ec7c6872734ba6dc0111d5c62dd916bf410e8e9005b902e2a8e2306"
+    },
+    {
+     "path": "installation_id",
+     "type": "file",
+     "bytes": 36,
+     "sha256": "70159edad13a23ca24ffa9ed80d0d2498d29a6d6b3955bc8fba966ff6991d3fd"
+    },
+    {
+     "path": "logs_2.sqlite",
+     "type": "file",
+     "bytes": 49152,
+     "sha256": "084dbe8644426411857243e35ff1c2877223d622ee4d0ce5d60bf96d13f60957"
+    },
+    {
+     "path": "logs_2.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "b1b36a6196508b7397724981daa97fe734c250db8835accf18c296221db356e8"
+    },
+    {
+     "path": "logs_2.sqlite-wal",
+     "type": "file",
+     "bytes": 115392,
+     "sha256": "ef76dba87f33fe619984cdd4870cebfd4cb0b2e47ac691f502868e8267c5044b"
+    },
+    {
+     "path": "memories_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "memories_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "7ef9235d15b553634a682f2ee16c9699195db2397faee1ecc03ca847fa08002b"
+    },
+    {
+     "path": "memories_1.sqlite-wal",
+     "type": "file",
+     "bytes": 86552,
+     "sha256": "e68dd66ab03cfc861946bec76ffda0f9264a9943cab16d4a8604189c5c1931c8"
+    },
+    {
+     "path": "queue_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "queue_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "dae4d82705751de92f0e8e755431cfe09130458114db7d61c113012e97ecb4f8"
+    },
+    {
+     "path": "queue_1.sqlite-wal",
+     "type": "file",
+     "bytes": 82432,
+     "sha256": "5385590bc01e053e0f496fc5ff5a21559478ece6ff8900ee2e52bbbad5a7bea3"
+    },
+    {
+     "path": "state_5.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "state_5.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "2813baf6181bae32e5cde6a430c881c0254d7d99e6acb6a2cb2e8261fa95dee0"
+    },
+    {
+     "path": "state_5.sqlite-wal",
+     "type": "file",
+     "bytes": 1989992,
+     "sha256": "1ea78971212984162ec91d04fce1434c5830a93f0d437b7ca11c1a66483b13f8"
+    },
+    {
+     "path": "tmp",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0nfM1wz",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0nfM1wz/.lock",
+     "type": "file",
+     "bytes": 0,
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0nfM1wz/apply_patch.bat",
+     "type": "file",
+     "bytes": 133,
+     "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0nfM1wz/applypatch.bat",
+     "type": "file",
+     "bytes": 133,
+     "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
+    }
+   ],
+   "exec_ws_multiline_stdin": [
+    {
+     "path": "goals_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "goals_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "2e0476cd1894549c5e3d16dc747252317eaa764fae039439295eaa14c2767727"
+    },
+    {
+     "path": "goals_1.sqlite-wal",
+     "type": "file",
+     "bytes": 74192,
+     "sha256": "d1b39f6b1beab924d45ceac36aa83fd8d0d755fac62b73b63fcb0e9046e8ce76"
+    },
+    {
+     "path": "installation_id",
+     "type": "file",
+     "bytes": 36,
+     "sha256": "c08f9d7e6ccb501b4d114d75fb5cdeb8f8bc5d3ee905c7cf12571a3c3310329b"
+    },
+    {
+     "path": "logs_2.sqlite",
+     "type": "file",
+     "bytes": 49152,
+     "sha256": "a2d8c36fc79eedf6edeb68dfa3fe81d3cf12428a854ea4bc47dd95256cf58bd1"
+    },
+    {
+     "path": "logs_2.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "c9bb87c1c81744a3e8d451c58070981210f14b5d7e15e09bba9525ee8ec17e52"
+    },
+    {
+     "path": "logs_2.sqlite-wal",
+     "type": "file",
+     "bytes": 115392,
+     "sha256": "867e1251f68217a757f39fffde26893ba12374330979dae60ee65c4aad8efc16"
+    },
+    {
+     "path": "memories_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "memories_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "c4a9e4dda8349eb62df19d8eb11b5b2ceb361bb1004acbce058a40c1a62a2b0e"
+    },
+    {
+     "path": "memories_1.sqlite-wal",
+     "type": "file",
+     "bytes": 86552,
+     "sha256": "f8957f5e3a8bfd5126383faba2521bb187341b12d6c80ed963949fe71680d544"
+    },
+    {
+     "path": "queue_1.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "queue_1.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "59ca495dd4a74146b2748621183d686a2bf75293b67a39e9290a4ff545557582"
+    },
+    {
+     "path": "queue_1.sqlite-wal",
+     "type": "file",
+     "bytes": 82432,
+     "sha256": "c0ef0290b1b80780cd5b2196bed5e1cc1108f53c42d61b0f96a72608ea102026"
+    },
+    {
+     "path": "state_5.sqlite",
+     "type": "file",
+     "bytes": 4096,
+     "sha256": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f"
+    },
+    {
+     "path": "state_5.sqlite-shm",
+     "type": "file",
+     "bytes": 32768,
+     "sha256": "64752940cc0cb8c72168dcd0b0d68e46809f0e991e4d9e03478ebc3552fc9258"
+    },
+    {
+     "path": "state_5.sqlite-wal",
+     "type": "file",
+     "bytes": 1989992,
+     "sha256": "0badf30fe031364e36a1d683d56ac27663f01d5d48c7f99e3cb64c1563322699"
+    },
+    {
+     "path": "tmp",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0SG2soX",
+     "type": "dir"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0SG2soX/.lock",
+     "type": "file",
+     "bytes": 0,
+     "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0SG2soX/apply_patch.bat",
+     "type": "file",
+     "bytes": 133,
+     "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"
+    },
+    {
+     "path": "tmp/arg0/codex-arg0SG2soX/applypatch.bat",
      "type": "file",
      "bytes": 133,
      "sha256": "6cbe97051f8809219e6ed77cec4f82ab67b73add2735b9818e2282cf88bbba60"

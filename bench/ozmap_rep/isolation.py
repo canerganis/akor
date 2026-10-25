@@ -21,7 +21,7 @@ import shutil
 import threading
 import time
 
-from . import config
+from . import config, effective_context
 
 AUTH = 'auth.json'
 INSTRUCTION_NAMES = ('AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md')
@@ -400,6 +400,8 @@ def verify_launch(*, argv, env, workdir, exe_sha256, frozen) -> list:
     holds only auth.json, an empty working directory equal to the -C argument, and no instruction file in the working
     directory or any ancestor. Any problem prevents the launch."""
     problems = list(argv_check(argv))
+    # P5 repair 2 (OB-P5b): the pinned model catalog and the approved effective context, checked per launch
+    problems += effective_context.launch_problems(argv)
     if argv_sha256(argv) != frozen.get('argv_sha256'):
         problems.append('argument hash differs from the frozen argument hash')
     if exe_sha256 != frozen.get('exe_sha256'):

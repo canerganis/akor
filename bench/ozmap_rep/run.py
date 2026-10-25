@@ -64,7 +64,7 @@ if str(config.REPO / 'examples') not in sys.path:
 
 from . import bootstrap as bootstrap_mod  # noqa: E402
 from . import budget as budget_mod  # noqa: E402
-from . import events, isolation, prompts, quota, redact, rules, rulings, usage, workload  # noqa: E402
+from . import effective_context, events, isolation, prompts, quota, redact, rules, rulings, usage, workload  # noqa: E402
 from . import fake_cli, procs, tokenizer  # noqa: E402
 
 COMMAND = 'python -m bench.ozmap_rep.run cell {id}'
@@ -2930,6 +2930,12 @@ def freeze_command(new_run_dir=None, disposition=None):
             print(f'refused: {new_run_dir} is not an unused directory', file=sys.stderr)
             return config.EXIT_FREEZE
     rec = freeze_record()
+    # P5 repair 2 (OB-P5b): the approved effective context was captured with the Codex executable being frozen; every
+    # launch is then checked against the frozen executable, so the approved list holds for every live call.
+    context = effective_context.executable_problems((rec.get('codex') or {}).get('exe_sha256'))
+    if context:
+        print('refused: the freeze is not ready (P5): ' + '; '.join(context), file=sys.stderr)
+        return config.EXIT_FREEZE
     if new_run_dir:
         rec['live_run_dir'] = str(Path(new_run_dir).resolve())
         rec['disposition'] = str(disposition)

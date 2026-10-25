@@ -553,3 +553,48 @@ answered 404, so vendor model metadata could still change the vendor base instru
 | `python -m pytest bench/ozmap_rep -q` | 643 passed |
 | `python -m pytest -q` (full repository, `.venv` site packages on PYTHONPATH) | 2,068 passed, 2 skipped, 1,069 subtests passed (18 min 5 s), exit 0, before the cap edit; `bench/ozmap_rep` rerun after it |
 | dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls, no real CLI resolved, within bounds |
+
+## P5 repair 2: exact effective context on the live route (2026-10-25)
+
+Blockers: P5 (Astra A, rulings/signoff-astra-2.md) and OB-P5b (Opus B, rulings/signoff-opus-2.md). Opus B's fix, all
+three parts. No owner file was changed and no model was called: every probe ran against a localhost capture server.
+
+### What changed
+
+| fix | change | where |
+|---|---|---|
+| 1, model metadata | The frozen route pins the catalog bundled in the pinned codex.exe (extracted byte for byte, sha256 1d39994d) with `-c model_catalog_json='<file>'`. With the pin no probe requested /models. The unpinned control fetched /models twice, and its request carried a canary placed in the served catalog's base instruction template and a changed tool schema | `config.MODEL_CATALOG_FILE`, `config.MODEL_CATALOG_SHA256`, `config.ROUTE_SECURITY_ARGS`, bench/ozmap_rep/model-catalog.json |
+| 2, live transport | The boundary probe accepts the WebSocket upgrade (RFC 6455, no extension, frames recorded in full) and answers the first frame with an error event. The CLI sends a prewarm frame (`generate: false`, the tools and base instruction items) and a turn frame; the turn frame equals the HTTP fallback body item by item | rulings/evidence/p5-probe/boundary.py (`P5_WS`, `P5_MODELS`, `P5_UNPIN`, `P5_PROMPT`) |
+| 3, decision | `established` is `effective_context.certify`: every captured request of every pinned probe equals the approved list item by item (developer item hashes, tool schemas as canonical JSON, the environment context with only cwd, date and time zone as placeholders, the user item as the exact stdin), plus the metadata, control, owner scan and external checks | bench/ozmap_rep/effective_context.py, bench/ozmap_rep/effective-context.json, rulings/evidence/p5-probe/gen_p5.py |
+| live path | `isolation.verify_launch` adds `effective_context.launch_problems` before every Codex launch (catalog file hash, approved list present and bound to the frozen model, CLI version, catalog and route arguments). `run.freeze_command` refuses a Codex executable other than the one the approved list was captured with. `rulings.annex_problems` refuses context evidence not compared with the approved list on disk or not captured with the pinned catalog | `isolation.py`, `run.py`, `rulings.py` |
+| annexes | Regenerated: P5-effective-context-evidence.json (verdict established, every comparison empty) and startup-manifest.json (no instruction bearing file); the P5 ruling's annex table names the new hashes | rulings/P5-startup-context.md |
+
+The approved effective context is a candidate built from the ws_no_auth turn frame with `GEN_PROPOSE=1`. It binds only
+when both signatories bind the evidence that names its hash; a later run of the generator never rewrites it.
+
+The request body on the live route is TLS to the vendor. The harness cannot see it, so per launch it checks the inputs
+that determine it (executable through the freeze, argv with the pin, catalog bytes, empty home and working directory,
+the approved list). The boundary probe ties those inputs to the approved items.
+
+### Tests and fixtures
+
+* New: tests/test_p5_effective_context.py (26 tests). It covers rejection of an extra instruction item, a changed or
+  missing item, a changed user item, a changed tool schema and unapproved fields, every refusal case of `certify`, the
+  launch and freeze bindings, and the consistency of the repository annexes.
+* `tests/test_council_r1.py::settled_annex` also records the approved context hash and the catalog hash, the two new
+  conditions of a settled P5 evidence annex. No acceptance test changed.
+
+### Disclosed
+
+* The catalog path in the argv lies inside the repository, below the owner profile. The CLI reads that one file. No
+  owner path occurs in any captured request.
+* P5-E3 (multi_agent items, collaboration and exec tools) stays in the request. It is now pinned by the item hashes of
+  the approved list, which is the condition Opus B named.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 669 passed |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
+| `gen_p5.py` (6 request boundary probes, no model call) | verdict established, every comparison empty, 0 external requests, 0 /models requests with the pin, 2 in the control |

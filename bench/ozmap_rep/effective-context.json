@@ -1,0 +1,383 @@
+{
+ "schema": "ozmap-rep.effective-context/1",
+ "cli_version": "codex-cli 0.160.0",
+ "model": "gpt-6.1-sol",
+ "executable_sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d",
+ "model_catalog_sha256": "1d39994d11492a3c692c060c621e5c0f01213e18f06fcb5407fcd7d824ebd536",
+ "route_security_args": [
+  "-c",
+  "cli_auth_credentials_store=\"file\"",
+  "--enable",
+  "skip_host_skill_discovery",
+  "-c",
+  "skills.include_instructions=false",
+  "-c",
+  "skills.bundled.enabled=false",
+  "-c",
+  "model_catalog_json='C:\\Users\\can02\\Projects\\akor\\bench\\ozmap_rep\\model-catalog.json'"
+ ],
+ "disable_args": [
+  "--disable",
+  "plugins",
+  "--disable",
+  "apps",
+  "--disable",
+  "memories",
+  "--disable",
+  "hooks",
+  "--disable",
+  "multi_agent",
+  "--disable",
+  "skill_search",
+  "--disable",
+  "browser_use",
+  "--disable",
+  "computer_use",
+  "--disable",
+  "image_generation",
+  "--disable",
+  "view_image",
+  "--disable",
+  "shell_tool",
+  "--disable",
+  "unified_exec",
+  "--disable",
+  "unified_exec_tty",
+  "--disable",
+  "browser_use_external",
+  "--disable",
+  "browser_use_full_cdp_access",
+  "--disable",
+  "in_app_browser",
+  "--disable",
+  "code_mode_host",
+  "--disable",
+  "remote_plugin",
+  "--disable",
+  "plugin_sharing",
+  "--disable",
+  "recommended_plugins",
+  "--disable",
+  "skill_mcp_dependency_install",
+  "--disable",
+  "tool_suggest",
+  "--disable",
+  "tool_call_mcp_elicitation",
+  "--disable",
+  "sleep_tool",
+  "--disable",
+  "multi_agent_v2",
+  "--disable",
+  "shell_snapshot",
+  "--disable",
+  "workspace_dependencies",
+  "--disable",
+  "secret_auth_storage",
+  "-c",
+  "project_doc_max_bytes=0"
+ ],
+ "transports": {
+  "http": {},
+  "websocket": {
+   "type": "response.create"
+  },
+  "websocket_prewarm": {
+   "type": "response.create",
+   "generate": false
+  }
+ },
+ "variable": {
+  "top_level": [
+   "prompt_cache_key",
+   "client_metadata"
+  ],
+  "client_metadata": [
+   "session_id",
+   "thread_id",
+   "turn_id",
+   "root_turn_id",
+   "x-codex-installation-id",
+   "x-codex-window-id",
+   "x-codex-ws-stream-request-start-ms",
+   "x-codex-turn-metadata"
+  ],
+  "item_keys": [
+   "id"
+  ],
+  "item_metadata": [
+   "turn_id",
+   "create_time"
+  ],
+  "environment_context": "only the working directory (a numbered slot directory, also named as the workspace root), the date and the time zone",
+  "user_item": "one input_text whose text is exactly the stdin bytes"
+ },
+ "prewarm_items": 2,
+ "source": {
+  "probes": [
+   "ws_no_auth",
+   "http_no_auth"
+  ],
+  "captured_at": "20261025T034755Z",
+  "turn_frame_sha256": "f2a62de1bb56dc950f814c11d6a8454f37640a006e8dce2e2421e19edd6b3e68",
+  "prewarm_frame_sha256": "f1180e78b1d4a05d94ad00d81b5965b79e78ed237608d108efa2a23cd0007e07",
+  "http_body_sha256": "988743d160fd2d01e4f69aef8b1ef25e42cc4c73ba3bead493fd3331ade563cb",
+  "capture_files_sha256": {
+   "ws_no_auth": "f7807292a84f8f05e5153c30180ffbbce5ad31a13474282deba9a5fa6c12ac43",
+   "http_no_auth": "07af47d3cdcec3fa06186d5d0e29c708355e58aaede3d59c51a4f6b16de211ea"
+  }
+ },
+ "top_level": {
+  "model": "gpt-6.1-sol",
+  "tool_choice": "auto",
+  "parallel_tool_calls": false,
+  "reasoning": {
+   "effort": "high",
+   "context": "all_turns"
+  },
+  "store": false,
+  "stream": true,
+  "include": [
+   "reasoning.encrypted_content"
+  ],
+  "text": {
+   "verbosity": "low"
+  }
+ },
+ "client_metadata": {
+  "http": {
+   "keys": [
+    "mcp_attribution",
+    "root_turn_id",
+    "session_id",
+    "thread_id",
+    "turn_id",
+    "x-codex-installation-id",
+    "x-codex-turn-metadata",
+    "x-codex-window-id"
+   ],
+   "values": {
+    "mcp_attribution": "{\"status\":\"none\"}"
+   }
+  },
+  "websocket": {
+   "keys": [
+    "mcp_attribution",
+    "root_turn_id",
+    "session_id",
+    "thread_id",
+    "turn_id",
+    "ws_request_header_x_openai_internal_codex_responses_lite",
+    "x-codex-installation-id",
+    "x-codex-turn-metadata",
+    "x-codex-window-id",
+    "x-codex-ws-stream-request-start-ms"
+   ],
+   "values": {
+    "mcp_attribution": "{\"status\":\"none\"}",
+    "ws_request_header_x_openai_internal_codex_responses_lite": "true"
+   }
+  },
+  "websocket_prewarm": {
+   "keys": [
+    "mcp_attribution",
+    "session_id",
+    "thread_id",
+    "turn_id",
+    "ws_request_header_x_openai_internal_codex_responses_lite",
+    "x-codex-installation-id",
+    "x-codex-turn-metadata",
+    "x-codex-window-id",
+    "x-codex-ws-stream-request-start-ms"
+   ],
+   "values": {
+    "mcp_attribution": "{\"status\":\"none\"}",
+    "ws_request_header_x_openai_internal_codex_responses_lite": "true"
+   }
+  }
+ },
+ "items": [
+  {
+   "type": "additional_tools",
+   "role": "developer",
+   "kinds": null,
+   "tools_sha256": "a8bba42c6358b48a9eaec289d82e226f36e929c05446061cc3eefe171b78129d"
+  },
+  {
+   "type": "message",
+   "role": "developer",
+   "kinds": [
+    "model.base_instructions"
+   ],
+   "content": [
+    {
+     "type": "input_text",
+     "sha256": "e1bdd4f8f0df4b20f4a0ffc8a861ce819df45325d8cecdfb92e80379cf8d142e",
+     "chars": 21769
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "role": "developer",
+   "kinds": [
+    "permissions.instructions",
+    "collaboration_mode.instructions"
+   ],
+   "content": [
+    {
+     "type": "input_text",
+     "sha256": "4103287cd2f8e02c0c606bbbae018671bd04d7e7eeca9cbf862f8b53f9275313",
+     "chars": 342
+    },
+    {
+     "type": "input_text",
+     "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
+     "chars": 920
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "role": "developer",
+   "kinds": [
+    "multi_agent.role_instructions"
+   ],
+   "content": [
+    {
+     "type": "input_text",
+     "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
+     "chars": 2429
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "role": "developer",
+   "kinds": [
+    "multi_agent.mode_instructions"
+   ],
+   "content": [
+    {
+     "type": "input_text",
+     "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
+     "chars": 271
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "role": "user",
+   "kinds": [
+    "environments.environment_context"
+   ],
+   "content": [
+    {
+     "type": "input_text",
+     "sha256": "571ac117b28dc364217166412f3dd9882f5f0d3553c87c5ec5489cc340df927f",
+     "chars": 398
+    }
+   ]
+  },
+  {
+   "type": "message",
+   "role": "user",
+   "kinds": [
+    "user.text"
+   ],
+   "content": [
+    {
+     "type": "input_text",
+     "sha256": "<stdin>"
+    }
+   ]
+  }
+ ],
+ "about": "P5 approved effective context of the frozen route (repair 2, blockers P5 and OB-P5b): every item of the model request in order, by sha256 of its exact text (developer items, tool schemas as canonical JSON, the environment context with its working directory, date and time zone as placeholders) and the user item as the exact stdin bytes. effective_context.context_problems compares a captured request with it; effective_context.launch_problems checks its bindings before every Codex launch. Built from the ws_no_auth turn frame of the request boundary probe; it carries the approval only once both signatories bind the P5 effective context evidence that names its sha256.",
+ "item_preview": [
+  {
+   "index": 0,
+   "kinds": null,
+   "type": "additional_tools",
+   "role": "developer",
+   "opening": [],
+   "tools": [
+    "functions",
+    "collaboration"
+   ]
+  },
+  {
+   "index": 1,
+   "kinds": [
+    "model.base_instructions"
+   ],
+   "type": "message",
+   "role": "developer",
+   "opening": [
+    "You are Codex, an agent based on GPT-6. You and the user share one workspace, and your job is to col"
+   ],
+   "tools": null
+  },
+  {
+   "index": 2,
+   "kinds": [
+    "permissions.instructions",
+    "collaboration_mode.instructions"
+   ],
+   "type": "message",
+   "role": "developer",
+   "opening": [
+    "<permissions instructions>\nFilesystem sandboxing defines which files can be read or written. `sandbo",
+    "<collaboration_mode># Collaboration Mode: Default\n\nYou are now in Default mode. Any previous instruc"
+   ],
+   "tools": null
+  },
+  {
+   "index": 3,
+   "kinds": [
+    "multi_agent.role_instructions"
+   ],
+   "type": "message",
+   "role": "developer",
+   "opening": [
+    "<multi_agent_role>You are `/root`, the primary agent in a team of agents collaborating to fulfill th"
+   ],
+   "tools": null
+  },
+  {
+   "index": 4,
+   "kinds": [
+    "multi_agent.mode_instructions"
+   ],
+   "type": "message",
+   "role": "developer",
+   "opening": [
+    "<multi_agent_mode>Any earlier instruction enabling proactive multi-agent delegation no longer applie"
+   ],
+   "tools": null
+  },
+  {
+   "index": 5,
+   "kinds": [
+    "environments.environment_context"
+   ],
+   "type": "message",
+   "role": "user",
+   "opening": [
+    "<environment_context>\n  <cwd>C:\\ozmap_rep\\annex-probes\\p5-ws_no_auth-20261025T034755Z\\work\\slot-0</c"
+   ],
+   "tools": null
+  },
+  {
+   "index": 6,
+   "kinds": [
+    "user.text"
+   ],
+   "type": "message",
+   "role": "user",
+   "opening": [
+    "<stdin>"
+   ],
+   "tools": null
+  }
+ ]
+}

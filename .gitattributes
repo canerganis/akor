@@ -1,3 +1,5 @@
 bench/codereview/fixtures/** -text
 docs/design/ozmap-replication-2026-10-24/rulings/** -text
 bench/ozmap_rep/startup-manifest.json -text
+bench/ozmap_rep/model-catalog.json -text
+bench/ozmap_rep/effective-context.json -text
