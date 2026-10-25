@@ -1,0 +1,274 @@
+{
+ "schema": "ozmap-rep.d6.operation_attestation/1",
+ "attestor": "Opus D6 verifier: fresh Opus workflow subagent (claude-opus-5-5), call ledger role d6-focused-verifier-attestor; not the implementer of bench/ozmap_rep or of bench/ozmap_rep/ops",
+ "implementer": "Fable (claude-fable-5-1), author of bench/ozmap_rep/ops (call ledger: independent operations authoring)",
+ "independent": true,
+ "independence": "the attestor did not write, edit or review the operations before this call and is not a signatory author of the oracle; Astra saw no ops content; the sealed reviewer ASTs were not read",
+ "attested_at_commit": "162f61cf9f3bcaa7a95baa0924b35f93cb5bface",
+ "date": "2026-10-25",
+ "classification_sha256": "b6c2a50302a8b4d76ab1b6e2cdf5ff87c20b2b2c31071ffdbefef1b63fe3268a",
+ "ops_sha256": {
+  "bench/ozmap_rep/ops/__init__.py": "22e5257d6f40484911a29386f58b28ae7af89fd91f31cf07f7be013481725a11",
+  "bench/ozmap_rep/ops/data.py": "bdc8a19b76aefd95b8ef8d69abddda65425a150176df21c42c7936fe9927bd0c",
+  "bench/ozmap_rep/ops/ops.md": "7e82a4b2a9ec88e3406831e8576ced3e2d51e9720ecfe853de757aab7c172cc0",
+  "bench/ozmap_rep/ops/oracle.py": "94725a6aee4a280578ca7bd8522252ebd8331c09b1a760663ad9a022910e50d3",
+  "bench/ozmap_rep/ops/test_ops.py": "e34a34de362a6425d081a5258a00017df226fe67aecd2bac775fb89e710d08c9"
+ },
+ "covers": {
+  "oracle_correctness": {
+   "verdict": "pass",
+   "count": 6036,
+   "method": "the verifier reimplemented the four operations from ops.md with exact Fraction arithmetic and its own rounding (half to even for margin, half away from zero for elong) and compared with oracle.gold and the harness gold on every admission case and every evaluation job of the frozen seed, on admission and job streams of eight further seeds and on the ops.md worked examples",
+   "results": {
+    "admission_cases": 256,
+    "admission_mismatches": [],
+    "evaluation_jobs": 512,
+    "job_mismatches": [],
+    "extra_seed_cases": 5248,
+    "extra_seed_mismatches": 0,
+    "ops_md_edges": 20,
+    "edge_mismatches": []
+   },
+   "observations": [
+    "Not reachable from data.py, recorded for completeness: margin computes u - y in the default Decimal context (28 significant digits); a numeral near the 38 digit interpreter limit would be rounded or make quantize raise. Generated values have at most 3 integer digits and 3 fractional digits.",
+    "As the expressibility review noted: the oracle raises ValueError (outside the study) for a governing unknown beside a malformed other field and accepts a value with ';' not followed by a space; no job or admission case has either shape."
+   ]
+  },
+  "classification": {
+   "verdict": "pass",
+   "count": 4,
+   "method": "classification.json checked against the expressibility review and the language: R is verdict, margin and temp_class; elong is not rule shaped (division by a per record value, contract rounding half away from zero against fmt half to even); each rule shaped entry carries inputs, outputs, guards, domain, reasons and a sealed AST hash equal to the review's table; the contract domain is the operation's own written contract, not a carve-out; classified_at 2026-10-24T15:23:10Z precedes every learner call (none has happened)",
+   "results": {
+    "R": [
+     "verdict",
+     "margin",
+     "temp_class"
+    ],
+    "not_rule_shaped": [
+     "elong"
+    ],
+    "sealed_hashes_match_review": true,
+    "file_unchanged_since": "4839d99"
+   }
+  },
+  "contract_extraction": {
+   "verdict": "pass",
+   "count": 4,
+   "method": "prompts.materials_texts rebuilt independently from ops.md: goal is the Record type section, each instruction is its operation section with only the Expectation paragraph removed, every other paragraph kept verbatim; no classification term reaches learner text; all four operations shown eligible so eligibility does not reveal R",
+   "results": {
+    "goal_is_record_type": true,
+    "instructions_match_ops_md": {
+     "verdict": true,
+     "verdict_paragraphs_kept": true,
+     "margin": true,
+     "margin_paragraphs_kept": true,
+     "elong": true,
+     "elong_paragraphs_kept": true,
+     "temp_class": true,
+     "temp_class_paragraphs_kept": true
+    },
+    "leak_terms": [],
+    "expectation_paragraphs_in_md": 4,
+    "eligibility": {
+     "verdict": true,
+     "margin": true,
+     "elong": true,
+     "temp_class": true
+    },
+    "manifest_ops": [
+     "elong",
+     "margin",
+     "temp_class",
+     "verdict"
+    ]
+   }
+  },
+  "consumer_checks": {
+   "verdict": "pass",
+   "count": 768,
+   "method": "every gold value of every admission case was run through the pinned consumer checks of the registry package (json_type string plus one_of or max_bytes), and every evaluation job gold through the same predicates; a value outside the closed output sets is rejected",
+   "results": {
+    "definitions": {
+     "verdict": [
+      [
+       "one_of",
+       {
+        "values": [
+         "pass",
+         "fail",
+         "unknown"
+        ]
+       }
+      ]
+     ],
+     "margin": [
+      [
+       "max_bytes",
+       {
+        "bytes": 32
+       }
+      ]
+     ],
+     "elong": [
+      [
+       "max_bytes",
+       {
+        "bytes": 32
+       }
+      ]
+     ],
+     "temp_class": [
+      [
+       "one_of",
+       {
+        "values": [
+         "cold",
+         "room",
+         "hot",
+         "unknown"
+        ]
+       }
+      ]
+     ]
+    },
+    "gold_rejected": [],
+    "registry_gold_rejected": [],
+    "closed_set_rejects_other": {
+     "verdict": true,
+     "temp_class": true
+    }
+   }
+  },
+  "representative_cases": {
+   "verdict": "pass",
+   "count": 48,
+   "count_scope": "per operation, each of the four operations (192 in total)",
+   "results": {
+    "verdict": {
+     "total": 64,
+     "representative": 48,
+     "distinct_gold": 3,
+     "unknown_gold": 12
+    },
+    "margin": {
+     "total": 64,
+     "representative": 48,
+     "distinct_gold": 46,
+     "unknown_gold": 6
+    },
+    "elong": {
+     "total": 64,
+     "representative": 48,
+     "distinct_gold": 50,
+     "unknown_gold": 6
+    },
+    "temp_class": {
+     "total": 64,
+     "representative": 48,
+     "distinct_gold": 4,
+     "unknown_gold": 6
+    },
+    "admission_unique": true,
+    "admission_job_overlap": 0,
+    "admission_prefix_A": true
+   },
+   "method": "workload.materials admission cases of the frozen seed: 64 per operation, gold from the oracle, unique texts, specimen prefix A, no overlap with any evaluation job text"
+  },
+  "challenge_cases": {
+   "verdict": "pass",
+   "count": 16,
+   "count_scope": "per operation, each of the four operations (64 in total)",
+   "results": {
+    "verdict": {
+     "challenge": 16,
+     "challenge_categories": [
+      "boundary_in",
+      "boundary_out",
+      "newline",
+      "reorder",
+      "spelling",
+      "unit",
+      "unknown_grade",
+      "unknown_value"
+     ],
+     "plain_in_challenge": [],
+     "partition_rule_holds": true
+    },
+    "margin": {
+     "challenge": 16,
+     "challenge_categories": [
+      "negative",
+      "newline",
+      "reorder",
+      "spelling",
+      "tie",
+      "unit",
+      "unknown",
+      "zero"
+     ],
+     "plain_in_challenge": [],
+     "partition_rule_holds": true
+    },
+    "elong": {
+     "challenge": 16,
+     "challenge_categories": [
+      "negative",
+      "newline",
+      "reorder",
+      "repeating",
+      "spelling",
+      "tie",
+      "unknown",
+      "zero"
+     ],
+     "plain_in_challenge": [],
+     "partition_rule_holds": true
+    },
+    "temp_class": {
+     "challenge": 16,
+     "challenge_categories": [
+      "boundary_in",
+      "boundary_out",
+      "negative",
+      "newline",
+      "reorder",
+      "spelling",
+      "unit",
+      "unknown"
+     ],
+     "plain_in_challenge": [],
+     "partition_rule_holds": true
+    }
+   },
+   "method": "the challenge partition is exactly the first 16 non plain cases of each operation in stream order (build-notes reading 5); every challenge case carries an edge category"
+  },
+  "sealing_and_access_chronology": {
+   "verdict": "pass",
+   "count": 5,
+   "method": "git history of bench/ozmap_rep/ops, classification.json and the expressibility review, the call ledger, the replication run directories and the freeze file; hashes of the ops files against the hashes the expressibility reviewer recorded; the sealed directory itself was not opened",
+   "events": [
+    {
+     "at": "2026-10-24T15:12:50Z",
+     "event": "operations committed (c7e877f); bench/ozmap_rep/ops unchanged since (git diff c7e877f HEAD empty, working tree clean)"
+    },
+    {
+     "at": "2026-10-24T15:23:10Z",
+     "event": "independent expressibility review committed (34f612e) by a fresh Opus reviewer; it records ops.md, oracle.py, data.py, test_ops.py and oz_rule.py sha256 values, all equal to the files now, and the three sealed AST hashes; the ASTs are stored outside the repo in the session scratchpad rep/sealed"
+    },
+    {
+     "at": "2026-10-24T15:23:10Z",
+     "event": "classification.json classified_at, before any learner call; file committed in 4839d99 and unchanged since"
+    },
+    {
+     "at": "2026-10-24T17:29:39Z onward",
+     "event": "every Astra call records an evidence pack excluding ops content and sealed ASTs (call ledger purposes)"
+    },
+    {
+     "at": "2026-10-25",
+     "event": "no evaluation call has happened: the call ledger holds preparation and review calls only, no replication run directory exists (C:\\ozmap_rep absent, ~/.ozmap_rep/runs holds only experiment.lock), and no freeze.json exists"
+    }
+   ],
+   "access": "No harness code path reads the sealed directory: score.convergence is the only reader, is never called by score_run, and runs only after scoring (A4.8). The learner sees ops.md minus the Expectation paragraphs and never the classification (test_learner_material_never_contains_the_classification_or_hidden_pilot_asts). The sealed directory is outside the repo and every learner working directory; a Codex learner under -s read-only could only reach it through a tool call, which A4.3 treats as execution evidence and the scorer flags as leakage, so such access cannot pass unflagged."
+  }
+ }
+}

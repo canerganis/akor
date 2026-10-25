@@ -1,0 +1,469 @@
+{
+ "schema": "ozmap-rep.d6.focused_verification/1",
+ "ruling": "D6 (council-build-deadlock-r2-joint.md, operative text: Astra checklist as one focused verification call)",
+ "verifier": "Opus D6 verifier: fresh Opus workflow subagent (claude-opus-5-5), call ledger role d6-focused-verifier-attestor; not the implementer of bench/ozmap_rep or of bench/ozmap_rep/ops",
+ "independent": true,
+ "implementer": "Opus implementer subagents of bench/ozmap_rep (call ledger roles implementer-*); Fable for bench/ozmap_rep/ops",
+ "verified_at_commit": "162f61cf9f3bcaa7a95baa0924b35f93cb5bface",
+ "date": "2026-10-25",
+ "method": "every item checked by running the named test selection at this commit and reading the code paths named; fakes and temporary directories only; no model call and no Codex model call; sealed ASTs not read",
+ "full_suite": {
+  "command": "python -m pytest bench/ozmap_rep -q",
+  "passed": 605,
+  "failed": 0,
+  "skipped": 0,
+  "errors": 0,
+  "duration_s": 258.5
+ },
+ "dry_run": {
+  "command": "python -m bench.ozmap_rep.run dry --run-dir <scratch>",
+  "exit": 0,
+  "cells_complete": 16,
+  "fake_calls": 52,
+  "external_calls": 0,
+  "report_validity": {
+   "isolation": "passed",
+   "leakage": 0,
+   "accounting_failures": 0,
+   "artifact_problems": 0,
+   "freeze_problems": 0,
+   "classification_problems": 0,
+   "interrupted": 0,
+   "invalid_cells": 0
+  }
+ },
+ "checklist": {
+  "rulings_and_annexes": {
+   "verdict": "fail",
+   "cases": 12,
+   "cases_passed": 12,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item1_readiness or b1_readiness or b1_the_freeze_refuses or o5_ or item32 or item33 or b1_a_signed_transport or item10_the_freeze"
+    },
+    "passed": 12,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "rulings.py ruling_problems, annex_problems, d6_problems, bound_problems, readiness_problems; config.REQUIRED_RULINGS, SIGNED_RULINGS, SIGNED_CLI_NOTICES, SIGNED_CLI_NOTICE_EVENT_KEYS, SIGNED_CLI_NOTICE_ID_RE; run.freeze_command and verify_freeze; score._freeze_problems",
+   "finding": "FAIL on the state, the mechanism is sound. The enforcement passes its tests: readiness requires each slot P1 to P5, D1, D6 bound by exact sha256 with both signatures and every annex hash bound and named in the countersigned text; the P4 annex must equal the configured notice predicate; freeze refuses (exit 14) and verify_freeze repeats the check before every live dispatch; the scorer rechecks the rulings bound in freeze.json. The state at this commit does not satisfy it: config.SIGNED_RULINGS is empty and rulings.readiness_problems() reports eight problems. Binding every ruling file as it stands (simulated, nothing written) leaves: P1, P2, P3, P4, P5 lack 'Signed: Opus B'; D1 and D6 lack both 'Signed: Astra A' and 'Signed: Opus B'. Annex hashes: P3 quota source manifest, P5 startup manifest and effective context evidence and D1 attribution evidence hash to the values named in their ruling texts and pass annex_problems; the P4 annex hash is named in P4 but the configured predicate (SIGNED_CLI_NOTICES empty, event keys and id_re None) is not the annex, so with code_mode_host disabled every live Codex exec would be uncertain. To pass: Opus B countersigns P1 to P5 (and Astra A and Opus B sign D1 and D6), config.SIGNED_RULINGS binds each file and annex by hash, and the P4 predicate is set to the annex; then this item alone needs re-verification (python -c 'from bench.ozmap_rep import rulings; print(rulings.readiness_problems())' must print [])."
+  },
+  "authentication": {
+   "verdict": "pass",
+   "cases": 99,
+   "cases_passed": 99,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/acceptance/test_a4_2_auth.py",
+      "bench/ozmap_rep/"
+     ],
+     "k": "test_a4_2_ or rt2_6 or rt3_2 or rtc1_2 or item14_a_baseline or item5_ or item4_telemetry_auth or item4_forced or rt1_4 or test_cli_auth or test_cli_baseline or test_cli_missing_baseline or item9_a_sibling or item13_a_probe or b1_a_cell_meeting or b1_the_real_401 or a414_a_refreshed or a414_two_changed or item1_a or item1_an or item1_live or item1_booleans or item9_mode_is_required"
+    },
+    "passed": 99,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "isolation.baseline_exp, wave_gate (48 h, timestamp only), auth_record, reconcile_auth, reconcile_generations, token_separation_problems, login_identity; run.CellRun.reserve_group (gate, inventory and baseline generation under the authentication lock), separation_gate, after_group (no sibling propagation beside an unsettled call)",
+   "finding": "pass. A4.2 holds: the wave gate refuses below 48 h and on a missing or unreadable exp and logs only the timestamp; exactly one changed worker is propagated, an authentication failure or more than one change stops Codex, nothing is ever restored; a reseed conflict keeps the newer baseline; the baseline must share no token hash, session, sid or auth time hash with the owner login, and a missing identity is never treated as different. Real baseline, metadata only: wave_gate ok, exp 2026-11-03T15:18:43Z, 229.95 h left; token_separation_problems against the owner auth.json returns no problem; the baseline is outside the repo. No token text was printed."
+  },
+  "instruction_exclusion": {
+   "verdict": "pass",
+   "cases": 31,
+   "cases_passed": 31,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "rt3_1 or instruction or ancestor or item33 or startup or b1_telemetry_refuses or worker_home or excluded_items or inventory or runtime or item7_env_values or evidence_lives_outside or four_numbered or learner_material or prompts_never or hide_admission or leak_check"
+    },
+    "passed": 31,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "isolation.instruction_scan and instruction_sources (AGENTS.md, AGENTS.override.md, CLAUDE.md everywhere; .agents, .codex, .claude, mcp.json, .mcp.json, CLAUDE.local.md, AGENTS.local.md outside the profile dirs; unreadable locations block), verify_launch, startup_instruction_files and the startup manifest check, telemetry_certificate",
+   "finding": "pass for the harness predicates. The live run directory resolves to C:\\ozmap_rep\\runs\\replication, outside the owner profile; instruction_scan of C:/ finds nothing and nothing unreadable. Startup files need an approved manifest entry by path and hash. The P5 effective instruction context evidence is a launch prerequisite tracked under rulings_and_annexes, not re-judged here."
+  },
+  "executable_binding": {
+   "verdict": "pass",
+   "cases": 33,
+   "cases_passed": 33,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item7_ or item12 or o2_ or test_a4_2_argv or argv or frozen_arguments"
+    },
+    "passed": 33,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "run.Executables.verified_guard (hash, write guard, hash again under the guard, same identity) and recheck before each child; worker_probe and TelemetryRun.worker_path_logins under one guard; argv_check and isolation.codex_argv with config.FROZEN_ARGS and ROUTE_SECURITY_ARGS",
+   "finding": "pass. A manifest changed while the guard is taken, after group verification or between launch groups refuses before any spawn; every local probe runs inside an entered guard; the argv is the frozen head plus the route security arguments."
+  },
+  "quota_semantics": {
+   "verdict": "pass",
+   "cases": 37,
+   "cases_passed": 37,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "test_a4_12 or rt2_5 or rt3_3 or item4_a_malformed or item31 or c22 or c4_a_stale or quota or handoff"
+    },
+    "passed": 37,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "quota._find_rate_limits, read_file, codex_primary_used_percent, codex_gate (stop at config.CODEX_STOP_PERCENT 80, unreadable is a stop), harvest_rollout, needs_coverage; run reserve_group quota gate per group in live mode; config.CODEX_SESSIONS_DEFAULT only in live mode",
+   "finding": "pass. The newest session file and its last rate_limits object decide; a malformed latest reading blocks and never falls back; freshness needs a new reading, not a new mtime; another account's reading blocks; live mode reads only the owner sessions. The harness keeps the signed A4.12 Claude handoff at 99 percent; the owner's 80 percent Claude stop is applied by the workflow driver, outside the harness."
+  },
+  "redaction_recovery": {
+   "verdict": "pass",
+   "cases": 14,
+   "cases_passed": 14,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item6_ or item15_a or o3_ or no_auth_contents or rtc1_1_a_cell_stopped or redact"
+    },
+    "passed": 14,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "redact.redact, secrets_from_auth, channels (per channel original and sanitized sha256), run.run_local raw probe streams under D/homes/raw-<slot>, CellRun.probe_evidence and _guarded_probe (disclosure record written before the probe marker is removed), score capture redaction and probe uncertainty findings",
+   "finding": "pass. Secrets are replaced by a 12 hex prefix of their sha256; any redaction is a credential disclosure and an isolation failure; a probe's raw output is kept inside the credential boundary until it settled cleanly; an unsettled probe or a crash before the disclosure write leaves the marker and makes the cell invalid, not interrupted."
+  },
+  "timing_bounds": {
+   "verdict": "pass",
+   "cases": 19,
+   "cases_passed": 19,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item17 or item14_local or item14_an_attempt or item14_a_crash or a414_a_crash_after or makespan or o1_ or item13_a_timed or item13_timeout or propagation_waits"
+    },
+    "passed": 19,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "score makespan bounds (math.floor lower, math.ceil upper to the millisecond), windows closed only after containment, crashed cell interrupted so its makespan never gates; spawn timeouts mark the child killed",
+   "finding": "pass. Bounds round outward; an attempt outside every window makes the cell incomplete; local processing delays reach the gated makespan; a timed out child without terminal evidence is unsettled, never retried."
+  },
+  "independent_scoring": {
+   "verdict": "pass",
+   "cases": 133,
+   "cases_passed": 133,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item16 or item10_ or test_score_ or rt1_1 or b4_ or b2_no_positive or o5_the_scorer or n1_convergence or test_a4_10 or test_a4_11 or test_a4_6 or scorer"
+    },
+    "passed": 133,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "score.score_run: prompt rebuilt from job ids and the frozen workload with order, records recomputed, audit sample rederived, warm C limited to rules cold C adopted, cell_findings attribution by structured cell field, _freeze_problems with rulings.bound_problems, gates and claims with invalid before inconclusive",
+   "finding": "pass. The scorer does not trust recorded hashes, audits or job ids; a deleted audit, an altered admission record, accounting field, bootstrap proposal or launch identity withholds claims; fake calls are never evaluation evidence; telemetry stays out of evaluation leakage and performance."
+  },
+  "atomic_reservations": {
+   "verdict": "pass",
+   "cases": 52,
+   "cases_passed": 52,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item11 or rt2_3 or b2_a_third or a414_a_reserved or item9_competing or item9_a_torn or rt1_2 or item2_a_second or reserve or test_a4_5 or test_a4_13"
+    },
+    "passed": 52,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "run.CellRun.reserve_group (markers and prompts, then live ledger rows, under the experiment lock), abandon, _ensure_ledger_row, stop_cell, ledger_rows (strict parsing), budget over the experiment ledger deduplicated by attempt_uid",
+   "finding": "pass. A reservation failing after its first marker keeps each reserved member as a charged not_launched attempt with its ledger row; a torn ledger line is an accounting failure; ledger and attempts are reconciled both ways; competing runners cannot reserve independently. Observation, not a defect under A4.14.2: the abandon docstring says the reserved marker stays, while the code removes it after writing the not_launched row (with suppressed errors); if that row could not be written, the live ledger row remains and the scorer flags the attempt missing from the run directory as an accounting failure, and the member was never launched."
+  },
+  "identities": {
+   "verdict": "pass",
+   "cases": 23,
+   "cases_passed": 23,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item9_ or rt1_5 or item23 or item10_a_launch_identity or login_identity or route or call_id or ids_and_texts"
+    },
+    "passed": 23,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "experiment.json run_id and experiment_id written once, attempt_uid per reservation, call ids per batch and try, events.classify_claude (one turn, permission denial list, frozen Sonnet model only), rules.route and adapter_hash, isolation.login_identity (hashes only)",
+   "finding": "pass. A second directory for the same experiment fails before dispatch; a mode change fails before dispatch; repeated call ids and duplicate terminal attempts are findings; the Sonnet route is checked by the harness itself; a launch identity differing from the bound freeze withholds claims."
+  },
+  "recovery": {
+   "verdict": "pass",
+   "cases": 59,
+   "cases_passed": 59,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "a414_ or item10_a_killed or o1_ or n1_a_stopped or rtc1_1 or interrupted or crash or rt2_1"
+    },
+    "passed": 59,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "A4.14.1 paths: crash_scan, stop_cell (not_launched or unsettled, ledger rows, auth comparison against the prepared generation), containment before admission (run-stop.json, exit 20), refusal of interrupted cells (19), dependents interrupted without running (75); removed functions recover_inflight, _recover_stream, superseded_terminal_batches absent from run.py",
+   "finding": "pass. No in flight recovery, resume or rerun exists; a crash mid record leaves the call unsettled and never resends; a child that cannot be ended or an unsupervised child stops the run; a stopped cell with any finding is invalid, only one without a finding is interrupted."
+  },
+  "predecessor_evidence": {
+   "verdict": "pass",
+   "cases": 6,
+   "cases_passed": 6,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "item9_a_replacement or rt2_2 or item9_migration or item9_a_second_directory or rt1_5 or item18_an_established or superseded"
+    },
+    "passed": 6,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "run.predecessor_dirs, predecessor_stops (run-stop.json, safety-kill.json of superseded directories), predecessor_cell_calls (a cell that dispatched in a superseded directory refuses with 15), ledger_problems; score imports superseded leakage, stops and safety kills",
+   "finding": "pass. A replacement directory never repeats a terminal batch, never restores used nominal calls, keeps every old and new call counted after a migration and cannot escape a predecessor's run stop or safety kill."
+  },
+  "acceptance_suite_unchanged": {
+   "verdict": "pass",
+   "cases": 288,
+   "cases_passed": 288,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/acceptance"
+     ],
+     "k": null
+    },
+    "passed": 288,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "git diff 1aad1f8 HEAD -- bench/ozmap_rep/acceptance; build-notes.md section Replaced tests (A4.14.4); amendment-4-14-fail-closed.md A4.14.4",
+   "finding": "pass. Since commit 1aad1f8 exactly two acceptance files changed, both in commit 14a8359: test_cli_plan_and_cells.py replaces test_cli_cell_is_resumable_and_never_repeats_a_completed_call by test_cli_cell_interrupted_is_never_resumed_or_rerun, the replacement A4.14.4 requires and the build notes list (it asserts interruption, preserved records and prompts, no rerun, exit 19 twice and the dependent warm A interrupted with 75), and INTERFACE.md states A4.14.1 in place of the resumability sentence. Every other acceptance file is byte identical to 1aad1f8 and the whole acceptance directory passes.",
+   "extra_evidence": {
+    "changed_files_since_1aad1f8": [
+     "bench/ozmap_rep/acceptance/INTERFACE.md",
+     "bench/ozmap_rep/acceptance/test_cli_plan_and_cells.py"
+    ],
+    "changing_commit": "14a8359 bench/ozmap_rep: fail closed execution per A4.14"
+   }
+  },
+  "red_team_reproductions": {
+   "verdict": "pass",
+   "cases": 6,
+   "cases_passed": 6,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/redteam/test_redteam_r2.py"
+     ],
+     "k": null
+    },
+    "passed": 6,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "git diff 5fc191a HEAD -- bench/ozmap_rep/redteam/test_redteam_r2.py",
+   "finding": "pass. All six round 2 reproductions RT2.1 to RT2.6 pass. RT2.1 was rewritten under A4.14.4 (listed in the build notes): it now asserts the crashed cell is refused, the call unsettled, no resend, the capture still leakage and the cell invalid; the Live fixture points CODEX_SESSIONS_DEFAULT at its temporary sessions as the RT3.3 fix prescribes. RT2.2 to RT2.6 assertions are unchanged; red team round 1, round 3 and closure 1 files are byte identical to their commits."
+  },
+  "new_regressions": {
+   "verdict": "pass",
+   "cases": 77,
+   "cases_passed": 77,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/tests/test_a414_fail_closed.py",
+      "bench/ozmap_rep/tests/test_closure_r1.py",
+      "bench/ozmap_rep/tests/test_closure_r2.py",
+      "bench/ozmap_rep/redteam/test_redteam_closure1.py"
+     ],
+     "k": null
+    },
+    "passed": 77,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "tests/test_a414_fail_closed.py, tests/test_closure_r1.py, tests/test_closure_r2.py, redteam/test_redteam_closure1.py against closure-ledger.md",
+   "finding": "pass. Every regression the closure ledger names for round 3, closure round 1 and closure round 2 exists and passes."
+  },
+  "fake_replacement_and_recovery_exercise": {
+   "verdict": "pass",
+   "cases": 30,
+   "cases_passed": 30,
+   "cases_failed": 0,
+   "tests": {
+    "selection": {
+     "paths": [
+      "bench/ozmap_rep/"
+     ],
+     "k": "rt2_2 or item9_a_replacement or test_cli_cell or test_dry_ or a414_a_stopped or a414_a_cell_whose or a414_a_run_stop or rt2_1"
+    },
+    "passed": 30,
+    "failed": 0,
+    "errors": 0
+   },
+   "code_read": "the run CLI in fake mode with tripwired real codex and claude names (acceptance ozrep_helpers.make_sentinels), score.score_run on the preserved records",
+   "finding": "pass. The verifier's own CLI exercise: codex-materials-cold-A with two fake infrastructure failures completed (exit 0) with 6 physical calls, 4 distinct prompts, the two failures replaced from the reserve; warm A with three failures exhausted the reserve (exit 5, settled incomplete) and a rerun made no call (5); codex-materials-cold-B stopped after one call (75), was refused twice (19) with no call; a completed cell refuses (3); sonnet-materials-cold-A stopped (75), refused (19), and its dependent warm A was interrupted without running (75, INTERRUPTED.json, no call); no tripwire call; the scorer reported isolation passed, leakage 0, accounting failures 0, the stopped cells interrupted and none invalid. Replacement directories are exercised by the named tests (freeze --new-run-dir is refused at the CLI while readiness fails).",
+   "extra_evidence": {
+    "reserve_and_exhaustion": {
+     "log": [
+      {
+       "cell": "codex-materials-cold-A",
+       "flags": [
+        "--fake-fail",
+        "2"
+       ],
+       "exit": 0
+      },
+      {
+       "cell": "codex-materials-warm-A",
+       "flags": [
+        "--fake-fail",
+        "3"
+       ],
+       "exit": 5
+      },
+      {
+       "cell": "codex-materials-warm-A",
+       "flags": [],
+       "exit": 5
+      },
+      {
+       "cell": "codex-materials-bootstrap",
+       "flags": [],
+       "exit": 0
+      },
+      {
+       "cell": "codex-materials-cold-B",
+       "flags": [
+        "--stop-after",
+        "1"
+       ],
+       "exit": 75
+      },
+      {
+       "cell": "codex-materials-cold-B",
+       "flags": [],
+       "exit": 19
+      },
+      {
+       "cell": "codex-materials-cold-B",
+       "flags": [],
+       "exit": 19
+      },
+      {
+       "cell": "codex-materials-cold-C",
+       "flags": [],
+       "exit": 0
+      },
+      {
+       "cell": "codex-materials-cold-A",
+       "flags": [],
+       "exit": 3
+      }
+     ],
+     "reserve": {
+      "outcomes": [
+       "infrastructure_failure",
+       "ok"
+      ],
+      "attempts": 6,
+      "fake_calls": 6,
+      "distinct_prompts": 4,
+      "exhausted_warm_A_calls": 6,
+      "exhausted_rerun_exit": 5
+     },
+     "fail_closed": {
+      "refusals": [
+       19,
+       19
+      ],
+      "calls_before": 14,
+      "calls_after": 17,
+      "state": "interrupted",
+      "interrupted_marker": true,
+      "complete_rerun_exit": 3
+     },
+     "tripwire_calls": [],
+     "validity": {
+      "isolation": "passed",
+      "isolation_problems": 0,
+      "leakage": 0,
+      "accounting_failures": 0,
+      "interrupted": 1,
+      "invalid_cells": 0,
+      "bootstrap": 3,
+      "simulation": 20,
+      "freeze_problems": 0,
+      "artifact_problems": 0,
+      "classification_problems": 0
+     },
+     "interrupted": [
+      "codex-materials-cold-B"
+     ],
+     "invalid": {}
+    },
+    "dependent_interruption": {
+     "sonnet_cold_A_stop": 75,
+     "calls_after_stop": 1,
+     "sonnet_cold_A_again": 19,
+     "dependent_warm_A": 75,
+     "warm_A_interrupted_marker": true,
+     "calls_end": 1,
+     "tripwire": [],
+     "interrupted": [
+      "sonnet-materials-cold-A",
+      "sonnet-materials-warm-A"
+     ],
+     "invalid": {}
+    }
+   }
+  }
+ },
+ "failed_items": [
+  "rulings_and_annexes"
+ ]
+}
