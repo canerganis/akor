@@ -2461,16 +2461,21 @@ class CellRun:
         fin = self.iso.finish(slot, auth_failure=failure, prepared_sha256=prepared['auth_sha256'])
         self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
                                'auth_failure': failure, 'call_id': marker['call_id']}})
-        with contextlib.suppress(OSError):
-            path.unlink()
-        if r1.get('redactions') or r2.get('redactions'):
+        disclosed = bool(r1.get('redactions') or r2.get('redactions'))
+        if disclosed:
             # Astra council round 3, item 15: a probe disclosure is a persistent isolation failure. It is
             # recorded with per channel original and sanitized hashes, the scorer and the telemetry certificate
-            # read it, and the cell stops (A4.14.1 isolation signal).
+            # read it, and the cell stops (A4.14.1 isolation signal). Closure round 2 (O3): the record is written
+            # BEFORE the probe marker is removed, so a crash at any point before it leaves the marker, which the
+            # scorer attributes to its cell as an isolation uncertainty, and the raw stream inside the credential
+            # boundary.
             channels = redact.channels(stdout=(out_raw or '', out, r1), stderr=(err_raw or '', err, r2))
             _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
                     {'probe': name, 'cell': self.spec['id'], 'call_id': marker['call_id'], 'redaction': channels,
                      'at': _now()})
+        with contextlib.suppress(OSError):
+            path.unlink()
+        if disclosed:
             raise Stop(config.EXIT_AUTH_GATE, f'{name} probe output carried credential material (isolation '
                                               f'failure, A4.2, A4.14.1)', interrupt=True)
         for p in raw_files:  # settled and recorded: the raw stream inside the credential boundary goes

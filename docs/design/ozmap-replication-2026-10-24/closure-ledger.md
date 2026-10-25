@@ -355,3 +355,54 @@ cases), `test_rtc1_2_login_identity_holds_hashes_only`; `redteam/test_redteam_r3
 |---|---|
 | `python -m pytest bench/ozmap_rep -q` | 600 passed (acceptance, ops, red team with the closure 1 tests, harness tests) |
 | dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls; report: leakage 0, accounting failures 0, artifact problems 0, isolation passed, no stopped or invalid cell |
+
+# Closure round 2 blockers (owner decision 3, 2026-10-25)
+
+Scope: exactly the two A4.14.2 blockers that ended closure round 2 (O3, Astra 13 reopened; N1, telemetry), as the
+owner decided in owner-decisions.md item 3. Nothing else was changed. Where an item reopens an entry above, this
+section supersedes it. Commit: the commit with the message `bench/ozmap_rep: closure round 2 fixes (owner decision 3)`
+(branch oz-0.9). Tests: `bench/ozmap_rep/tests/test_closure_r2.py`. The acceptance tests, the red team tests and every
+earlier test are unchanged. All five new tests fail on the code of the previous commit and pass now.
+
+| item | disposition |
+|---|---|
+| O3 (Astra 13) | closed |
+| N1 (telemetry validity) | closed |
+
+**O3. Probe marker removed before the disclosure record. Closed.** On the normal completion path of a local probe,
+`run.py CellRun._guarded_probe` now writes the sanitized disclosure record (`evidence/probe-disclosures.jsonl`, per
+channel original and sanitized hashes) after redaction, finish and reconciliation and BEFORE `path.unlink()` of the
+probe marker; only then is the marker removed and the cell stopped (`EXIT_AUTH_GATE`, interrupt). Every failure before
+that write (finish, reconciliation, the write itself, a crash) leaves the marker and the raw probe stream under
+`D/homes/raw-<slot>`. The scorer already attributes an unfinished probe marker to its cell directory as an isolation
+uncertainty ("local probes ended in an unknown state", A4.14.1), and the cell, holding a marker, is in the stopped
+inventory, so it is invalid. A clean probe still removes its marker and then its raw stream. Tests:
+`test_o3_a_crash_between_reconcile_and_the_disclosure_write_leaves_the_cell_invalid` (crash injection: the features
+probe of `codex-materials-cold-A` emits the worker access token, the probe home is reconciled, and the runner is
+killed as the disclosure record is about to be written; the marker and the raw stream holding the token are kept, the
+cell is `invalid` with the open probe finding and not interrupted, before and after a later `crash_scan`) and
+`test_o3_a_detected_probe_disclosure_is_recorded_before_the_marker_goes` (the disclosure record exists when the marker
+is removed).
+
+**N1. A stopped telemetry cell had no validity. Closed.** `score.py score_run` now adds every administrative cell
+that ran (`telemetry`, `features`: a `D/cells/<id>` directory exists) to the stopped cell validity inventory, with
+`complete` for `DONE.json`, `incomplete` for `SETTLED.json` and otherwise its `state.json` state. The same stopped
+predicate and the same structured findings (`cell_findings`) then decide it: a stopped administrative cell with a
+finding is `invalid` and in `invalid_cells`, one without is `interrupted`. Administrative cells stay out of every
+evaluation performance computation: `specs`, `results`, `by_cell`, the cell summaries, `R_cells` and the gates read the
+sixteen evaluation cells only. `convergence`, which requires all sixteen cells complete, now reads only the evaluation
+entries of `cell_states`, so a listed administrative cell neither admits nor refuses it. Tests:
+`test_n1_a_stopped_telemetry_cell_gets_its_validity_and_stays_out_of_evaluation` (a worker path login probe of
+`TelemetryRun.worker_path_logins` raises `SpawnFailure` with `terminated=False` and no raw output; the telemetry cell
+is interrupted with its probe failure and uncertainty records naming `telemetry` and its raw files kept; the report has
+`cell_states['telemetry'] == 'invalid'`, `telemetry` in `invalid_cells`, not in `interrupted`, and in no evaluation
+cell or `R_cells` key), `test_n1_a_completed_telemetry_cell_is_complete_and_never_stopped` and
+`test_n1_convergence_reads_the_sixteen_evaluation_cells_only`.
+
+## Closure round 2 verification
+
+| command | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep/tests/test_closure_r2.py -q` at the previous commit's code | 5 failed (the regressions reproduce both blockers) |
+| `python -m pytest bench/ozmap_rep -q` | 605 passed (600 earlier tests unchanged, plus the five closure round 2 regressions) |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls; report: leakage 0, accounting failures 0, artifact problems 0, isolation passed, no stopped or invalid cell |

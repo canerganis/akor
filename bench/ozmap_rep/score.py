@@ -758,6 +758,18 @@ def score_run(run_dir, write=False) -> dict:
     # admission writes its INTERRUPTED.json). Its findings are the structured entries attributed to it above.
     invalid_cells, stopped = {}, []
     attempt_cells = {a.get('cell') for a in all_attempts}
+    # closure round 2 (N1): every administrative cell that ran (telemetry, features) is in the same stopped cell
+    # validity inventory, so a stopped one gets its own findings. It stays outside every evaluation performance
+    # computation (specs, results, by_cell, the cell summaries and the gates read evaluation cells only).
+    for cid in NON_EVALUATION:
+        cdir = run_dir / 'cells' / cid
+        if cdir.is_dir():
+            if (cdir / 'DONE.json').exists():
+                states[cid] = 'complete'
+            elif (cdir / 'SETTLED.json').exists():
+                states[cid] = 'incomplete'
+            else:
+                states[cid] = (_read_json(cdir / 'state.json', {}) or {}).get('state', 'pending')
     for cid, st in states.items():
         cdir = run_dir / 'cells' / cid
         if (cdir / 'DONE.json').exists() or (cdir / 'SETTLED.json').exists() or st in ('complete',):
@@ -1075,7 +1087,9 @@ def convergence(run_dir, sealed_dir) -> dict:
     report = _read_json(run_dir / 'report.json')
     if not report:
         raise RuntimeError('convergence is reported only after scoring (report.json missing)')
-    if any(st != 'complete' for st in (report.get('cell_states') or {}).values()) or not report.get('cell_states'):
+    # closure round 2 (N1): administrative cells in cell_states are not among the sixteen evaluation cells
+    evaluation_states = {c: st for c, st in (report.get('cell_states') or {}).items() if c not in NON_EVALUATION}
+    if any(st != 'complete' for st in evaluation_states.values()) or not evaluation_states:
         raise RuntimeError('convergence is reported only after all sixteen cells are complete and scored')
     out = {}
     for prefix in ('codex-materials', 'sonnet-materials'):
