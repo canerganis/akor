@@ -76,11 +76,12 @@ def test_a4_5_evaluation_caps():
 
 def test_a4_5_preparation_caps_and_global_total():
     cfg = harness('config')
-    # A4.13r1.1 (signed revision 1): Opus 40 -> 70, global 206 -> 236
-    assert need(cfg, 'PREP_CAPS') == {'astra': 20, 'opus': 70, 'fable': 4, 'sonnet': 40}
-    assert need(cfg, 'GLOBAL_CAP') == 236
+    # A4.13r1.1 (signed revision 1): Opus 40 -> 70, global 206 -> 236; A4.13r2.1 (signed revision 2): Astra 20 -> 30,
+    # global 236 -> 246
+    assert need(cfg, 'PREP_CAPS') == {'astra': 30, 'opus': 70, 'fable': 4, 'sonnet': 40}
+    assert need(cfg, 'GLOBAL_CAP') == 246
     caps = cfg.EVAL_CAPS
-    assert caps['codex']['total'] + caps['sonnet']['total'] + sum(cfg.PREP_CAPS.values()) == 236
+    assert caps['codex']['total'] + caps['sonnet']['total'] + sum(cfg.PREP_CAPS.values()) == 246
 
 
 def test_a4_5_each_listed_allocation_receives_two_reserve_calls():

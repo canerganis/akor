@@ -185,6 +185,8 @@ class Live:
                    .get('account_id'))
         rows = [{'timestamp': stamp, 'type': 'session_meta', 'payload': {'creator_account_id': account,
                                                                           'cli_version': '0.160.0'}},
+                # D5: the owner turn starts now, after the calls it covers (session_meta and task_started)
+                {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'task_started'}},
                 {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'token_count', 'rate_limits': {
                     'limit_id': 'codex', 'primary': {'used_percent': percent, 'window_minutes': 10080}}}}]
         path.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')
@@ -1047,7 +1049,9 @@ def test_item23_caps_follow_the_signed_a4_13_text():
     assert 'Signed: Astra A' in text and 'Signed: Opus B' in text
     # revision 1 (A4.13r1.1), signed by both, raises the Opus cap to 70 and the global cap to 236
     assert 'A4.13r1.1. The Opus preparation and review cap becomes 70' in text and 'global 236' in text
-    assert config.PREP_CAPS == {'astra': 20, 'opus': 70, 'fable': 4, 'sonnet': 40} and config.GLOBAL_CAP == 236
+    # revision 2 (A4.13r2.1), signed by both, raises the Astra cap to 30 and the global cap to 246
+    assert 'A4.13r2.1. Astra cap 30' in text and 'global 246' in text
+    assert config.PREP_CAPS == {'astra': 30, 'opus': 70, 'fable': 4, 'sonnet': 40} and config.GLOBAL_CAP == 246
     assert 'Codex 62 and Sonnet evaluation 40' in text
     assert config.EVAL_CAPS['codex']['total'] == 62 and config.EVAL_CAPS['sonnet']['total'] == 40
 

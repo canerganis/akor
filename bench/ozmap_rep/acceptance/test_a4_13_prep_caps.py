@@ -6,7 +6,7 @@ import pytest
 
 from ozrep_helpers import REPO, harness, jsonl, need
 
-CAPS = {'astra': 20, 'opus': 70, 'fable': 4, 'sonnet': 40}  # A4.13r1.1 (signed revision 1): Opus 40 -> 70
+CAPS = {'astra': 30, 'opus': 70, 'fable': 4, 'sonnet': 40}  # A4.13r1.1: Opus 40 -> 70; A4.13r2.1: Astra 20 -> 30
 
 
 def ledger(tmp_path):

@@ -88,9 +88,10 @@ RESERVE_FORBIDDEN = ('new_learning', 'answer_repair', 'new_condition')
 EVAL_CAPS = {'codex': {'nominal': 38, 'telemetry': 4, 'reserve': 20, 'total': 62},
              'sonnet': {'nominal': 26, 'telemetry': 2, 'reserve': 12, 'total': 40}}
 # A4.13.1 with revision 1 (A4.13r1.1, signed by Astra A and Opus B, amendment-4-13-caps.md): preparation and review
-# caps, cumulative from the start of the replication. The Opus cap becomes 70 and the global cap 236.
-PREP_CAPS = {'astra': 20, 'opus': 70, 'fable': 4, 'sonnet': 40}
-GLOBAL_CAP = 236
+# caps, cumulative from the start of the replication. The Opus cap becomes 70 and the global cap 236. Revision 2
+# (A4.13r2.1, signed by Astra A and Opus B): the Astra cap becomes 30 and the global cap 246.
+PREP_CAPS = {'astra': 30, 'opus': 70, 'fable': 4, 'sonnet': 40}
+GLOBAL_CAP = 246
 LEDGER_FILE = REPO / 'docs' / 'design' / 'ozmap-replication-2026-10-24' / 'call-ledger.jsonl'
 
 MAX_BATCH = 64

@@ -127,9 +127,24 @@ def covered(tmp_path, reading):
     return gate(owner_session(tmp_path, at=NOW - dt.timedelta(minutes=20)), [ATTEMPT], {'u1': [reading]})
 
 
-def test_p3_control_an_attributable_harvested_reading_covers_its_attempt(tmp_path):
-    g = covered(tmp_path, harvested_reading())
-    assert g['ok'] is True and g['percent'] == 12.0
+# test_p3_control_an_attributable_harvested_reading_covers_its_attempt: encoded form (i) of the D5 predicate (the
+# reading of an attempt's own rollout covers it), which Opus B rejected (rulings/signoff-opus-2.md, D5 point 1);
+# replaced by the two tests below.
+
+def test_p3_control_an_attributable_harvested_reading_never_covers_its_own_attempt(tmp_path):
+    g = covered(tmp_path, harvested_reading(session_started_at=ATTEMPT['started_at'],
+                                            turn_started_at=ATTEMPT['started_at']))
+    assert g['ok'] is False and g['uncovered'] == ['x'], g
+
+
+def test_p3_control_a_later_attributable_harvested_reading_covers_the_attempt(tmp_path):
+    # y is marked not launched so that only x needs coverage here; tests/test_p3_d5_coverage.py covers chains
+    later = {'call_id': 'y', 'attempt_uid': 'u2', 'backend': 'codex', 'mode': 'live', 'outcome': 'not_launched'}
+    start = stamp(NOW - dt.timedelta(minutes=4))
+    g = gate(owner_session(tmp_path, at=NOW - dt.timedelta(minutes=20)), [ATTEMPT, later],
+             {'u2': [harvested_reading(timestamp=stamp(NOW - dt.timedelta(minutes=3)), session_started_at=start,
+                                       turn_started_at=start)]})
+    assert g['ok'] is True and g['percent'] == 12.0 and g['covered_by'] == {'x': 'rollout of y'}, g
 
 
 @pytest.mark.parametrize('change,why', [

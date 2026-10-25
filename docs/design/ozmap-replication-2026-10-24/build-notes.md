@@ -638,3 +638,59 @@ the unbound D6.
 | `python -m pytest bench/ozmap_rep -q` | 670 passed |
 | dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
 | `rulings.readiness_problems()` | two problems: P3 annex status `not_established`, D6 not settled |
+
+## P3 freshness and causal coverage: D5 implemented, status kept not_established (2026-10-25)
+
+Implementer: a fresh Opus workflow subagent (ledger role `implementer-p3-d5-freshness`). No Astra call, no Codex
+model request, no external request; sealed ASTs and ops content not read; bench/ozmap, the core oz_* modules and the
+ops are unchanged.
+
+What changed in `quota.coverage_gate` (strict D5 predicate):
+
+* An attempt is covered only by a validated, attributable reading whose rollout session started strictly after the
+  attempt ended (`ended_at`, else `ended_at_upper`). The floor is the session_meta event timestamp, and a task_started
+  event must precede the reading in its own turn (`_floor_problem`); a session or turn start in the future or after
+  the reading blocks.
+* A reading never covers its own attempt (Opus B D5 point 1), and concurrent siblings never cover each other. The
+  session floor is stricter than Opus B's turn start: a snapshot cached from an earlier turn of a long session cannot
+  cover.
+* Every valid harvested reading raises the gate percent whether or not it covers anything. The latest owner reading
+  stays mandatory and at most 60 minutes old; worker readings never replace it.
+* `read_file` and `harvest_rollout` record `session_started_at` and `turn_started_at`.
+
+Why the status stays `not_established`: the bound annex (3646deac) is unchanged. The unbound candidate
+`rulings/P3-quota-source-manifest-candidate.json` (d8f271e3) records the predicate, the evidence list and three open
+points: (1) server side accounting lag cannot be bounded from preserved readings at one point resolution, and
+measuring it needs a model call, which P3 forbids; (2) Astra A has not approved D5 or the 60 minute rule; (3) with
+`--ephemeral` kept, only an owner session started after the previous group can cover it, and a worker rollout can
+never cover the group just before the gate, so without an independently authorized owner Codex call between groups
+the run stops after telemetry (Opus B D5 point 4). The candidate names a non model source for the signatories
+(`account/rateLimits/read` of codex-cli 0.160.0); it was not called.
+
+Evidence: sanitized real owner rollouts in `bench/ozmap_rep/tests/fixtures/p3-rollouts/` (INDEX.json names each
+source file and its sha256; `sanitize.py` keeps only event timestamps, types, CLI fields, a fixture account id and
+rate_limits). The real exec turn of 03:22:34 to 03:23:58 shows the old event time rule covering an attempt that ended
+inside it; D5 refuses it. The 15:02 exec reading of 0.0 opened a new window, so a reading excludes its own request.
+
+### Tests
+
+* Replaced (form (i), rejected by Opus B): `tests/test_council_r2.py::test_item31_a_worker_rollout_reading_covers_its_own_attempt`
+  by `test_item31_a_worker_rollout_reading_never_covers_its_own_attempt`;
+  `tests/test_ruling_repairs.py::test_p3_control_an_attributable_harvested_reading_covers_its_attempt` by
+  `test_p3_control_an_attributable_harvested_reading_never_covers_its_own_attempt` and
+  `test_p3_control_a_later_attributable_harvested_reading_covers_the_attempt`.
+* Fixture updates: the owner session fixtures of `tests/test_council_r1.py` (`touch_sessions`),
+  `redteam/test_redteam_r2.py` (`touch_sessions`) and `test_item31_unrelated_events_after_an_old_reading_never_refresh_it`
+  now write a task_started event and a timestamped session_meta, as a real owner turn does. No assertion changed.
+* New: `tests/test_p3_d5_coverage.py` (24 tests, fakes and real fixtures).
+* A4.13 revision 2 (signed) applied: `config.PREP_CAPS` Astra 30, `GLOBAL_CAP` 246, and the cap constants of
+  `acceptance/test_a4_13_prep_caps.py`, `acceptance/test_a4_4_a4_5_budget.py` and `tests/test_council_r1.py`, as
+  62285ac did for revision 1. Before this, the real ledger (Astra 21) failed the acceptance cap test at HEAD.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 695 passed |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
+| `rulings.readiness_problems()` | two problems: P3 annex status `not_established`, D6 not settled |

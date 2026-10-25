@@ -1,0 +1,110 @@
+{
+ "about": "CANDIDATE P3 quota source manifest for the signatories (implementer, 2026-10-25). Not bound: the signed annex stays P3-quota-source-manifest.json (sha256 3646deacbbf5afee8130bf6c79dc8858a9159502af0825f166fc978bb8ce51de). Implemented in bench/ozmap_rep/quota.py (read_file, harvest_rollout, coverage_gate, _floor_problem) and isolation.account_sha256; tests in bench/ozmap_rep/tests/test_p3_d5_coverage.py.",
+ "account_field_mapping": {
+  "baseline": "isolation.account_sha256(baseline): sha256 of tokens.account_id of the baseline auth.json, else the chatgpt_account_id claim of its id_token or access_token",
+  "enforced_by": "quota.attribution_problem, called by quota.coverage_gate for the owner reading and every harvested reading",
+  "evidence": "the newest 30 owner rollouts, by CLI version and account attribution (hash comparison only, 2026-10-25): 0.163.0-alpha.11.2 account=none: 6 files, 0 readings; 0.160.0 account=baseline: 23 files, 69 readings; 0.164.0-alpha.11.1 account=baseline: 1 files, 180 readings. No rollout carries another account.",
+  "finding": "the owner sessions directory also receives rollouts of other CLI builds (0.163.0-alpha and 0.164.0-alpha, the desktop app). The 0.163.0-alpha rollouts carry no creator_account_id. Before the repair of 2026-10-25 quota.coverage_gate accepted such a reading, because it rejected an account mismatch only when both hashes were present (Astra A blocker P3, Opus B blocker OB-P3).",
+  "readings_from_other_cli_versions": "a reading from a CLI build other than the pinned one is accepted only with the same account hash, limit_id and window; its timestamp semantics are those of the pinned build only by assumption",
+  "rollout": "the session_meta event (type session_meta) payload.creator_account_id, hashed with sha256",
+  "rule": "a reading counts only when both the baseline account hash and the reading account hash are present and equal; a reading without an account hash is not attributable and blocks, and an unknown baseline account hash blocks every reading (quota.attribution_problem, owner and harvested readings alike)"
+ },
+ "bucket_identity": {
+  "bucket": "payload.rate_limits.primary",
+  "enforced_by": "quota.read_file records limit_id and window_minutes; quota.attribution_problem rejects other values",
+  "evidence": "249 readings in the newest 30 owner rollouts: limit_id always codex, primary.window_minutes always 10080, secondary always null",
+  "limit_id": "codex",
+  "path": "event_msg token_count events: payload.rate_limits",
+  "rule": "a reading counts only when rate_limits.limit_id is exactly codex and primary.window_minutes is the integer 10080 (config.QUOTA_LIMIT_ID, config.QUOTA_WINDOW_MINUTES); any other or missing value blocks",
+  "secondary": "null in every observed reading",
+  "stop_rule": "primary.used_percent >= 80 prevents dispatch (A4.12)",
+  "window_minutes": 10080
+ },
+ "cli_version": "codex-cli 0.160.0",
+ "coverage_predicate_implemented": {
+  "first_group": "the telemetry group has no previously completed attempt; it needs a valid, attributable, fresh latest owner reading",
+  "positions_met": [
+   "Opus B D5 point 1 (rulings/signoff-opus-2.md): form (i) never covers its own attempt",
+   "Opus B D5 point 2: the request start of the covering reading is later than the attempt end; the session start is used, which is not later than the turn start, so the rule is stricter",
+   "Opus B D5 point 3: the 60 minute freshness rule as a selection bound",
+   "Astra A (council-build-deadlock-r2-joint.md, D5): no assumption that a response generated reading occurs after local attempt completion; one concurrent worker does not cover its siblings; a timestamped value cached from an earlier turn cannot cover (session floor)"
+  ],
+  "text": "before a synchronized Codex dispatch group, every previously completed live Codex attempt that could have consumed the baseline quota (quota.needs_coverage) is covered by a validated, attributable reading whose rollout session started strictly after the attempt ended (ended_at, else ended_at_upper; an attempt with neither is never covered). The floor is the event timestamp of the session_meta event of that rollout, and a task_started event must precede the reading in its own turn; a session or turn start in the future or after the reading blocks the gate. Candidate readings are the latest owner reading and the harvested worker readings of other attempts. A reading never covers the attempt whose own rollout produced it, and a concurrent sibling is never covered by another worker of its group, because both sessions started before either ended. The gate percent is the maximum of the latest owner reading, every covering reading and every valid harvested reading; at least 80 stops."
+ },
+ "evidence": [
+  {
+   "item": "codex.exe 0.160.0 holds the header names x-codex-primary-used-percent, -primary-window-minutes and -primary-reset-at and the TokenCountEvent rate_limits field; no persisted rate limit cache string (latest_rate_limits) was found",
+   "kind": "binary strings"
+  },
+  {
+   "fixture": "bench/ozmap_rep/tests/fixtures/p3-rollouts/exec-0322.jsonl",
+   "item": "exec 0.160.0: session_meta and task_started 03:22:34.831, one token_count at 03:23:58.784 after the last response item (44, codex, 10080). An attempt ending at 03:23:00 lies inside this turn; the bound event time rule covered it, D5 does not (test_real_an_attempt_ending_inside_an_owner_turn_is_not_covered_by_it)",
+   "kind": "real rollout"
+  },
+  {
+   "fixture": "bench/ozmap_rep/tests/fixtures/p3-rollouts/exec-1502.jsonl",
+   "item": "exec 0.160.0 at 15:02:25: the reading is 0.0 and resets_at moved to 15:02:28 plus 7 days, so the window opened with this request and its own reading excludes its own consumption (supports Opus B D5 point 1)",
+   "kind": "real rollout"
+  },
+  {
+   "fixture": "bench/ozmap_rep/tests/fixtures/p3-rollouts/desktop-0601.jsonl",
+   "item": "desktop 0.164.0-alpha, one turn: 34 readings from 06:01:12 to 06:05:12, 44 then 45 from 06:01:58; readings rise within a busy session within minutes",
+   "kind": "real rollout"
+  },
+  {
+   "item": "across the four fixtures no reading decreased within one resets_at window; one window reset is present (test_real_readings_never_decrease_within_one_reset_window)",
+   "kind": "real rollouts"
+  },
+  {
+   "item": "bench/ozmap_rep/tests/test_p3_d5_coverage.py: the Opus B repro of signoff-opus-2.md now blocks; own rollout, concurrent siblings, sequential groups, long sessions, missing or inconsistent starts, unsettled and recovered attempts, maximum percent, freshness",
+   "kind": "fakes"
+  }
+ ],
+ "freshness_and_causal_coverage": {
+  "closed_by_this_candidate": [
+   "D5 form (i) is dropped: an attempt is never covered by its own rollout",
+   "an owner turn that started before the attempt ended (Opus B repro) blocks"
+  ],
+  "open": [
+   "server side accounting lag: whether a request that started after an attempt ended already sees that attempt in x-codex-primary-used-percent. The fixtures show monotone readings and a rise within minutes, but at one point resolution they cannot bound the lag, and measuring it needs a model call, which P3 forbids",
+   "signatory acceptance: Astra A did not approve D5 or the 60 minute rule (signoff-astra-2.md); Opus B approved the freshness rule only with point 2, which this candidate implements; both must sign a manifest whose status is established",
+   "operational consequence (Opus B D5 point 4): workers keep --ephemeral, so the only covering source on the live route is an owner session that starts after the previous group ended. A worker rollout can never cover the group immediately before the gate, because its session starts before that group ends. Without an independently authorized owner Codex call between groups, the run stops after the telemetry group (a stop under A4.14.1)"
+  ],
+  "option_for_signatories": "codex-cli 0.160.0 exposes account/rateLimits/read (app-server, backed by /api/codex/usage or /wham/usage), a read that makes no model request. A read after each group would be a covering observation that started after the group ended. It is an external request with the baseline credentials and may refresh tokens in the baseline home, so it needs a ruling, an attribution check and an authentication reconciliation design before any use; it was not called here",
+  "status": "not_established"
+ },
+ "freshness_rule": {
+  "basis": "implementer proposal of 2026-10-25, accepted by Opus B as a selection bound with D5 point 2 (rulings/signoff-opus-2.md); not approved by Astra A (rulings/signoff-astra-2.md). It is config.QUOTA_OWNER_MAX_AGE_MINUTES",
+  "enforced_by": "quota.coverage_gate",
+  "owner_reading_max_age_minutes": 60,
+  "text": "the latest owner reading (the last rate_limits object of the newest owner session file) is always required, must carry an event timestamp and blocks when that timestamp is more than 5 minutes after the gate time (future) or more than 60 minutes before it (stale). Harvested worker readings never replace it. Covering readings of older attempts need no freshness of their own: the gate also takes the fresh owner reading and the maximum of every reading. File modification times are never freshness evidence."
+ },
+ "repairs": {
+  "2026-10-25": "blockers P3 and OB-P3 (see the bound manifest)",
+  "2026-10-25 D5": "strict causal coverage predicate with the session floor (this candidate)"
+ },
+ "selection_and_validation": [
+  "select the latest relevant reading first, then validate it; a malformed latest reading blocks and an older valid reading is never substituted",
+  "reject missing evidence, booleans, nonnumeric or nonfinite values, values outside [0, 100], unexplained future timestamps, account or bucket mismatches",
+  "no model call is added, repeated or relabeled to obtain a reading; no stale reading or estimated headroom exception",
+  "reject a reading without an account hash, or when the baseline account hash is unknown; reject limit_id other than codex and window_minutes other than 10080; reject a reading without an event timestamp; reject a stale owner reading (freshness_rule)"
+ ],
+ "sources": {
+  "owner_rollout": "~/.codex/sessions/*/*/*/*.jsonl of the owner (same account): the newest file by modification time is selected (selection only, never freshness evidence) and its LAST rate_limits object is the reading",
+  "worker_rollout": "CODEX_HOME/sessions/YYYY/MM/DD/rollout-*.jsonl of the worker home of one attempt; exists only when the worker argv omits --ephemeral (P3); harvested by Isolation.finish before the home is emptied; only percent, event timestamp, account hash and CLI version leave the credential boundary"
+ },
+ "timestamp_semantics": {
+  "field": "the top level timestamp of the rollout event that carries rate_limits (ISO 8601, UTC, Z suffix)",
+  "future": "a timestamp more than 5 minutes after the gate time blocks",
+  "meaning": "when the CLI recorded the token_count event of a turn; it is emitted inside the call, before the call ends",
+  "never": "file modification times are never freshness evidence (P3)",
+  "request_start": "codex-cli 0.160.0 parses the x-codex-primary-used-percent, x-codex-primary-window-minutes and x-codex-primary-reset-at response headers (strings of codex.exe); a reading therefore reflects at most the consumption the server had accounted when the request that returned it started",
+  "session_floor": "the top level timestamp of the session_meta event; in the 0.160.0 exec fixtures it precedes task_started by 0 to 4 ms"
+ },
+ "value_semantics": {
+  "field": "primary.used_percent",
+  "monotonicity": "within one reset window (same primary.resets_at) no observed reading decreased across 249 readings",
+  "resolution": "every observed value is a whole number (float type), so the reading has one percentage point resolution",
+  "valid": "a finite JSON number in [0, 100] that is not a boolean (quota.valid_percent)"
+ }
+}

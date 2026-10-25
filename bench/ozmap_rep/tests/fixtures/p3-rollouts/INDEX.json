@@ -1,0 +1,30 @@
+{
+ "about": "Sanitize owner rollouts into P3 fixtures: only event timestamps, event types, the session_meta CLI fields with the\naccount id replaced, task_started/task_complete markers and token_count rate_limits survive. No prompt, reply,\ninstruction or token text is kept.",
+ "baseline_account": "acct-fixture-baseline replaces the baseline creator_account_id (hash compared, never printed)",
+ "files": [
+  {
+   "fixture": "exec-0322.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/25/rollout-2026-10-25T06-22-33-01a17114-d500-76d3-a3eb-93c0a0b1a0c0.jsonl",
+   "source_sha256": "be43ebad90f70c59a5e742163c750fefcf09dd79615f4756e821bbf17bed3c07",
+   "events": 21
+  },
+  {
+   "fixture": "exec-0358.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/25/rollout-2026-10-25T06-58-55-01a17136-217e-7490-8d3a-ab6ae6e0ccc9.jsonl",
+   "source_sha256": "0df66e9350d2118761ec735aa7f2569fa1510ad269eba2d8b1c455eb5f4984e6",
+   "events": 19
+  },
+  {
+   "fixture": "desktop-0601.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/25/rollout-2026-10-25T09-01-03-01a171a5-f20b-7371-829a-f50befc52459.jsonl",
+   "source_sha256": "c220b3745865e473f255f67ccac0c24f3d1429aa991b03ce1376b6c7963603bc",
+   "events": 269
+  },
+  {
+   "fixture": "exec-1502.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/25/rollout-2026-10-25T18-02-23-01a17395-8c5b-7d13-bf93-6e23fe9c61bc.jsonl",
+   "source_sha256": "192e014373e2a0be13c48904f308c32920ccacbaa7aac6c2619439086bb5cce1",
+   "events": 17
+  }
+ ]
+}

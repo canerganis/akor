@@ -101,6 +101,8 @@ class Live:
                    .get('account_id'))
         rows = [{'timestamp': stamp, 'type': 'session_meta', 'payload': {'creator_account_id': account,
                                                                           'cli_version': '0.160.0'}},
+                # D5: the owner turn starts now, after the calls it covers (session_meta and task_started)
+                {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'task_started'}},
                 {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'token_count', 'rate_limits': {
                     'limit_id': 'codex', 'primary': {'used_percent': percent, 'window_minutes': 10080}}}}]
         path.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')

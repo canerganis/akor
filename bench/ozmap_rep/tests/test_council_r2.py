@@ -408,8 +408,13 @@ def test_item31_unrelated_events_after_an_old_reading_never_refresh_it(tmp_path)
     session(tmp_path, [META, reading(10.0, NOW - dt.timedelta(minutes=30)),
                        {'timestamp': stamp(NOW), 'type': 'response_item', 'payload': {'type': 'message'}}])
     assert quota.coverage_gate(DONE, tmp_path, account_sha256=ACCOUNT_SHA)['ok'] is False
-    session(tmp_path, [META, reading(10.0, NOW)])
+    # D5: the covering owner session starts after the call ended (session_meta and task_started of its turn)
+    session(tmp_path, [dict(META, timestamp=stamp(NOW)), turn_start(NOW), reading(10.0, NOW)])
     assert quota.coverage_gate(DONE, tmp_path, account_sha256=ACCOUNT_SHA)['ok'] is True
+
+
+def turn_start(t):
+    return {'timestamp': stamp(t), 'type': 'event_msg', 'payload': {'type': 'task_started'}}
 
 
 @pytest.mark.parametrize('bad', [True, 'x', float('nan'), -1, 100.5, None])
@@ -434,14 +439,21 @@ def test_item31_crossing_80_between_groups_stops_the_next_group(live):
     assert code == config.EXIT_QUOTA and attempts(live.run_dir, CELL) == []
 
 
-def test_item31_a_worker_rollout_reading_covers_its_own_attempt(tmp_path):
-    # the owner reading is fresh but older than the attempt's end, so only the harvested reading covers the attempt
-    session(tmp_path, [META, reading(10.0, NOW - dt.timedelta(minutes=10))])
-    harvested = {'u1': [{'percent': 12.0, 'timestamp': stamp(NOW), 'account_sha256': ACCOUNT_SHA,
-                         'limit_id': 'codex', 'window_minutes': 10080}]}
+# test_item31_a_worker_rollout_reading_covers_its_own_attempt: encoded form (i) of the D5 predicate (an attempt covered
+# by the reading of its own rollout), which Opus B rejected (rulings/signoff-opus-2.md, D5 point 1); replaced by
+# test_item31_a_worker_rollout_reading_never_covers_its_own_attempt below and tests/test_p3_d5_coverage.py.
+
+def test_item31_a_worker_rollout_reading_never_covers_its_own_attempt(tmp_path):
+    # the owner reading is fresh but its session is older than the attempt's end
+    session(tmp_path, [dict(META, timestamp=stamp(NOW - dt.timedelta(minutes=30))),
+                       turn_start(NOW - dt.timedelta(minutes=30)), reading(10.0, NOW - dt.timedelta(minutes=10))])
+    harvested = {'u1': [{'percent': 12.0, 'timestamp': stamp(NOW - dt.timedelta(minutes=6)),
+                         'account_sha256': ACCOUNT_SHA, 'limit_id': 'codex', 'window_minutes': 10080,
+                         'session_started_at': stamp(NOW - dt.timedelta(minutes=8)),
+                         'turn_started_at': stamp(NOW - dt.timedelta(minutes=8))}]}
     done = [dict(DONE[0], attempt_uid='u1')]
-    assert quota.coverage_gate(done, tmp_path, harvested, account_sha256=ACCOUNT_SHA)['ok'] is True
-    assert quota.coverage_gate(done, tmp_path, {}, account_sha256=ACCOUNT_SHA)['ok'] is False, 'uncovered'
+    g = quota.coverage_gate(done, tmp_path, harvested, account_sha256=ACCOUNT_SHA)
+    assert g['ok'] is False and g['uncovered'] == ['x']
     harvested['u1'][0]['percent'] = 81.0
     assert quota.coverage_gate(done, tmp_path, harvested, account_sha256=ACCOUNT_SHA)['ok'] is False
 

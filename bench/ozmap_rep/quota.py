@@ -19,6 +19,17 @@ bucket of the source manifest (limit_id `codex`, primary window 10080 minutes) a
 reading must exist and satisfy the manifest's freshness rule (event timestamp at most
 config.QUOTA_OWNER_MAX_AGE_MINUTES before the gate time), and a harvested reading must not predate the start of the
 attempt it covers.
+
+D5 and the freshness rule (implementer, 2026-10-25; Opus B position 2 and 3 of rulings/signoff-opus-2.md, Astra's
+"do not assume a response generated reading occurs after local attempt completion"): an observation covers a completed
+attempt only when the session that produced it started after the attempt ended. Codex takes rate_limits from the
+x-codex-primary-* response headers of a request, so a reading reflects at most what the server had accounted when
+that request started. A reading never covers the attempt whose own rollout it came from, and a concurrent sibling is
+never covered by another worker of its group, because both sessions started before either ended. The floor is the
+session_meta event timestamp of the rollout (not the turn start), so a snapshot cached from an earlier turn of a long
+session cannot cover an attempt that ended after the session started; the turn start event (task_started) of the
+reading's turn must also exist. The latest owner reading stays mandatory and must be at most
+config.QUOTA_OWNER_MAX_AGE_MINUTES old (selection bound).
 """
 from __future__ import annotations
 
@@ -89,13 +100,16 @@ def read_file(path) -> dict:
     None), reason, account_sha256, cli_version, source}. Lines that are not JSON events are skipped; the LAST
     rate_limits object is the reading, whatever an earlier one said."""
     out = {'percent': None, 'timestamp': None, 'reason': 'no rate limit reading', 'account_sha256': None,
-           'cli_version': None, 'source': str(path), 'found': False, 'limit_id': None, 'window_minutes': None}
+           'cli_version': None, 'source': str(path), 'found': False, 'limit_id': None, 'window_minutes': None,
+           'session_started_at': None, 'turn_started_at': None}
     try:
         lines = Path(path).read_text(encoding='utf-8', errors='replace').splitlines()
     except OSError:
         out['reason'] = 'session file unreadable'
         return out
     last = None
+    session_started = None  # the event timestamp of the first session_meta event (D5 coverage floor)
+    turn_started = None  # the event timestamp of the latest task_started event so far
     for line in lines:
         line = line.strip()
         if not line.startswith('{'):
@@ -106,6 +120,11 @@ def read_file(path) -> dict:
             continue
         if not isinstance(event, dict):
             continue
+        payload_type = event.get('payload', {}).get('type') if isinstance(event.get('payload'), dict) else None
+        if event.get('type') == 'session_meta' and session_started is None:
+            session_started = ('stamp', _parse_time(event.get('timestamp')))
+        if event.get('type') == 'event_msg' and payload_type == 'task_started':
+            turn_started = _parse_time(event.get('timestamp'))
         account = _account_from(event)
         if account:
             out['account_sha256'] = account
@@ -114,10 +133,11 @@ def read_file(path) -> dict:
                 out['cli_version'] = payload['cli_version'][:40]
         found = _find_rate_limits(event)
         if found:
-            last = (event, found[-1])
+            last = (event, found[-1], turn_started)
+    out['session_started_at'] = session_started[1] if session_started else None
     if last is None:
         return out
-    event, rl = last
+    event, rl, out['turn_started_at'] = last
     out['found'] = True
     primary = rl.get('primary') if isinstance(rl, dict) else None
     value = valid_percent(primary.get('used_percent')) if isinstance(primary, dict) else None
@@ -171,10 +191,14 @@ def harvest_rollout(path) -> list:
     r = read_file(path)
     if not r['found']:
         return []
-    return [{'percent': r['percent'], 'timestamp': r['timestamp'].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-             if r['timestamp'] else None, 'reason': r['reason'], 'account_sha256': r['account_sha256'],
-             'cli_version': r['cli_version'], 'limit_id': r['limit_id'], 'window_minutes': r['window_minutes'],
-             'source': Path(path).name}]
+    return [{'percent': r['percent'], 'timestamp': _iso(r['timestamp']), 'reason': r['reason'],
+             'account_sha256': r['account_sha256'], 'cli_version': r['cli_version'], 'limit_id': r['limit_id'],
+             'window_minutes': r['window_minutes'], 'session_started_at': _iso(r['session_started_at']),
+             'turn_started_at': _iso(r['turn_started_at']), 'source': Path(path).name}]
+
+
+def _iso(stamp):
+    return stamp.strftime('%Y-%m-%dT%H:%M:%S.%fZ') if stamp else None
 
 
 def needs_coverage(attempt) -> bool:
@@ -209,6 +233,18 @@ def attribution_problem(reading, account_sha256):
     return None
 
 
+def _floor_problem(reading, now=None):
+    """Why a reading cannot cover a completed attempt (D5): 'missing' without a session start or a turn start event
+    of its own turn, 'inconsistent' when either lies in the future or after the reading itself, else None."""
+    session, turn, stamp = reading.get('session_started_at'), reading.get('turn_started_at'), reading.get('timestamp')
+    if session is None or turn is None or stamp is None:
+        return 'missing'
+    now = now or dt.datetime.now(dt.timezone.utc)
+    if session > now + FUTURE_SKEW or turn > now + FUTURE_SKEW or session > turn or turn > stamp:
+        return 'inconsistent'
+    return None
+
+
 def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, now=None) -> dict:
     """The P3 gate before a synchronized Codex dispatch group. attempts: every attempt of the experiment so far;
     harvested: {attempt key: [observation]} from worker rollouts. Returns {ok, percent, reason, uncovered}."""
@@ -239,40 +275,71 @@ def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, n
                                  f'stop (A4.12, P3)')
     readings.append(owner['percent'])
     base['owner_reading_at'] = owner['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
-    uncovered = []
+    # D5: the pool of observations that may cover a completed attempt. Each entry names the attempt whose rollout it
+    # came from (None for the owner reading) and its floor: the session start, valid only with a turn start event of
+    # the reading's own turn, neither in the future nor after the reading itself.
+    pool = []
+    problem = _floor_problem(owner, now)
+    if problem == 'inconsistent':
+        return dict(base, reason='Codex owner reading: its session or turn start is in the future or after the '
+                                 'reading: stop (A4.12, P3)')
+    if problem is None:
+        pool.append({'from': None, 'floor': owner['session_started_at'], 'percent': owner['percent'],
+                     'source': 'owner'})
+    keys = {}
+    for a in attempts:
+        keys[a.get('attempt_uid') or a.get('call_id')] = a
+    for key, own in sorted(harvested.items(), key=lambda kv: str(kv[0])):
+        a = keys.get(key) or {}
+        label = a.get('call_id') or key
+        for o in [o for o in own or [] if isinstance(o, dict)]:
+            stamp = _parse_time(o.get('timestamp'))
+            if o.get('percent') is None or valid_percent(o.get('percent')) is None or stamp is None:
+                return dict(base, reason=f'{label}: its harvested quota reading is malformed: stop (P3)')
+            if stamp > now + FUTURE_SKEW:
+                return dict(base, reason=f'{label}: its harvested reading has an unexplained future timestamp: '
+                                         f'stop (P3)')
+            problem = attribution_problem(o, account_sha256)
+            if problem:
+                return dict(base, reason=f'{label}: harvested reading: {problem}: stop (P3)')
+            started = _parse_time(a.get('started_at'))
+            if started is not None and stamp < started - FUTURE_SKEW:
+                return dict(base, reason=f'{label}: its harvested reading predates the attempt it came from: '
+                                         f'stop (P3)')
+            # every valid harvested reading raises the gate percent, whether or not it covers anything
+            readings.append(float(o['percent']))
+            entry = {'timestamp': stamp, 'session_started_at': _parse_time(o.get('session_started_at')),
+                     'turn_started_at': _parse_time(o.get('turn_started_at'))}
+            problem = _floor_problem(entry, now)
+            if problem == 'inconsistent':
+                return dict(base, reason=f'{label}: its harvested reading has a session or turn start in the future '
+                                         f'or after the reading: stop (P3)')
+            if problem is None:
+                pool.append({'from': key, 'floor': entry['session_started_at'], 'percent': float(o['percent']),
+                             'source': f'rollout of {label}'})
+    uncovered, covered_by = [], {}
     for a in attempts:
         if not needs_coverage(a):
             continue
         key = a.get('attempt_uid') or a.get('call_id')
-        own = [o for o in harvested.get(key) or [] if isinstance(o, dict)]
-        valid_own = []
-        for o in own:
-            stamp = _parse_time(o.get('timestamp'))
-            if o.get('percent') is None or valid_percent(o.get('percent')) is None or stamp is None:
-                return dict(base, reason=f'{a.get("call_id")}: its harvested quota reading is malformed: stop (P3)')
-            if stamp > now + FUTURE_SKEW:
-                return dict(base, reason=f'{a.get("call_id")}: its harvested reading has an unexplained future '
-                                         f'timestamp: stop (P3)')
-            problem = attribution_problem(o, account_sha256)
-            if problem:
-                return dict(base, reason=f'{a.get("call_id")}: harvested reading: {problem}: stop (P3)')
-            started = _parse_time(a.get('started_at'))
-            if started is not None and stamp < started - FUTURE_SKEW:
-                return dict(base, reason=f'{a.get("call_id")}: its harvested reading predates the attempt it would '
-                                         f'cover: stop (P3)')
-            valid_own.append(float(o['percent']))
-        if valid_own:
-            readings.append(max(valid_own))
-            continue
         end = _parse_time(a.get('ended_at')) or _parse_time(a.get('ended_at_upper'))
-        if end is not None and owner['timestamp'] > end:
+        cover = None
+        if end is not None:
+            # strict: the covering session started after the attempt ended; a reading never covers its own attempt
+            later = [o for o in pool if o['from'] != key and o['floor'] > end]
+            cover = max(later, key=lambda o: o['floor']) if later else None
+        if cover is None:
+            uncovered.append(a.get('call_id'))
             continue
-        uncovered.append(a.get('call_id'))
+        readings.append(cover['percent'])
+        covered_by[a.get('call_id')] = cover['source']
+    base['covered_by'] = dict(list(covered_by.items())[:50])
     if uncovered:
         return dict(base, uncovered=uncovered[:20],
-                    reason=f'no quota observation covers the completed live Codex calls {uncovered[:5]} (A4.12, P3: '
-                           f'an owner reading of the same account timestamped after them, or their own rollout '
-                           f'reading, is needed; file modification times never count)')
+                    reason=f'no quota observation covers the completed live Codex calls {uncovered[:5]} (A4.12, P3, '
+                           f'D5: a reading of the same account from a session that started after the call ended is '
+                           f'needed; a reading from the own rollout of the call or from a concurrent sibling never covers '
+                           f'it, and file modification times never count)')
     if not readings:
         return dict(base, reason='Codex primary used_percent unreadable: stop (A4.12)')
     percent = max(readings)

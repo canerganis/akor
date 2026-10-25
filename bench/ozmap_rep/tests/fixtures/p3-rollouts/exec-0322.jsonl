@@ -1,0 +1,21 @@
+{"payload": {"cli_version": "0.160.0", "creator_account_id": "acct-fixture-baseline", "originator": "codex_exec"}, "timestamp": "2026-10-25T03:22:34.831Z", "type": "session_meta"}
+{"payload": {"type": "task_started"}, "timestamp": "2026-10-25T03:22:34.831Z", "type": "event_msg"}
+{"payload": {"type": "message"}, "timestamp": "2026-10-25T03:22:37.004Z", "type": "response_item"}
+{"payload": {"type": "message"}, "timestamp": "2026-10-25T03:22:37.004Z", "type": "response_item"}
+{"payload": {"type": "message"}, "timestamp": "2026-10-25T03:22:37.004Z", "type": "response_item"}
+{"payload": {"type": "message"}, "timestamp": "2026-10-25T03:22:37.004Z", "type": "response_item"}
+{"payload": {"type": null}, "timestamp": "2026-10-25T03:22:37.015Z", "type": "world_state"}
+{"payload": {"type": null}, "timestamp": "2026-10-25T03:22:37.057Z", "type": "turn_context"}
+{"payload": {"type": "message"}, "timestamp": "2026-10-25T03:22:37.254Z", "type": "response_item"}
+{"payload": {"type": "item_completed"}, "timestamp": "2026-10-25T03:22:37.265Z", "type": "event_msg"}
+{"payload": {"type": "item_completed"}, "timestamp": "2026-10-25T03:23:01.425Z", "type": "event_msg"}
+{"payload": {"type": "reasoning"}, "timestamp": "2026-10-25T03:23:01.439Z", "type": "response_item"}
+{"payload": {"type": "item_completed"}, "timestamp": "2026-10-25T03:23:22.885Z", "type": "event_msg"}
+{"payload": {"type": "reasoning"}, "timestamp": "2026-10-25T03:23:22.899Z", "type": "response_item"}
+{"payload": {"type": "item_completed"}, "timestamp": "2026-10-25T03:23:41.089Z", "type": "event_msg"}
+{"payload": {"type": "reasoning"}, "timestamp": "2026-10-25T03:23:41.101Z", "type": "response_item"}
+{"payload": {"type": "item_completed"}, "timestamp": "2026-10-25T03:23:58.729Z", "type": "event_msg"}
+{"payload": {"type": "message"}, "timestamp": "2026-10-25T03:23:58.741Z", "type": "response_item"}
+{"payload": {"type": null}, "timestamp": "2026-10-25T03:23:58.775Z", "type": "token_usage_record"}
+{"payload": {"rate_limits": {"credits": {"balance": "0", "has_credits": false, "unlimited": false}, "individual_limit": null, "limit_id": "codex", "limit_name": null, "plan_type": "prolite", "primary": {"resets_at": 1793382106, "used_percent": 44.0, "window_minutes": 10080}, "rate_limit_reached_type": null, "secondary": null, "spend_control_reached": null}, "type": "token_count"}, "timestamp": "2026-10-25T03:23:58.784Z", "type": "event_msg"}
+{"payload": {"type": "task_complete"}, "timestamp": "2026-10-25T03:23:58.805Z", "type": "event_msg"}

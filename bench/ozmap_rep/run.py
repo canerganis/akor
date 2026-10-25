@@ -1297,9 +1297,9 @@ class CellRun:
 
     def codex_quota_gate(self):
         """The P3 gate before every synchronized Codex dispatch group (council round 2, items 31, B8, RT2.5): every
-        completed live Codex call of the experiment covered by an observation with an event timestamp after it (or
-        its own rollout reading), the latest owner reading valid, the highest covering percentage below 80. Live mode
-        reads the owner sessions only (RT3.3)."""
+        completed live Codex call of the experiment covered by an observation from a session that started after it
+        ended (D5: never its own rollout, never a concurrent sibling), the latest owner reading valid and at most 60
+        minutes old, the highest percentage below 80. Live mode reads the owner sessions only (RT3.3)."""
         if self.opts.mode == 'live' and not _same(self.opts.sessions_dir, config.CODEX_SESSIONS_DEFAULT):
             return {'ok': False, 'percent': None, 'uncovered': [], 'sessions_dir': str(self.opts.sessions_dir),
                     'reason': 'live mode reads the owner Codex sessions only; a named sessions directory is refused '
