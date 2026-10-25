@@ -21,11 +21,14 @@ Operative: Astra's checklist, as one focused verification call.
 
 ## Annexes
 
-Required: focused_verification and operation_attestation (rulings.ANNEXES_REQUIRED, rulings.d6_problems). Not produced in this step.
+Required: focused_verification and operation_attestation (rulings.ANNEXES_REQUIRED, rulings.d6_problems). Both are produced; a binding of this slot names them by these hashes:
+
+* focused_verification: docs/design/ozmap-replication-2026-10-24/rulings/D6-focused-verification.json, sha256 36954f40da0d37c91c9ebbfb955ea50dfec838864987e9029b3b5dd5d737486a. Every checklist item has the verdict pass. The item rulings_and_annexes was re-verified at 909d669 by an independent Opus verifier: P1 to P5 and D1 are bound with matching ruling and annex hashes, and rulings.readiness_problems() reports only the unbound D6 slot.
+* operation_attestation: docs/design/ozmap-replication-2026-10-24/rulings/D6-operation-attestation.json, sha256 9098722ef623a501d60fdc7d91afa31cdd3418f51db154797afef21537772a71. It passes rulings.d6_problems at 909d669 (classification and operation files bound as the harness uses them).
 
 ## Open before binding
 
-The two D6 annexes (focused_verification, operation_attestation) are not produced in this step.
+Astra A and Opus B sign this file; config.SIGNED_RULINGS then binds D6 to the signed bytes with both annexes by the hashes above.
 
 ## Countersignature
 

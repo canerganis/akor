@@ -37,9 +37,9 @@
  },
  "checklist": {
   "rulings_and_annexes": {
-   "verdict": "fail",
-   "cases": 12,
-   "cases_passed": 12,
+   "verdict": "pass",
+   "cases": 13,
+   "cases_passed": 13,
    "cases_failed": 0,
    "tests": {
     "selection": {
@@ -48,35 +48,81 @@
      ],
      "k": "item1_readiness or b1_readiness or b1_the_freeze_refuses or o5_ or item32 or item33 or b1_a_signed_transport or item10_the_freeze"
     },
-    "passed": 12,
+    "passed": 13,
     "failed": 0,
     "errors": 0,
     "skipped": 0
    },
    "code_read": "rulings.py ruling_problems, annex_problems, d6_problems, bound_problems, readiness_problems; config.REQUIRED_RULINGS, SIGNED_RULINGS, SIGNED_CLI_NOTICES, SIGNED_CLI_NOTICE_EVENT_KEYS, SIGNED_CLI_NOTICE_ID_RE; run.freeze_command (exit 14 while readiness fails) and verify_freeze (readiness repeated); score._freeze_problems with rulings.bound_problems",
-   "finding": "FAIL on the state; the mechanism is sound and its tests pass. At HEAD config.SIGNED_RULINGS is empty and rulings.readiness_problems() reports 8 problems (P1 to P5, D1, D6 unsettled; code_mode_host disabled with the P4 notice predicate inactive). Binding every ruling file and annex as it stands (simulated in memory, nothing written) leaves: P1, P2, P3, P4, P5 lack 'Signed: Opus B'; D1 and D6 lack both 'Signed: Astra A' and 'Signed: Opus B'; the P4 annex hash is named in P4 but the configured predicate (SIGNED_CLI_NOTICES empty, event keys and id_re None) is not the annex; the D6 text does not yet name the hashes of these two annexes. P3, P5 and D1 annexes hash to the values named in their ruling texts and pass annex_problems. To pass: Opus B countersigns P1 to P5, Astra A and Opus B sign D1 and D6 (D6 naming the annex hashes), config.SIGNED_RULINGS binds every file and annex by hash and the P4 predicate is set to the annex; then re-verify this item alone (rulings.readiness_problems() must return []).",
+   "finding": "pass at 909d669 (P1 to P5 and D1 signed and bound). The item test selection passes (13 passed). config.SIGNED_RULINGS binds P1, P2, P3, P4, P5 and D1; each ruling file hashes to its recorded sha256 and carries 'Signed: Astra A' and 'Signed: Opus B'; each bound annex (P3 quota_source_manifest, P4 cli_notice_annex, P5 startup_manifest and effective_context_evidence, D1 attribution_evidence) hashes to its recorded value, its hash is named in its ruling text and it passes annex_problems; the configured P4 predicate equals the P4 annex. rulings.readiness_problems() reports only the unbound D6 slot, which cannot be bound before its own signatures. The D6 ruling text names the sha256 of both D6 annexes; the operation attestation annex passes d6_problems at this commit.",
    "extra_evidence": {
     "readiness_problems": [
-     "ruling P1 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)",
-     "ruling P2 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)",
-     "ruling P3 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)",
-     "ruling P4 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)",
-     "ruling P5 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)",
-     "ruling D1 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)",
-     "ruling D6 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)",
-     "code_mode_host is disabled, so every exec emits the Code Mode notice, and the P4 notice predicate is inactive (no approved outer event fixture and identifier syntax): every live Codex call would be uncertain under A4.3"
+     "ruling D6 is not settled (no countersigned ruling file in config.SIGNED_RULINGS)"
     ],
-    "simulated_binding_problems": [
-     "ruling P1: docs/design/ozmap-replication-2026-10-24/rulings/P1-transport-notices.md lacks ['Signed: Opus B']",
-     "ruling P2: docs/design/ozmap-replication-2026-10-24/rulings/P2-unknown-usage.md lacks ['Signed: Opus B']",
-     "ruling P3: docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-observation.md lacks ['Signed: Opus B']",
-     "ruling P4: docs/design/ozmap-replication-2026-10-24/rulings/P4-cli-notice.md lacks ['Signed: Opus B']",
-     "ruling P5: docs/design/ozmap-replication-2026-10-24/rulings/P5-startup-context.md lacks ['Signed: Opus B']",
-     "ruling D1: docs/design/ozmap-replication-2026-10-24/rulings/D1-auth-attribution.md lacks ['Signed: Astra A', 'Signed: Opus B']",
-     "ruling D6: docs/design/ozmap-replication-2026-10-24/rulings/D6-review-before-freeze.md lacks ['Signed: Astra A', 'Signed: Opus B']",
-     "ruling P4: the configured CLI notice predicate is not the approved annex"
-    ]
-   }
+    "bound_slots": {
+     "P1": {
+      "ruling_hash_matches": true,
+      "signatures": [
+       "Signed: Astra A",
+       "Signed: Opus B"
+      ]
+     },
+     "P2": {
+      "ruling_hash_matches": true,
+      "signatures": [
+       "Signed: Astra A",
+       "Signed: Opus B"
+      ]
+     },
+     "P3": {
+      "ruling_hash_matches": true,
+      "signatures": [
+       "Signed: Astra A",
+       "Signed: Opus B"
+      ]
+     },
+     "P4": {
+      "ruling_hash_matches": true,
+      "signatures": [
+       "Signed: Astra A",
+       "Signed: Opus B"
+      ]
+     },
+     "P5": {
+      "ruling_hash_matches": true,
+      "signatures": [
+       "Signed: Astra A",
+       "Signed: Opus B"
+      ]
+     },
+     "D1": {
+      "ruling_hash_matches": true,
+      "signatures": [
+       "Signed: Astra A",
+       "Signed: Opus B"
+      ]
+     }
+    },
+    "bound_annexes_hash_and_named": {
+     "P3": [
+      "quota_source_manifest"
+     ],
+     "P4": [
+      "cli_notice_annex"
+     ],
+     "P5": [
+      "startup_manifest",
+      "effective_context_evidence"
+     ],
+     "D1": [
+      "attribution_evidence"
+     ]
+    },
+    "operation_attestation_d6_problems": [],
+    "superseded_finding": "fail at 708e0a7 (SIGNED_RULINGS empty, 8 readiness problems)"
+   },
+   "verified_at_commit": "909d669780b5e01d0fa5b319cb3dc554efa8603e",
+   "verifier": "Opus D6 verifier (rulings re-verification): fresh Opus workflow subagent (claude-opus-5-5), call ledger role d6-focused-verifier-rulings-reverify; not the implementer of bench/ozmap_rep or of bench/ozmap_rep/ops"
   },
   "authentication": {
    "verdict": "pass",
@@ -415,7 +461,5 @@
    }
   }
  },
- "failed_items": [
-  "rulings_and_annexes"
- ]
+ "failed_items": []
 }
