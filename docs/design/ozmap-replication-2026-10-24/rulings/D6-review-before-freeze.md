@@ -33,3 +33,15 @@ Astra A and Opus B sign this file; config.SIGNED_RULINGS then binds D6 to the si
 ## Countersignature
 
 Opus B: pending (confirmation by diff of the ruling text above).
+
+## Astra sign-off D6 (2026-10-25)
+
+Signed: Astra A D6
+
+Source: rulings/signoff-astra-d6.md. Evidence pack: this ruling, both annexes (operation attestation as hashes, verdicts and counts only), A4.14. Astra confirms the 16 item checklist, 605 passing tests and the 16 cell dry run with zero validity findings; no blocker, no CHANGE notes. Binding still needs the Opus B countersignature and the final signed-file hash recorded with the two annex hashes.
+
+## Opus B sign-off D6 (2026-10-25)
+
+Signed: Opus B D6
+
+Source: rulings/signoff-opus-d6.md. Confirmation by diff: lines 9 to 20 of this file equal lines 323 to 334 of council-build-deadlock-r2-joint.md (sha256 fae12460cd9e64fe76716ad7b612f1f2e51663a4258eccda31ebfbca9b5c4324) byte for byte. Both annexes hash to the values named above and pass rulings.d6_problems at 6e3a7ef. Every checklist selection was rerun at 6e3a7ef and passes (full suite 737 passed, dry run 16/16 cells with zero validity findings). No blocker; CHANGE notes are in the sign-off file.

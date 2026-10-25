@@ -222,6 +222,14 @@ SIGNED_RULINGS = {
            'annexes': {'attribution_evidence': {
                'path': 'docs/design/ozmap-replication-2026-10-24/rulings/D1-attribution-evidence.json',
                'sha256': '4f8e7b49fda7c29d05d8479d28ca4cda247e80718cfb9f5f124d4aff559f6671'}}},
+    'D6': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/D6-review-before-freeze.md',
+           'sha256': 'f3ad285ce9b5d8a190e9811352abdf497db2bcec48b4283f0ea8c99d30f8c850',
+           'annexes': {'focused_verification': {
+               'path': 'docs/design/ozmap-replication-2026-10-24/rulings/D6-focused-verification.json',
+               'sha256': '36954f40da0d37c91c9ebbfb955ea50dfec838864987e9029b3b5dd5d737486a'},
+               'operation_attestation': {
+               'path': 'docs/design/ozmap-replication-2026-10-24/rulings/D6-operation-attestation.json',
+               'sha256': '9098722ef623a501d60fdc7d91afa31cdd3418f51db154797afef21537772a71'}}},
 }
 # P3 (A4.12): worker calls keep `--ephemeral`: A4.2 names it in the frozen arguments and the blind acceptance suite
 # tests it. Omitting it needs P3 countersigned by Opus B, which only permits it with a certified persistence and

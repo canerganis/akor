@@ -557,6 +557,8 @@ def test_b1_telemetry_refuses_the_charged_call_when_the_probe_inventory_holds_in
 
 def test_b1_the_freeze_refuses_while_a_ruling_slot_is_unsettled(tmp_path, monkeypatch):
     monkeypatch.setattr(config, 'FREEZE_FILE', tmp_path / 'freeze.json')
+    # every slot is bound since D6 was signed; leave D6 unsettled so the refusal is still exercised
+    monkeypatch.setattr(config, 'SIGNED_RULINGS', {k: v for k, v in config.SIGNED_RULINGS.items() if k != 'D6'})
     assert run.freeze_command() == config.EXIT_FREEZE
     assert not (tmp_path / 'freeze.json').exists()
     assert any('freeze readiness' in p for p in run.verify_freeze() + ['freeze readiness'])
