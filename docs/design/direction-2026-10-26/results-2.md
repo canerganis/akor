@@ -22,6 +22,8 @@ penalty of results-1 (AKOR was 1.4x to 1.6x tokens); the remaining gap is reason
 (6.43k vs 7.47k cold), but hidden reasoning is 1.5x to 1.9x the direct arm's and visible output is about the same
 (about 2.0k versus 2.0k cold), so totals land at parity and wall time is longer.
 
-Measured fact that explains results-1: the direct prompt is 3,707 o200k tokens while the CLI reports 7,465 input
-tokens, so each `claude -p` call carries about 3.7k tokens of fixed framing. On this workload the number of calls
-dominates; wire compaction moves the total by a few percent at most.
+Fixed per-call cost, measured directly (`bench/pool/live/overhead-probe.json`): a `claude -p` call with a one-line
+system prompt and a two-word prompt reports 1,916 input tokens (1,914 cache creation). So each extra call costs about
+1.9k input tokens before any work; the rest of the gap between the direct prompt (3,707 o200k tokens) and the
+reported 7,465 is tokenizer difference, not framing. On this workload the number of calls still dominates: wire
+compaction moves the total by a few percent at most.

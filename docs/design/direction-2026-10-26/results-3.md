@@ -23,7 +23,8 @@ Gate (A tokens at most 0.80 × D, makespan and worst producer latency at most 1.
 
 Findings.
 1. Pooling is the saving: one call instead of four removes the repeated per-call input (about 15.6k → 9.6k input
-   tokens, -38% total) at about the same wall time. A plain queue gets all of it; it is not specific to OZ/1g.
+   tokens, -38% total) at about the same wall time. Three avoided calls × the measured 1.9k fixed input per call
+   (`bench/pool/live/overhead-probe.json`) is 5.7k of the 6.0k input saved. A plain queue gets all of it; it is not specific to OZ/1g.
 2. The OZ/1g wire triggers hidden reasoning on Sonnet at default effort (726 and 787 thinking tokens; the plain
    prompts got 0), which doubles wall time and makes A 14% more expensive than P. The same pattern appeared with
    OZ/F1 ([results-2.md](results-2.md)).
