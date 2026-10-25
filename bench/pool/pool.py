@@ -71,7 +71,7 @@ def usage_of(envelope):
             'thinking_tokens': sum(e.get('thinkingTokens') or 0 for e in mu.values())}
 
 
-def call(system: str, prompt: str, kind: str, fixture_text) -> dict:
+def call(system: str, prompt: str, kind: str, fixture_text, effort: str | None = None) -> dict:
     started = time.time()
     envelope, failure = None, None
     if kind == 'fixture':
@@ -83,7 +83,8 @@ def call(system: str, prompt: str, kind: str, fixture_text) -> dict:
         try:
             proc = subprocess.run([shutil.which('claude'), '-p', '--model', MODEL, '--system-prompt', system,
                                    '--tools', '', '--setting-sources', '', '--strict-mcp-config',
-                                   '--no-session-persistence', '--output-format', 'json'],
+                                   '--no-session-persistence', '--output-format', 'json']
+                                  + (['--effort', effort] if effort else []),
                                   input=prompt, capture_output=True, text=True, encoding='utf-8', timeout=TIMEOUT)
             envelope = json.loads(proc.stdout)
         except subprocess.TimeoutExpired:
