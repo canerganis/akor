@@ -56,12 +56,22 @@ it cannot serve as the manifest.
 
 | kind | path | sha256 |
 |---|---|---|
-| startup_manifest | bench/ozmap_rep/startup-manifest.json | 60d3fe06a980be59358c50ea9dcc3676ea3a43f7731085f7182d2715d10a6e3f |
-| effective_context_evidence | docs/design/ozmap-replication-2026-10-24/rulings/P5-effective-context-evidence.json | 622b373e36b52bb06a0a862941d6625626dd98668afadcc168634914e38a1bd2 |
+| startup_manifest | bench/ozmap_rep/startup-manifest.json | c5a6c7415061e810490630cda0d08e33b8b45b89480396ec5ae06a51539e87bb |
+| effective_context_evidence | docs/design/ozmap-replication-2026-10-24/rulings/P5-effective-context-evidence.json | 56395a2b27acf6869d7a88f282817589461ad58a44ab746596051b32990462b1 |
+
+The previous annexes (startup manifest 60d3fe06a980be59358c50ea9dcc3676ea3a43f7731085f7182d2715d10a6e3f, context evidence 622b373e36b52bb06a0a862941d6625626dd98668afadcc168634914e38a1bd2, rendered with `codex debug prompt-input`) are replaced by the request boundary evidence below.
+
+## Repair of 2026-10-25 (blocker OB-P5)
+
+Request boundary probe (D4 route a, Opus B's fix): the frozen exec argv in a fresh worker home with no auth.json and only `-c openai_base_url=<localhost capture server>` added; the capture server records every request in full and answers the model request with HTTP 400, every other connection goes to a refusing localhost proxy, and the process tree connections are polled. No model call, no external request. Probe scripts: rulings/evidence/p5-probe/.
+
+On the previous route the captured request carried a `<skills_instructions>` item listing the owner's ~/.agents/skills (25 skill descriptions from ~/.agents/skills and the owner profile path) and the 4 bundled CODEX_HOME skills, although `--enable skip_host_skill_discovery` was on. The pinned binary resolves the user skills root from the OS profile, not from CODEX_HOME, HOME or USERPROFILE, and a working directory outside the profile does not change it. The frozen route now also carries `-c skills.include_instructions=false` and `-c skills.bundled.enabled=false` (config.ROUTE_SECURITY_ARGS, enforced by isolation.argv_check). With them the captured request, without auth and with a scrambled ChatGPT auth.json, holds no owner skill, plugin, memory or AGENTS.md content (408,683 owner lines and 52 skill descriptions searched, no hit), and the CLI writes no instruction bearing file into the home, so the startup manifest lists no file. The effective context evidence records verdict `established`; rulings.annex_problems refuses to bind P5 when that verdict is anything else or when the evidence was captured with other route security arguments.
+
+Disclosed vendor items that stay in the request (not owner content): the base instructions, permissions and collaboration mode instructions, multi_agent role and mode instructions, the environment context, and an additional_tools item with the code mode `exec` tool (its description lists web search, sports, time and weather helpers) and the collaboration tools (spawn_agent and others), although multi_agent and code_mode_host are disabled.
 
 ## Open before binding
 
-The effective context annex has the verdict not_established and records blocking findings P5-E1 to P5-E3 (the default context assembly of the pinned binary lists the owner profile skills, the CODEX_HOME system skills and multi_agent instructions; the renderer ignores the frozen flags). D2 and D4 stay open.
+The two added route arguments and the new annexes need both signatories. P5-E3 (vendor multi_agent items and tools on a route that disables them) is disclosed, not removed; whether it is acceptable vendor context is the signatories' call. D2 is answered by request boundary evidence rather than a rollout inventory; D4 follows route (a).
 
 ## Countersignature
 
@@ -69,4 +79,4 @@ Opus B: pending (confirmation by diff of the ruling text above).
 
 ## Astra countersignature
 
-Signed: Astra A P5 (2026-10-25, rulings/signoff-astra.md)
+Astra A signed P5 on 2026-10-25 (rulings/signoff-astra.md) with the previous annexes (60d3fe06, 622b373e). That signature does not cover the route arguments and annexes of the repair above; a re-sign request is pending.

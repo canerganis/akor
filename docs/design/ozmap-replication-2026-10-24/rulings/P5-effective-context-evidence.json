@@ -1,317 +1,106 @@
 {
- "about": "P5 effective context evidence (annex effective_context_evidence): what the pinned codex-cli 0.160.0 renders as the model-visible prompt input, captured with the local non-model command `codex debug prompt-input` in fresh empty CODEX_HOME copies built by the harness isolation code. No model call, no auth.json, nothing copied from ~/.codex. Text is recorded by length and sha256 only.",
- "blocking_findings": [
-  {
-   "finding": "host skill discovery reaches the owner profile: root r0 is the owner's ~/.agents/skills (45 skills) although CODEX_HOME, HOME and USERPROFILE all point at the worker home, so the pinned binary resolves the profile directory from the operating system, not from the environment",
-   "id": "P5-E1",
-   "status": "in the default assembly; whether --enable skip_host_skill_discovery removes it on the exec route is not established (the renderer ignores the flag)"
-  },
-  {
-   "finding": "the CODEX_HOME system skills written at startup (root r1: imagegen, openai-docs, skill-creator, skill-installer) are listed in the host_skills.instructions item of the default assembly; P5 says including bundled skill instructions needs a separate prospective amendment",
-   "id": "P5-E2",
-   "status": "not established for the exec route"
-  },
-  {
-   "finding": "multi_agent role and mode instructions are in the default assembly although multi_agent and multi_agent_v2 are disabled on the frozen route",
-   "id": "P5-E3",
-   "status": "not established for the exec route"
-  }
- ],
- "captured_at": "20261025T005939Z",
+ "about": "P5 effective context evidence (annex effective_context_evidence), regenerated 2026-10-25 from request boundary evidence (D4 route a, Opus B fix of OB-P5): the frozen exec argv of the harness (isolation.codex_argv with config.ROUTE_SECURITY_ARGS and the disable options of cli-flags.json) in a fresh worker home built by the harness isolation code, with only `-c openai_base_url=<localhost capture server>` added (and, for the scrambled auth variant, `-c chatgpt_base_url=<same server>`). The capture server records every request in full and answers the model request with HTTP 400, so no model is called; every other connection is routed through HTTP(S)_PROXY and ALL_PROXY to a localhost proxy that refuses it, and the process tree TCP connections are polled. Text is recorded by length and sha256; the full captures stay outside the repository (capture_file_sha256).",
+ "verdict": "established",
+ "verdict_rule": "established only if the captured model request of the frozen route (no auth and scrambled ChatGPT auth) contains no owner skill, plugin, memory or AGENTS.md content (owner_content_scan) and the probes made no external request",
+ "verdict_reason": "the frozen route request carries no line of any owner instruction source, no owner skill description, no owner profile path and no skills instructions item; no request left the loopback interface",
+ "captured_at": "20261025T023424Z",
  "cli_version": "codex-cli 0.160.0",
- "default_assembly": {
-  "base_instructions": "not part of this rendering; they travel in the request instructions field. A 0.160.0 rollout session_meta carries base_instructions.{text, provenance{type, model}} (Fable F8)",
-  "codex_home_system_skills_listed": [
-   "imagegen",
-   "openai-docs",
-   "skill-creator",
-   "skill-installer"
-  ],
-  "harness_input": "the prompt is rendered as one user message with a single input_text equal to the exact prompt bytes (marker of 25 characters, no wrapper)",
-  "items": [
-   "developer: host_skills.instructions, permissions.instructions, collaboration_mode.instructions",
-   "developer: multi_agent.role_instructions",
-   "developer: multi_agent.mode_instructions",
-   "user: environments.environment_context",
-   "user: user.text (only when a prompt is given)"
-  ],
-  "skills_per_root": {
-   "r0": 45,
-   "r1": 4
-  },
-  "skills_roots": {
-   "r0": "~/.agents/skills",
-   "r1": "~/.ozmap_rep/annex-probes/p5-20261025T005939Z/homes/worker-0/skills/.system"
-  }
- },
  "executable_sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d",
- "flag_sensitivity": {
-  "consequence": "the rendering shows the pinned binary's default context assembly, not the frozen exec route; it is not request boundary evidence for the frozen argv",
-  "finding": "debug prompt-input ignores -c, --enable and --disable: renderings with the frozen route arguments at the top level, at the debug level, at the prompt-input level, with no route arguments, with features.* set by -c, and with sandbox_mode unset, read-only or workspace-write are identical item by item within one home root (the first item differs between roots only because it names the home path). `features list` with the same arguments does report them (multi_agent false, skip_host_skill_discovery true, code_mode_host false), so the arguments parse but this renderer does not apply them",
-  "variants": {
-   "pi_cfg_features": {
-    "argv": [
-     "codex.EXE",
-     "debug",
-     "prompt-input",
-     "-c",
-     "features.multi_agent=false",
-     "-c",
-     "features.multi_agent_v2=false",
-     "-c",
-     "features.skip_host_skill_discovery=true",
-     "-c",
-     "features.skill_search=false",
-     "M"
-    ],
-    "content_sha256_prefixes": [
-     "08a0624c9d9f5f6e",
-     "2493dd1ae75230d9",
-     "bec8e7b5358a20b4",
-     "4709149093850595",
-     "6ded806e3cdbb355",
-     "740c0ecef6417bc0",
-     "08f271887ce94707"
-    ]
-   },
-   "pi_leaf_level": {
-    "argv": [
-     "codex.EXE",
-     "debug",
-     "prompt-input",
-     "-c",
-     "cli_auth_credentials_store=\"file\"",
-     "--enable",
-     "skip_host_skill_discovery",
-     "--disable",
-     "plugins",
-     "--disable",
-     "apps",
-     "--disable",
-     "memories",
-     "--disable",
-     "hooks",
-     "--disable",
-     "multi_agent",
-     "--disable",
-     "skill_search",
-     "--disable",
-     "browser_use",
-     "--disable",
-     "computer_use",
-     "--disable",
-     "image_generation",
-     "--disable",
-     "view_image",
-     "--disable",
-     "shell_tool",
-     "--disable",
-     "unified_exec",
-     "--disable",
-     "unified_exec_tty",
-     "--disable",
-     "browser_use_external",
-     "--disable",
-     "browser_use_full_cdp_access",
-     "--disable",
-     "in_app_browser",
-     "--disable",
-     "code_mode_host",
-     "--disable",
-     "remote_plugin",
-     "--disable",
-     "plugin_sharing",
-     "--disable",
-     "recommended_plugins",
-     "--disable",
-     "skill_mcp_dependency_install",
-     "--disable",
-     "tool_suggest",
-     "--disable",
-     "tool_call_mcp_elicitation",
-     "--disable",
-     "sleep_tool",
-     "--disable",
-     "multi_agent_v2",
-     "--disable",
-     "shell_snapshot",
-     "--disable",
-     "workspace_dependencies",
-     "--disable",
-     "secret_auth_storage",
-     "-c",
-     "project_doc_max_bytes=0",
-     "-c",
-     "model=\"gpt-6.1-sol\"",
-     "-c",
-     "model_reasoning_effort=\"high\"",
-     "-c",
-     "sandbox_mode=\"read-only\"",
-     "HARNESS_INPUT_MARKER_7f3a"
-    ],
-    "content_sha256_prefixes": [
-     "a451849074a55085",
-     "2493dd1ae75230d9",
-     "bec8e7b5358a20b4",
-     "4709149093850595",
-     "6ded806e3cdbb355",
-     "0cc5b608bfcb4248",
-     "7c1a56c077f7c87e"
-    ]
-   },
-   "pi_no_route": {
-    "argv": [
-     "codex.EXE",
-     "debug",
-     "prompt-input",
-     "-c",
-     "model=\"gpt-6.1-sol\"",
-     "-c",
-     "model_reasoning_effort=\"high\"",
-     "-c",
-     "sandbox_mode=\"read-only\"",
-     "HARNESS_INPUT_MARKER_7f3a"
-    ],
-    "content_sha256_prefixes": [
-     "a451849074a55085",
-     "2493dd1ae75230d9",
-     "bec8e7b5358a20b4",
-     "4709149093850595",
-     "6ded806e3cdbb355",
-     "0cc5b608bfcb4248",
-     "7c1a56c077f7c87e"
-    ]
-   },
-   "pi_no_sandbox": {
-    "argv": [
-     "codex.EXE",
-     "debug",
-     "prompt-input",
-     "M"
-    ],
-    "content_sha256_prefixes": [
-     "08a0624c9d9f5f6e",
-     "2493dd1ae75230d9",
-     "bec8e7b5358a20b4",
-     "4709149093850595",
-     "6ded806e3cdbb355",
-     "740c0ecef6417bc0",
-     "08f271887ce94707"
-    ]
-   },
-   "pi_top_level": {
-    "argv": [
-     "codex.EXE",
-     "-c",
-     "cli_auth_credentials_store=\"file\"",
-     "--enable",
-     "skip_host_skill_discovery",
-     "--disable",
-     "plugins",
-     "--disable",
-     "apps",
-     "--disable",
-     "memories",
-     "--disable",
-     "hooks",
-     "--disable",
-     "multi_agent",
-     "--disable",
-     "skill_search",
-     "--disable",
-     "browser_use",
-     "--disable",
-     "computer_use",
-     "--disable",
-     "image_generation",
-     "--disable",
-     "view_image",
-     "--disable",
-     "shell_tool",
-     "--disable",
-     "unified_exec",
-     "--disable",
-     "unified_exec_tty",
-     "--disable",
-     "browser_use_external",
-     "--disable",
-     "browser_use_full_cdp_access",
-     "--disable",
-     "in_app_browser",
-     "--disable",
-     "code_mode_host",
-     "--disable",
-     "remote_plugin",
-     "--disable",
-     "plugin_sharing",
-     "--disable",
-     "recommended_plugins",
-     "--disable",
-     "skill_mcp_dependency_install",
-     "--disable",
-     "tool_suggest",
-     "--disable",
-     "tool_call_mcp_elicitation",
-     "--disable",
-     "sleep_tool",
-     "--disable",
-     "multi_agent_v2",
-     "--disable",
-     "shell_snapshot",
-     "--disable",
-     "workspace_dependencies",
-     "--disable",
-     "secret_auth_storage",
-     "-c",
-     "project_doc_max_bytes=0",
-     "-c",
-     "model=\"gpt-6.1-sol\"",
-     "-c",
-     "model_reasoning_effort=\"high\"",
-     "-c",
-     "sandbox_mode=\"read-only\"",
-     "debug",
-     "prompt-input",
-     "HARNESS_INPUT_MARKER_7f3a"
-    ],
-    "content_sha256_prefixes": [
-     "a451849074a55085",
-     "2493dd1ae75230d9",
-     "bec8e7b5358a20b4",
-     "4709149093850595",
-     "6ded806e3cdbb355",
-     "0cc5b608bfcb4248",
-     "7c1a56c077f7c87e"
-    ]
-   },
-   "pi_ws_sandbox": {
-    "argv": [
-     "codex.EXE",
-     "debug",
-     "prompt-input",
-     "-c",
-     "sandbox_mode=\"workspace-write\"",
-     "--disable",
-     "multi_agent",
-     "M"
-    ],
-    "content_sha256_prefixes": [
-     "08a0624c9d9f5f6e",
-     "2493dd1ae75230d9",
-     "bec8e7b5358a20b4",
-     "4709149093850595",
-     "6ded806e3cdbb355",
-     "740c0ecef6417bc0",
-     "08f271887ce94707"
-    ]
-   }
-  }
+ "route_security_args": [
+  "-c",
+  "cli_auth_credentials_store=\"file\"",
+  "--enable",
+  "skip_host_skill_discovery",
+  "-c",
+  "skills.include_instructions=false",
+  "-c",
+  "skills.bundled.enabled=false"
+ ],
+ "disable_args": [
+  "--disable",
+  "plugins",
+  "--disable",
+  "apps",
+  "--disable",
+  "memories",
+  "--disable",
+  "hooks",
+  "--disable",
+  "multi_agent",
+  "--disable",
+  "skill_search",
+  "--disable",
+  "browser_use",
+  "--disable",
+  "computer_use",
+  "--disable",
+  "image_generation",
+  "--disable",
+  "view_image",
+  "--disable",
+  "shell_tool",
+  "--disable",
+  "unified_exec",
+  "--disable",
+  "unified_exec_tty",
+  "--disable",
+  "browser_use_external",
+  "--disable",
+  "browser_use_full_cdp_access",
+  "--disable",
+  "in_app_browser",
+  "--disable",
+  "code_mode_host",
+  "--disable",
+  "remote_plugin",
+  "--disable",
+  "plugin_sharing",
+  "--disable",
+  "recommended_plugins",
+  "--disable",
+  "skill_mcp_dependency_install",
+  "--disable",
+  "tool_suggest",
+  "--disable",
+  "tool_call_mcp_elicitation",
+  "--disable",
+  "sleep_tool",
+  "--disable",
+  "multi_agent_v2",
+  "--disable",
+  "shell_snapshot",
+  "--disable",
+  "workspace_dependencies",
+  "--disable",
+  "secret_auth_storage",
+  "-c",
+  "project_doc_max_bytes=0"
+ ],
+ "closes": {
+  "P5-E1": "owner ~/.agents/skills listed in the request on the previous route (previous_route: 25 skill descriptions from ~/.agents/skills and 4 of the bundled skills, a <skills_instructions> item of 22156 characters naming the owner profile root). Root cause: the pinned binary resolves the user skills root from the OS profile (Windows known folder), not from CODEX_HOME, HOME or USERPROFILE; moving the working directory outside the profile does not change it (debug prompt-input with the working directory below and outside the profile lists the same root). --enable skip_host_skill_discovery does not remove it on the exec route. Closed by `-c skills.include_instructions=false` (SkillsConfig.include_instructions of the pinned config schema): the skills instructions item is absent from the frozen route request",
+  "P5-E2": "bundled CODEX_HOME skills/.system: closed by `-c skills.bundled.enabled=false` (BundledSkillsConfig.enabled): nothing is written under skills/ and nothing is listed",
+  "P5-E3": "multi_agent role and mode developer items and the collaboration tools stay in the request although multi_agent and multi_agent_v2 are disabled: vendor content of the pinned binary (verbatim in the executable where vendor_provenance says so), not owner content; disclosed below for the signatories"
  },
- "renderings": {
-  "frozen_route_flags_no_prompt": {
+ "request_boundary": {
+  "external_requests": [],
+  "proxy_honoured": "control: with the plugins feature enabled the same probe sends CONNECT chatgpt.com:443, github.com:443 and api.github.com:443 to the refusing proxy, so the CLI honours the proxy variables and a request outside loopback would have been recorded",
+  "previous_route": {
    "argv": [
     "codex.EXE",
-    "debug",
+    "exec",
+    "--ignore-user-config",
+    "--ignore-rules",
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--json",
+    "-s",
+    "read-only",
+    "-C",
+    "C:\\ozmap_rep\\annex-probes\\p5-frozen-20261025T021429Z\\work\\slot-0",
+    "-m",
+    "gpt-6.1-sol",
+    "-c",
+    "model_reasoning_effort=\"high\"",
     "-c",
     "cli_auth_credentials_store=\"file\"",
     "--enable",
@@ -375,262 +164,1356 @@
     "-c",
     "project_doc_max_bytes=0",
     "-c",
-    "model=\"gpt-6.1-sol\"",
+    "openai_base_url=\"http://127.0.0.1:58806/v1\"",
+    "-"
+   ],
+   "probe_args_added": [
+    "-c",
+    "openai_base_url=\"http://127.0.0.1:58806/v1\""
+   ],
+   "frozen_argv_check": [],
+   "exit_code": 1,
+   "elapsed_s": 6.5,
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "POST",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": false
+    }
+   ],
+   "external_requests": [],
+   "non_loopback_connections": [],
+   "model_request": {
+    "path": "/v1/responses",
+    "body_sha256": "b7f8ebc3bd26449dc4d2d5cc64b762277d388f571f813dd58268317bc30ff965",
+    "body_chars": 80379,
+    "top_level_keys": [
+     "client_metadata",
+     "include",
+     "input",
+     "model",
+     "parallel_tool_calls",
+     "prompt_cache_key",
+     "reasoning",
+     "store",
+     "stream",
+     "text",
+     "tool_choice"
+    ],
+    "model": "gpt-6.1-sol",
+    "reasoning": {
+     "effort": "high",
+     "context": "all_turns"
+    },
+    "instructions_field_chars": 0,
+    "tools_field": null,
+    "items": [
+     {
+      "index": 0,
+      "type": "additional_tools",
+      "role": "developer",
+      "tools_sha256": "1180205e3b1d509fc67e254351f21b68720513f5f1c68690f7931b9a58bf6c34",
+      "tools": [
+       {
+        "name": "functions",
+        "type": "namespace",
+        "description_chars": 0,
+        "description_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+       },
+       {
+        "name": "functions.exec",
+        "type": "custom",
+        "description_chars": 17392,
+        "description_sha256": "d869cb7906e433367e206eb0c3775e41065657df92bf4bfd7f3950bf708e4bcd"
+       },
+       {
+        "name": "functions.wait",
+        "type": "function",
+        "description_chars": 769,
+        "description_sha256": "582eb96e50ee4481cf30b33ad2358e7e24e7368aeb2cbe5122cef1912ad75385"
+       },
+       {
+        "name": "functions.request_user_input",
+        "type": "function",
+        "description_chars": 120,
+        "description_sha256": "783ea374eaba01b1c7d453ff177ba9f27f45a6cb9c33a6f5fb1bed00251f00c7"
+       },
+       {
+        "name": "functions.request_user_input_async",
+        "type": "function",
+        "description_chars": 556,
+        "description_sha256": "f7f47603a91513a78276c4091cd758ee99ca47e625bd7b0f4a8b305cebfa575c"
+       },
+       {
+        "name": "collaboration",
+        "type": "namespace",
+        "description_chars": 43,
+        "description_sha256": "c839c56b2b6f5cb73c8848275df7124cec42c27ca110192fb53cfc39b886b8ff"
+       },
+       {
+        "name": "collaboration.followup_task",
+        "type": "function",
+        "description_chars": 232,
+        "description_sha256": "fb29da0ce679f0892dc312628f6a2b30ae1280a6dc5e7d7c200400ecc2a48d0d"
+       },
+       {
+        "name": "collaboration.interrupt_agent",
+        "type": "function",
+        "description_chars": 136,
+        "description_sha256": "07f744a6e4727f0df30542007facc5bdf148e58e3b90b8a87017d4550c6295ae"
+       },
+       {
+        "name": "collaboration.list_agents",
+        "type": "function",
+        "description_chars": 88,
+        "description_sha256": "c050cd421fdd6cddded7adac44850fabc6b99a76d7e5e03541367d666345d97c"
+       },
+       {
+        "name": "collaboration.send_message",
+        "type": "function",
+        "description_chars": 105,
+        "description_sha256": "e0cae526e53d940eb5c0e9b17b37718d4b85d6d040fce9c7cbabcdcc246f1400"
+       },
+       {
+        "name": "collaboration.spawn_agent",
+        "type": "function",
+        "description_chars": 1829,
+        "description_sha256": "0b7d0bfcc5ad985cb8558df0c277012dd14369baf6b2417e84e5159bef8ff0c4"
+       },
+       {
+        "name": "collaboration.wait_agent",
+        "type": "function",
+        "description_chars": 383,
+        "description_sha256": "6efad2e8999e35161630b9b402235e433ff8634ad548378e453d739b9705d344"
+       }
+      ]
+     },
+     {
+      "index": 1,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "model.base_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 21769,
+        "sha256": "e1bdd4f8f0df4b20f4a0ffc8a861ce819df45325d8cecdfb92e80379cf8d142e",
+        "opening_tag": null
+       }
+      ]
+     },
+     {
+      "index": 2,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "host_skills.instructions",
+       "permissions.instructions",
+       "collaboration_mode.instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 22156,
+        "sha256": "49de83e2b54e484dfb1ccbc65238b3f157da79c539a7e1a4057de6b0d9e05b91",
+        "opening_tag": "<skills_instructions>"
+       },
+       {
+        "type": "input_text",
+        "chars": 342,
+        "sha256": "4103287cd2f8e02c0c606bbbae018671bd04d7e7eeca9cbf862f8b53f9275313",
+        "opening_tag": "<permissions instructions>"
+       },
+       {
+        "type": "input_text",
+        "chars": 920,
+        "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
+        "opening_tag": "<collaboration_mode>"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "multi_agent.role_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 2429,
+        "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
+        "opening_tag": "<multi_agent_role>"
+       }
+      ]
+     },
+     {
+      "index": 4,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "multi_agent.mode_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 271,
+        "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
+        "opening_tag": "<multi_agent_mode>"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "type": "message",
+      "role": "user",
+      "content_item_kinds": [
+       "environments.environment_context"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 525,
+        "sha256": "990bf63b416f955bd48117b26951cdcb4d05cc3b66755582e098ded56902cf73",
+        "opening_tag": "<environment_context>"
+       }
+      ]
+     },
+     {
+      "index": 6,
+      "type": "message",
+      "role": "user",
+      "content_item_kinds": [
+       "user.text"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 43,
+        "sha256": "723380cca8b25a4ee5c42af7ab65ea10eaa750d7bf4291563495885f642c4a8d",
+        "opening_tag": null
+       }
+      ]
+     }
+    ]
+   },
+   "owner_content": {
+    "line_hits": 73,
+    "skill_description_hits": [
+     "~\\.agents\\skills\\automate",
+     "~\\.agents\\skills\\book-to-skill",
+     "~\\.agents\\skills\\callister-materials-science",
+     "~\\.agents\\skills\\goal",
+     "~\\.agents\\skills\\orchestra-board",
+     "~\\.agents\\skills\\orchestra-genel",
+     "~\\.agents\\skills\\orchestra-uclu",
+     "~\\.agents\\skills\\orx",
+     "~\\.agents\\skills\\review",
+     "~\\.agents\\skills\\review-bugbot",
+     "~\\.agents\\skills\\review-security",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\built-in-browser",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\chrome-browser",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\computer-use",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\deep-research",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\docs",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\docx",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\google-workspace",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\import-memory",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\morning",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\orchestra-genel",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\pdf",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\pptx",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\skill-creator",
+     "~\\.agents\\skills\\synced\\8cc7676d-6438-41d2-8108-26e9b82982e0_e78f3218-7486-44ad-a2ed-59fdaacb73fe\\xlsx",
+     "~\\.codex\\skills\\.system\\imagegen",
+     "~\\.codex\\skills\\.system\\openai-docs",
+     "~\\.codex\\skills\\.system\\skill-creator",
+     "~\\.codex\\skills\\.system\\skill-installer"
+    ],
+    "markers": {
+     ".agents": 1,
+     "skills_instructions": 2,
+     "C:\\Users\\can02": 0,
+     "C:/Users/can02": 1,
+     "can02": 1,
+     "<skills_instructions>": 1,
+     "memories": 0,
+     "AGENTS.md": 4
+    }
+   },
+   "home_after": [
+    "goals_1.sqlite",
+    "goals_1.sqlite-shm",
+    "goals_1.sqlite-wal",
+    "installation_id",
+    "logs_2.sqlite",
+    "logs_2.sqlite-shm",
+    "logs_2.sqlite-wal",
+    "memories_1.sqlite",
+    "memories_1.sqlite-shm",
+    "memories_1.sqlite-wal",
+    "queue_1.sqlite",
+    "queue_1.sqlite-shm",
+    "queue_1.sqlite-wal",
+    "skills",
+    "skills/.system",
+    "skills/.system/.codex-system-skills.marker",
+    "skills/.system/imagegen",
+    "skills/.system/imagegen/agents",
+    "skills/.system/imagegen/agents/openai.yaml",
+    "skills/.system/imagegen/assets",
+    "skills/.system/imagegen/assets/imagegen-small.svg",
+    "skills/.system/imagegen/assets/imagegen.png",
+    "skills/.system/imagegen/LICENSE.txt",
+    "skills/.system/imagegen/references",
+    "skills/.system/imagegen/references/cli.md",
+    "skills/.system/imagegen/references/codex-network.md",
+    "skills/.system/imagegen/references/image-api.md",
+    "skills/.system/imagegen/references/prompting.md",
+    "skills/.system/imagegen/references/sample-prompts.md",
+    "skills/.system/imagegen/scripts",
+    "skills/.system/imagegen/scripts/image_gen.py",
+    "skills/.system/imagegen/scripts/remove_chroma_key.py",
+    "skills/.system/imagegen/SKILL.md",
+    "skills/.system/openai-docs",
+    "skills/.system/openai-docs/agents",
+    "skills/.system/openai-docs/agents/openai.yaml",
+    "skills/.system/openai-docs/assets",
+    "skills/.system/openai-docs/assets/openai-small.svg",
+    "skills/.system/openai-docs/assets/openai.png",
+    "skills/.system/openai-docs/LICENSE.txt",
+    "skills/.system/openai-docs/references",
+    "skills/.system/openai-docs/references/codex-self-knowledge.md",
+    "skills/.system/openai-docs/references/latest-model.md",
+    "skills/.system/openai-docs/references/mcp-diagnostics.md",
+    "skills/.system/openai-docs/references/model-migration.md",
+    "skills/.system/openai-docs/references/model-selection.md",
+    "skills/.system/openai-docs/references/official-docs.md",
+    "skills/.system/openai-docs/references/prompting-guide.md",
+    "skills/.system/openai-docs/references/upgrade-guide.md",
+    "skills/.system/openai-docs/references/upgrading-to-gpt-6-astra.md",
+    "skills/.system/openai-docs/scripts",
+    "skills/.system/openai-docs/scripts/fetch-codex-manual.mjs",
+    "skills/.system/openai-docs/scripts/resolve-latest-model-info",
+    "skills/.system/openai-docs/scripts/resolve-latest-model-info.cjs",
+    "skills/.system/openai-docs/SKILL.md",
+    "skills/.system/review-agent",
+    "skills/.system/review-agent/agents",
+    "skills/.system/review-agent/agents/openai.yaml",
+    "skills/.system/review-agent/SKILL.md",
+    "skills/.system/skill-creator",
+    "skills/.system/skill-creator/agents",
+    "skills/.system/skill-creator/agents/openai.yaml",
+    "skills/.system/skill-creator/assets",
+    "skills/.system/skill-creator/assets/skill-creator-small.svg",
+    "skills/.system/skill-creator/assets/skill-creator.png",
+    "skills/.system/skill-creator/license.txt",
+    "skills/.system/skill-creator/references",
+    "skills/.system/skill-creator/references/openai_yaml.md",
+    "skills/.system/skill-creator/scripts",
+    "skills/.system/skill-creator/scripts/generate_openai_yaml.py",
+    "skills/.system/skill-creator/scripts/init_skill.py",
+    "skills/.system/skill-creator/scripts/quick_validate.py",
+    "skills/.system/skill-creator/SKILL.md",
+    "skills/.system/skill-installer",
+    "skills/.system/skill-installer/agents",
+    "skills/.system/skill-installer/agents/openai.yaml",
+    "skills/.system/skill-installer/assets",
+    "skills/.system/skill-installer/assets/skill-installer-small.svg",
+    "skills/.system/skill-installer/assets/skill-installer.png",
+    "skills/.system/skill-installer/LICENSE.txt",
+    "skills/.system/skill-installer/scripts",
+    "skills/.system/skill-installer/scripts/github_utils.py",
+    "skills/.system/skill-installer/scripts/install-skill-from-github.py",
+    "skills/.system/skill-installer/scripts/list-skills.py",
+    "skills/.system/skill-installer/SKILL.md",
+    "state_5.sqlite",
+    "state_5.sqlite-shm",
+    "state_5.sqlite-wal",
+    "tmp",
+    "tmp/arg0",
+    "tmp/arg0/codex-arg0Px7RDR",
+    "tmp/arg0/codex-arg0Px7RDR/.lock",
+    "tmp/arg0/codex-arg0Px7RDR/apply_patch.bat",
+    "tmp/arg0/codex-arg0Px7RDR/applypatch.bat"
+   ],
+   "capture_file_sha256": "f1ac406dc08b7effa3472a0232beb2184bd78d925e41ef186e5fe61411a37f40"
+  },
+  "frozen_route_no_auth": {
+   "argv": [
+    "codex.EXE",
+    "exec",
+    "--ignore-user-config",
+    "--ignore-rules",
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--json",
+    "-s",
+    "read-only",
+    "-C",
+    "C:\\ozmap_rep\\annex-probes\\p5-final_noauth-20261025T023424Z\\work\\slot-0",
+    "-m",
+    "gpt-6.1-sol",
     "-c",
     "model_reasoning_effort=\"high\"",
     "-c",
-    "sandbox_mode=\"read-only\"",
-    "prompt-input"
+    "cli_auth_credentials_store=\"file\"",
+    "--enable",
+    "skip_host_skill_discovery",
+    "-c",
+    "skills.include_instructions=false",
+    "-c",
+    "skills.bundled.enabled=false",
+    "--disable",
+    "plugins",
+    "--disable",
+    "apps",
+    "--disable",
+    "memories",
+    "--disable",
+    "hooks",
+    "--disable",
+    "multi_agent",
+    "--disable",
+    "skill_search",
+    "--disable",
+    "browser_use",
+    "--disable",
+    "computer_use",
+    "--disable",
+    "image_generation",
+    "--disable",
+    "view_image",
+    "--disable",
+    "shell_tool",
+    "--disable",
+    "unified_exec",
+    "--disable",
+    "unified_exec_tty",
+    "--disable",
+    "browser_use_external",
+    "--disable",
+    "browser_use_full_cdp_access",
+    "--disable",
+    "in_app_browser",
+    "--disable",
+    "code_mode_host",
+    "--disable",
+    "remote_plugin",
+    "--disable",
+    "plugin_sharing",
+    "--disable",
+    "recommended_plugins",
+    "--disable",
+    "skill_mcp_dependency_install",
+    "--disable",
+    "tool_suggest",
+    "--disable",
+    "tool_call_mcp_elicitation",
+    "--disable",
+    "sleep_tool",
+    "--disable",
+    "multi_agent_v2",
+    "--disable",
+    "shell_snapshot",
+    "--disable",
+    "workspace_dependencies",
+    "--disable",
+    "secret_auth_storage",
+    "-c",
+    "project_doc_max_bytes=0",
+    "-c",
+    "openai_base_url=\"http://127.0.0.1:63356/v1\"",
+    "-"
    ],
-   "items": [
+   "probe_args_added": [
+    "-c",
+    "openai_base_url=\"http://127.0.0.1:63356/v1\""
+   ],
+   "frozen_argv_check": [],
+   "exit_code": 1,
+   "elapsed_s": 6.43,
+   "requests": [
     {
-     "content": [
-      {
-       "chars": 22162,
-       "opening_tag": "<skills_instructions>",
-       "sha256": "4133c523325db47e24ebc075fd7fa061e114968c81dc825600ab7598b1624bda",
-       "type": "input_text"
-      },
-      {
-       "chars": 3939,
-       "opening_tag": "<permissions instructions>",
-       "sha256": "2493dd1ae75230d95acdb8e77fb10d51138de63d95c10d2a647b76d59060d4d7",
-       "type": "input_text"
-      },
-      {
-       "chars": 920,
-       "opening_tag": "<collaboration_mode>",
-       "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "host_skills.instructions",
-      "permissions.instructions",
-      "collaboration_mode.instructions"
-     ],
-     "role": "developer",
-     "type": "message"
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
     },
     {
-     "content": [
-      {
-       "chars": 2429,
-       "opening_tag": "<multi_agent_role>",
-       "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "multi_agent.role_instructions"
-     ],
-     "role": "developer",
-     "type": "message"
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
     },
     {
-     "content": [
-      {
-       "chars": 271,
-       "opening_tag": "<multi_agent_mode>",
-       "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "multi_agent.mode_instructions"
-     ],
-     "role": "developer",
-     "type": "message"
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
     },
     {
-     "content": [
-      {
-       "chars": 537,
-       "opening_tag": "<environment_context>",
-       "sha256": "fd550bd3d1561dc6182befee5aff7cbe48619de3860c89cf886e0e397ec3d8b9",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "environments.environment_context"
-     ],
-     "role": "user",
-     "type": "message"
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": null,
+     "websocket_upgrade": true
+    },
+    {
+     "method": "POST",
+     "path": "/v1/responses",
+     "body_bytes": 58092,
+     "bearer_source": null,
+     "websocket_upgrade": false
     }
+   ],
+   "external_requests": [],
+   "non_loopback_connections": [],
+   "model_request": {
+    "path": "/v1/responses",
+    "body_sha256": "81a4bed5e006f666a0a870a02e278c58b408bb14a54123e80b1c64804711f5c1",
+    "body_chars": 58081,
+    "top_level_keys": [
+     "client_metadata",
+     "include",
+     "input",
+     "model",
+     "parallel_tool_calls",
+     "prompt_cache_key",
+     "reasoning",
+     "store",
+     "stream",
+     "text",
+     "tool_choice"
+    ],
+    "model": "gpt-6.1-sol",
+    "reasoning": {
+     "effort": "high",
+     "context": "all_turns"
+    },
+    "instructions_field_chars": 0,
+    "tools_field": null,
+    "items": [
+     {
+      "index": 0,
+      "type": "additional_tools",
+      "role": "developer",
+      "tools_sha256": "1180205e3b1d509fc67e254351f21b68720513f5f1c68690f7931b9a58bf6c34",
+      "tools": [
+       {
+        "name": "functions",
+        "type": "namespace",
+        "description_chars": 0,
+        "description_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+       },
+       {
+        "name": "functions.exec",
+        "type": "custom",
+        "description_chars": 17392,
+        "description_sha256": "d869cb7906e433367e206eb0c3775e41065657df92bf4bfd7f3950bf708e4bcd"
+       },
+       {
+        "name": "functions.wait",
+        "type": "function",
+        "description_chars": 769,
+        "description_sha256": "582eb96e50ee4481cf30b33ad2358e7e24e7368aeb2cbe5122cef1912ad75385"
+       },
+       {
+        "name": "functions.request_user_input",
+        "type": "function",
+        "description_chars": 120,
+        "description_sha256": "783ea374eaba01b1c7d453ff177ba9f27f45a6cb9c33a6f5fb1bed00251f00c7"
+       },
+       {
+        "name": "functions.request_user_input_async",
+        "type": "function",
+        "description_chars": 556,
+        "description_sha256": "f7f47603a91513a78276c4091cd758ee99ca47e625bd7b0f4a8b305cebfa575c"
+       },
+       {
+        "name": "collaboration",
+        "type": "namespace",
+        "description_chars": 43,
+        "description_sha256": "c839c56b2b6f5cb73c8848275df7124cec42c27ca110192fb53cfc39b886b8ff"
+       },
+       {
+        "name": "collaboration.followup_task",
+        "type": "function",
+        "description_chars": 232,
+        "description_sha256": "fb29da0ce679f0892dc312628f6a2b30ae1280a6dc5e7d7c200400ecc2a48d0d"
+       },
+       {
+        "name": "collaboration.interrupt_agent",
+        "type": "function",
+        "description_chars": 136,
+        "description_sha256": "07f744a6e4727f0df30542007facc5bdf148e58e3b90b8a87017d4550c6295ae"
+       },
+       {
+        "name": "collaboration.list_agents",
+        "type": "function",
+        "description_chars": 88,
+        "description_sha256": "c050cd421fdd6cddded7adac44850fabc6b99a76d7e5e03541367d666345d97c"
+       },
+       {
+        "name": "collaboration.send_message",
+        "type": "function",
+        "description_chars": 105,
+        "description_sha256": "e0cae526e53d940eb5c0e9b17b37718d4b85d6d040fce9c7cbabcdcc246f1400"
+       },
+       {
+        "name": "collaboration.spawn_agent",
+        "type": "function",
+        "description_chars": 1829,
+        "description_sha256": "0b7d0bfcc5ad985cb8558df0c277012dd14369baf6b2417e84e5159bef8ff0c4"
+       },
+       {
+        "name": "collaboration.wait_agent",
+        "type": "function",
+        "description_chars": 383,
+        "description_sha256": "6efad2e8999e35161630b9b402235e433ff8634ad548378e453d739b9705d344"
+       }
+      ]
+     },
+     {
+      "index": 1,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "model.base_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 21769,
+        "sha256": "e1bdd4f8f0df4b20f4a0ffc8a861ce819df45325d8cecdfb92e80379cf8d142e",
+        "opening_tag": null
+       }
+      ]
+     },
+     {
+      "index": 2,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "permissions.instructions",
+       "collaboration_mode.instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 342,
+        "sha256": "4103287cd2f8e02c0c606bbbae018671bd04d7e7eeca9cbf862f8b53f9275313",
+        "opening_tag": "<permissions instructions>"
+       },
+       {
+        "type": "input_text",
+        "chars": 920,
+        "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
+        "opening_tag": "<collaboration_mode>"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "multi_agent.role_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 2429,
+        "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
+        "opening_tag": "<multi_agent_role>"
+       }
+      ]
+     },
+     {
+      "index": 4,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "multi_agent.mode_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 271,
+        "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
+        "opening_tag": "<multi_agent_mode>"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "type": "message",
+      "role": "user",
+      "content_item_kinds": [
+       "environments.environment_context"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 537,
+        "sha256": "47cf0b00bea50990ab764edd42732bba1ccb36d91557b1b9db9e971bc672f7e2",
+        "opening_tag": "<environment_context>"
+       }
+      ]
+     },
+     {
+      "index": 6,
+      "type": "message",
+      "role": "user",
+      "content_item_kinds": [
+       "user.text"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 43,
+        "sha256": "723380cca8b25a4ee5c42af7ab65ea10eaa750d7bf4291563495885f642c4a8d",
+        "opening_tag": null
+       }
+      ]
+     }
+    ]
+   },
+   "owner_content": {
+    "line_hits": 0,
+    "skill_description_hits": [],
+    "markers": {
+     ".agents": 0,
+     "skills_instructions": 0,
+     "C:\\Users\\can02": 0,
+     "C:/Users/can02": 0,
+     "can02": 0,
+     "<skills_instructions>": 0,
+     "memories": 0,
+     "AGENTS.md": 3
+    }
+   },
+   "home_after": [
+    "goals_1.sqlite",
+    "goals_1.sqlite-shm",
+    "goals_1.sqlite-wal",
+    "installation_id",
+    "logs_2.sqlite",
+    "logs_2.sqlite-shm",
+    "logs_2.sqlite-wal",
+    "memories_1.sqlite",
+    "memories_1.sqlite-shm",
+    "memories_1.sqlite-wal",
+    "queue_1.sqlite",
+    "queue_1.sqlite-shm",
+    "queue_1.sqlite-wal",
+    "state_5.sqlite",
+    "state_5.sqlite-shm",
+    "state_5.sqlite-wal",
+    "tmp",
+    "tmp/arg0",
+    "tmp/arg0/codex-arg0XzUGUx",
+    "tmp/arg0/codex-arg0XzUGUx/.lock",
+    "tmp/arg0/codex-arg0XzUGUx/apply_patch.bat",
+    "tmp/arg0/codex-arg0XzUGUx/applypatch.bat"
+   ],
+   "capture_file_sha256": "1b8ca7b2aed9ba0589b01e45e9e5e258a3ce6ebe026e6959366b223a7c9e4205"
+  },
+  "frozen_route_scrambled_auth": {
+   "argv": [
+    "codex.EXE",
+    "exec",
+    "--ignore-user-config",
+    "--ignore-rules",
+    "--ephemeral",
+    "--skip-git-repo-check",
+    "--json",
+    "-s",
+    "read-only",
+    "-C",
+    "C:\\ozmap_rep\\annex-probes\\p5-final_scrambled-20261025T023432Z\\work\\slot-0",
+    "-m",
+    "gpt-6.1-sol",
+    "-c",
+    "model_reasoning_effort=\"high\"",
+    "-c",
+    "cli_auth_credentials_store=\"file\"",
+    "--enable",
+    "skip_host_skill_discovery",
+    "-c",
+    "skills.include_instructions=false",
+    "-c",
+    "skills.bundled.enabled=false",
+    "--disable",
+    "plugins",
+    "--disable",
+    "apps",
+    "--disable",
+    "memories",
+    "--disable",
+    "hooks",
+    "--disable",
+    "multi_agent",
+    "--disable",
+    "skill_search",
+    "--disable",
+    "browser_use",
+    "--disable",
+    "computer_use",
+    "--disable",
+    "image_generation",
+    "--disable",
+    "view_image",
+    "--disable",
+    "shell_tool",
+    "--disable",
+    "unified_exec",
+    "--disable",
+    "unified_exec_tty",
+    "--disable",
+    "browser_use_external",
+    "--disable",
+    "browser_use_full_cdp_access",
+    "--disable",
+    "in_app_browser",
+    "--disable",
+    "code_mode_host",
+    "--disable",
+    "remote_plugin",
+    "--disable",
+    "plugin_sharing",
+    "--disable",
+    "recommended_plugins",
+    "--disable",
+    "skill_mcp_dependency_install",
+    "--disable",
+    "tool_suggest",
+    "--disable",
+    "tool_call_mcp_elicitation",
+    "--disable",
+    "sleep_tool",
+    "--disable",
+    "multi_agent_v2",
+    "--disable",
+    "shell_snapshot",
+    "--disable",
+    "workspace_dependencies",
+    "--disable",
+    "secret_auth_storage",
+    "-c",
+    "project_doc_max_bytes=0",
+    "-c",
+    "openai_base_url=\"http://127.0.0.1:63375/v1\"",
+    "-c",
+    "chatgpt_base_url=\"http://127.0.0.1:63375/backend-api/\"",
+    "-"
+   ],
+   "probe_args_added": [
+    "-c",
+    "openai_base_url=\"http://127.0.0.1:63375/v1\"",
+    "-c",
+    "chatgpt_base_url=\"http://127.0.0.1:63375/backend-api/\""
+   ],
+   "frozen_argv_check": [],
+   "exit_code": 1,
+   "elapsed_s": 6.67,
+   "requests": [
+    {
+     "method": "GET",
+     "path": "/v1/models?client_version=0.160.0",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    },
+    {
+     "method": "GET",
+     "path": "/backend-api/wham/accounts/check",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    },
+    {
+     "method": "GET",
+     "path": "/v1/models?client_version=0.160.0",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    },
+    {
+     "method": "GET",
+     "path": "/backend-api/wham/accounts/check",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    },
+    {
+     "method": "POST",
+     "path": "/backend-api/codex/analytics-events/events",
+     "body_bytes": 675,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/backend-api/wham/settings/user",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": true
+    },
+    {
+     "method": "GET",
+     "path": "/v1/responses",
+     "body_bytes": 0,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": true
+    },
+    {
+     "method": "POST",
+     "path": "/v1/responses",
+     "body_bytes": 20841,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    },
+    {
+     "method": "POST",
+     "path": "/backend-api/codex/analytics-events/events",
+     "body_bytes": 2028,
+     "bearer_source": "prepared_access_token",
+     "websocket_upgrade": false
+    }
+   ],
+   "external_requests": [],
+   "non_loopback_connections": [],
+   "model_request": {
+    "path": "/v1/responses",
+    "body_sha256": "c9e02ac330fee01af4b75725882844d130e20cf08b06957f8c391ef87f66dfa3",
+    "body_chars": 58087,
+    "top_level_keys": [
+     "client_metadata",
+     "include",
+     "input",
+     "model",
+     "parallel_tool_calls",
+     "prompt_cache_key",
+     "reasoning",
+     "store",
+     "stream",
+     "text",
+     "tool_choice"
+    ],
+    "model": "gpt-6.1-sol",
+    "reasoning": {
+     "effort": "high",
+     "context": "all_turns"
+    },
+    "instructions_field_chars": 0,
+    "tools_field": null,
+    "items": [
+     {
+      "index": 0,
+      "type": "additional_tools",
+      "role": "developer",
+      "tools_sha256": "1180205e3b1d509fc67e254351f21b68720513f5f1c68690f7931b9a58bf6c34",
+      "tools": [
+       {
+        "name": "functions",
+        "type": "namespace",
+        "description_chars": 0,
+        "description_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+       },
+       {
+        "name": "functions.exec",
+        "type": "custom",
+        "description_chars": 17392,
+        "description_sha256": "d869cb7906e433367e206eb0c3775e41065657df92bf4bfd7f3950bf708e4bcd"
+       },
+       {
+        "name": "functions.wait",
+        "type": "function",
+        "description_chars": 769,
+        "description_sha256": "582eb96e50ee4481cf30b33ad2358e7e24e7368aeb2cbe5122cef1912ad75385"
+       },
+       {
+        "name": "functions.request_user_input",
+        "type": "function",
+        "description_chars": 120,
+        "description_sha256": "783ea374eaba01b1c7d453ff177ba9f27f45a6cb9c33a6f5fb1bed00251f00c7"
+       },
+       {
+        "name": "functions.request_user_input_async",
+        "type": "function",
+        "description_chars": 556,
+        "description_sha256": "f7f47603a91513a78276c4091cd758ee99ca47e625bd7b0f4a8b305cebfa575c"
+       },
+       {
+        "name": "collaboration",
+        "type": "namespace",
+        "description_chars": 43,
+        "description_sha256": "c839c56b2b6f5cb73c8848275df7124cec42c27ca110192fb53cfc39b886b8ff"
+       },
+       {
+        "name": "collaboration.followup_task",
+        "type": "function",
+        "description_chars": 232,
+        "description_sha256": "fb29da0ce679f0892dc312628f6a2b30ae1280a6dc5e7d7c200400ecc2a48d0d"
+       },
+       {
+        "name": "collaboration.interrupt_agent",
+        "type": "function",
+        "description_chars": 136,
+        "description_sha256": "07f744a6e4727f0df30542007facc5bdf148e58e3b90b8a87017d4550c6295ae"
+       },
+       {
+        "name": "collaboration.list_agents",
+        "type": "function",
+        "description_chars": 88,
+        "description_sha256": "c050cd421fdd6cddded7adac44850fabc6b99a76d7e5e03541367d666345d97c"
+       },
+       {
+        "name": "collaboration.send_message",
+        "type": "function",
+        "description_chars": 105,
+        "description_sha256": "e0cae526e53d940eb5c0e9b17b37718d4b85d6d040fce9c7cbabcdcc246f1400"
+       },
+       {
+        "name": "collaboration.spawn_agent",
+        "type": "function",
+        "description_chars": 1829,
+        "description_sha256": "0b7d0bfcc5ad985cb8558df0c277012dd14369baf6b2417e84e5159bef8ff0c4"
+       },
+       {
+        "name": "collaboration.wait_agent",
+        "type": "function",
+        "description_chars": 383,
+        "description_sha256": "6efad2e8999e35161630b9b402235e433ff8634ad548378e453d739b9705d344"
+       }
+      ]
+     },
+     {
+      "index": 1,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "model.base_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 21769,
+        "sha256": "e1bdd4f8f0df4b20f4a0ffc8a861ce819df45325d8cecdfb92e80379cf8d142e",
+        "opening_tag": null
+       }
+      ]
+     },
+     {
+      "index": 2,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "permissions.instructions",
+       "collaboration_mode.instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 342,
+        "sha256": "4103287cd2f8e02c0c606bbbae018671bd04d7e7eeca9cbf862f8b53f9275313",
+        "opening_tag": "<permissions instructions>"
+       },
+       {
+        "type": "input_text",
+        "chars": 920,
+        "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
+        "opening_tag": "<collaboration_mode>"
+       }
+      ]
+     },
+     {
+      "index": 3,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "multi_agent.role_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 2429,
+        "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
+        "opening_tag": "<multi_agent_role>"
+       }
+      ]
+     },
+     {
+      "index": 4,
+      "type": "message",
+      "role": "developer",
+      "content_item_kinds": [
+       "multi_agent.mode_instructions"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 271,
+        "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
+        "opening_tag": "<multi_agent_mode>"
+       }
+      ]
+     },
+     {
+      "index": 5,
+      "type": "message",
+      "role": "user",
+      "content_item_kinds": [
+       "environments.environment_context"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 543,
+        "sha256": "b868c2f03bfd12b38f5564d259d11ce95099e722825aa00877b1b0396af9f9c6",
+        "opening_tag": "<environment_context>"
+       }
+      ]
+     },
+     {
+      "index": 6,
+      "type": "message",
+      "role": "user",
+      "content_item_kinds": [
+       "user.text"
+      ],
+      "content": [
+       {
+        "type": "input_text",
+        "chars": 43,
+        "sha256": "723380cca8b25a4ee5c42af7ab65ea10eaa750d7bf4291563495885f642c4a8d",
+        "opening_tag": null
+       }
+      ]
+     }
+    ]
+   },
+   "owner_content": {
+    "line_hits": 0,
+    "skill_description_hits": [],
+    "markers": {
+     ".agents": 0,
+     "skills_instructions": 0,
+     "C:\\Users\\can02": 0,
+     "C:/Users/can02": 0,
+     "can02": 0,
+     "<skills_instructions>": 0,
+     "memories": 0,
+     "AGENTS.md": 3
+    }
+   },
+   "home_after": [
+    "auth.json",
+    "goals_1.sqlite",
+    "goals_1.sqlite-shm",
+    "goals_1.sqlite-wal",
+    "installation_id",
+    "logs_2.sqlite",
+    "logs_2.sqlite-shm",
+    "logs_2.sqlite-wal",
+    "memories_1.sqlite",
+    "memories_1.sqlite-shm",
+    "memories_1.sqlite-wal",
+    "queue_1.sqlite",
+    "queue_1.sqlite-shm",
+    "queue_1.sqlite-wal",
+    "state_5.sqlite",
+    "state_5.sqlite-shm",
+    "state_5.sqlite-wal",
+    "tmp",
+    "tmp/arg0",
+    "tmp/arg0/codex-arg0ofxBjd",
+    "tmp/arg0/codex-arg0ofxBjd/.lock",
+    "tmp/arg0/codex-arg0ofxBjd/apply_patch.bat",
+    "tmp/arg0/codex-arg0ofxBjd/applypatch.bat"
+   ],
+   "capture_file_sha256": "2e1c7b01524ef366c282b388b352707c27c56f335df80f8946e606526944f3ff"
+  },
+  "auth_modes_same_items": true
+ },
+ "provider_block_analysis": {
+  "change": "`-c openai_base_url` only replaces the base URL of the built in provider `openai`; model_provider stays openai (the analytics event of the scrambled probe records model_provider openai) and no provider block is added",
+  "differential": "the developer and user items of the no auth and the scrambled ChatGPT auth probes are identical by sha256 except the environment context, which names the per probe working directory (auth_modes_same_items)",
+  "residual": "on the live route the client fetches /models from the provider; the probes answered 404, so model metadata a live /models response carries (vendor content, not owner content) could change the vendor base instructions or tools. The telemetry certificate keeps its own checks"
+ },
+ "owner_content_scan": {
+  "method": "every distinct stripped line of at least 40 characters of every text file (<= 2 MB) under the owner instruction roots, and every owner SKILL.md description, searched as substrings of all string values of the captured model request; owner files are read, never changed",
+  "roots_files": {
+   "~\\.agents": 417,
+   "~\\.codex\\AGENTS.md": 1,
+   "~\\.codex\\AGENTS.override.md": 0,
+   "~\\.codex\\memories": 517,
+   "~\\.codex\\skills": 51,
+   "~\\.codex\\rules": 1,
+   "~\\.codex\\prompts": 1,
+   "~\\.codex\\plugins": 8633,
+   "~\\.codex\\config.toml": 1,
+   "~\\.claude\\CLAUDE.md": 1,
+   "~\\AGENTS.md": 0,
+   "~\\CLAUDE.md": 0,
+   "~\\Projects\\akor\\AGENTS.md": 0,
+   "~\\Projects\\akor\\CLAUDE.md": 0
+  },
+  "files_read": 7931,
+  "lines_checked": 408683,
+  "skill_descriptions_checked": 52,
+  "hits": [],
+  "vendor_copy_overlap": {
+   "rule": "a matching line is not owner content when every owner file that holds it is a byte identical copy of a file the pinned binary writes into an empty CODEX_HOME (~/.codex/skills/.system, checked by sha256 against the previous startup manifest captured from the pinned CLI)",
+   "lines": 6,
+   "sources": [
+    "~\\.codex\\skills\\.system\\openai-docs\\references\\prompting-guide.md"
+   ],
+   "found_in_items": [
+    "model.base_instructions"
    ]
   },
-  "frozen_route_flags_with_marker": {
-   "argv": [
-    "codex.EXE",
-    "debug",
-    "-c",
-    "cli_auth_credentials_store=\"file\"",
-    "--enable",
-    "skip_host_skill_discovery",
-    "--disable",
-    "plugins",
-    "--disable",
-    "apps",
-    "--disable",
-    "memories",
-    "--disable",
-    "hooks",
-    "--disable",
-    "multi_agent",
-    "--disable",
-    "skill_search",
-    "--disable",
-    "browser_use",
-    "--disable",
-    "computer_use",
-    "--disable",
-    "image_generation",
-    "--disable",
-    "view_image",
-    "--disable",
-    "shell_tool",
-    "--disable",
-    "unified_exec",
-    "--disable",
-    "unified_exec_tty",
-    "--disable",
-    "browser_use_external",
-    "--disable",
-    "browser_use_full_cdp_access",
-    "--disable",
-    "in_app_browser",
-    "--disable",
-    "code_mode_host",
-    "--disable",
-    "remote_plugin",
-    "--disable",
-    "plugin_sharing",
-    "--disable",
-    "recommended_plugins",
-    "--disable",
-    "skill_mcp_dependency_install",
-    "--disable",
-    "tool_suggest",
-    "--disable",
-    "tool_call_mcp_elicitation",
-    "--disable",
-    "sleep_tool",
-    "--disable",
-    "multi_agent_v2",
-    "--disable",
-    "shell_snapshot",
-    "--disable",
-    "workspace_dependencies",
-    "--disable",
-    "secret_auth_storage",
-    "-c",
-    "project_doc_max_bytes=0",
-    "-c",
-    "model=\"gpt-6.1-sol\"",
-    "-c",
-    "model_reasoning_effort=\"high\"",
-    "-c",
-    "sandbox_mode=\"read-only\"",
-    "prompt-input",
-    "HARNESS_INPUT_MARKER_7f3a"
-   ],
-   "items": [
-    {
-     "content": [
-      {
-       "chars": 22162,
-       "opening_tag": "<skills_instructions>",
-       "sha256": "4133c523325db47e24ebc075fd7fa061e114968c81dc825600ab7598b1624bda",
-       "type": "input_text"
-      },
-      {
-       "chars": 3939,
-       "opening_tag": "<permissions instructions>",
-       "sha256": "2493dd1ae75230d95acdb8e77fb10d51138de63d95c10d2a647b76d59060d4d7",
-       "type": "input_text"
-      },
-      {
-       "chars": 920,
-       "opening_tag": "<collaboration_mode>",
-       "sha256": "bec8e7b5358a20b4cd552dae768b3a65ebf4ea9fb2645220085b84d60ee3fe81",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "host_skills.instructions",
-      "permissions.instructions",
-      "collaboration_mode.instructions"
-     ],
-     "role": "developer",
-     "type": "message"
-    },
-    {
-     "content": [
-      {
-       "chars": 2429,
-       "opening_tag": "<multi_agent_role>",
-       "sha256": "47091490938505958b0c22ff42db6fd79b272a2af6923166f4c2cc53c4fe0df4",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "multi_agent.role_instructions"
-     ],
-     "role": "developer",
-     "type": "message"
-    },
-    {
-     "content": [
-      {
-       "chars": 271,
-       "opening_tag": "<multi_agent_mode>",
-       "sha256": "6ded806e3cdbb35599ecaf8742574bc5274908472b1729090010c404c2151e8e",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "multi_agent.mode_instructions"
-     ],
-     "role": "developer",
-     "type": "message"
-    },
-    {
-     "content": [
-      {
-       "chars": 537,
-       "opening_tag": "<environment_context>",
-       "sha256": "fd550bd3d1561dc6182befee5aff7cbe48619de3860c89cf886e0e397ec3d8b9",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "environments.environment_context"
-     ],
-     "role": "user",
-     "type": "message"
-    },
-    {
-     "content": [
-      {
-       "chars": 25,
-       "opening_tag": null,
-       "sha256": "7c1a56c077f7c87e2e34d7c50ef5d19b238676d2420f03b3414e2916cc6b8d8a",
-       "type": "input_text"
-      }
-     ],
-     "content_item_kinds": [
-      "user.text"
-     ],
-     "role": "user",
-     "type": "message"
-    }
-   ]
+  "skill_description_hits": [],
+  "owner_path_markers": {},
+  "previous_route_hits": {
+   "lines": 73,
+   "skill_descriptions": 29
   }
  },
- "verdict": "not_established",
- "verdict_reason": "this evidence does not certify the effective context of the frozen exec route and it records two blocking findings; P5 certification and dependent evaluation launch stay blocked",
- "what_would_close_it": [
-  "request boundary evidence or pinned implementation analysis for the frozen exec argv showing the complete effective instruction sources (base instructions, project instructions, skills, injected context) equal to the approved base instructions plus the exact harness input, with no host_skills, multi_agent or other item (D2)",
-  "a rollout inventory qualifies only with proof that it faithfully and completely records the effective request of the pinned route (P5); this annex does not supply that proof"
- ]
+ "vendor_items_disclosed": [
+  "model.base_instructions developer item (the base instructions travel as the first developer message; the request instructions field is empty)",
+  "permissions.instructions and collaboration_mode.instructions developer item",
+  "multi_agent.role_instructions and multi_agent.mode_instructions developer items",
+  "additional_tools developer item: namespace functions (exec, wait, request_user_input, request_user_input_async) and namespace collaboration (followup_task, interrupt_agent, list_agents, send_message, spawn_agent, wait_agent); the exec description lists web search, sports, time and weather helpers. The top level tools field is empty",
+  "environments.environment_context user item (working directory, shell, date, time zone, read only filesystem profile)"
+ ],
+ "harness_input": "the prompt arrives as one user message whose single input_text equals the stdin bytes",
+ "debug_prompt_input_note": "the earlier rendering with `codex debug prompt-input` (captured 20261025T005939Z) ignores -c, --enable and --disable and is superseded by this request boundary evidence",
+ "probe_scripts": {
+  "boundary.py": "02d7b7f8fa5407d63060f9e57abdf5b1a09f14de86f024246a2cab7b4cf8754f",
+  "decode.py": "b75fc12d0e5cbee1190edbef2525c8711f1e22ad74dc21341541d7760ad1ddbe",
+  "gen_p5.py": "ce53235d4522f6637aaef727c11200472112136652bad6b374bd037a31f7bb18"
+ },
+ "probe_scripts_location": "docs/design/ozmap-replication-2026-10-24/rulings/evidence/p5-probe/ (run from a scratch copy: they write their captures next to themselves)"
 }

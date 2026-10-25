@@ -95,8 +95,15 @@ class Live:
         folder = self.sessions / '2026' / '10' / '24'
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / 'rollout-test.jsonl'
-        path.write_text(json.dumps({'type': 'event_msg', 'payload': {'rate_limits': {
-            'primary': {'used_percent': percent}}}}) + '\n', encoding='utf-8')
+        # P3 repair: an attributable owner reading (account, bucket and event timestamp of the baseline account)
+        stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+        account = ((json.loads((self.base / 'auth.json').read_text(encoding='utf-8')).get('tokens') or {})
+                   .get('account_id'))
+        rows = [{'timestamp': stamp, 'type': 'session_meta', 'payload': {'creator_account_id': account,
+                                                                          'cli_version': '0.160.0'}},
+                {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'token_count', 'rate_limits': {
+                    'limit_id': 'codex', 'primary': {'used_percent': percent, 'window_minutes': 10080}}}}]
+        path.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')
         now = time.time() + 1
         os.utime(path, (now, now))
 

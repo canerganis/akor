@@ -42,6 +42,21 @@ ATTESTATION_COVERS = ('oracle_correctness', 'classification', 'contract_extracti
                       'representative_cases', 'challenge_cases', 'sealing_and_access_chronology')
 ATTESTATION_CASES = {'representative_cases': 48, 'challenge_cases': 16}
 OPS_DIR = config.HERE / 'ops'
+# Ruling repairs of 2026-10-25 (blockers OB-P3, OB-P5, OB-D1): an annex binds only when its own verdict says the
+# point it carries is settled. {(ruling, annex kind): (dotted key path in the annex, required value)}.
+ANNEX_STATUS = {('P3', 'quota_source_manifest'): ('freshness_and_causal_coverage.status', 'established'),
+                ('P5', 'effective_context_evidence'): ('verdict', 'established'),
+                ('D1', 'attribution_evidence'): ('status', 'complete')}
+
+
+def annex_status(doc, dotted):
+    """The value at a dotted key path of an annex document, or None."""
+    value = doc
+    for key in dotted.split('.'):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
 
 
 def ops_manifest():
@@ -122,6 +137,20 @@ def annex_problems(name, entry, ruling_text):
             except (OSError, ValueError):
                 doc = None
             problems += d6_problems(kind, doc)
+        if (name, kind) in ANNEX_STATUS:
+            dotted, want = ANNEX_STATUS[(name, kind)]
+            try:
+                doc = json.loads(path.read_text(encoding='utf-8'))
+            except (OSError, ValueError):
+                doc = None
+            got = annex_status(doc, dotted)
+            if got != want:
+                problems.append(f'ruling {name}: annex {kind} records {dotted} {got!r}, not {want!r}; the point it '
+                                f'carries is not settled, so the ruling does not bind')
+            if kind == 'effective_context_evidence' and isinstance(doc, dict) \
+                    and doc.get('route_security_args') != list(config.ROUTE_SECURITY_ARGS):
+                problems.append(f'ruling {name}: annex {kind} was not captured with the route security arguments '
+                                f'the harness uses now')
     return problems
 
 
@@ -164,9 +193,9 @@ def configuration_problems(disable_options=None) -> list:
             problems.append('code_mode_host is disabled, so every exec emits the Code Mode notice, and the P4 notice '
                             'predicate is inactive (no approved outer event fixture and identifier syntax): every '
                             'live Codex call would be uncertain under A4.3')
-    if not isolation.startup_manifest():
-        problems.append('no approved startup manifest (P5): the CLI writes skills/.system/* at startup, so the '
-                        'telemetry certificate cannot pass')
+    if not isolation.startup_manifest_present():
+        problems.append('no approved startup manifest (P5): without it no runtime file the CLI writes at startup can '
+                        'be accepted, so the telemetry certificate cannot pass')
     return problems
 
 

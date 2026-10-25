@@ -19,7 +19,7 @@ import pytest
 
 from bench.ozmap_rep import config, events, gates, isolation, procs, rulings, run, score, workload
 from bench.ozmap_rep.tests.test_council_r1 import (Live, attempts, fake_opts, go, sha, stream, write_auth,
-                                                  write_d6_annexes)
+                                                  settled_annex, write_d6_annexes)
 from bench.ozmap_rep.tests.test_council_r2 import EXECUTED, REFUSED, inject, stamp
 
 CELL = 'codex-materials-cold-A'
@@ -634,7 +634,7 @@ def test_item1_readiness_binds_each_ruling_to_its_approved_annexes(tmp_path, mon
              'attribution_evidence': tmp_path / 'd1.json', **write_d6_annexes(tmp_path / 'd6')}
     files['cli_notice_annex'].write_text(json.dumps(rulings.cli_notice_config()), encoding='utf-8')
     for k in ('quota_source_manifest', 'effective_context_evidence', 'attribution_evidence'):
-        files[k].write_text(json.dumps({'annex': k}), encoding='utf-8')
+        files[k].write_text(json.dumps(settled_annex(k)), encoding='utf-8')
     slots = {}
     for name in config.REQUIRED_RULINGS:
         kinds = rulings.ANNEXES_REQUIRED.get(name, ())

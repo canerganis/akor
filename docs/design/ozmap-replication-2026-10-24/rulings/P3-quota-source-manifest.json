@@ -2,17 +2,20 @@
  "about": "P3 quota source manifest: where the harness reads the Codex primary quota of the baseline account, how the account and bucket are identified, what the timestamps mean, and the coverage predicate the gate applies before every synchronized Codex dispatch group. Implemented in bench/ozmap_rep/quota.py (read_file, harvest_rollout, coverage_gate) and isolation.account_sha256.",
  "account_field_mapping": {
   "baseline": "isolation.account_sha256(baseline): sha256 of tokens.account_id of the baseline auth.json, else the chatgpt_account_id claim of its id_token or access_token",
+  "enforced_by": "quota.attribution_problem, called by quota.coverage_gate for the owner reading and every harvested reading",
   "evidence": "the newest 30 owner rollouts, by CLI version and account attribution (hash comparison only, 2026-10-25): 0.163.0-alpha.11.2 account=none: 6 files, 0 readings; 0.160.0 account=baseline: 23 files, 69 readings; 0.164.0-alpha.11.1 account=baseline: 1 files, 180 readings. No rollout carries another account.",
-  "finding": "the owner sessions directory also receives rollouts of other CLI builds (0.163.0-alpha and 0.164.0-alpha, the desktop app). The 0.163.0-alpha rollouts carry no creator_account_id; they held no rate limit reading, but if the newest file were such a rollout with a reading, quota.coverage_gate would accept it, because it rejects an account mismatch only when both hashes are present. Under this manifest a reading without an account hash is not attributable and must block; the gate does not yet enforce that.",
+  "finding": "the owner sessions directory also receives rollouts of other CLI builds (0.163.0-alpha and 0.164.0-alpha, the desktop app). The 0.163.0-alpha rollouts carry no creator_account_id. Before the repair of 2026-10-25 quota.coverage_gate accepted such a reading, because it rejected an account mismatch only when both hashes were present (Astra A blocker P3, Opus B blocker OB-P3).",
   "readings_from_other_cli_versions": "a reading from a CLI build other than the pinned one is accepted only with the same account hash, limit_id and window; its timestamp semantics are those of the pinned build only by assumption",
   "rollout": "the session_meta event (type session_meta) payload.creator_account_id, hashed with sha256",
-  "rule": "a reading whose account hash differs from the baseline account hash blocks; a reading without an account hash is not attributable"
+  "rule": "a reading counts only when both the baseline account hash and the reading account hash are present and equal; a reading without an account hash is not attributable and blocks, and an unknown baseline account hash blocks every reading (quota.attribution_problem, owner and harvested readings alike)"
  },
  "bucket_identity": {
   "bucket": "payload.rate_limits.primary",
+  "enforced_by": "quota.read_file records limit_id and window_minutes; quota.attribution_problem rejects other values",
   "evidence": "249 readings in the newest 30 owner rollouts: limit_id always codex, primary.window_minutes always 10080, secondary always null",
   "limit_id": "codex",
   "path": "event_msg token_count events: payload.rate_limits",
+  "rule": "a reading counts only when rate_limits.limit_id is exactly codex and primary.window_minutes is the integer 10080 (config.QUOTA_LIMIT_ID, config.QUOTA_WINDOW_MINUTES); any other or missing value blocks",
   "secondary": "null in every observed reading",
   "stop_rule": "primary.used_percent >= 80 prevents dispatch (A4.12)",
   "window_minutes": 10080
@@ -23,6 +26,7 @@
   "text": "before a synchronized Codex dispatch group, every previously completed live Codex attempt that could have consumed the baseline quota (quota.needs_coverage: every launched codex live attempt except one proven not launched and the telemetry probe with unaccepted tokens that ended in an authentication failure) is covered by (i) the validated last reading harvested from that attempt's own worker rollout, or (ii) a validated owner reading of the same account whose event timestamp is later than the attempt's ended_at (or ended_at_upper when recovered). The gate percent is the maximum of the covering readings and the latest owner reading. A concurrent sibling is never covered by another worker's reading."
  },
  "freshness_and_causal_coverage": {
+  "closing_requires": "both signatories accept the coverage predicate (D5) and this freshness rule for codex-cli 0.160.0; only then is status set to established in a re-signed manifest. rulings.annex_problems refuses to bind P3 while status is not established.",
   "open": [
    "D5: whether the last rate_limits event of an attempt's own rollout reflects that attempt's own consumption. The event is emitted before the call ends (Astra: do not assume a response generated reading occurs after local attempt completion), so form (i) of the predicate is causal coverage only if both signatories accept these semantics for codex-cli 0.160.0",
    "whether the reported used_percent lags server side accounting; no evidence on lag exists without an added model call, which P3 forbids"
@@ -30,10 +34,20 @@
   "proposal_for_signatories": "the driver note of D5: for every attempt of every previously completed group, the last rate_limits event of that attempt's own rollout, with the gate using the maximum used_percent across those readings and any later owner readings of the same account. Not signed by either signatory.",
   "status": "not_established"
  },
+ "freshness_rule": {
+  "basis": "proposal of the implementer (Opus, ruling repair 2026-10-25) for the signatories, with D5; the value bounds consumption of the baseline account by clients that do not write into the owner sessions directory between the reading and the gate. It is config.QUOTA_OWNER_MAX_AGE_MINUTES",
+  "enforced_by": "quota.coverage_gate",
+  "owner_reading_max_age_minutes": 60,
+  "text": "the latest owner reading (the last rate_limits object of the newest owner session file) must carry an event timestamp; it blocks when that timestamp is more than 5 minutes after the gate time (future) or more than 60 minutes before it (stale). A harvested worker reading must carry an event timestamp that is neither in the future nor more than 5 minutes before the start of the attempt it covers. Without a valid, attributable, fresh owner reading no group is dispatched, even when harvested readings cover every completed attempt. File modification times are never freshness evidence."
+ },
+ "repairs": {
+  "2026-10-25": "blockers P3 (Astra A) and OB-P3 (Opus B): account hashes required and equal, bucket identity enforced, event timestamp required, freshness rule added and enforced, annex status enforced by rulings.annex_problems; regression tests in bench/ozmap_rep/tests/test_ruling_repairs.py"
+ },
  "selection_and_validation": [
   "select the latest relevant reading first, then validate it; a malformed latest reading blocks and an older valid reading is never substituted",
   "reject missing evidence, booleans, nonnumeric or nonfinite values, values outside [0, 100], unexplained future timestamps, account or bucket mismatches",
-  "no model call is added, repeated or relabeled to obtain a reading; no stale reading or estimated headroom exception"
+  "no model call is added, repeated or relabeled to obtain a reading; no stale reading or estimated headroom exception",
+  "reject a reading without an account hash, or when the baseline account hash is unknown; reject limit_id other than codex and window_minutes other than 10080; reject a reading without an event timestamp; reject a stale owner reading (freshness_rule)"
  ],
  "sources": {
   "owner_rollout": "~/.codex/sessions/*/*/*/*.jsonl of the owner (same account): the newest file by modification time is selected (selection only, never freshness evidence) and its LAST rate_limits object is the reading",

@@ -12,6 +12,13 @@ attempt's own worker rollout (only present when worker calls persist sessions, w
 owner reading of the same account whose EVENT timestamp is later than the attempt's end. The gate takes the highest
 percentage among the covering readings and the latest owner reading. An unreadable, malformed, out of range, future
 dated or other account reading blocks; nothing is estimated and no model call is made to obtain a reading.
+
+P3 repair (2026-10-25, blockers P3 and OB-P3): every reading the gate uses, owner or harvested, must carry an account
+hash equal to the baseline account hash (a missing hash on either side blocks: the reading is not attributable), the
+bucket of the source manifest (limit_id `codex`, primary window 10080 minutes) and an event timestamp. The latest owner
+reading must exist and satisfy the manifest's freshness rule (event timestamp at most
+config.QUOTA_OWNER_MAX_AGE_MINUTES before the gate time), and a harvested reading must not predate the start of the
+attempt it covers.
 """
 from __future__ import annotations
 
@@ -82,7 +89,7 @@ def read_file(path) -> dict:
     None), reason, account_sha256, cli_version, source}. Lines that are not JSON events are skipped; the LAST
     rate_limits object is the reading, whatever an earlier one said."""
     out = {'percent': None, 'timestamp': None, 'reason': 'no rate limit reading', 'account_sha256': None,
-           'cli_version': None, 'source': str(path), 'found': False}
+           'cli_version': None, 'source': str(path), 'found': False, 'limit_id': None, 'window_minutes': None}
     try:
         lines = Path(path).read_text(encoding='utf-8', errors='replace').splitlines()
     except OSError:
@@ -115,6 +122,9 @@ def read_file(path) -> dict:
     primary = rl.get('primary') if isinstance(rl, dict) else None
     value = valid_percent(primary.get('used_percent')) if isinstance(primary, dict) else None
     out['percent'] = value
+    out['limit_id'] = rl.get('limit_id') if isinstance(rl, dict) and isinstance(rl.get('limit_id'), str) else None
+    window = primary.get('window_minutes') if isinstance(primary, dict) else None
+    out['window_minutes'] = window if type(window) is int else None
     out['reason'] = None if value is not None else 'the latest rate limit reading is malformed or out of range'
     out['timestamp'] = _parse_time(event.get('timestamp'))
     return out
@@ -131,7 +141,7 @@ def latest_reading(sessions_dir) -> dict:
     path = newest_session(sessions_dir)
     if path is None:
         return {'percent': None, 'timestamp': None, 'reason': 'no session file', 'account_sha256': None,
-                'source': None, 'found': False}
+                'source': None, 'found': False, 'limit_id': None, 'window_minutes': None}
     return read_file(path)
 
 
@@ -163,7 +173,8 @@ def harvest_rollout(path) -> list:
         return []
     return [{'percent': r['percent'], 'timestamp': r['timestamp'].strftime('%Y-%m-%dT%H:%M:%S.%fZ')
              if r['timestamp'] else None, 'reason': r['reason'], 'account_sha256': r['account_sha256'],
-             'cli_version': r['cli_version'], 'source': Path(path).name}]
+             'cli_version': r['cli_version'], 'limit_id': r['limit_id'], 'window_minutes': r['window_minutes'],
+             'source': Path(path).name}]
 
 
 def needs_coverage(attempt) -> bool:
@@ -179,6 +190,25 @@ def needs_coverage(attempt) -> bool:
     return True
 
 
+def attribution_problem(reading, account_sha256):
+    """Why a reading is not attributable to the baseline account and its quota bucket (P3 source manifest,
+    account_field_mapping and bucket_identity), or None. Both account hashes must be present and equal; limit_id must
+    be config.QUOTA_LIMIT_ID and the primary window config.QUOTA_WINDOW_MINUTES."""
+    if not account_sha256:
+        return 'the baseline account hash is unknown, so no reading is attributable'
+    theirs = reading.get('account_sha256')
+    if not theirs:
+        return 'the reading carries no account hash (not attributable to the baseline account)'
+    if theirs != account_sha256:
+        return 'the reading belongs to another account'
+    if reading.get('limit_id') != config.QUOTA_LIMIT_ID:
+        return f'the reading is not of the {config.QUOTA_LIMIT_ID} bucket (limit_id {reading.get("limit_id")!r})'
+    window = reading.get('window_minutes')
+    if type(window) is not int or window != config.QUOTA_WINDOW_MINUTES:
+        return f'the reading is not of the {config.QUOTA_WINDOW_MINUTES} minute primary window (window {window!r})'
+    return None
+
+
 def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, now=None) -> dict:
     """The P3 gate before a synchronized Codex dispatch group. attempts: every attempt of the experiment so far;
     harvested: {attempt key: [observation]} from worker rollouts. Returns {ok, percent, reason, uncovered}."""
@@ -191,15 +221,24 @@ def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, n
             'owner_source': owner.get('source'), 'owner_account_sha256': owner.get('account_sha256'),
             'sessions_dir': str(Path(sessions_dir))}
     readings = []
-    if owner['found']:
-        if owner['percent'] is None:
-            return dict(base, reason=f"Codex owner reading invalid ({owner['reason']}): stop (A4.12, P3)")
-        if owner['timestamp'] is not None and owner['timestamp'] > now + FUTURE_SKEW:
-            return dict(base, reason='Codex owner reading has an unexplained future timestamp: stop (A4.12, P3)')
-        if account_sha256 and owner.get('account_sha256') and owner['account_sha256'] != account_sha256:
-            return dict(base, reason='Codex owner reading belongs to another account: stop (A4.12, P3)')
-        readings.append(owner['percent'])
-        base['owner_reading_at'] = owner['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ') if owner['timestamp'] else None
+    if not owner['found']:
+        return dict(base, reason='Codex primary used_percent unreadable (no owner reading of the baseline account): '
+                                 'stop (A4.12, P3)')
+    if owner['percent'] is None:
+        return dict(base, reason=f"Codex owner reading invalid ({owner['reason']}): stop (A4.12, P3)")
+    if owner['timestamp'] is None:
+        return dict(base, reason='Codex owner reading carries no event timestamp: stop (A4.12, P3)')
+    if owner['timestamp'] > now + FUTURE_SKEW:
+        return dict(base, reason='Codex owner reading has an unexplained future timestamp: stop (A4.12, P3)')
+    problem = attribution_problem(owner, account_sha256)
+    if problem:
+        return dict(base, reason=f'Codex owner reading: {problem}: stop (A4.12, P3)')
+    if owner['timestamp'] < now - dt.timedelta(minutes=config.QUOTA_OWNER_MAX_AGE_MINUTES):
+        return dict(base, reason=f'Codex owner reading is stale (event timestamp more than '
+                                 f'{config.QUOTA_OWNER_MAX_AGE_MINUTES} minutes before the gate, P3 freshness rule): '
+                                 f'stop (A4.12, P3)')
+    readings.append(owner['percent'])
+    base['owner_reading_at'] = owner['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
     uncovered = []
     for a in attempts:
         if not needs_coverage(a):
@@ -211,15 +250,22 @@ def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, n
             stamp = _parse_time(o.get('timestamp'))
             if o.get('percent') is None or valid_percent(o.get('percent')) is None or stamp is None:
                 return dict(base, reason=f'{a.get("call_id")}: its harvested quota reading is malformed: stop (P3)')
-            if account_sha256 and o.get('account_sha256') and o['account_sha256'] != account_sha256:
-                return dict(base, reason=f'{a.get("call_id")}: its harvested reading belongs to another account (P3)')
+            if stamp > now + FUTURE_SKEW:
+                return dict(base, reason=f'{a.get("call_id")}: its harvested reading has an unexplained future '
+                                         f'timestamp: stop (P3)')
+            problem = attribution_problem(o, account_sha256)
+            if problem:
+                return dict(base, reason=f'{a.get("call_id")}: harvested reading: {problem}: stop (P3)')
+            started = _parse_time(a.get('started_at'))
+            if started is not None and stamp < started - FUTURE_SKEW:
+                return dict(base, reason=f'{a.get("call_id")}: its harvested reading predates the attempt it would '
+                                         f'cover: stop (P3)')
             valid_own.append(float(o['percent']))
         if valid_own:
             readings.append(max(valid_own))
             continue
         end = _parse_time(a.get('ended_at')) or _parse_time(a.get('ended_at_upper'))
-        if end is not None and owner['timestamp'] is not None and owner['percent'] is not None \
-                and owner['timestamp'] > end:
+        if end is not None and owner['timestamp'] > end:
             continue
         uncovered.append(a.get('call_id'))
     if uncovered:

@@ -42,11 +42,17 @@ annex.
 
 | kind | path | sha256 |
 |---|---|---|
-| quota_source_manifest | docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json | cadd1c8682e5133dbc5d36abc3dd9705f3d488b9f2465c18ae733d06bfa9e26a |
+| quota_source_manifest | docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json | 3646deacbbf5afee8130bf6c79dc8858a9159502af0825f166fc978bb8ce51de |
+
+The previous annex (sha256 cadd1c8682e5133dbc5d36abc3dd9705f3d488b9f2465c18ae733d06bfa9e26a) is replaced by the repair of 2026-10-25 below.
+
+## Repair of 2026-10-25 (blockers P3 and OB-P3)
+
+quota.coverage_gate now applies the manifest to every reading it uses, owner and harvested alike: the baseline account hash and the reading account hash must both be present and equal (quota.attribution_problem), limit_id must be `codex` and primary.window_minutes the integer 10080, and the reading must carry an event timestamp that is not in the future. The latest owner reading is always required and must satisfy the freshness rule now written into the manifest (`freshness_rule`: event timestamp at most 60 minutes before the gate, config.QUOTA_OWNER_MAX_AGE_MINUTES); a harvested reading must not predate the start of the attempt it covers. rulings.annex_problems refuses to bind P3 while the manifest's `freshness_and_causal_coverage.status` is not `established`. Regression tests: bench/ozmap_rep/tests/test_ruling_repairs.py (one per case of both blockers).
 
 ## Open before binding
 
-The coverage predicate (D5) is not signed. The annex records it as implemented and marks causal coverage not established. It also records a gate gap: quota.coverage_gate accepts an owner reading that carries no account hash, which the manifest treats as not attributable.
+The coverage predicate (D5) and the freshness rule (60 minutes, the implementer's proposal) are not signed. The manifest marks causal coverage `not_established`, so P3 does not bind until both signatories accept D5 and the freshness rule and a re-signed manifest records `established`. The gate gap of the previous annex (a reading without an account hash was accepted) is closed.
 
 ## Countersignature
 
@@ -54,4 +60,4 @@ Opus B: pending (confirmation by diff of the ruling text above).
 
 ## Astra sign-off
 
-Not signed. Astra A raised BLOCKER P3 on 2026-10-25 (rulings/signoff-astra.md): quota.coverage_gate accepts a reading without an account hash. Closing needs the gate to require both hashes and a regression test.
+Not signed. Astra A raised BLOCKER P3 on 2026-10-25 (rulings/signoff-astra.md): quota.coverage_gate accepts a reading without an account hash. Closing needs the gate to require both hashes and a regression test. Addressed by the repair of 2026-10-25 above; a re-sign request to Astra A is pending.

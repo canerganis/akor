@@ -42,7 +42,15 @@ DISABLE_FEATURES = ('plugins', 'apps', 'memories', 'hooks', 'multi_agent', 'skil
 # the only credential store and `skip_host_skill_discovery` turns host skill discovery off (P5); both were accepted by
 # codex-cli 0.160.0 in local commands (cli-flags.json, route_security_options). `secret_auth_storage` is disabled
 # with the tool features above.
-ROUTE_SECURITY_ARGS = ['-c', 'cli_auth_credentials_store="file"', '--enable', 'skip_host_skill_discovery']
+#
+# P5 repair (2026-10-25, request boundary probe): on the exec route codex-cli 0.160.0 still lists the owner's
+# ~/.agents/skills (resolved from the OS profile, not from CODEX_HOME, HOME or USERPROFILE) and the bundled
+# CODEX_HOME skills/.system in the model request although skip_host_skill_discovery is on. `skills.include_instructions
+# =false` removes the skills instructions item from the request and `skills.bundled.enabled=false` stops the bundled
+# skill set from being written or listed (rulings/P5-effective-context-evidence.json). Both are `-c` overrides, which
+# --ignore-user-config does not ignore.
+ROUTE_SECURITY_ARGS = ['-c', 'cli_auth_credentials_store="file"', '--enable', 'skip_host_skill_discovery',
+                       '-c', 'skills.include_instructions=false', '-c', 'skills.bundled.enabled=false']
 PROJECT_DOC_OPTION = 'project_doc_max_bytes'
 PROJECT_DOC_ARG = 'project_doc_max_bytes=0'
 CLI_FLAGS_FILE = HERE / 'cli-flags.json'
@@ -66,9 +74,10 @@ RESERVE_REASONS = ('infrastructure_retry', 'audit_overflow')
 RESERVE_FORBIDDEN = ('new_learning', 'answer_repair', 'new_condition')
 EVAL_CAPS = {'codex': {'nominal': 38, 'telemetry': 4, 'reserve': 20, 'total': 62},
              'sonnet': {'nominal': 26, 'telemetry': 2, 'reserve': 12, 'total': 40}}
-# A4.13.1: preparation and review caps, cumulative from the start of the replication.
-PREP_CAPS = {'astra': 20, 'opus': 40, 'fable': 4, 'sonnet': 40}
-GLOBAL_CAP = 206
+# A4.13.1 with revision 1 (A4.13r1.1, signed by Astra A and Opus B, amendment-4-13-caps.md): preparation and review
+# caps, cumulative from the start of the replication. The Opus cap becomes 70 and the global cap 236.
+PREP_CAPS = {'astra': 20, 'opus': 70, 'fable': 4, 'sonnet': 40}
+GLOBAL_CAP = 236
 LEDGER_FILE = REPO / 'docs' / 'design' / 'ozmap-replication-2026-10-24' / 'call-ledger.jsonl'
 
 MAX_BATCH = 64
@@ -78,6 +87,13 @@ CALL_TIMEOUT_S = 1200
 
 # A4.12 and A4.2.
 CODEX_STOP_PERCENT = 80
+# P3 repair (2026-10-25): the bucket and freshness rule of the quota source manifest
+# (rulings/P3-quota-source-manifest.json, bucket_identity and freshness_rule). A reading counts only for limit_id
+# `codex` with a primary window of 10080 minutes, and the latest owner reading must carry an event timestamp at most
+# QUOTA_OWNER_MAX_AGE_MINUTES before the gate time.
+QUOTA_LIMIT_ID = 'codex'
+QUOTA_WINDOW_MINUTES = 10080
+QUOTA_OWNER_MAX_AGE_MINUTES = 60
 CLAUDE_HANDOFF_PERCENT = 99
 EXP_MARGIN_HOURS = 48
 BASELINE_DEFAULT = Path.home() / '.ozmap_rep' / 'baseline'

@@ -2,14 +2,50 @@
  "about": "D1 attribution evidence: local, non-model evidence on which credential source the pinned codex-cli 0.160.0 uses. No model call, no token text, no secret read; credential manager entries are recorded by target name shape only.",
  "captured_at": "20261025T010224Z",
  "cli_version": "codex-cli 0.160.0",
+ "exec_route_differential": {
+  "empty_home": {
+   "evidence": [
+    {
+     "file": "docs/design/ozmap-replication-2026-10-24/rulings/evidence/P4-exec-noauth.out",
+     "reading": "the frozen exec route with an empty worker home: 401 Unauthorized, Missing bearer or basic authentication in header, on the WebSocket and the HTTPS transport",
+     "sha256": "a73dc474d77594c2bed848746918c150f3feb917b78a3b4db429312dcfcb9ed4"
+    },
+    {
+     "file": "P5-effective-context-evidence.json request_boundary.frozen_route_no_auth",
+     "reading": "request boundary capture of the frozen route with an empty worker home: 8 requests, none with an authorization header (bearer_source ['None'])"
+    }
+   ],
+   "expected": "no credential: the route sends no bearer and the server answers 401 (no hidden fallback to the owner's credential)"
+  },
+  "reading": "the empty home shows there is no hidden fallback credential; the scrambled versus valid contrast, with the bearer captured at the request boundary equal to the prepared file token, shows the credential the route uses is the worker auth.json",
+  "scrambled_file_with_baseline_account_metadata": {
+   "evidence": [
+    {
+     "file": "P5-effective-context-evidence.json request_boundary.frozen_route_scrambled_auth",
+     "reading": "request boundary capture of the frozen route with an auth.json holding the baseline account metadata and scrambled tokens (Isolation.prepare(scrambled=True)): every one of the 15 requests carried the bearer of the prepared auth.json (bearer_source ['prepared_access_token']); no baseline or other token was sent; no request left the loopback interface"
+    },
+    {
+     "enforced_by": "isolation.telemetry_certificate (exec_probe outcome auth_failure, no reply, no usage, worker home, account metadata kept) before the charged telemetry call"
+    }
+   ],
+   "expected": "the route sends exactly the tokens of the prepared auth.json, so a server rejects them and the call ends in an authentication failure without reply or usage"
+  },
+  "valid_file": {
+   "evidence": [
+    {
+     "enforced_by": "isolation.telemetry_certificate (call outcome ok, plain stream, auth_source store file at a prepared worker home with its auth_sha256)"
+    }
+   ],
+   "expected": "the prepared baseline auth.json authenticates the call"
+  }
+ },
  "executable": {
   "note": "isolation.executable_identity of the codex launcher on PATH resolves to this native package binary",
   "path": "~/.codex/packages/standalone/releases/0.160.0-x86_64-pc-windows-msvc/bin/codex.exe",
   "sha256": "fdda5fa3cf3fb3d000b876720742857676293e4315e4b045fae6f8bd7e866d1d"
  },
  "not_established": [
-  "a complete credential access trace of the authenticated execution route: no file and registry access monitor is installed on this machine (Process Monitor absent), so none was recorded",
-  "binary and payload bound implementation analysis beyond string evidence"
+  "a complete credential access trace (Process Monitor) of the authenticated execution route: not recorded and, under owner decision 4, not required"
  ],
  "os_credential_store": {
   "codex_target_shape": "LegacyGeneric:target=secrets|<16 hex>.codex",
@@ -36,7 +72,8 @@
   "keyring_service": "the string Codex Auth sits next to the error text failed to delete auth from keyring: the OS keyring service name of the keyring store",
   "method": "grep -a -o -F counts over the pinned codex.exe"
  },
- "status": "partial: this annex records static, black-box and credential store evidence. It meets Astra's D1 requirement only if Opus B rules this evidence, together with the telemetry scrambled token probe, acceptable (the joint decision names a credential access trace as the cheapest closing item)",
+ "status": "complete",
+ "status_basis": "owner decision 4 (owner-decisions.md, A4.14.3): the exec route differential is accepted as complete attribution evidence; the D1 ruling text is amended accordingly (D1-auth-attribution.md, Owner amendment). A Process Monitor trace is not required.",
  "store_selection_black_box": {
   "method": "codex login status in fresh empty CODEX_HOME copies at a harness worker path (Isolation.empty_home, isolation.child_env, run.run_local), one fresh home per command",
   "reading": "the configuration knob accepts exactly file, keyring, auto and ephemeral (a bogus value is refused); with no auth.json at the worker path no store, the OS keyring included, yields a credential for that path",

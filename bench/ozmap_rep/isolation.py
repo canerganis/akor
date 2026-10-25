@@ -951,6 +951,18 @@ def startup_manifest(path=None) -> dict:
     return out
 
 
+def startup_manifest_present(path=None) -> bool:
+    """Whether an approved startup manifest document exists (a JSON object with a `files` list). An approved manifest
+    may list no file at all: with skills.bundled.enabled=false the pinned CLI writes no instruction bearing file into
+    an empty CODEX_HOME (P5 repair, 2026-10-25)."""
+    path = Path(path or config.STARTUP_MANIFEST_FILE)
+    try:
+        doc = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return False
+    return isinstance(doc, dict) and isinstance(doc.get('files'), list)
+
+
 def startup_instruction_files(runtime_files, hashes=None) -> list:
     """Runtime files written by the CLI that could carry instructions, less those whose exact path AND sha256 are in
     the approved startup manifest (P5: names alone never qualify)."""

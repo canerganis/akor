@@ -1,11 +1,12 @@
-"""A4.13: preparation and review call ledger and caps (Astra 20, Opus 40, Fable 4, Sonnet 40, cumulative)."""
+"""A4.13: preparation and review call ledger and caps (Astra 20, Opus 70 under A4.13r1.1, Fable 4, Sonnet 40,
+cumulative)."""
 import json
 
 import pytest
 
 from ozrep_helpers import REPO, harness, jsonl, need
 
-CAPS = {'astra': 20, 'opus': 40, 'fable': 4, 'sonnet': 40}
+CAPS = {'astra': 20, 'opus': 70, 'fable': 4, 'sonnet': 40}  # A4.13r1.1 (signed revision 1): Opus 40 -> 70
 
 
 def ledger(tmp_path):
@@ -61,10 +62,10 @@ def test_a4_13_a_multi_call_entry_cannot_straddle_the_cap(tmp_path):
 
 def test_a4_13_counters_are_cumulative_across_ledger_instances(tmp_path):
     first = ledger(tmp_path)
-    first.log('opus', 'r', 'review', 'one', count=39)
+    first.log('opus', 'r', 'review', 'one', count=CAPS['opus'] - 1)  # A4.13r1.1: the cap is no longer 40
     again = need(harness('budget'), 'PrepLedger')(tmp_path / 'ledger.jsonl')
-    assert again.counts()['opus'] == 39
-    again.log('opus', 'r', 'review', 'forty')
+    assert again.counts()['opus'] == CAPS['opus'] - 1
+    again.log('opus', 'r', 'review', 'the call that reaches the cap')
     assert first.would_exceed('opus') is True
 
 

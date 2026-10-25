@@ -503,3 +503,53 @@ round 2 (RT2.2 to RT2.6) and round 3 pass unchanged.
 The system interpreter lacks tiktoken, which 50 tests outside `bench/ozmap_rep/` need (see the first test results
 section). The full repository run here puts the repository `.venv` site packages on PYTHONPATH so the same
 `python -m pytest -q` finds tiktoken 0.14.0; nothing was installed.
+
+## Ruling repairs P3, P5 and D1 (2026-10-25)
+
+Implementer: one fresh Opus workflow subagent (claude-opus-5-5), logged in call-ledger.jsonl as role
+`implementer-ruling-repairs-p3-p5-d1`. No Astra call, no Codex model request, no external request. Sealed ASTs and
+ops content were not read; bench/ozmap, the core oz_* modules and the ops are unchanged. Blockers: P3 (Astra A), OB-P3,
+OB-P5 and OB-D1 (Opus B) of the ruling sign-off, and owner decision 4.
+
+### What changed
+
+| blocker | change | where |
+|---|---|---|
+| P3, OB-P3 | Every reading the gate uses, owner or harvested, needs both account hashes present and equal, limit_id `codex`, primary.window_minutes the integer 10080 and an event timestamp that is not in the future; the latest owner reading is always required and may be at most 60 minutes old (freshness rule written into the manifest); a harvested reading may not predate its attempt's start | `quota.attribution_problem`, `quota.coverage_gate`, `quota.read_file`, `config.QUOTA_*`, P3-quota-source-manifest.json `freshness_rule` |
+| OB-P3 | `rulings.annex_problems` refuses a P3 manifest whose `freshness_and_causal_coverage.status` is not `established`; the manifest keeps `not_established` until both signatories accept D5 and the freshness rule | `rulings.ANNEX_STATUS` |
+| OB-P5 | Request boundary probe (D4 route a): the frozen exec argv, no auth.json, only `-c openai_base_url=<localhost capture server>` added, every other connection sent to a refusing localhost proxy, process tree connections polled. On the old route the request carried a `<skills_instructions>` item with 25 skills from the owner's ~/.agents/skills and the 4 bundled skills, although skip_host_skill_discovery was on. The pinned binary takes the user skills root from the OS profile, not from CODEX_HOME, HOME or USERPROFILE, and a working directory outside the profile does not change that. The frozen route now carries `-c skills.include_instructions=false -c skills.bundled.enabled=false`. With them the request, both without auth and with a scrambled ChatGPT auth.json, holds no owner skill, plugin, memory or AGENTS.md content (408,683 owner lines and 52 skill descriptions searched, no hit), and the home gets no instruction bearing file | `config.ROUTE_SECURITY_ARGS`, rulings/P5-effective-context-evidence.json (verdict established), bench/ozmap_rep/startup-manifest.json (no file), rulings/evidence/p5-probe/ |
+| OB-P5 | `rulings.annex_problems` refuses an effective context annex whose verdict is not `established` or that was captured with other route security arguments; `configuration_problems` accepts an approved manifest that lists no file (`isolation.startup_manifest_present`) | `rulings.py`, `isolation.py` |
+| OB-D1, decision 4 | D1 text amended as the owner decided; the attribution annex records the exec route differential with status complete, plus request boundary evidence: with the scrambled auth.json every captured request carried the bearer of the prepared worker auth.json, with an empty home none carried an authorization header; `rulings.annex_problems` refuses an attribution annex whose status is not complete | D1-auth-attribution.md, D1-attribution-evidence.json, `rulings.ANNEX_STATUS` |
+
+Astra A's earlier signature lines on P5 and D1 covered the previous annexes and the unamended D1 text. They are marked
+as not covering the repair, and re-sign requests for P3, P5 and D1 are pending.
+
+Disclosed, not fixed (P5-E3, vendor content): the frozen route request still holds the multi_agent role and mode items
+and an additional_tools item with the code mode `exec` tool (its description lists web search, sports, time and weather
+helpers) and the collaboration tools, although multi_agent, multi_agent_v2 and code_mode_host are disabled. Whether this
+vendor context is acceptable is the signatories' call. On the live route the client also fetches /models; the probes
+answered 404, so vendor model metadata could still change the vendor base instructions or tools.
+
+### Other edits
+
+* The fakes and fixtures produce attributable readings: `run.synthetic_baseline` adds a random synthetic account id,
+  `fake_cli.write_rollout` names the home's account and the codex bucket, and the two Live fixtures
+  (`tests/test_council_r1.py::Live`, `redteam/test_redteam_r2.py::Live`) write a session_meta with the baseline account
+  and a timestamped reading of the codex bucket. The unit tests of item 31 (`tests/test_council_r2.py`) use
+  attributable readings with the same assertions; the worker rollout test now places a fresh owner reading before the
+  attempt's end so that only the harvested reading covers it. The readiness fixtures bind settled annexes
+  (`settled_annex`).
+* A4.13r1.1 (signed revision 1) is now in the harness: `config.PREP_CAPS` Opus 70 and `config.GLOBAL_CAP` 236. This
+  call is the 41st Opus call, so the acceptance constants that still pinned Opus 40 and global 206
+  (`acceptance/test_a4_13_prep_caps.py`, `acceptance/test_a4_4_a4_5_budget.py`, `acceptance/INTERFACE.md`) and
+  `tests/test_council_r1.py::test_item23_caps_follow_the_signed_a4_13_text` follow the signed revision. No other
+  acceptance assertion changed.
+* New regression tests, one per case of the blockers: `tests/test_ruling_repairs.py`.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 643 passed |
+| `python -m pytest -q` (full repository, `.venv` site packages on PYTHONPATH) | 2,068 passed, 2 skipped, 1,069 subtests passed (18 min 5 s), exit 0, before the cap edit; `bench/ozmap_rep` rerun after it |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls, no real CLI resolved, within bounds |

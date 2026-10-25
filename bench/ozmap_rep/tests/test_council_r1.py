@@ -73,6 +73,23 @@ def write_auth(directory, marker, days=20, last_refresh=None):
     return Path(directory) / 'auth.json'
 
 
+def settled_annex(kind):
+    """An annex document whose own verdict settles its point (ruling repairs 2026-10-25, rulings.ANNEX_STATUS): the
+    P3 manifest with causal coverage established, the P5 context evidence established, the D1 attribution complete."""
+    from bench.ozmap_rep import rulings
+    doc = {'annex': kind}
+    for (_, k), (dotted, want) in rulings.ANNEX_STATUS.items():
+        if k == kind:
+            node = doc
+            keys = dotted.split('.')
+            for key in keys[:-1]:
+                node = node.setdefault(key, {})
+            node[keys[-1]] = want
+    if kind == 'effective_context_evidence':  # captured on the route the harness uses now
+        doc['route_security_args'] = list(config.ROUTE_SECURITY_ARGS)
+    return doc
+
+
 def write_d6_annexes(directory):
     """Valid D6 annexes (closure round 1, O5) for readiness fixtures: the focused verification record with every
     checklist item passed and the independent operation attestation bound to the classification and operation
@@ -161,8 +178,13 @@ class Live:
         folder.mkdir(parents=True, exist_ok=True)
         path = folder / 'rollout-test.jsonl'
         stamp = dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')
-        path.write_text(json.dumps({'timestamp': stamp, 'type': 'event_msg', 'payload': {'rate_limits': {
-            'primary': {'used_percent': percent}}}}) + '\n', encoding='utf-8')
+        account = ((json.loads((self.base / 'auth.json').read_text(encoding='utf-8')).get('tokens') or {})
+                   .get('account_id'))
+        rows = [{'timestamp': stamp, 'type': 'session_meta', 'payload': {'creator_account_id': account,
+                                                                          'cli_version': '0.160.0'}},
+                {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'token_count', 'rate_limits': {
+                    'limit_id': 'codex', 'primary': {'used_percent': percent, 'window_minutes': 10080}}}}]
+        path.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')
         now = time.time() + 1
         os.utime(path, (now, now))
 
@@ -1020,7 +1042,9 @@ def test_item23_caps_follow_the_signed_a4_13_text():
         encoding='utf-8')
     assert 'Astra 20, Opus 40, Fable 4 and Sonnet 40' in text and 'The global cap is 206' in text
     assert 'Signed: Astra A' in text and 'Signed: Opus B' in text
-    assert config.PREP_CAPS == {'astra': 20, 'opus': 40, 'fable': 4, 'sonnet': 40} and config.GLOBAL_CAP == 206
+    # revision 1 (A4.13r1.1), signed by both, raises the Opus cap to 70 and the global cap to 236
+    assert 'A4.13r1.1. The Opus preparation and review cap becomes 70' in text and 'global 236' in text
+    assert config.PREP_CAPS == {'astra': 20, 'opus': 70, 'fable': 4, 'sonnet': 40} and config.GLOBAL_CAP == 236
     assert 'Codex 62 and Sonnet evaluation 40' in text
     assert config.EVAL_CAPS['codex']['total'] == 62 and config.EVAL_CAPS['sonnet']['total'] == 40
 

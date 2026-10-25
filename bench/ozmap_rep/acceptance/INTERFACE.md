@@ -89,7 +89,7 @@ D/report.json, D/report.md       written by the scorer
 `ALLOCATIONS` (`{"codex/materials": {...}, "sonnet/materials": {...}, "codex/boolq": {...}}` with keys `cold_A`,
 `bootstrap`, `cold_B`, `cold_C`, `warm_A`, `warm_C`; BoolQ has no warm keys), `RESERVE_PER_ALLOCATION=2`,
 `RESERVE_REASONS=('infrastructure_retry','audit_overflow')`, `RESERVE_FORBIDDEN=('new_learning','answer_repair',
-'new_condition')`, `EVAL_CAPS`, `PREP_CAPS`, `GLOBAL_CAP=206`, `MAX_BATCH=64`, `AUDITS=32`, `SLOTS=4`,
+'new_condition')`, `EVAL_CAPS`, `PREP_CAPS`, `GLOBAL_CAP=236` (A4.13r1.1), `MAX_BATCH=64`, `AUDITS=32`, `SLOTS=4`,
 `CODEX_STOP_PERCENT=80`, `CLAUDE_HANDOFF_PERCENT=99`, `EXP_MARGIN_HOURS=48`.
 
 ## `isolation`

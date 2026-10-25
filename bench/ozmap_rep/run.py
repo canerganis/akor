@@ -2951,8 +2951,10 @@ def synthetic_baseline(directory):
     b64 = lambda d: base64.urlsafe_b64encode(d).rstrip(b'=').decode()  # noqa: E731
     claims = {'exp': exp, 'synthetic': True, 'session_id': f'synthetic-{uuid.uuid4().hex}'}
     token = '.'.join([b64(b'{"alg":"none"}'), b64(json.dumps(claims).encode()), b64(b'x')])
+    # P3 repair: a synthetic account id, so quota readings of the fakes are attributable to the synthetic baseline
     doc = {'auth_mode': 'chatgpt', 'tokens': {'id_token': 'synthetic', 'access_token': token,
-                                              'refresh_token': 'synthetic'},
+                                              'refresh_token': 'synthetic',
+                                              'account_id': f'synthetic-account-{uuid.uuid4().hex}'},
            'last_refresh': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
     (directory / 'auth.json').write_text(json.dumps(doc), encoding='utf-8')
     return directory

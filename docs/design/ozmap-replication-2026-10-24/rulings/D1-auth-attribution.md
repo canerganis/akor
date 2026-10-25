@@ -25,11 +25,21 @@ item that would close D1.
 
 | kind | path | sha256 |
 |---|---|---|
-| attribution_evidence | docs/design/ozmap-replication-2026-10-24/rulings/D1-attribution-evidence.json | 8da49d334124a6e6f31560072672be0eeaf885f5410da3ab6a0daefc5130e209 |
+| attribution_evidence | docs/design/ozmap-replication-2026-10-24/rulings/D1-attribution-evidence.json | 4f8e7b49fda7c29d05d8479d28ca4cda247e80718cfb9f5f124d4aff559f6671 |
+
+The previous annex (sha256 8da49d334124a6e6f31560072672be0eeaf885f5410da3ab6a0daefc5130e209, status partial) is replaced by the annex above, status complete.
+
+## Owner amendment (owner decision 4, 2026-10-25)
+
+The signatories disagreed (OB-D1), and the owner decided D1 under A4.14.3 (owner-decisions.md, decision 4). The operative paragraph above is amended to read:
+
+Operative (amended): the exec route differential is complete attribution evidence; a complete credential access trace (Process Monitor or similar) is not required. An empty worker home gets 401 with no bearer, which shows there is no hidden fallback to the owner's credential. An auth.json that keeps the baseline account metadata but holds tokens no server accepts ends in an authentication failure without reply or usage, and the prepared valid auth.json authenticates the call; the contrast shows that the worker auth.json is the credential source. `isolation.telemetry_certificate` requires the scrambled and the valid case on the live route before the charged telemetry call and stays false otherwise. The attribution annex must record this differential with status complete, and `rulings.annex_problems` refuses an attribution annex whose status is not complete.
+
+The annex records the differential with status complete. It adds request boundary evidence from the P5 probe: with the scrambled auth.json every captured request carried exactly the bearer of the prepared worker auth.json, and with an empty home no request carried an authorization header.
 
 ## Open before binding
 
-The attribution annex is partial: no complete credential access trace exists. Opus B rules whether this evidence with the telemetry scrambled token probe closes D1.
+The amended text and the new annex need the signature lines of both signatories (rulings.ruling_problems), or the owner's decision recorded as their substitute.
 
 ## Countersignature
 
@@ -37,7 +47,7 @@ Opus B: pending (confirmation by diff of the ruling text above).
 
 ## Astra countersignature
 
-Signed: Astra A D1 (2026-10-25, rulings/signoff-astra.md)
+Astra A signed D1 on 2026-10-25 (rulings/signoff-astra.md) on the unchanged strict text with the previous annex (8da49d33). That signature does not cover the owner amendment and the new annex; a re-sign request is pending.
 
 Opus B ruling and confirmation by diff (2026-10-25): the text above equals lines 251 to 264 of council-build-deadlock-r2-joint.md (sha256 fae12460cd9e64fe76716ad7b612f1f2e51663a4258eccda31ebfbca9b5c4324) byte for byte. Ruling on D1: a complete credential access trace (Process Monitor or similar) is not required. Attribution is established by the differential on the actual route: the telemetry certificate runs the frozen exec argv at a worker path with auth.json holding the baseline account metadata and tokens no server accepts, and requires an authentication failure without reply or usage before the charged call (isolation.telemetry_certificate, run.py TelemetryRun.arm). A source keyed by account metadata or by path would authenticate that probe; a source keyed by token bytes can only hold tokens from the prepared auth.json. With the file store argument and the secret_auth_storage disable enforced by argv_check and verify_launch, this closes D1. telemetry_certificate stays false whenever the probe does not end in an authentication failure. Annex checked: the codex.exe sha256 and the seven static string counts reproduce; the only Codex entry of the Windows credential store is secrets|0218800dc2c5837c.codex, and 0218800dc2c5837c is the first 16 hex of sha256 over \?\<owner home>\.codex (the baseline path gives 841add2be2e6febe, which has no entry). This position relaxes the operative requirement stated by Astra. Astra A signed this file on the unchanged strict requirement and rejected the probe as a substitute (rulings/signoff-astra.md, D1 CHANGE note), so the signatories disagree on what the slot means.
 

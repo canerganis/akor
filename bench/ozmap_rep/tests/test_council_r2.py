@@ -17,7 +17,7 @@ import pytest
 
 from bench.ozmap_rep import config, events, gates, isolation, quota, redact, rulings, run, score, workload
 from bench.ozmap_rep.tests.test_council_r1 import (Live, attempts, fake_opts, go, sha, stream, write_auth,
-                                                  write_d6_annexes)
+                                                  settled_annex, write_d6_annexes)
 
 CELL = 'codex-materials-cold-A'
 
@@ -389,7 +389,14 @@ def session(root, rows, name='rollout-a.jsonl'):
 
 def reading(percent, t, **extra):
     return dict({'timestamp': stamp(t), 'type': 'event_msg',
-                 'payload': {'type': 'token_count', 'rate_limits': {'primary': {'used_percent': percent}}}}, **extra)
+                 'payload': {'type': 'token_count', 'rate_limits': {
+                     'limit_id': 'codex', 'primary': {'used_percent': percent, 'window_minutes': 10080}}}}, **extra)
+
+
+# P3 repair (2026-10-25): every reading the gate uses names the baseline account (both hashes present and equal)
+ACCOUNT = 'acct-baseline'
+ACCOUNT_SHA = __import__('hashlib').sha256(ACCOUNT.encode()).hexdigest()
+META = {'type': 'session_meta', 'payload': {'creator_account_id': ACCOUNT, 'cli_version': '0.160.0'}}
 
 
 NOW = dt.datetime.now(dt.timezone.utc)
@@ -398,11 +405,11 @@ DONE = [{'call_id': 'x', 'backend': 'codex', 'mode': 'live', 'outcome': 'ok', 'e
 
 
 def test_item31_unrelated_events_after_an_old_reading_never_refresh_it(tmp_path):
-    session(tmp_path, [reading(10.0, NOW - dt.timedelta(hours=1)),
+    session(tmp_path, [META, reading(10.0, NOW - dt.timedelta(minutes=30)),
                        {'timestamp': stamp(NOW), 'type': 'response_item', 'payload': {'type': 'message'}}])
-    assert quota.coverage_gate(DONE, tmp_path)['ok'] is False
-    session(tmp_path, [reading(10.0, NOW)])
-    assert quota.coverage_gate(DONE, tmp_path)['ok'] is True
+    assert quota.coverage_gate(DONE, tmp_path, account_sha256=ACCOUNT_SHA)['ok'] is False
+    session(tmp_path, [META, reading(10.0, NOW)])
+    assert quota.coverage_gate(DONE, tmp_path, account_sha256=ACCOUNT_SHA)['ok'] is True
 
 
 @pytest.mark.parametrize('bad', [True, 'x', float('nan'), -1, 100.5, None])
@@ -414,7 +421,8 @@ def test_item31_a_malformed_latest_reading_blocks_and_never_falls_back(tmp_path,
 
 def test_item31_a_reading_of_another_account_blocks(tmp_path):
     other = __import__('hashlib').sha256(b'acct-other').hexdigest()
-    session(tmp_path, [{'type': 'session_meta', 'payload': {'creator_account_id': 'acct-other'}}, reading(10.0, NOW)])
+    session(tmp_path, [{'type': 'session_meta', 'payload': {'creator_account_id': 'acct-other'}},
+                       reading(10.0, NOW)])
     assert quota.coverage_gate([], tmp_path, account_sha256='a' * 64)['ok'] is False
     assert quota.coverage_gate([], tmp_path, account_sha256=other)['ok'] is True
 
@@ -427,11 +435,15 @@ def test_item31_crossing_80_between_groups_stops_the_next_group(live):
 
 
 def test_item31_a_worker_rollout_reading_covers_its_own_attempt(tmp_path):
-    harvested = {'u1': [{'percent': 12.0, 'timestamp': stamp(NOW), 'account_sha256': None}]}
+    # the owner reading is fresh but older than the attempt's end, so only the harvested reading covers the attempt
+    session(tmp_path, [META, reading(10.0, NOW - dt.timedelta(minutes=10))])
+    harvested = {'u1': [{'percent': 12.0, 'timestamp': stamp(NOW), 'account_sha256': ACCOUNT_SHA,
+                         'limit_id': 'codex', 'window_minutes': 10080}]}
     done = [dict(DONE[0], attempt_uid='u1')]
-    assert quota.coverage_gate(done, tmp_path / 'none', harvested)['ok'] is True
+    assert quota.coverage_gate(done, tmp_path, harvested, account_sha256=ACCOUNT_SHA)['ok'] is True
+    assert quota.coverage_gate(done, tmp_path, {}, account_sha256=ACCOUNT_SHA)['ok'] is False, 'uncovered'
     harvested['u1'][0]['percent'] = 81.0
-    assert quota.coverage_gate(done, tmp_path / 'none', harvested)['ok'] is False
+    assert quota.coverage_gate(done, tmp_path, harvested, account_sha256=ACCOUNT_SHA)['ok'] is False
 
 
 def test_item31_the_telemetry_probe_without_accepted_tokens_needs_no_coverage():
@@ -538,7 +550,7 @@ def test_b1_readiness_needs_countersigned_ruling_bytes_and_a_matching_configurat
     annex_files['cli_notice_annex'].write_text(json.dumps(rulings.cli_notice_config()), encoding='utf-8')
     for kind in ('quota_source_manifest', 'effective_context_evidence', 'attribution_evidence'):
         annex_files[kind] = tmp_path / f'{kind}.json'
-        annex_files[kind].write_text(json.dumps({'annex': kind}), encoding='utf-8')
+        annex_files[kind].write_text(json.dumps(settled_annex(kind)), encoding='utf-8')
     annex_files.update(write_d6_annexes(tmp_path / 'd6'))  # closure round 1, O5
     slots, texts = {}, {}
     for name in config.REQUIRED_RULINGS:

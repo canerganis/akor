@@ -138,9 +138,17 @@ def write_rollout(home, directive):
     stamp = now.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
     folder = os.path.join(home, 'sessions', now.strftime('%Y'), now.strftime('%m'), now.strftime('%d'))
     os.makedirs(folder, exist_ok=True)
-    rows = [{'timestamp': stamp, 'type': 'session_meta', 'payload': {'cli_version': '0.160.0'}},
+    try:  # like the pinned CLI's session_meta, the rollout names the account of the home's login
+        with open(os.path.join(home, 'auth.json'), encoding='utf-8') as f:
+            account = (json.load(f).get('tokens') or {}).get('account_id')
+    except (OSError, ValueError, AttributeError):
+        account = None
+    meta = {'cli_version': '0.160.0'}
+    if account:
+        meta['creator_account_id'] = account
+    rows = [{'timestamp': stamp, 'type': 'session_meta', 'payload': meta},
             {'timestamp': stamp, 'type': 'event_msg', 'payload': {'type': 'token_count', 'rate_limits': {
-                'primary': {'used_percent': 10.0, 'window_minutes': 10080}}}}]
+                'limit_id': 'codex', 'primary': {'used_percent': 10.0, 'window_minutes': 10080}}}}]
     with open(os.path.join(folder, 'rollout-fake.jsonl'), 'w', encoding='utf-8') as f:
         f.write('\n'.join(json.dumps(r) for r in rows) + '\n')
 
