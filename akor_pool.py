@@ -53,7 +53,8 @@ class Pool:
         return job.future
 
     def close(self):
-        """Send what is waiting now, wait for every call in flight."""
+        """Accept no new jobs; waiting jobs still leave by the normal rule (full, max_wait or deadline), then wait for
+        every call in flight. Closing never shortens a wait."""
         with self.cv:
             self.closed = True
             self.cv.notify()
@@ -69,7 +70,7 @@ class Pool:
         group = [j for j in self.queue if j.key == head.key][:self.max_jobs]
         urgent = any(j.deadline is not None and j.deadline - now <= self.max_wait for j in group)
         waited = now - head.submitted
-        if len(group) >= self.max_jobs or waited >= self.max_wait or urgent or self.closed:
+        if len(group) >= self.max_jobs or waited >= self.max_wait or urgent:
             return group, 0.0
         return None, self.max_wait - waited
 

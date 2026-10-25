@@ -107,10 +107,8 @@ def direct_prompt(items) -> str:
 
 def direct_parse(text: str, ids) -> dict:
     """{id: answer} for a usable reply (every id, each "yes" or "no"), else {}."""
-    text = text.strip()
-    m = re.fullmatch(r'```(?:json)?\s*(.*?)\s*```', text, re.S)
     try:
-        value = oz_reply.loads(m.group(1) if m else text)  # strict like OZ/1g: duplicate keys reject
+        value = oz_reply.loads(text.strip())  # strict like OZ/1g: no fence removal, duplicate keys reject
     except (ValueError, RecursionError, oz_reply.Error):
         return {}
     if not isinstance(value, dict) or set(value) != set(ids) or any(v not in ('yes', 'no') for v in value.values()):

@@ -39,6 +39,7 @@ FORMAT_SLICE = slice(24, 32)
 MAX_LAUNCHES = 36
 MAX_TOKENS = 250_000
 MAX_JOBS, MAX_WAIT = 32, 0.5
+RESERVE = 20_000  # tokens held for a call in flight until its usage is known
 
 
 def workload(sl: slice):
@@ -58,16 +59,21 @@ class Ledger:
         self.path, self.lock = path, threading.Lock()
         self.data = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {
             'launches': 0, 'tokens': 0, 'calls_without_usage': 0}
+        self.pending = 0
 
     def reserve(self) -> bool:
+        """A launch needs room for itself and every call in flight; any call without usage stops all launches."""
         with self.lock:
-            if self.data['launches'] >= MAX_LAUNCHES or self.data['tokens'] >= MAX_TOKENS:
+            if (self.data['launches'] >= MAX_LAUNCHES or self.data['calls_without_usage']
+                    or self.data['tokens'] + (self.pending + 1) * RESERVE > MAX_TOKENS):
                 return False
             self.data['launches'] += 1
+            self.pending += 1
             return True
 
     def charge(self, usage):
         with self.lock:
+            self.pending -= 1
             if usage:
                 self.data['tokens'] += usage['input_tokens'] + usage['output_tokens']
             else:
