@@ -391,6 +391,24 @@ def headroom_m(manifest_path=None):
     return float(m), None
 
 
+def session_floor_problem(reading, now) -> str | None:
+    """Why the session start of an owner reading cannot serve as the floor that reduces C (P3 signature repair 1, Astra A
+    blocker P3 H1), or None. A missing session start is no problem (no call is reflected, C is the whole cap). A
+    session start that lies after the gate time, after the reading itself or after the reading's turn start is
+    inconsistent: it would let unreflected_allowance count calls that ended after the reading as reflected."""
+    session = reading.get('session_started_at')
+    if session is None:
+        return None
+    stamp, turn = reading.get('timestamp'), reading.get('turn_started_at')
+    if session > now:
+        return 'its session start lies after the gate time'
+    if stamp is None or session > stamp:
+        return 'its session start lies after the reading'
+    if turn is not None and (session > turn or turn > stamp):
+        return 'its session start, turn start and reading are out of order'
+    return None
+
+
 def unreflected_allowance(cap, charged, attempts, floor) -> dict:
     """C of owner decision 5 as seen from the owner reading: the Codex calls whose consumption U0 cannot contain. That is
     the remaining allowance under A4.5 (cap minus every charged call) plus every charged call that did not end strictly
@@ -431,10 +449,19 @@ def headroom_gate(sessions_dir, account_sha256, remaining_calls, m, harvested=No
     if problem:
         return dict(base, reason=problem)
     base['owner_reading_at'] = owner['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
+    # P3 H1: the session start reduces C below, so its chronology is validated first; an invalid one rejects the reading
+    problem = session_floor_problem(owner, now)
+    if problem:
+        return dict(base, reason=f'Codex owner reading: {problem}: stop (A4.12, P3)')
     base['u0_owner'] = owner['percent']
     readings = [owner['percent']]
     for key, own in sorted((harvested or {}).items(), key=lambda kv: str(kv[0])):
-        for o in [o for o in own or [] if isinstance(o, dict)]:
+        if own is not None and not isinstance(own, (list, tuple)):
+            return dict(base, reason=f'{key}: its harvested quota readings are not a list: stop (P3)')
+        # P3 H2: every observation is validated, a value that is not a dict is malformed and blocks
+        for o in own or []:
+            if not isinstance(o, dict):
+                return dict(base, reason=f'{key}: its harvested quota reading is malformed or future dated: stop (P3)')
             stamp = _parse_time(o.get('timestamp'))
             if valid_percent(o.get('percent')) is None or stamp is None or stamp > now + FUTURE_SKEW:
                 return dict(base, reason=f'{key}: its harvested quota reading is malformed or future dated: stop (P3)')
@@ -457,8 +484,10 @@ def headroom_gate(sessions_dir, account_sha256, remaining_calls, m, harvested=No
     base['bound'] = round(bound, 6)
     if attempts is not None:
         # D5 causal coverage, informational only under owner decision 5
-        base['d5_uncovered_informational'] = coverage_gate(attempts, sessions_dir, harvested, account_sha256,
-                                                           now).get('uncovered', [])
+        d5 = coverage_gate(attempts, sessions_dir, harvested, account_sha256, now)
+        base['d5_uncovered_informational'] = d5.get('uncovered', [])
+        # P3 H1: the D5 rejection reason is kept in the gate record, not discarded
+        base['d5_reason_informational'] = d5.get('reason')
     if u0 >= config.CODEX_STOP_PERCENT:
         return dict(base, reason=f'Codex primary used_percent {u0:g} >= {config.CODEX_STOP_PERCENT}: stop (A4.12)')
     if bound >= config.CODEX_STOP_PERCENT:

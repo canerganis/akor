@@ -778,3 +778,30 @@ outcome, elapsed time and token counts of the 35 calls; no prompt, reply or toke
 | `python -m pytest bench/ozmap_rep -q` | 729 passed |
 | dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
 | `rulings.readiness_problems()` | one problem: D6 not settled (P3 binds) |
+
+## P3 signature repair 1 (2026-10-25)
+
+Astra A refused the P3 signature with two A4.14.2 blockers (rulings/signoff-astra-p3.md). Both are fixed in
+`quota.headroom_gate`; the ruling text, the manifest and their bound hashes are unchanged.
+
+* P3 H1: new `quota.session_floor_problem` validates the owner reading's session start before
+  `unreflected_allowance` uses it to reduce C. A session start after the gate time, after the reading, or out of order
+  with the reading's turn start rejects the owner reading (stop). A missing session start stays admissible (C is the
+  whole cap). The D5 coverage rejection reason is kept in the gate record as `d5_reason_informational`.
+* P3 H2: every harvested observation is validated. A value that is not a dict, or a harvest entry that is not a list,
+  stops the gate as malformed.
+
+### Tests
+
+* New in `tests/test_p3_headroom.py`: `test_p3_h1_an_invalid_session_floor_rejects_the_owner_reading` (Astra's
+  scenario: owner reading 79 five minutes old, session start 30 minutes after the gate or 3 minutes before it, cap 62,
+  charged 61), `test_p3_h1_the_d5_rejection_reason_is_kept`, and
+  `test_p3_h2_a_harvested_observation_that_is_not_a_dict_stops` (None, a string, an int, a list, True). All eight fail
+  on the unfixed `quota.py` (the gate passed) and pass with the fix.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 737 passed (with the committed P3 ruling text) |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |

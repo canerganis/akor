@@ -109,6 +109,20 @@ def test_a_valid_harvested_reading_raises_u0_and_a_malformed_one_stops(tmp_path)
     assert g['ok'] is False and 'malformed' in g['reason']
 
 
+@pytest.mark.parametrize('bad', [None, 'x', 5, [None], True])
+def test_p3_h2_a_harvested_observation_that_is_not_a_dict_stops(tmp_path, bad):
+    """P3 signature repair 1, Astra A blocker P3 H2: harvested={'a': [None]} with U0 10, C 62 and m 0.21 passed at
+    bound 36.04 because values that are not dicts were filtered out before validation. A malformed latest reading
+    blocks whatever its type."""
+    root = fresh(tmp_path, 10.0)
+    assert hgate(root, 62, 0.21)['ok'] is True  # control: the same gate without the observation passes
+    g = hgate(root, 62, 0.21, harvested={'a': [bad]})
+    assert g['ok'] is False and 'malformed' in g['reason'], g
+    # a harvest entry that is not a list of observations stops as well
+    g = hgate(root, 62, 0.21, harvested={'a': 'not a list'})
+    assert g['ok'] is False and 'not a list' in g['reason'], g
+
+
 # ----------------------------------------------------------------- C counts calls the owner reading cannot hold
 
 def test_calls_after_the_owner_reading_stay_in_c(tmp_path):
@@ -119,6 +133,35 @@ def test_calls_after_the_owner_reading_stay_in_c(tmp_path):
     assert g['ok'] is True and g['reflected_calls'] == 1 and g['remaining_allowance'] == 60
     assert g['remaining_calls'] == 61
     assert g['bound'] == pytest.approx(10.0 + 2 * 61 * 0.21)
+
+
+@pytest.mark.parametrize('session_minutes', [30, -3])
+def test_p3_h1_an_invalid_session_floor_rejects_the_owner_reading(tmp_path, session_minutes):
+    """P3 signature repair 1, Astra A blocker P3 H1: a valid owner reading of 79 taken five minutes before the gate, with
+    a session start after the reading (30 minutes after the gate, or 3 minutes before it), let unreflected_allowance
+    count all 61 charged calls that ended after the reading as reflected (cap 62, C 1), and the gate passed at
+    79 + 2 x 1 x 0.21 = 79.42. The session start is validated before it reduces C and an invalid one stops."""
+    root = owner(tmp_path / 'sessions', at(session_minutes), [(at(-6), [(at(-5), 79.0)])])
+    calls = [attempt(f'c{i}', at(-5), at(-4) + dt.timedelta(seconds=i)) for i in range(61)]
+    g = hgate(root, None, 0.21, cap=62, charged=61, attempts=calls)
+    assert g['ok'] is False and 'session start' in g['reason'], g
+    assert g['bound'] is None and g['remaining_calls'] is None
+    # the floor check sees the session start directly, also in the future or after the gate time
+    reading = {'timestamp': at(-5), 'turn_started_at': at(-6), 'session_started_at': at(session_minutes)}
+    assert quota.session_floor_problem(reading, NOW)
+    # control: the same reading in a session that started before it keeps its floor, and C holds every late call
+    ok = owner(tmp_path / 'ok', at(-6), [(at(-6), [(at(-5), 79.0)])])
+    g = hgate(ok, None, 0.21, cap=62, charged=61, attempts=calls)
+    assert g['ok'] is False and g['remaining_calls'] == 62 and 'headroom bound' in g['reason'], g
+    assert quota.session_floor_problem({'timestamp': at(-5), 'turn_started_at': at(-6),
+                                        'session_started_at': at(-6)}, NOW) is None
+
+
+def test_p3_h1_the_d5_rejection_reason_is_kept(tmp_path):
+    """P3 signature repair 1 (H1 fix): the D5 coverage rejection reason stays in the headroom gate record."""
+    root = fresh(tmp_path, 10.0, minutes=-5)
+    g = hgate(root, None, 0.21, cap=62, charged=1, attempts=[attempt('late', at(-4), at(-2))])
+    assert g['ok'] is True and 'no quota observation covers' in g['d5_reason_informational'], g
 
 
 def test_without_cap_and_charge_the_allowance_is_unknown(tmp_path):
