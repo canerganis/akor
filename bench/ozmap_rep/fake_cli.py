@@ -83,6 +83,15 @@ def refresh(home):
     exp = int((datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=20)).timestamp())
     b64 = lambda d: base64.urlsafe_b64encode(d).rstrip(b'=').decode()
     claims = {'exp': exp, 'marker': mark + '-ACCESS'}
+    try:  # a refresh keeps the login session of the login it refreshes
+        with open(os.path.join(home, 'auth.json'), encoding='utf-8') as f:
+            old = (json.load(f).get('tokens') or {}).get('access_token') or ''
+        part = old.split('.')[1]
+        session = json.loads(base64.urlsafe_b64decode(part + '=' * (-len(part) % 4))).get('session_id')
+        if session:
+            claims['session_id'] = session
+    except (OSError, ValueError, IndexError, AttributeError, TypeError):
+        pass
     token = '.'.join([b64(b'{"alg":"none"}'), b64(json.dumps(claims).encode()), b64(b'sig')])
     doc = {'auth_mode': 'chatgpt', 'tokens': {'id_token': 'x.y.z', 'access_token': token,
                                               'refresh_token': mark + '-REFRESH'},

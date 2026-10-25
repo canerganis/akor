@@ -18,7 +18,8 @@ import sys
 import pytest
 
 from bench.ozmap_rep import config, events, gates, isolation, procs, rulings, run, score, workload
-from bench.ozmap_rep.tests.test_council_r1 import Live, attempts, fake_opts, go, sha, stream, write_auth
+from bench.ozmap_rep.tests.test_council_r1 import (Live, attempts, fake_opts, go, sha, stream, write_auth,
+                                                  write_d6_annexes)
 from bench.ozmap_rep.tests.test_council_r2 import EXECUTED, REFUSED, inject, stamp
 
 CELL = 'codex-materials-cold-A'
@@ -532,6 +533,9 @@ def test_item15_a_probe_disclosure_fails_isolation_and_certification(live, monke
     rep = score.score_run(live.run_dir)
     assert rep['validity']['isolation'] == 'failed'
     assert any('probe' in p for p in rep['validity']['isolation_problems'])
+    # closure round 1 (O4): the cell stopped by its probe disclosure is invalid, never "interrupted, no finding"
+    assert rep['cell_states'][CELL] == 'invalid'
+    assert CELL in rep['validity']['invalid_cells'] and CELL not in rep['validity']['interrupted']
 
 
 def test_item15_a_capture_redaction_is_isolation_failure_whatever_the_attempt_flag_says(tmp_path):
@@ -627,7 +631,7 @@ def test_item1_readiness_binds_each_ruling_to_its_approved_annexes(tmp_path, mon
     monkeypatch.setattr(config, 'STARTUP_MANIFEST_FILE', manifest)
     files = {'quota_source_manifest': tmp_path / 'p3.json', 'cli_notice_annex': tmp_path / 'p4.json',
              'startup_manifest': manifest, 'effective_context_evidence': tmp_path / 'p5-context.json',
-             'attribution_evidence': tmp_path / 'd1.json'}
+             'attribution_evidence': tmp_path / 'd1.json', **write_d6_annexes(tmp_path / 'd6')}
     files['cli_notice_annex'].write_text(json.dumps(rulings.cli_notice_config()), encoding='utf-8')
     for k in ('quota_source_manifest', 'effective_context_evidence', 'attribution_evidence'):
         files[k].write_text(json.dumps({'annex': k}), encoding='utf-8')

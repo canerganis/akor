@@ -762,16 +762,41 @@ def _jwt_claims(token):
 
 
 def login_identity(path) -> dict:
-    """SHA256 of the login session identity of an auth.json (red team round 3, RT3.2): the access token's
-    `session_id` claim, which stays the same across refreshes of one login and differs between two logins. {} when
-    the file is absent or carries no such claim. Never the token text."""
+    """SHA256 hashes of every login identity component of an auth.json (red team round 3, RT3.2; closure round 1,
+    RTC1.2). A login keeps these across refreshes and two logins differ in them; the authorization server chooses at
+    each login which token carries which claim, so every place is read: the access token `session_id` (top level or
+    in the auth claim), the id token `sid` or `session_id`, and the authentication times (`auth_time`,
+    `pwd_auth_time`, from either token) together with the account id. Returns {'sessions': [...], 'auth_times':
+    [...]} with sorted hashes, empty lists when nothing is found, {} when the file is absent. Never the token text."""
     doc = _read_auth(Path(path)) if Path(path).exists() else None
-    tokens = (doc or {}).get('tokens') if isinstance((doc or {}).get('tokens'), dict) else {}
-    claims = _jwt_claims(tokens.get('access_token'))
-    auth = claims.get('https://api.openai.com/auth') if isinstance(claims.get('https://api.openai.com/auth'),
-                                                                     dict) else {}
-    value = claims.get('session_id') or auth.get('session_id')
-    return {'session_sha256': sha256_text(value)} if isinstance(value, str) and value else {}
+    if doc is None:
+        return {}
+    tokens = doc.get('tokens') if isinstance(doc.get('tokens'), dict) else {}
+    access, ident = _jwt_claims(tokens.get('access_token')), _jwt_claims(tokens.get('id_token'))
+    sessions, times = set(), set()
+    account = tokens.get('account_id')
+    for claims in (access, ident):
+        auth = claims.get('https://api.openai.com/auth') if isinstance(claims.get('https://api.openai.com/auth'),
+                                                                         dict) else {}
+        account = account or auth.get('chatgpt_account_id')
+        for value in (claims.get('session_id'), claims.get('sid'), auth.get('session_id')):
+            if isinstance(value, str) and value:
+                sessions.add(sha256_text(value))
+    for claims in (access, ident):
+        for name in ('auth_time', 'pwd_auth_time'):
+            value = claims.get(name)
+            if isinstance(value, (int, float, str)) and not isinstance(value, bool) and str(value):
+                times.add(sha256_text(f'{account}|{name}|{value}'))
+    return {'sessions': sorted(sessions), 'auth_times': sorted(times)}
+
+
+def shared_login_components(mine, theirs) -> list:
+    """The login identity components two login_identity results share (hash comparison only)."""
+    return [k for k in ('sessions', 'auth_times') if set((mine or {}).get(k) or ()) & set((theirs or {}).get(k) or ())]
+
+
+def _has_identity(login):
+    return bool((login or {}).get('sessions') or (login or {}).get('auth_times'))
 
 
 _NON_FILE_STORE = re.compile(r'''^\s*cli_auth_credentials_store\s*=\s*["']?(keyring|auto)(?![A-Za-z0-9_])''', re.M | re.I)
@@ -829,10 +854,16 @@ def token_separation_problems(baseline, others) -> list:
             problems.append(str(exc))
             continue
         their_login = login_identity(other)
-        if my_login and their_login and my_login == their_login:
-            problems.append(f'the baseline is a copy of the owner login {other.parent.name}/{other.name} (same login '
-                            f'session, possibly older tokens; A4.2: seed it by an owner login, never by copying the '
-                            f'owner auth.json, RT3.2)')
+        if not _has_identity(my_login) or not _has_identity(their_login):
+            # closure round 1 (RTC1.2): a missing login identity is never treated as a different login
+            side = 'the baseline' if not _has_identity(my_login) else f'the owner {other.parent.name}/{other.name}'
+            problems.append(f'{side} carries no login identity (session or authentication time claim), so the '
+                            f'baseline cannot be shown to be a separate login (A4.2, RT3.2)')
+        shared_login = shared_login_components(my_login, their_login)
+        if shared_login:
+            problems.append(f'the baseline is a copy of the owner login {other.parent.name}/{other.name} (shared login '
+                            f'identity {shared_login}, possibly older tokens; A4.2: seed it by an owner login, never by '
+                            f'copying the owner auth.json, RT3.2)')
         shared = sorted(k for k in mine if k in ('access_token', 'refresh_token', 'api_key') and k in theirs
                         and mine[k] == theirs[k])
         if shared:

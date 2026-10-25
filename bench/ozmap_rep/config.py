@@ -144,7 +144,9 @@ INSTRUCTION_BEARING = ('AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', '*.md', '
                        'memories/*', 'rules/*', 'prompts/*', 'plugins/*', 'hooks/*', 'instructions*')
 # B1 (freeze refusal): the ruling slots that must be settled before `run freeze`, each as
 # {'path': <repo relative ruling file>, 'sha256': <hash of the exact countersigned bytes>}. Empty until signed.
-REQUIRED_RULINGS = ('P1', 'P2', 'P3', 'P4', 'P5', 'D1')
+# Closure round 1 (O5, Astra 32): D6, the focused verification and the independent operation attestation, is a
+# launch prerequisite bound like the other slots (rulings.ANNEXES_REQUIRED, rulings.d6_problems).
+REQUIRED_RULINGS = ('P1', 'P2', 'P3', 'P4', 'P5', 'D1', 'D6')
 SIGNED_RULINGS = {}
 # P3 (A4.12): worker calls keep `--ephemeral`: A4.2 names it in the frozen arguments and the blind acceptance suite
 # tests it. Omitting it needs P3 countersigned by Opus B, which only permits it with a certified persistence and

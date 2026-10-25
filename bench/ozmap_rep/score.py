@@ -448,6 +448,10 @@ def _freeze_problems(run_dir, experiment):
         problems.append('workload differs from the run bound freeze')
     if doc.get('registry_manifest_sha256') != rules.manifest_sha256():
         problems.append('registry manifest differs from the run bound freeze')
+    # closure round 1 (O5): the bound rulings, D6 with its focused verification and independent operation
+    # attestation included, are checked again at scoring
+    from . import rulings as rulings_mod
+    problems += rulings_mod.bound_problems((doc.get('signed_exceptions') or {}).get('rulings'))
     return problems
 
 
@@ -472,21 +476,39 @@ def score_run(run_dir, write=False) -> dict:
 
     # ------------------------------------------------------------------------------------------- validity
     leakage, accounting, isolation_problems, simulation, artifact = [], [], [], [], []
+    # Closure round 1 (O4, RTC1.1): every finding is attributed to its cells where it is produced, by the structured
+    # cell field of the record it comes from, never by matching message text against call ids or marker names
+    cell_findings = {}
+
+    def flag(target, message, *cells):
+        target.append(message)
+        for c in cells:
+            if c:
+                cell_findings.setdefault(c, []).append(message)
+
+    def flag_all(target, messages, *cells):
+        for m in messages:
+            flag(target, m, *cells)
+
+    call_cell = {a.get('call_id'): a.get('cell') for a in all_attempts}
     for a in attempts:
         ev = a.get('events') or {}
+        c = a.get('cell')
         if ev.get('verdict') in ('executed', 'uncertain'):
-            leakage.append(f"{a['call_id']}: tool event verdict {ev['verdict']} (A4.3)")
+            flag(leakage, f"{a['call_id']}: tool event verdict {ev['verdict']} (A4.3)", c)
         if a.get('outcome') == 'unsettled' and ev.get('verdict') not in ('executed', 'uncertain'):
-            leakage.append(f"{a['call_id']}: unsettled call state, uncertain whether a tool executed (A4.14.1, A4.3)")
+            flag(leakage, f"{a['call_id']}: unsettled call state, uncertain whether a tool executed (A4.14.1, A4.3)",
+                 c)
         if a.get('raw_mismatch'):
-            leakage.append(f"{a['call_id']}: the recovered capture differs from the raw stream (uncertain, A4.3)")
+            flag(leakage, f"{a['call_id']}: the recovered capture differs from the raw stream (uncertain, A4.3)", c)
         if (a.get('usage') or {}).get('status') == 'invalid':
-            accounting.append(f"{a['call_id']}: usage invalid ({'; '.join(a['usage'].get('problems') or [])})")
+            flag(accounting, f"{a['call_id']}: usage invalid ({'; '.join(a['usage'].get('problems') or [])})", c)
         if a.get('backend') == 'codex' and not _evidence_ok(run_dir, a):
-            isolation_problems.append(f"{a['call_id']}: launch evidence missing or not clean")
+            flag(isolation_problems, f"{a['call_id']}: launch evidence missing or not clean", c)
     for a in all_attempts:
         if a.get('credential_disclosure'):
-            isolation_problems.append(f"{a['call_id']}: credential material was redacted from its output (A4.2)")
+            flag(isolation_problems, f"{a['call_id']}: credential material was redacted from its output (A4.2)",
+                 a.get('cell'))
         if a.get('mode') != 'live':
             simulation.append(f"{a.get('call_id')}: mode {a.get('mode')!r}")
     if any(not s.get('external') for s in jsonl(run_dir / 'spawns.jsonl')):
@@ -498,56 +520,75 @@ def score_run(run_dir, write=False) -> dict:
     simulation = sorted(set(simulation))[:50] if simulation else []
 
     # RT1.2: repeated call ids, more than one terminal attempt per batch, an allocation above nominal plus reserve
-    seen, terminal = {}, {}
+    seen, seen_cells, terminal = {}, {}, {}
     for a in all_attempts:
         cid = a.get('call_id')
         seen[cid] = seen.get(cid, 0) + 1
+        seen_cells.setdefault(cid, set()).add(a.get('cell'))
         if a.get('outcome') not in RETRYABLE_OUTCOMES:
             key = (a.get('cell'), a.get('batch'))
             terminal[key] = terminal.get(key, 0) + 1
-    accounting += [f'{cid}: call id recorded {n} times' for cid, n in sorted(seen.items(), key=str) if n > 1]
-    accounting += [f'{k[0]} {k[1]}: {n} terminal attempts' for k, n in sorted(terminal.items(), key=str) if n > 1]
-    charged = {}
+    for cid, n in sorted(seen.items(), key=str):
+        if n > 1:
+            flag(accounting, f'{cid}: call id recorded {n} times', *sorted(seen_cells[cid], key=str))
+    for k, n in sorted(terminal.items(), key=str):
+        if n > 1:
+            flag(accounting, f'{k[0]} {k[1]}: {n} terminal attempts', k[0])
+    charged, charged_cells = {}, {}
     for a in attempts:
         key = (a.get('backend'), a.get('workload'), a.get('allocation'))
         charged[key] = charged.get(key, 0) + 1
+        charged_cells.setdefault(key, set()).add(a.get('cell'))
     for (b, w, al), n in sorted(charged.items(), key=str):
         nominal = config.ALLOCATIONS.get(f'{b}/{w}', {}).get(al)
         if nominal is not None and n > nominal + config.RESERVE_PER_ALLOCATION:
-            accounting.append(f'{b}/{w} {al}: {n} physical calls above nominal {nominal} plus reserve')
+            flag(accounting, f'{b}/{w} {al}: {n} physical calls above nominal {nominal} plus reserve',
+                 *sorted(charged_cells[(b, w, al)], key=str))
     # A4.14.1: markers stay preserved with a stopped cell; a call marker without its attempt row is a charged call
     # whose accounting was not recorded, and a probe marker is a local probe in an unknown state
     recorded_uids = {a.get('attempt_uid') or a.get('call_id') for a in all_attempts}
-    lost_markers, open_probes = [], []
+    lost_markers, open_probes, lost_cells, probe_cells = [], [], set(), set()
     for mp in sorted(run_dir.glob('cells/*/inflight/*.json')):
         m = _read_json(mp)
+        owner = mp.parent.parent.name
         if not isinstance(m, dict):
             lost_markers.append(mp.name)
+            lost_cells.add(owner)
         elif m.get('marker') == 'probe':
             open_probes.append(mp.name)
+            probe_cells.add(owner)
         elif (m.get('attempt_uid') or m.get('call_id')) not in recorded_uids:
             lost_markers.append(mp.name)
+            lost_cells.add(owner)
     if lost_markers:
-        accounting.append(f'in-flight markers without an attempt (charged calls whose accounting is not recorded): '
-                          f'{lost_markers[:5]}')
+        flag(accounting, f'in-flight markers without an attempt (charged calls whose accounting is not recorded): '
+                         f'{lost_markers[:5]}', *sorted(lost_cells))
     if open_probes:
-        isolation_problems.append(f'local probes ended in an unknown state (A4.14.1): {open_probes[:5]}')
+        flag(isolation_problems, f'local probes ended in an unknown state (A4.14.1): {open_probes[:5]}',
+             *sorted(probe_cells))
     stop_doc = _read_json(run_dir / 'run-stop.json')
     if stop_doc:
-        isolation_problems.append(f"the run is stopped: containment of outstanding work was not established "
-                                  f"(A4.14.1): {str(stop_doc.get('reason'))[:200]}")
+        flag(isolation_problems, f"the run is stopped: containment of outstanding work was not established "
+                                 f"(A4.14.1): {str(stop_doc.get('reason'))[:200]}",
+             stop_doc.get('cell') if isinstance(stop_doc, dict) else None)
     # Astra council round 3, item 15: every probe disclosure fails isolation, and every capture's own redaction
     # record is checked, whatever the attempt's disclosure flag says
     for r in jsonl(run_dir / 'evidence' / 'probe-disclosures.jsonl'):
-        isolation_problems.append(f"a {r.get('probe')} probe of {r.get('cell')}: credential material was redacted "
-                                  f"from its output (A4.2)")
+        flag(isolation_problems, f"a {r.get('probe')} probe of {r.get('cell')}: credential material was redacted "
+                                 f"from its output (A4.2)", r.get('cell'))
+    # closure round 1 (O3): a local probe whose output completeness could not be established
+    for r in jsonl(run_dir / 'evidence' / 'probe-uncertain.jsonl'):
+        flag(isolation_problems, f"a {r.get('probe')} probe of {r.get('cell')}: its output could not be established "
+                                 f"complete, so a credential disclosure cannot be excluded (A4.2, A4.14.1)",
+             r.get('cell'))
     flagged = {a.get('call_id') for a in all_attempts if a.get('credential_disclosure')}
     for mp in sorted((run_dir / 'captures').glob('*.meta.json')) if (run_dir / 'captures').exists() else []:
         meta = _read_json(mp, {}) or {}
         red = meta.get('redaction') if isinstance(meta.get('redaction'), dict) else {}
         if (red.get('redactions') or 0) > 0 and meta.get('call_id') not in flagged:
-            isolation_problems.append(f"{meta.get('call_id')}: its capture record shows redacted credential material "
-                                      f"the attempt does not flag (A4.2)")
+            flag(isolation_problems, f"{meta.get('call_id')}: its capture record shows redacted credential material "
+                                     f"the attempt does not flag (A4.2)",
+                 meta.get('cell') or call_cell.get(meta.get('call_id')))
     ledger_path = experiment.get('live_ledger')
     experiment_view = None
     if ledger_path:
@@ -556,31 +597,41 @@ def score_run(run_dir, write=False) -> dict:
         rows_l, bad_lines = ledger_rows(ledger_path)
         accounting += bad_lines
         known = {a.get('attempt_uid') or a.get('call_id') for a in all_attempts}
-        lost = sorted(r.get('call_id') for r in rows_l
-                      if r.get('run_dir') == here and (r.get('attempt_uid') or r.get('call_id')) not in known)
+        lost_rows = [r for r in rows_l
+                     if r.get('run_dir') == here and (r.get('attempt_uid') or r.get('call_id')) not in known]
+        lost = sorted(r.get('call_id') for r in lost_rows)
         if lost:
-            accounting.append(f'experiment ledger calls missing from the run directory: {lost[:5]}')
+            flag(accounting, f'experiment ledger calls missing from the run directory: {lost[:5]}',
+                 *sorted({r.get('cell') or call_cell.get(r.get('call_id')) for r in lost_rows}, key=str))
         # Astra council round 3, item 11: and the reverse, a live attempt whose debit the ledger lacks
         in_ledger = {r.get('attempt_uid') for r in rows_l if r.get('attempt_uid')}
-        unledgered = sorted(a.get('call_id') for a in all_attempts if a.get('mode') == 'live'
-                            and a.get('attempt_uid') and a.get('attempt_uid') not in in_ledger)
+        unledgered_rows = [a for a in all_attempts if a.get('mode') == 'live'
+                           and a.get('attempt_uid') and a.get('attempt_uid') not in in_ledger]
+        unledgered = sorted(a.get('call_id') for a in unledgered_rows)
         if unledgered:
-            accounting.append(f'live attempts missing from the experiment ledger: {unledgered[:5]}')
+            flag(accounting, f'live attempts missing from the experiment ledger: {unledgered[:5]}',
+                 *sorted({a.get('cell') for a in unledgered_rows}, key=str))
         # experiment wide (item 9, RT2.2): every allocation and the telemetry cap over every run directory
-        totals = {}
+        totals, total_cells = {}, {}
         for r in rows_l:
             k = (r.get('backend'), r.get('workload'), r.get('allocation'), r.get('kind'))
             totals[k] = totals.get(k, 0) + 1
+            if r.get('run_dir') == here:
+                total_cells.setdefault(k[:3], set()).add(r.get('cell') or call_cell.get(r.get('call_id')))
         for (b, w, al, kind), n in sorted(totals.items(), key=str):
             nominal = config.ALLOCATIONS.get(f'{b}/{w}', {}).get(al)
+            over = sorted(total_cells.get((b, w, al), set()) | charged_cells.get((b, w, al), set()), key=str)
             if kind == 'nominal' and nominal is not None and n > nominal:
-                accounting.append(f'experiment ledger: {b}/{w} {al}: {n} nominal calls above the allocation {nominal}')
+                flag(accounting, f'experiment ledger: {b}/{w} {al}: {n} nominal calls above the allocation {nominal}',
+                     *over)
             if kind == 'reserve' and n > config.RESERVE_PER_ALLOCATION:
-                accounting.append(f'experiment ledger: {b}/{w} {al}: {n} reserve calls above the reserve')
+                flag(accounting, f'experiment ledger: {b}/{w} {al}: {n} reserve calls above the reserve', *over)
         for b, cap in config.EVAL_CAPS.items():
             tel = sum(n for (bb, _, _, kind), n in totals.items() if bb == b and kind == 'telemetry')
             if tel > cap['telemetry']:
-                accounting.append(f'experiment ledger: {b} telemetry calls {tel} above the cap {cap["telemetry"]}')
+                flag(accounting, f'experiment ledger: {b} telemetry calls {tel} above the cap {cap["telemetry"]}',
+                     *sorted({r.get('cell') for r in rows_l if r.get('backend') == b
+                              and r.get('kind') == 'telemetry' and r.get('run_dir') == here}, key=str))
         # prior invalidating evidence is never omitted by changing directories (item 9)
         predecessors = predecessor_dirs(run_dir, ledger_path)
         for d in predecessors:
@@ -593,8 +644,8 @@ def score_run(run_dir, write=False) -> dict:
                     continue
                 ev = a.get('events') or {}
                 if ev.get('verdict') in ('executed', 'uncertain') or a.get('raw_mismatch'):
-                    leakage.append(f"superseded {prev.name}: {a.get('call_id')}: tool event verdict "
-                                   f"{ev.get('verdict')} (A4.3)")
+                    flag(leakage, f"superseded {prev.name}: {a.get('call_id')}: tool event verdict "
+                                  f"{ev.get('verdict')} (A4.3)", a.get('cell'))
             for p in sorted((prev / 'captures').glob('*.stdout')) if (prev / 'captures').exists() else []:
                 meta = _read_json(p.with_name(p.stem + '.meta.json'), {}) or {}
                 if meta.get('cell') in NON_EVALUATION:
@@ -602,7 +653,7 @@ def score_run(run_dir, write=False) -> dict:
                 v = events_mod.classify_stream(p.read_bytes().decode('utf-8', 'replace'))['verdict'] \
                     if not str(meta.get('cell', '')).startswith('sonnet') else None
                 if v in ('executed', 'uncertain'):
-                    leakage.append(f'superseded {prev.name}: {p.stem}: capture verdict {v} (A4.3)')
+                    flag(leakage, f'superseded {prev.name}: {p.stem}: capture verdict {v} (A4.3)', meta.get('cell'))
             if (prev / 'codex-stop.json').exists():
                 isolation_problems.append(f'superseded {prev.name}: Codex evaluation was stopped (A4.2)')
             if (prev / 'safety-kill.json').exists():
@@ -613,9 +664,12 @@ def score_run(run_dir, write=False) -> dict:
 
     for p in sorted((run_dir / 'prompts').glob('*.txt')) if (run_dir / 'prompts').exists() else []:
         if prompts.learner_prompt_leaks(p.read_text(encoding='utf-8'), admission):
-            leakage.append(f'{p.stem}: admission material in a model-bound prompt (A4.8)')
+            flag(leakage, f'{p.stem}: admission material in a model-bound prompt (A4.8)',
+                 call_cell.get(p.stem) or next((c for c in specs if p.stem.startswith(f'{c}.')), None))
     if (run_dir / 'codex-stop.json').exists():
-        isolation_problems.append('Codex evaluation stopped by authentication reconciliation (A4.2)')
+        codex_stop = _read_json(run_dir / 'codex-stop.json')
+        flag(isolation_problems, 'Codex evaluation stopped by authentication reconciliation (A4.2)',
+             codex_stop.get('cell') if isinstance(codex_stop, dict) else None)
     live = experiment.get('mode') == 'live'
     live_mode = live
     if live:
@@ -628,18 +682,18 @@ def score_run(run_dir, write=False) -> dict:
             if specs[cid]['backend'] != 'codex' or not rows:
                 continue
             if cid not in gates_ok:
-                isolation_problems.append(f'{cid}: no passing wave gate record')
+                flag(isolation_problems, f'{cid}: no passing wave gate record', cid)
             feat = _read_json(run_dir / 'evidence' / f'features-{cid}.json')
             if not feat:
-                isolation_problems.append(f'{cid}: no features record')
+                flag(isolation_problems, f'{cid}: no features record', cid)
             elif feat.get('ok') is not True:
-                isolation_problems.append(f'{cid}: the features record did not pass (A4.2)')
+                flag(isolation_problems, f'{cid}: the features record did not pass (A4.2)', cid)
             bound_freeze = _read_json(run_dir / 'freeze.json', {}) or {}
             for a in rows:
                 if a.get('outcome') not in ('not_launched',):
-                    isolation_problems += _launch_problems(run_dir, a, bound_freeze)
+                    flag_all(isolation_problems, _launch_problems(run_dir, a, bound_freeze), cid)
                 if a.get('outcome') not in ('interrupted', 'not_launched', 'unsettled') and not a.get('auth'):
-                    isolation_problems.append(f"{a['call_id']}: no authentication record")
+                    flag(isolation_problems, f"{a['call_id']}: no authentication record", cid)
 
     # artifact chain (item 10)
     verified, proposals, derived = set(), {}, {}
@@ -655,12 +709,12 @@ def score_run(run_dir, write=False) -> dict:
     counts = dict(zip(replies, tokenizer_mod.count(replies))) if replies else {}
     for a in all_attempts:
         if a.get('cell') not in NON_EVALUATION and a.get('outcome') != 'not_launched':
-            artifact += _input_problems(run_dir, a)
+            flag_all(artifact, _input_problems(run_dir, a), a.get('cell'))
         if a['call_id'] not in derived:
             continue
         found = _rejudge(run_dir, a, derived=derived[a['call_id']], counts=counts, live=live_mode,
                          proposals=proposals)
-        artifact += found
+        flag_all(artifact, found, a.get('cell'))
         if not found:
             verified.add(a['call_id'])
     # Every capture is judged, those of stopped cells included (council round 2, RT2.1; A4.14.1): execution or
@@ -670,9 +724,10 @@ def score_run(run_dir, write=False) -> dict:
         for p in sorted((run_dir / 'captures').glob('*.stdout')):
             row = recorded.get(p.stem)
             meta = _read_json(p.with_name(p.stem + '.meta.json'), {}) or {}
+            cell = (row or {}).get('cell') or meta.get('cell') \
+                or next((c for c in specs if p.stem.startswith(f'{c}.')), None)
             if row is None:
-                artifact.append(f'{p.stem}: a capture without an attempt line')
-            cell = (row or {}).get('cell') or meta.get('cell')
+                flag(artifact, f'{p.stem}: a capture without an attempt line', cell)
             if cell in NON_EVALUATION:
                 continue
             backend = (row or {}).get('backend') or (specs.get(cell) or {}).get('backend', 'codex')
@@ -682,7 +737,9 @@ def score_run(run_dir, write=False) -> dict:
             if verdict in ('executed', 'uncertain'):
                 note = f'{p.stem}: captured stream verdict {verdict} (A4.3)'
                 if not any(x.startswith(f'{p.stem}: tool event verdict {verdict}') for x in leakage):
-                    leakage.append(note)
+                    flag(leakage, note, cell)
+                elif cell:
+                    cell_findings.setdefault(cell, []).append(note)
     boot_props = {}
     for cid, spec in specs.items():
         if spec['arm'] == 'bootstrap':
@@ -693,22 +750,27 @@ def score_run(run_dir, write=False) -> dict:
                 boot_props[cid] = {}
     for cid, spec in specs.items():
         if results.get(cid):
-            artifact += _cell_chain(run_dir, cid, spec, results, verified, boot_props)
+            flag_all(artifact, _cell_chain(run_dir, cid, spec, results, verified, boot_props), cid)
     freeze_problems = _freeze_problems(run_dir, experiment) if live else []
-    # A4.14.1: the preserved records of every stopped cell decide its validity first
-    invalid_cells = {}
+    # A4.14.1: the preserved records of every stopped cell decide its validity first. A cell is stopped when it is
+    # neither complete nor settled and holds a stop record, was running, holds markers or has attempts (the crash_scan
+    # predicate, read only: a cell the runner left `running` by a crash is scored as stopped before any later
+    # admission writes its INTERRUPTED.json). Its findings are the structured entries attributed to it above.
+    invalid_cells, stopped = {}, []
+    attempt_cells = {a.get('cell') for a in all_attempts}
     for cid, st in states.items():
-        if st != 'interrupted':
+        cdir = run_dir / 'cells' / cid
+        if (cdir / 'DONE.json').exists() or (cdir / 'SETTLED.json').exists() or st in ('complete',):
             continue
-        ids = {a.get('call_id') for a in by_cell[cid]}
-        cell_markers = [mp.name for mp in run_dir.glob(f'cells/{cid}/inflight/*.json')]
-        findings = [p for p in leakage + accounting + isolation_problems + artifact
-                    if any(i and (p.startswith(f'{i}:') or f' {i}:' in p or f'{i} ' in p) for i in ids)]
-        findings += [p for p in accounting + isolation_problems if any(m in p for m in cell_markers)]
-        if findings:
-            invalid_cells[cid] = sorted(set(findings))[:10]
-    for cid in invalid_cells:
-        states[cid] = 'invalid'
+        if (cdir / 'INTERRUPTED.json').exists() or st in ('interrupted', 'running') \
+                or any(cdir.glob('inflight/*.json')) or cid in attempt_cells:
+            stopped.append(cid)
+    for cid in stopped:
+        if cell_findings.get(cid):
+            invalid_cells[cid] = sorted(set(cell_findings[cid]))[:10]
+            states[cid] = 'invalid'
+        else:
+            states[cid] = 'interrupted'
     interrupted = sorted(cid for cid, st in states.items() if st == 'interrupted')
 
     # ------------------------------------------------------------------------------------------- bootstrap

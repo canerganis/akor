@@ -220,3 +220,138 @@ still_leakage` now asserts the crashed cell is refused (exit 19), the call is `u
 stays leakage and the cell is invalid.
 
 **D-R2-2 (`--ephemeral`). Closed, upheld.** The acceptance assertions and A4.2 keep the flag; nothing changed (see B1).
+
+# Closure round 1 blockers (A4.14.3, 2026-10-25)
+
+Scope: every BLOCKER of closure round 1: closure-astra-r1.md (O1 to O5 and the new N1), closure-opus-r1.md (N1) and
+closure-redteam-r1.md (RTC1.1, RTC1.2). Where an item reopens a round 3 entry above, this section supersedes that
+entry. Commit: the commit with the message `bench/ozmap_rep: closure round 1 fixes` (branch oz-0.9; its hash is in the
+driver's step record). Tests: `bench/ozmap_rep/tests/test_closure_r1.py` unless another file is named. The red team
+tests (`bench/ozmap_rep/redteam/`) and the acceptance tests are unchanged; `redteam/test_redteam_closure1.py` now passes.
+
+| item | disposition |
+|---|---|
+| O1 (Astra 10) | closed |
+| O2 (Astra 12) | closed |
+| O3 (Astra 13) | closed |
+| O4 (Astra 15) | closed |
+| O5 (Astra 32) | closed; judged not to meet A4.14.2 (reason below), fixed because it was cheap |
+| N1 (Astra, CHANGE 22 raised) | closed |
+| N1 (Opus) | closed |
+| RTC1.1 | closed |
+| RTC1.2 (RT3.2) | closed |
+
+No closure round 1 item is open.
+
+**O1. An ordinary timeout hid execution uncertainty. Closed.** `CellRun.execute` marks every child that `spawn`
+returns with `timed_out` as a killed child (`c['killed']`). In `after_group` a killed child whose judged outcome is
+retryable (no complete terminal outcome) is handled like every other killed child: it becomes a spawn failure, its
+outcome is `unsettled` with the verdict `uncertain`, it is never retried from the reserve, the group propagates no
+authentication and the cell stops (Codex: `codex-stop.json`; Sonnet: interrupted). A complete terminal outcome (a
+delivered reply, a tool verdict, an authentication failure) is kept. The scorer already accepts `unsettled` against a
+capture that judges a retryable outcome, so no artifact problem appears, and the call is leakage, so the cell is
+invalid. Tests: `test_o1_a_timed_out_child_without_terminal_evidence_is_unsettled_never_retried` (a child that emits only
+`thread.started` and `turn.started` and is killed by the timeout), `test_o1_a_timed_out_child_that_delivered_its_reply_
+keeps_its_outcome`; `tests/test_council_r1.py::test_item13_a_timed_out_call_with_a_delivered_reply_is_never_sent_again`
+unchanged.
+
+**O2. Local probes outside the guarded identity check. Closed.** `worker_probe` takes `Executables.verified_guard`
+(hash, write guard, hash again under the guard, same identity required) after preparing its home and holds it until
+the probe's tree has ended and the probe is reconciled; `exe.recheck()` runs immediately before the child, and a failure
+refuses the probe before it starts (its marker is removed, nothing ran). `TelemetryRun.worker_path_logins` holds one
+verified guard across its whole probe group with a recheck before each child. The guard is required to be held in live
+mode, as for launch groups (`live=self.opts.mode == 'live'`); on Windows it is taken in fake mode too. Tests:
+`test_o2_every_local_probe_runs_under_the_guarded_identity_check` (every features, login and worker path probe of a
+telemetry run and a cell runs inside an entered guard), `test_o2_a_manifest_changed_after_the_group_check_refuses_the_
+probe_before_it_runs`.
+
+**O3. Uncertain probe output could vanish. Closed.** `run_local` writes a probe's stdout and stderr to raw stream
+files inside the credential boundary (`D/homes/raw-<slot>/<probe id>.std*`, named by `_TLS.probe_raw`), so a
+`SpawnFailure` carries what the probe emitted once its tree is shown gone. `CellRun.probe_evidence` sanitizes that
+output with the prepared and current secrets, records `evidence/probe-failures.jsonl` (sanitized hashes and redaction
+counts per channel, never text), records a disclosure in it as a probe disclosure, and, when output completeness cannot
+be established (tree end not established, or no readable raw stream), records `evidence/probe-uncertain.jsonl` with the
+cell id. The scorer turns each uncertainty row into an isolation problem attributed to the cell (invalid), and
+`telemetry_failures` refuses certification on it. The raw files are kept on any failure or disclosure and deleted only
+after a probe settled cleanly. A child shown never resumed emitted nothing and keeps its own disposition (no row).
+Tests: `test_o3_run_local_keeps_the_output_a_probe_emitted_before_waiting_failed` (a real child, `communicate`
+raising), `test_o3_a_probe_that_did_not_settle_leaves_its_evidence_and_makes_the_cell_invalid` (tree gone with a
+disclosure, tree end not established).
+
+**O4. A probe disclosure cell reported interrupted without finding. Closed** (with N1 Opus and RTC1.1 below).
+`tests/test_a414_fail_closed.py::test_item15_a_probe_disclosure_fails_isolation_and_certification` now also requires
+the cell state `invalid` and the cell absent from `validity.interrupted`.
+
+**O5. D6 not an enforced launch prerequisite. Closed; judged not to meet A4.14.2.** Reason: the attestation reviews
+preparation artifacts (oracle, classification, contracts, cases); with D6 absent no harness path turns a detected or
+detectable validity failure into an unflagged result, and a wrong oracle is not something the harness can detect at
+all, which is why the protocol puts it in a review step. The fix was cheap, so it was made: `config.REQUIRED_RULINGS`
+now includes `D6`, and `rulings.ANNEXES_REQUIRED['D6']` requires two bound annexes, `focused_verification` (every item
+of the D6 checklist of the round 2 joint decision with verdict `pass`) and `operation_attestation` (oracle correctness,
+classification, contract extraction, consumer checks, the 48 representative and 16 challenge cases with those counts,
+sealing and access chronology, each `pass`; an attestor recorded as independent of the implementer; bound to the
+current `classification.json` hash and to the hash of every file of `bench/ozmap_rep/ops`). Each annex is hash bound in
+the countersigned ruling text like the other annexes, so `freeze_command` refuses (exit 14) and `verify_freeze`
+refuses every live dispatch while D6 is missing, unsigned, changed or no longer bound to the files it attests. The
+scorer checks the rulings bound in the run's `freeze.json` again (`rulings.bound_problems`, called by
+`_freeze_problems`), so a run bound without D6 has freeze problems and no claim. Tests: `test_o5_d6_is_a_required_
+ruling_with_its_two_annexes`, `test_o5_the_attestation_must_cover_every_item_and_bind_the_classification_and_
+operations`, `test_o5_the_scorer_checks_the_rulings_the_run_bound_freeze_binds`; the readiness fixtures of
+`test_item1_readiness_binds_each_ruling_to_its_approved_annexes` and `tests/test_council_r2.py::test_b1_readiness_needs_
+countersigned_ruling_bytes_and_a_matching_configuration` now bind valid D6 annexes (`tests/test_council_r1.write_d6_
+annexes`), their assertions unchanged. The annexes themselves remain signatory and reviewer work.
+
+**N1 (Astra). Demonstrated Sonnet accounting violations only incomplete. Closed.** `usage.decode_sonnet` detects present
+contradictions (any negative counter, `cached_input_tokens > input_tokens`) independently of completeness, keeps both
+findings (`problems` lists the missing counter and the contradiction, `incomplete` is set) and returns `invalid`, which
+takes precedence. Fields are filled only for present counters. `account_usage` no longer indexes counters an invalid
+partial usage lacks. On the frozen route the adapter reports an envelope with a negative counter as unknown usage, so
+the harness also reads the envelope (`run.sonnet_envelope_violation`): with a negative counter in `modelUsage` it keeps
+the present counter sums (a missing counter stays absent, never zero) and the decoder judges them invalid; the scorer
+derives the same through `judge_sonnet`. A cache contradiction cannot arise through the adapter (its input includes the
+cache reads), so that case is covered at the decoder. Tests: `test_n1_a_demonstrated_sonnet_accounting_violation_is_
+invalid_whatever_else_is_missing` (six cases: negative counters and cache contradictions, each with and without missing
+fields), `test_n1_complete_and_merely_incomplete_sonnet_usage_are_unchanged`, `test_n1_a_negative_sonnet_counter_makes_
+the_stopped_cell_invalid` (end to end through the envelope).
+
+**N1 (Opus) and RTC1.1. Findings attributed by text; crashed cells never given their validity. Closed.** `score_run`
+now attributes each finding where it is produced, by the structured cell field of its record (`cell_findings`): per
+attempt findings (leakage, usage, launch evidence, authentication record, credential disclosure, input and rejudge
+artifact problems) by the attempt's cell; repeated call ids by the cells of that id; duplicate terminal attempts by the
+cell of the key; allocation overcounts (run and experiment ledger) to every cell of that allocation; unledgered live
+attempts and ledger rows missing from the run directory by their cells; capture redactions and capture verdicts by the
+capture's cell; lost markers and open probes by their cell directory; probe disclosure and probe uncertainty rows by
+their `cell`; wave gate and features findings by cell id; `codex-stop.json` and `run-stop.json` by their `cell` field;
+the cell chain by its cell. A cell is stopped when it is neither complete nor settled and holds `INTERRUPTED.json`, was
+left `running`, holds markers or has attempts (the `crash_scan` predicate, read only; the scorer never writes
+`INTERRUPTED.json`). A stopped cell with any attributed finding is `invalid`; one without is `interrupted`. Tests:
+`redteam/test_redteam_closure1.py::test_rtc1_1_a_cell_stopped_by_its_probe_disclosure_is_invalid_not_interrupted` and
+`test_rtc1_1_a_crashed_cell_scored_before_any_later_admission_gets_its_validity` (unchanged, now pass); the two Opus
+reproductions as `test_item15_a_probe_disclosure_fails_isolation_and_certification` (extended) and
+`test_n1_a_stopped_cell_with_an_unledgered_live_attempt_is_invalid`; `test_n1_a_stopped_cell_with_duplicate_terminal_
+attempts_is_invalid`; controls `test_rtc1_1_a_stopped_cell_without_any_finding_stays_interrupted` and `test_rtc1_1_a_
+codex_stop_names_its_cell_and_makes_it_invalid`.
+
+**RTC1.2. A missing login identity treated as a different login. Closed.** `isolation.login_identity` now reads every
+place the identity appears: the access token `session_id` (top level or in the auth claim), the id token `sid` or
+`session_id`, and `auth_time` and `pwd_auth_time` from either token together with the account id; it returns sorted
+hashes only. `token_separation_problems` refuses when the baseline and an owner file share any session hash or any
+authentication time hash, and returns a problem when an existing owner auth.json or the baseline yields no identity at
+all; the exact token hash comparison is kept. Checked on this machine, hashes and booleans only: the baseline and the
+owner home share the account id (expected) and no session, `sid`, `auth_time` or `pwd_auth_time`; the check passes.
+Harness fixtures now carry a login session: `run.synthetic_baseline` a random `session_id`, the fake CLI's refresh keeps
+the session of the login it refreshes (as a real refresh does), and `tests/test_council_r1.write_auth` a session per
+marker. The live separation gate in `CellRun.gates` now runs right after the Claude quota stop instead of before it
+(still before every other live check and every dispatch; `Isolation.prepare` repeats it under the authentication
+lock), so the acceptance test `test_cli_codex_quota_stop_at_80_percent_happens_before_any_call`, whose baseline
+fixture carries no identity, still ends with the quota stop. Tests: `redteam/test_redteam_closure1.py::test_rtc1_2_a_
+stale_copy_of_the_owner_login_passes_when_the_access_token_has_no_session_claim` (unchanged, now passes), `test_rtc1_2_
+a_login_without_any_identity_is_never_treated_as_separate`, `test_rtc1_2_any_shared_identity_component_refuses` (three
+cases), `test_rtc1_2_login_identity_holds_hashes_only`; `redteam/test_redteam_r3.py` RT3.2 tests unchanged.
+
+## Closure round 1 verification
+
+| command | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 600 passed (acceptance, ops, red team with the closure 1 tests, harness tests) |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls; report: leakage 0, accounting failures 0, artifact problems 0, isolation passed, no stopped or invalid cell |

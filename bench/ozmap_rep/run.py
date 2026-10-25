@@ -585,18 +585,32 @@ def spawn(run_dir, launch, stdin_text, env, cwd, external, timeout=config.CALL_T
 
 def run_local(argv, env, cwd, on_start=None, timeout=120):
     """A local CLI command (no model request) in a supervised process tree whose pid is journaled like a call's
-    before it is resumed (Astra council round 3, item 13: a journal failure is never suppressed)."""
+    before it is resumed (Astra council round 3, item 13: a journal failure is never suppressed).
+
+    Closure round 1 (O3): when the launching thread names a probe raw stream pair (_TLS.probe_raw, inside D/homes, the
+    credential boundary), stdout and stderr go to those files, not to pipes, so whatever the probe emitted survives a
+    failure: SpawnFailure then carries the raw text once the end of the tree is established."""
+    raw = getattr(_TLS, 'probe_raw', None)
+    files = []
+    if raw is not None:
+        Path(raw[0]).parent.mkdir(parents=True, exist_ok=True)
+        files = [open(raw[0], 'wb'), open(raw[1], 'wb')]
     tree = procs.Tree()
     try:
-        proc = tree.start(argv, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                          cwd=str(cwd), env=env)
+        try:
+            proc = tree.start(argv, stdin=subprocess.DEVNULL, stdout=files[0] if files else subprocess.PIPE,
+                              stderr=files[1] if files else subprocess.PIPE, cwd=str(cwd), env=env)
+        except BaseException:
+            for f in files:
+                f.close()
+            raise
         _TLS.last_tree = tree.record()
         try:
             if on_start is not None:
                 on_start(proc.pid)
             tree.resume()
         except BaseException as exc:  # noqa: BLE001
-            _end_tree(tree, proc, [], f'the probe pid could not be journaled: {type(exc).__name__}', None)
+            _end_tree(tree, proc, files, f'the probe pid could not be journaled: {type(exc).__name__}', raw)
         try:
             try:
                 out, err = proc.communicate(timeout=timeout)
@@ -604,12 +618,20 @@ def run_local(argv, env, cwd, on_start=None, timeout=120):
                 tree.kill()
                 out, err = proc.communicate()
         except BaseException as exc:  # noqa: BLE001
-            _end_tree(tree, proc, [], f'waiting for the probe raised {type(exc).__name__}', None)
+            _end_tree(tree, proc, files, f'waiting for the probe raised {type(exc).__name__}', raw)
         if tree.active() != 0:
             tree.kill()
         if not tree.gone():
+            for f in files:
+                f.close()
             raise SpawnFailure('the end of the process tree of the probe could not be established', False, proc.pid)
-        return proc.returncode, out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
+        for f in files:
+            f.close()
+        if raw is not None:
+            stdout, stderr = _read_raw(raw)
+        else:
+            stdout, stderr = out.decode('utf-8', 'replace'), err.decode('utf-8', 'replace')
+        return proc.returncode, stdout, stderr
     finally:
         tree.close()
 
@@ -815,8 +837,10 @@ def account_usage(backend, usage_raw, reply, cache_certified, count=None):
         visible, issue = None, None
         dec = usage.decode_sonnet(usage_raw)
         status, additive = dec['status'], None
-        if dec['status'] != 'incomplete':
-            additive = usage_raw['input_tokens'] + usage_raw['cached_input_tokens'] + usage_raw['output_tokens']
+        # closure round 1 (N1): never index a counter an invalid partial usage lacks
+        if dec['status'] != 'incomplete' and not dec.get('incomplete') and all(
+                dec.get(k) is not None for k in ('input_tokens', 'cached_input_tokens', 'output_tokens')):
+            additive = dec['input_tokens'] + dec['cached_input_tokens'] + dec['output_tokens']
     return {'usage': dec, 'usage_status': status, 'reasoning_issue': issue, 'additive_tokens': additive,
             'visible_tokens': visible, 'charged_tokens': dec.get('charged_tokens') or 0,
             'cache_certified': cache_certified if backend == 'codex' else None}
@@ -856,6 +880,40 @@ def judge_codex(raw):
     return 'infrastructure_failure', None, usage_raw, cls, (failure or f'exit {raw.get("exit_code")}')[:300]
 
 
+SONNET_COUNTERS = (('inputTokens', 'input'), ('cacheReadInputTokens', 'cache_read'),
+                   ('cacheCreationInputTokens', 'cache_creation'), ('outputTokens', 'output'))
+
+
+def sonnet_envelope_violation(data):
+    """Closure round 1 (N1): the adapter reports an envelope whose modelUsage holds a negative counter as unknown
+    usage (None). A negative counter is a demonstrated accounting violation, so the harness keeps the present counter
+    sums (a missing counter is never read as zero: its field stays absent) and decode_sonnet judges them invalid.
+    None when no present counter is negative, so ordinary unknown usage stays incomplete."""
+    mu = data.get('modelUsage') if isinstance(data, dict) else None
+    if not isinstance(mu, dict) or not mu or not all(isinstance(e, dict) for e in mu.values()):
+        return None
+    sums, negative = {}, False
+    for key, name in SONNET_COUNTERS:
+        values = [e.get(key) for e in mu.values()]
+        if all(type(v) is int for v in values):
+            sums[name] = sum(values)
+        negative = negative or any(type(v) is int and v < 0 for v in values)
+    if not negative:
+        return None
+    out = {}
+    if all(k in sums for k in ('input', 'cache_read', 'cache_creation')):
+        out['input_tokens'] = sums['input'] + sums['cache_read'] + sums['cache_creation']
+    if 'cache_read' in sums:
+        out['cached_input_tokens'] = sums['cache_read']
+    if 'cache_creation' in sums:
+        out['cache_creation_input_tokens'] = sums['cache_creation']
+    if 'output' in sums:
+        out['output_tokens'] = sums['output']
+    out['negative_counters'] = sorted(name for key, name in SONNET_COUNTERS
+                                      if any(type(e.get(key)) is int and e.get(key) < 0 for e in mu.values()))
+    return out
+
+
 def judge_sonnet(raw):
     """The Sonnet equivalent: the envelope is classified even after a timeout or a nonzero exit, and a delivered
     result is accepted, so a refusal, a tool use or a delivered answer is never retried."""
@@ -869,6 +927,8 @@ def judge_sonnet(raw):
         return 'infrastructure_failure', None, None, events.classify_claude({}), why
     cls = events.classify_claude(data)
     usage_raw = claude_cli_adapter.usage_from_envelope(data)
+    if usage_raw is None:
+        usage_raw = sonnet_envelope_violation(data)
     if cls['verdict'] != 'plain':
         return cls['verdict'], None, usage_raw, cls, None
     if isinstance(data.get('result'), str) and not data.get('is_error'):
@@ -1277,14 +1337,16 @@ class CellRun:
             if problems:
                 raise Stop(config.EXIT_AUTH_GATE, f'baseline inventory check failed (A4.2): {problems[:5]}; '
                                                   f'reseed with: CODEX_HOME={opts.baseline} codex login')
-            if opts.mode == 'live':
-                self.separation_gate()
             if (self.run_dir / 'codex-stop.json').exists():
                 raise Stop(config.EXIT_AUTH_STOP, 'Codex evaluation is stopped for this run (A4.2 reconciliation)')
         if opts.mode == 'live':
             g = quota.claude_gate(opts.claude_percent)
             if not g['ok']:
                 raise Stop(config.EXIT_QUOTA, g['reason'])
+            if self.codex:
+                # after the operational quota stop (A4.12), before anything else live; prepare repeats it under the
+                # authentication lock
+                self.separation_gate()
             if not _same(self.run_dir, live_run_dir()):
                 raise Stop(config.EXIT_IDENTITY, f'live cells run only in the frozen live run directory '
                                                  f'{live_run_dir()} (A4.1, A4.5); another directory needs a new '
@@ -1695,6 +1757,10 @@ class CellRun:
             try:
                 c['raw'] = spawn(self.run_dir, c['launch'], c['stdin'], c['env'], c['workdir'],
                                  external=self.opts.mode == 'live')
+                if c['raw'].get('timed_out'):
+                    # closure round 1 (O1): an ordinary timeout is a terminated child too; its stream gets the same
+                    # incomplete terminal evidence check as any other killed child (A4.3, A4.14.1)
+                    c['killed'] = 'the child timed out and its process tree was killed'
             except SpawnFailure as exc:
                 if exc.terminated and exc.never_ran:
                     # terminated while still suspended under supervision: it never executed anything
@@ -1775,6 +1841,10 @@ class CellRun:
                                           'auth_failure': fin['auth_failure'], 'call_id': c['call_id']}
             output = self.interpret(c, outcome, reply)
             outcome = output['outcome']
+            if c.get('killed') and outcome in RETRYABLE and not c.get('spawn_failure'):
+                # closure round 1 (O1): a timed out child without a complete terminal outcome is treated as every
+                # other killed child: unsettled, uncertain, never retried, and the cell stops
+                c['spawn_failure'] = c['killed']
             if c.get('spawn_failure') and outcome in RETRYABLE:
                 # Astra council round 3, item 10: a stream without complete terminal evidence of a child that had to
                 # be killed is never a clean infrastructure failure; whether a tool executed is not established
@@ -2306,59 +2376,107 @@ class CellRun:
             except isolation.IsolationError as exc:
                 raise Stop(config.EXIT_AUTH_GATE if 'token separation' in str(exc) else config.EXIT_INCOMPLETE,
                            f'{name} probe: {exc}') from None
-            marker, path, on_start = self.probe_marker(name, slot, prepared['auth_sha256'])
-            problems = self.exe.verify()
-            if problems:
-                raise Stop(config.EXIT_FREEZE, f'executable verification before {name} failed: {problems}')
-            secrets = set(prepared['secrets'])
+            # closure round 1 (O2): the probe runs under the same guarded identity check as a launch group: the
+            # executable is verified, the write guard taken and the identity verified again under it, the per child
+            # check runs right before the child, and the guard is held until the probe's tree has ended
+            guard = self.exe.verified_guard(live=self.opts.mode == 'live')
             try:
-                code, out, err = run_local([self.exe.exe, *config.ROUTE_SECURITY_ARGS, *self.exe.disable_args, *args]
-                                           if name == 'features' else [self.exe.exe, *config.ROUTE_SECURITY_ARGS[:2],
-                                                                       *args],
-                                           prepared['env'], prepared['workdir'], on_start)
-            except SpawnFailure as exc:
-                # A4.14.1: the probe did not settle normally. Its authentication result is unknown: nothing is
-                # propagated, Codex stops; with its tree shown gone the home is reconciled as a failure, otherwise
-                # its marker and home are preserved and containment is left to the stop record.
-                marker.update(tree_gone=bool(exc.terminated))
-                _write_json(path, marker)
-                if exc.terminated:
-                    fin = self.iso.finish(slot, auth_failure=True, prepared_sha256=prepared['auth_sha256'])
-                    self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
-                                           'auth_failure': True, 'call_id': marker['call_id']}})
-                    with contextlib.suppress(OSError):
-                        path.unlink()
-                else:
-                    self.codex_stop(f'{name} probe: {exc.reason}')
-                raise Stop(config.EXIT_AUTH_STOP, f'{name} probe did not settle: {exc.reason}; Codex stopped (A4.2, '
-                                                  f'A4.14.1)', interrupt=True) from None
+                return self._guarded_probe(name, args, slot, prepared)
             finally:
-                secrets |= redact.secrets_from_auth(self.iso.home(slot) / isolation.AUTH,
-                                                    self.opts.baseline / isolation.AUTH)
-                fin = None
-            out_raw, err_raw = out, err
-            out, r1 = redact.redact(out, secrets)
-            err, r2 = redact.redact(err, secrets)
-            failure = auth_failure_detected(out, err)
-            if name == 'login' and login_state(out + '\n' + err) != 'logged_in':
-                failure = True
-            fin = self.iso.finish(slot, auth_failure=failure, prepared_sha256=prepared['auth_sha256'])
-            self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
-                                   'auth_failure': failure, 'call_id': marker['call_id']}})
-            with contextlib.suppress(OSError):
-                path.unlink()
-            if r1.get('redactions') or r2.get('redactions'):
-                # Astra council round 3, item 15: a probe disclosure is a persistent isolation failure. It is
-                # recorded with per channel original and sanitized hashes, the scorer and the telemetry certificate
-                # read it, and the cell stops (A4.14.1 isolation signal).
-                channels = redact.channels(stdout=(out_raw or '', out, r1), stderr=(err_raw or '', err, r2))
-                _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
-                        {'probe': name, 'cell': self.spec['id'], 'redaction': channels, 'at': _now()})
-                raise Stop(config.EXIT_AUTH_GATE, f'{name} probe output carried credential material (isolation '
-                                                  f'failure, A4.2, A4.14.1)', interrupt=True)
-            return code, out, err, fin
+                guard.__exit__(None, None, None)
         finally:
             self.slots.release(slot)
+
+    def probe_evidence(self, name, marker, exc, secrets):
+        """Closure round 1 (O3): what a probe that did not settle normally emitted stays inside the credential
+        boundary (its raw stream files under D/homes are kept), its sanitized evidence is recorded, and a disclosure
+        in it is a probe disclosure. When the completeness of its output cannot be established (the end of its tree
+        is not established, or its raw stream cannot be read) a structured isolation uncertainty finding is recorded
+        for the cell, which makes it invalid (A4.2, A4.14.1). A child shown never resumed emitted nothing and keeps
+        its own disposition."""
+        if exc.never_ran:
+            return
+        rec = {'probe': name, 'cell': self.spec['id'], 'call_id': marker['call_id'], 'reason': exc.reason,
+               'tree_gone': bool(exc.terminated), 'raw_kept': list(marker.get('raw') or []), 'at': _now()}
+        if exc.raw is not None:
+            out, err, red = sanitize(exc.raw[0], exc.raw[1], secrets)
+            rec['redaction'] = red
+            rec['auth_failure_seen'] = auth_failure_detected(out, err)
+            if red['redactions']:
+                _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
+                        {'probe': name, 'cell': self.spec['id'], 'call_id': marker['call_id'], 'redaction': red,
+                         'at': _now()})
+        rec['output_complete'] = bool(exc.terminated) and exc.raw is not None
+        _append(self.run_dir, 'evidence/probe-failures.jsonl', rec)
+        if not rec['output_complete']:
+            _append(self.run_dir, 'evidence/probe-uncertain.jsonl', rec)
+
+    def _guarded_probe(self, name, args, slot, prepared):
+        """The body of worker_probe, run while the executable write guard is held."""
+        marker, path, on_start = self.probe_marker(name, slot, prepared['auth_sha256'])
+        problems = self.exe.recheck()
+        if problems:
+            with contextlib.suppress(OSError):
+                path.unlink()  # the probe never started
+            raise Stop(config.EXIT_FREEZE, f'executable check before the {name} probe failed: {problems}')
+        secrets = set(prepared['secrets'])
+        raw_files = raw_paths(self.run_dir, slot, marker['call_id'])
+        marker['raw'] = [str(p) for p in raw_files]
+        _write_json(path, marker)
+        _TLS.probe_raw = tuple(str(p) for p in raw_files)
+        try:
+            code, out, err = run_local([self.exe.exe, *config.ROUTE_SECURITY_ARGS, *self.exe.disable_args, *args]
+                                       if name == 'features' else [self.exe.exe, *config.ROUTE_SECURITY_ARGS[:2],
+                                                                   *args],
+                                       prepared['env'], prepared['workdir'], on_start)
+        except SpawnFailure as exc:
+            # A4.14.1: the probe did not settle normally. Its authentication result is unknown: nothing is
+            # propagated, Codex stops; with its tree shown gone the home is reconciled as a failure, otherwise
+            # its marker and home are preserved and containment is left to the stop record.
+            marker.update(tree_gone=bool(exc.terminated))
+            _write_json(path, marker)
+            self.probe_evidence(name, marker, exc, secrets | redact.secrets_from_auth(
+                self.iso.home(slot) / isolation.AUTH, self.opts.baseline / isolation.AUTH))
+            if exc.terminated:
+                fin = self.iso.finish(slot, auth_failure=True, prepared_sha256=prepared['auth_sha256'])
+                self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
+                                       'auth_failure': True, 'call_id': marker['call_id']}})
+                with contextlib.suppress(OSError):
+                    path.unlink()
+            else:
+                self.codex_stop(f'{name} probe: {exc.reason}')
+            raise Stop(config.EXIT_AUTH_STOP, f'{name} probe did not settle: {exc.reason}; Codex stopped (A4.2, '
+                                              f'A4.14.1)', interrupt=True) from None
+        finally:
+            _TLS.probe_raw = None
+            secrets |= redact.secrets_from_auth(self.iso.home(slot) / isolation.AUTH,
+                                                self.opts.baseline / isolation.AUTH)
+            fin = None
+        out_raw, err_raw = out, err
+        out, r1 = redact.redact(out, secrets)
+        err, r2 = redact.redact(err, secrets)
+        failure = auth_failure_detected(out, err)
+        if name == 'login' and login_state(out + '\n' + err) != 'logged_in':
+            failure = True
+        fin = self.iso.finish(slot, auth_failure=failure, prepared_sha256=prepared['auth_sha256'])
+        self.reconcile({slot: {'sha256': fin['worker_auth_sha256'], 'prepared': prepared['auth_sha256'],
+                               'auth_failure': failure, 'call_id': marker['call_id']}})
+        with contextlib.suppress(OSError):
+            path.unlink()
+        if r1.get('redactions') or r2.get('redactions'):
+            # Astra council round 3, item 15: a probe disclosure is a persistent isolation failure. It is
+            # recorded with per channel original and sanitized hashes, the scorer and the telemetry certificate
+            # read it, and the cell stops (A4.14.1 isolation signal).
+            channels = redact.channels(stdout=(out_raw or '', out, r1), stderr=(err_raw or '', err, r2))
+            _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
+                    {'probe': name, 'cell': self.spec['id'], 'call_id': marker['call_id'], 'redaction': channels,
+                     'at': _now()})
+            raise Stop(config.EXIT_AUTH_GATE, f'{name} probe output carried credential material (isolation '
+                                              f'failure, A4.2, A4.14.1)', interrupt=True)
+        for p in raw_files:  # settled and recorded: the raw stream inside the credential boundary goes
+            with contextlib.suppress(OSError):
+                p.unlink()
+        return code, out, err, fin
 
     def record_features(self):
         """A4.2: before each wave, the effective features from `codex features list` with a reconstructed worker
@@ -2422,6 +2540,9 @@ def telemetry_failures(run_dir):
     for r in jsonl(run_dir / 'evidence' / 'probe-disclosures.jsonl'):
         problems.append(f"a {r.get('probe')} probe of {r.get('cell')} disclosed credential material (isolation "
                         f"failure)")
+    for r in jsonl(run_dir / 'evidence' / 'probe-uncertain.jsonl'):
+        problems.append(f"a {r.get('probe')} probe of {r.get('cell')} ended without established output "
+                        f"completeness (isolation uncertainty, A4.14.1)")
     if (run_dir / 'cells' / 'telemetry' / 'INTERRUPTED.json').exists():
         problems.append('the telemetry cell was interrupted (A4.14.1)')
     for a in jsonl(run_dir / 'attempts.jsonl'):
@@ -2502,19 +2623,48 @@ class TelemetryRun(CellRun):
         """`login status` at every worker path with the path emptied (B4), each under its own slot, so no child uses
         the directory; the directory is emptied again afterwards. Local commands, no model request."""
         out = {}
-        problems = self.exe.verify()
-        if problems:
-            raise Stop(config.EXIT_FREEZE, f'executable verification failed: {problems}')
-        for k in range(config.SLOTS):
-            slot = self.slots.acquire(only=k)
-            try:
-                home = self.iso.empty_home(k)
-                code, o, e = run_local([self.exe.exe, *config.ROUTE_SECURITY_ARGS[:2], 'login', 'status'],
-                                       isolation.child_env(home, self.opts.base_env), self.run_dir)
-                out[str(k)] = login_state(o + '\n' + e)
-                self.iso.empty_home(k)
-            finally:
-                self.slots.release(slot)
+        # closure round 1 (O2): the whole probe group runs under the guarded identity check, with the per child
+        # check right before each child and the guard held until the last tree has ended
+        guard = self.exe.verified_guard(live=self.opts.mode == 'live')
+        try:
+            for k in range(config.SLOTS):
+                slot = self.slots.acquire(only=k)
+                try:
+                    problems = self.exe.recheck()
+                    if problems:
+                        raise Stop(config.EXIT_FREEZE, f'executable check before a worker path login probe failed: '
+                                                       f'{problems}')
+                    home = self.iso.empty_home(k)
+                    marker = {'call_id': f'probe-path-login-{k}-{self.invocation}'}
+                    raw_files = raw_paths(self.run_dir, k, marker['call_id'])
+                    marker['raw'] = [str(p) for p in raw_files]
+                    _TLS.probe_raw = tuple(str(p) for p in raw_files)
+                    try:
+                        code, o, e = run_local([self.exe.exe, *config.ROUTE_SECURITY_ARGS[:2], 'login', 'status'],
+                                               isolation.child_env(home, self.opts.base_env), self.run_dir)
+                    except SpawnFailure as exc:
+                        self.probe_evidence('path-login', marker, exc, redact.secrets_from_auth(
+                            self.opts.baseline / isolation.AUTH))
+                        raise Stop(config.EXIT_AUTH_STOP, f'a worker path login probe did not settle: {exc.reason} '
+                                                          f'(A4.14.1)', interrupt=True) from None
+                    finally:
+                        _TLS.probe_raw = None
+                    _, _, red = sanitize(o, e, redact.secrets_from_auth(self.opts.baseline / isolation.AUTH))
+                    if red['redactions']:
+                        _append(self.run_dir, 'evidence/probe-disclosures.jsonl',
+                                {'probe': 'path-login', 'cell': self.spec['id'], 'call_id': marker['call_id'],
+                                 'redaction': red, 'at': _now()})
+                        raise Stop(config.EXIT_AUTH_GATE, 'a worker path login probe output carried credential '
+                                                          'material (isolation failure, A4.2, A4.14.1)', interrupt=True)
+                    for p in raw_files:
+                        with contextlib.suppress(OSError):
+                            p.unlink()
+                    out[str(k)] = login_state(o + '\n' + e)
+                    self.iso.empty_home(k)
+                finally:
+                    self.slots.release(slot)
+        finally:
+            guard.__exit__(None, None, None)
         return out
 
     def arm(self):
@@ -2787,12 +2937,15 @@ def freeze_command(new_run_dir=None, disposition=None):
 # ================================================================================================ dry
 
 def synthetic_baseline(directory):
-    """An authentication only baseline whose access token (an unsigned JWT with no secret) is valid 30 days."""
+    """An authentication only baseline whose access token (an unsigned JWT with no secret) is valid 30 days. It
+    carries its own random login session (closure round 1, RTC1.2: a login without an identity is never separate)."""
+    import uuid
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     exp = int((dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=30)).timestamp())
     b64 = lambda d: base64.urlsafe_b64encode(d).rstrip(b'=').decode()  # noqa: E731
-    token = '.'.join([b64(b'{"alg":"none"}'), b64(json.dumps({'exp': exp, 'synthetic': True}).encode()), b64(b'x')])
+    claims = {'exp': exp, 'synthetic': True, 'session_id': f'synthetic-{uuid.uuid4().hex}'}
+    token = '.'.join([b64(b'{"alg":"none"}'), b64(json.dumps(claims).encode()), b64(b'x')])
     doc = {'auth_mode': 'chatgpt', 'tokens': {'id_token': 'synthetic', 'access_token': token,
                                               'refresh_token': 'synthetic'},
            'last_refresh': dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}

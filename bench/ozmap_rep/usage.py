@@ -88,20 +88,43 @@ def additive_tokens(raw) -> int:
 
 
 def decode_sonnet(raw):
-    """The Sonnet pilot route: adapter-constructed inclusive input (claude_cli_adapter.usage_from_envelope)."""
+    """The Sonnet pilot route: adapter-constructed inclusive input (claude_cli_adapter.usage_from_envelope).
+
+    Closure round 1 (N1, Astra round 3 CHANGE 22): a contradiction the present counters already demonstrate (a
+    negative counter, cached input above input) makes the usage invalid independently of completeness, and both
+    findings are kept: with a counter also missing the status is `invalid` with `incomplete` set, so a demonstrated
+    accounting failure is never hidden behind incompleteness. Fields are filled only for present counters, and the
+    charged tokens only when input and output are both present and not negative."""
     out = {'input_tokens': None, 'cached_input_tokens': None, 'output_tokens': None, 'charged_tokens': None,
            'status': 'complete', 'problems': []}
     keys = ('input_tokens', 'cached_input_tokens', 'output_tokens')
-    if not isinstance(raw, dict) or any(not _count(raw.get(k)) or raw[k] < 0 for k in keys):
+    if not isinstance(raw, dict):
         out['status'] = 'incomplete'
         out['problems'].append('usage unknown (modelUsage absent or a counter missing)')
         return out
-    for k in keys:
-        out[k] = raw[k]
-    if raw['cached_input_tokens'] > raw['input_tokens']:
+    present = {k: raw[k] for k in keys if _count(raw.get(k))}
+    missing = [k for k in keys if k not in present]
+    contradictions = []
+    negative = sorted(k for k, v in raw.items() if type(v) is int and v < 0)
+    if isinstance(raw.get('negative_counters'), list) and raw['negative_counters']:
+        negative = sorted(set(negative) | {f'envelope {n}' for n in raw['negative_counters']})
+    if negative:
+        contradictions.append(f'a present counter is negative: {negative}')
+    if ('cached_input_tokens' in present and 'input_tokens' in present
+            and present['cached_input_tokens'] > present['input_tokens']):
+        contradictions.append('cached input exceeds input')
+    for k, v in present.items():
+        out[k] = v
+    if missing:
+        out['problems'].append('usage unknown (modelUsage absent or a counter missing)')
+        out['incomplete'] = True
+    out['problems'] += contradictions
+    if contradictions:
         out['status'] = 'invalid'
-        out['problems'].append('cached input exceeds input')
-    out['charged_tokens'] = raw['input_tokens'] + raw['output_tokens']
+    elif missing:
+        out['status'] = 'incomplete'
+    if all(present.get(k) is not None and present[k] >= 0 for k in ('input_tokens', 'output_tokens')):
+        out['charged_tokens'] = present['input_tokens'] + present['output_tokens']
     return out
 
 

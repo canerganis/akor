@@ -62,13 +62,35 @@ def sha(path):
 def write_auth(directory, marker, days=20, last_refresh=None):
     exp = int((dt.datetime.now(dt.timezone.utc) + dt.timedelta(days=days)).timestamp())
     b64 = lambda d: base64.urlsafe_b64encode(d).rstrip(b'=').decode()  # noqa: E731
-    token = '.'.join([b64(b'{"alg":"none"}'), b64(json.dumps({'exp': exp, 'm': marker}).encode()), b64(b'x')])
+    token = '.'.join([b64(b'{"alg":"none"}'), b64(json.dumps({'exp': exp, 'm': marker,
+                                                                         'session_id': f'session-{marker}'}).encode()),
+                      b64(b'x')])
     doc = {'auth_mode': 'chatgpt', 'tokens': {'id_token': 'x', 'access_token': token,
                                               'refresh_token': f'REFRESH-{marker}-0123456789'},
            'last_refresh': last_refresh or dt.datetime.now(dt.timezone.utc).strftime('%Y-%m-%dT%H:%M:%S.%fZ')}
     Path(directory).mkdir(parents=True, exist_ok=True)
     (Path(directory) / 'auth.json').write_text(json.dumps(doc), encoding='utf-8')
     return Path(directory) / 'auth.json'
+
+
+def write_d6_annexes(directory):
+    """Valid D6 annexes (closure round 1, O5) for readiness fixtures: the focused verification record with every
+    checklist item passed and the independent operation attestation bound to the classification and operation
+    files the harness uses now."""
+    from bench.ozmap_rep import rulings
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    fv = directory / 'd6-focused-verification.json'
+    fv.write_text(json.dumps({'checklist': {k: {'verdict': 'pass'} for k in rulings.D6_CHECKLIST}}), encoding='utf-8')
+    covers = {k: {'verdict': 'pass'} for k in rulings.ATTESTATION_COVERS}
+    for k, n in rulings.ATTESTATION_CASES.items():
+        covers[k]['count'] = n
+    att = directory / 'd6-operation-attestation.json'
+    att.write_text(json.dumps({'covers': covers, 'attestor': 'independent reviewer', 'implementer': 'ops author',
+                               'independent': True,
+                               'classification_sha256': isolation.sha256_file(config.CLASSIFICATION_FILE),
+                               'ops_sha256': rulings.ops_manifest()}), encoding='utf-8')
+    return {'focused_verification': fv, 'operation_attestation': att}
 
 
 class Live:

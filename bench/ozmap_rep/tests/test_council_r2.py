@@ -16,7 +16,8 @@ import sys
 import pytest
 
 from bench.ozmap_rep import config, events, gates, isolation, quota, redact, rulings, run, score, workload
-from bench.ozmap_rep.tests.test_council_r1 import Live, attempts, fake_opts, go, sha, stream, write_auth
+from bench.ozmap_rep.tests.test_council_r1 import (Live, attempts, fake_opts, go, sha, stream, write_auth,
+                                                  write_d6_annexes)
 
 CELL = 'codex-materials-cold-A'
 
@@ -538,6 +539,7 @@ def test_b1_readiness_needs_countersigned_ruling_bytes_and_a_matching_configurat
     for kind in ('quota_source_manifest', 'effective_context_evidence', 'attribution_evidence'):
         annex_files[kind] = tmp_path / f'{kind}.json'
         annex_files[kind].write_text(json.dumps({'annex': kind}), encoding='utf-8')
+    annex_files.update(write_d6_annexes(tmp_path / 'd6'))  # closure round 1, O5
     slots, texts = {}, {}
     for name in config.REQUIRED_RULINGS:
         annexes = {k: {'path': str(annex_files[k]), 'sha256': sha(annex_files[k])}
