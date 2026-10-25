@@ -108,6 +108,10 @@ CODEX_STOP_PERCENT = 80
 QUOTA_LIMIT_ID = 'codex'
 QUOTA_WINDOW_MINUTES = 10080
 QUOTA_OWNER_MAX_AGE_MINUTES = 60
+# Owner decision 5 (owner-decisions.md, ruling P3): the static headroom bound U0 + QUOTA_HEADROOM_FACTOR x C x m < 80,
+# with C the remaining Codex call allowance under A4.5 (EVAL_CAPS codex total) and m read from the bound P3 source
+# manifest (headroom_bound.m, quota.headroom_m). It replaces the D5 causal coverage of earlier groups.
+QUOTA_HEADROOM_FACTOR = 2
 CLAUDE_HANDOFF_PERCENT = 99
 EXP_MARGIN_HOURS = 48
 BASELINE_DEFAULT = Path.home() / '.ozmap_rep' / 'baseline'
@@ -184,19 +188,21 @@ INSTRUCTION_BEARING = ('AGENTS.md', 'AGENTS.override.md', 'CLAUDE.md', '*.md', '
 # launch prerequisite bound like the other slots (rulings.ANNEXES_REQUIRED, rulings.d6_problems).
 REQUIRED_RULINGS = ('P1', 'P2', 'P3', 'P4', 'P5', 'D1', 'D6')
 # Bound 2026-10-25: P1, P2, P3, P4, P5 and D1 carry both signatures (rulings/signoff-astra*.md, signoff-opus*.md); each
-# sha256 is the exact countersigned bytes, each annex hash is named in its ruling text. The P3 annex records causal
-# coverage `not_established` as both signatories signed it (D5 and the freshness rule are not approved), so
-# rulings.annex_problems keeps refusing P3 until a re-signed manifest records `established`. D6 is not bound.
+# sha256 is the exact countersigned bytes, each annex hash is named in its ruling text. P3 is bound by owner decision 5
+# (owner-decisions.md item 5): its ruling text gains a section citing the decision, and its annex records
+# `freshness_and_causal_coverage.status` `established` with the static headroom bound (headroom_bound: factor, m and
+# sources), which replaces the D5 causal coverage; the P3 hashes are those of the amended files, not of new
+# signatures. D6 is not bound.
 SIGNED_RULINGS = {
     'P1': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P1-transport-notices.md',
            'sha256': '0a9a47e54bc40e5bc5c48b8a3c529b45cd6fa825acf1756251f7110d8e1f1504'},
     'P2': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P2-unknown-usage.md',
            'sha256': '94ac6d63949384b64bfdbfecc55d0e00f8979540ae840d064acf88f9211b5f4c'},
     'P3': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-observation.md',
-           'sha256': '58d425477403e2fecf6029904acda71fe60210fe5e3605809bfcbadcd92cea34',
+           'sha256': '51fd66026901e0cfc92dd653952c35af53601be986dfcafd2abf61765478363e',
            'annexes': {'quota_source_manifest': {
                'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json',
-               'sha256': '3646deacbbf5afee8130bf6c79dc8858a9159502af0825f166fc978bb8ce51de'}}},
+               'sha256': '5ee1f954de3d639b3c80377b69d55f461980e9ac1c483d4870da6bdd89123a71'}}},
     'P4': {'path': 'docs/design/ozmap-replication-2026-10-24/rulings/P4-cli-notice.md',
            'sha256': '905cc3eb0f4a9e927e293a08983efef68ea5458bf3a38c59cccd9b21f1c5cdfb',
            'annexes': {'cli_notice_annex': {

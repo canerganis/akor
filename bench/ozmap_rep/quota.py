@@ -30,6 +30,12 @@ session_meta event timestamp of the rollout (not the turn start), so a snapshot 
 session cannot cover an attempt that ended after the session started; the turn start event (task_started) of the
 reading's turn must also exist. The latest owner reading stays mandatory and must be at most
 config.QUOTA_OWNER_MAX_AGE_MINUTES old (selection bound).
+
+Owner decision 5 (owner-decisions.md item 5, 2026-10-25): the live harness no longer requires the D5 causal coverage.
+headroom_gate releases a live Codex cell or dispatch group only when the fresh owner reading U0 (owner_problem, the D5
+owner reading check) satisfies U0 + 2 x C x m < 80, with C the A4.5 Codex allowance not reflected in U0
+(unreflected_allowance) and m read from the bound P3 manifest (headroom_m, estimated by estimate_m from the pilot calls
+and the owner readings around them). coverage_gate stays and is recorded for information only.
 """
 from __future__ import annotations
 
@@ -245,6 +251,27 @@ def _floor_problem(reading, now=None):
     return None
 
 
+def owner_problem(owner, account_sha256, now):
+    """Why the latest owner reading cannot release a gate, or None (P3 source manifest: present, valid, timestamped,
+    not in the future, attributable to the baseline account and bucket, at most config.QUOTA_OWNER_MAX_AGE_MINUTES
+    old). Shared by the D5 coverage gate and the owner decision 5 headroom gate."""
+    if not owner['found']:
+        return 'Codex primary used_percent unreadable (no owner reading of the baseline account): stop (A4.12, P3)'
+    if owner['percent'] is None:
+        return f"Codex owner reading invalid ({owner['reason']}): stop (A4.12, P3)"
+    if owner['timestamp'] is None:
+        return 'Codex owner reading carries no event timestamp: stop (A4.12, P3)'
+    if owner['timestamp'] > now + FUTURE_SKEW:
+        return 'Codex owner reading has an unexplained future timestamp: stop (A4.12, P3)'
+    problem = attribution_problem(owner, account_sha256)
+    if problem:
+        return f'Codex owner reading: {problem}: stop (A4.12, P3)'
+    if owner['timestamp'] < now - dt.timedelta(minutes=config.QUOTA_OWNER_MAX_AGE_MINUTES):
+        return (f'Codex owner reading is stale (event timestamp more than {config.QUOTA_OWNER_MAX_AGE_MINUTES} minutes '
+                f'before the gate, P3 freshness rule): stop (A4.12, P3)')
+    return None
+
+
 def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, now=None) -> dict:
     """The P3 gate before a synchronized Codex dispatch group. attempts: every attempt of the experiment so far;
     harvested: {attempt key: [observation]} from worker rollouts. Returns {ok, percent, reason, uncovered}."""
@@ -257,22 +284,9 @@ def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, n
             'owner_source': owner.get('source'), 'owner_account_sha256': owner.get('account_sha256'),
             'sessions_dir': str(Path(sessions_dir))}
     readings = []
-    if not owner['found']:
-        return dict(base, reason='Codex primary used_percent unreadable (no owner reading of the baseline account): '
-                                 'stop (A4.12, P3)')
-    if owner['percent'] is None:
-        return dict(base, reason=f"Codex owner reading invalid ({owner['reason']}): stop (A4.12, P3)")
-    if owner['timestamp'] is None:
-        return dict(base, reason='Codex owner reading carries no event timestamp: stop (A4.12, P3)')
-    if owner['timestamp'] > now + FUTURE_SKEW:
-        return dict(base, reason='Codex owner reading has an unexplained future timestamp: stop (A4.12, P3)')
-    problem = attribution_problem(owner, account_sha256)
+    problem = owner_problem(owner, account_sha256, now)
     if problem:
-        return dict(base, reason=f'Codex owner reading: {problem}: stop (A4.12, P3)')
-    if owner['timestamp'] < now - dt.timedelta(minutes=config.QUOTA_OWNER_MAX_AGE_MINUTES):
-        return dict(base, reason=f'Codex owner reading is stale (event timestamp more than '
-                                 f'{config.QUOTA_OWNER_MAX_AGE_MINUTES} minutes before the gate, P3 freshness rule): '
-                                 f'stop (A4.12, P3)')
+        return dict(base, reason=problem)
     readings.append(owner['percent'])
     base['owner_reading_at'] = owner['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
     # D5: the pool of observations that may cover a completed attempt. Each entry names the attempt whose rollout it
@@ -347,6 +361,209 @@ def coverage_gate(attempts, sessions_dir, harvested=None, account_sha256=None, n
         return dict(base, percent=percent,
                     reason=f'Codex primary used_percent {percent:g} >= {config.CODEX_STOP_PERCENT}: stop (A4.12)')
     return dict(base, ok=True, percent=percent)
+
+
+# ------------------------------------------------------------------ owner decision 5: the static headroom bound
+
+def headroom_m(manifest_path=None):
+    """(m, None) or (None, problem): m, the largest per call increase of primary used_percent, from the bound P3 source
+    manifest (headroom_bound.m). A missing manifest, a missing or invalid m (a boolean, not a finite number, not above
+    0 or above 100) or a manifest whose bound factor or stop line differs from config is a problem; nothing is
+    estimated in its place (owner decision 5)."""
+    if manifest_path is None:
+        entry = (config.SIGNED_RULINGS.get('P3') or {}).get('annexes', {}).get('quota_source_manifest') or {}
+        if not entry.get('path'):
+            return None, 'no P3 quota source manifest is bound, so m is unknown: stop (P3, owner decision 5)'
+        manifest_path = config.REPO / entry['path']
+    try:
+        doc = json.loads(Path(manifest_path).read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return None, 'the P3 quota source manifest is unreadable, so m is unknown: stop (P3, owner decision 5)'
+    bound = doc.get('headroom_bound') if isinstance(doc, dict) else None
+    if not isinstance(bound, dict) or 'm' not in bound:
+        return None, 'the P3 quota source manifest records no m (headroom_bound.m): stop (P3, owner decision 5)'
+    m = bound.get('m')
+    if isinstance(m, bool) or type(m) not in (int, float) or not math.isfinite(float(m)) or not 0 < float(m) <= 100:
+        return None, f'the recorded m {m!r} is not a positive finite percentage: stop (P3, owner decision 5)'
+    if bound.get('factor') != config.QUOTA_HEADROOM_FACTOR or bound.get('stop_percent') != config.CODEX_STOP_PERCENT:
+        return None, ('the manifest bound (factor, stop_percent) is not the configured one: stop (P3, owner '
+                      'decision 5)')
+    return float(m), None
+
+
+def unreflected_allowance(cap, charged, attempts, floor) -> dict:
+    """C of owner decision 5 as seen from the owner reading: the Codex calls whose consumption U0 cannot contain. That is
+    the remaining allowance under A4.5 (cap minus every charged call) plus every charged call that did not end strictly
+    before the session of the owner reading started (its request started after that, so it reflects at most what was
+    accounted then). Equivalently cap minus the charged calls that ended before the floor. Without a floor no call is
+    reflected and C is the whole cap."""
+    reflected = 0
+    if floor is not None:
+        for a in attempts or []:
+            if a.get('backend') != 'codex':
+                continue
+            end = _parse_time(a.get('ended_at')) or _parse_time(a.get('ended_at_upper'))
+            if end is not None and end < floor:
+                reflected += 1
+    reflected = min(reflected, charged)
+    return {'remaining_allowance': max(0, cap - charged), 'reflected_calls': reflected,
+            'remaining_calls': max(0, cap - reflected)}
+
+
+def headroom_gate(sessions_dir, account_sha256, remaining_calls, m, harvested=None, attempts=None, now=None,
+                  cap=None, charged=None) -> dict:
+    """Owner decision 5 (ruling P3): a Codex group or cell is released only when the fresh owner reading U0 (the D5
+    owner reading check: present, valid, attributable to the baseline account and bucket, at most
+    config.QUOTA_OWNER_MAX_AGE_MINUTES old) satisfies U0 + factor x C x m < 80, where C is the remaining Codex call
+    allowance under A4.5 (evaluation plus telemetry) and m the recorded largest per call increase. With
+    remaining_calls None, C is computed from cap, charged and attempts by unreflected_allowance, so the calls launched
+    after the owner reading stay in C. Every valid harvested worker reading raises U0 (a malformed one blocks); U0
+    itself must also be below 80. The D5 causal coverage of earlier calls is replaced by the bound and recorded for
+    information only."""
+    now = now or dt.datetime.now(dt.timezone.utc)
+    owner = latest_reading(sessions_dir)
+    base = {'ok': False, 'percent': None, 'reason': None, 'uncovered': [], 'owner_reading_at': None,
+            'owner_source': owner.get('source'), 'owner_account_sha256': owner.get('account_sha256'),
+            'sessions_dir': str(Path(sessions_dir)), 'rule': 'owner decision 5 static headroom bound',
+            'u0': None, 'm': m, 'remaining_calls': remaining_calls, 'factor': config.QUOTA_HEADROOM_FACTOR,
+            'bound': None}
+    problem = owner_problem(owner, account_sha256, now)
+    if problem:
+        return dict(base, reason=problem)
+    base['owner_reading_at'] = owner['timestamp'].strftime('%Y-%m-%dT%H:%M:%SZ')
+    base['u0_owner'] = owner['percent']
+    readings = [owner['percent']]
+    for key, own in sorted((harvested or {}).items(), key=lambda kv: str(kv[0])):
+        for o in [o for o in own or [] if isinstance(o, dict)]:
+            stamp = _parse_time(o.get('timestamp'))
+            if valid_percent(o.get('percent')) is None or stamp is None or stamp > now + FUTURE_SKEW:
+                return dict(base, reason=f'{key}: its harvested quota reading is malformed or future dated: stop (P3)')
+            problem = attribution_problem(o, account_sha256)
+            if problem:
+                return dict(base, reason=f'{key}: harvested reading: {problem}: stop (P3)')
+            readings.append(float(o['percent']))
+    u0 = max(readings)
+    base.update(u0=u0, percent=u0)
+    if remaining_calls is None and isinstance(cap, int) and isinstance(charged, int):
+        allowance = unreflected_allowance(cap, charged, attempts, owner.get('session_started_at'))
+        remaining_calls = allowance['remaining_calls']
+        base.update(allowance, cap=cap, charged=charged)
+    if m is None or isinstance(m, bool) or type(m) not in (int, float) or not math.isfinite(float(m)) or m <= 0:
+        return dict(base, reason='m (the largest per call increase) is missing or invalid: stop (P3, owner decision 5)')
+    if isinstance(remaining_calls, bool) or type(remaining_calls) is not int or remaining_calls < 0:
+        return dict(base, reason=f'the remaining Codex call allowance {remaining_calls!r} is not a count: stop (P3, '
+                                 f'owner decision 5)')
+    bound = u0 + config.QUOTA_HEADROOM_FACTOR * remaining_calls * float(m)
+    base['bound'] = round(bound, 6)
+    if attempts is not None:
+        # D5 causal coverage, informational only under owner decision 5
+        base['d5_uncovered_informational'] = coverage_gate(attempts, sessions_dir, harvested, account_sha256,
+                                                           now).get('uncovered', [])
+    if u0 >= config.CODEX_STOP_PERCENT:
+        return dict(base, reason=f'Codex primary used_percent {u0:g} >= {config.CODEX_STOP_PERCENT}: stop (A4.12)')
+    if bound >= config.CODEX_STOP_PERCENT:
+        return dict(base, reason=f'Codex headroom bound U0 + {config.QUOTA_HEADROOM_FACTOR} x C x m = {u0:g} + '
+                                 f'{config.QUOTA_HEADROOM_FACTOR} x {remaining_calls} x {float(m):g} = {bound:.4g} >= '
+                                 f'{config.CODEX_STOP_PERCENT}: stop (P3, owner decision 5)')
+    return dict(base, ok=True)
+
+
+def read_all(path) -> list:
+    """Every rate limit reading of one rollout in document order (for the m estimate): {timestamp, percent, resets_at,
+    limit_id, window_minutes, account_sha256, session_started_at, source}. The account is that of the session_meta
+    event, which precedes every reading in a rollout."""
+    out, account, session = [], None, None
+    for line in Path(path).read_text(encoding='utf-8', errors='replace').splitlines():
+        line = line.strip()
+        if not line.startswith('{'):
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(event, dict):
+            continue
+        if event.get('type') == 'session_meta' and session is None:
+            session = _parse_time(event.get('timestamp'))
+        account = _account_from(event) or account
+        for rl in _find_rate_limits(event):
+            primary = rl.get('primary') if isinstance(rl, dict) else None
+            primary = primary if isinstance(primary, dict) else {}
+            window = primary.get('window_minutes')
+            resets = primary.get('resets_at')
+            out.append({'timestamp': _parse_time(event.get('timestamp')),
+                        'percent': valid_percent(primary.get('used_percent')),
+                        'resets_at': resets if type(resets) is int else None,
+                        'limit_id': rl.get('limit_id') if isinstance(rl, dict) else None,
+                        'window_minutes': window if type(window) is int else None,
+                        'account_sha256': account, 'session_started_at': session, 'source': Path(path).name})
+    return out
+
+
+TOKEN_WEIGHTINGS = {'input_plus_output': lambda u: u['input_tokens'] + u['output_tokens'],
+                    'uncached_input_plus_output': lambda u: u['input_tokens'] - u['cached_input_tokens']
+                    + u['output_tokens'],
+                    'output': lambda u: u['output_tokens']}
+
+
+def _iso_ms(stamp):
+    return stamp.strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
+
+
+def estimate_m(owner_rollouts, calls, account_sha256, resolution=1.0, max_resets_skew_s=5) -> dict:
+    """m for owner decision 5 from preserved real calls of the route and the owner readings around them.
+
+    calls: [{call_id, reserved_at (ISO), timeout_s, usage ({input_tokens, cached_input_tokens, output_tokens}) or
+    None}]. The interval runs from the latest attributable owner reading before the first call was reserved to the
+    earliest attributable owner reading from a session that started after the last call's latest possible end
+    (reservation plus timeout). Its increase plus the reading resolution is an upper bound on what all calls inside
+    it consumed together (other consumption in the interval only raises it). m is that upper bound times the largest
+    share of one call: 1/N (the mean) and, under each weighting of TOKEN_WEIGHTINGS, the largest call's share of the
+    tokens of the calls with usage; the maximum is rounded up to 0.01. Readings of another account or bucket are
+    ignored; a missing bracket, a window reset inside the interval or a decrease raises ValueError."""
+    if not calls:
+        raise ValueError('no calls')
+    starts = [_parse_time(c.get('reserved_at')) for c in calls]
+    if any(s is None for s in starts):
+        raise ValueError('every call needs a reservation time')
+    ends = [s + dt.timedelta(seconds=float(c['timeout_s'])) for s, c in zip(starts, calls)]
+    first, last_end = min(starts), max(ends)
+    pool = []
+    for path in owner_rollouts:
+        for r in read_all(path):
+            if r['percent'] is None or r['timestamp'] is None or attribution_problem(r, account_sha256):
+                continue
+            pool.append(r)
+    before = [r for r in pool if r['timestamp'] < first]
+    after = [r for r in pool if r['session_started_at'] is not None and r['session_started_at'] > last_end]
+    if not before or not after:
+        raise ValueError('no attributable owner reading brackets the calls')
+    lower = max(before, key=lambda r: r['timestamp'])
+    upper = min(after, key=lambda r: r['timestamp'])
+    if lower['resets_at'] is None or upper['resets_at'] is None \
+            or abs(lower['resets_at'] - upper['resets_at']) > max_resets_skew_s:
+        raise ValueError('the primary window reset inside the interval (resets_at differs)')
+    rise = upper['percent'] - lower['percent']
+    if rise < 0:
+        raise ValueError('the reading decreased inside one window')
+    rise_max = rise + resolution
+    shares = {'mean': 1 / len(calls)}
+    with_usage = [c['usage'] for c in calls if isinstance(c.get('usage'), dict)]
+    for name, weight in TOKEN_WEIGHTINGS.items():
+        total = sum(weight(u) for u in with_usage)
+        if total > 0:
+            shares[name] = max(weight(u) for u in with_usage) / total
+    per_call = {k: rise_max * v for k, v in shares.items()}
+    m = math.ceil(round(max(per_call.values()) * 100, 9)) / 100
+    return {'m': m, 'calls': len(calls), 'calls_with_usage': len(with_usage),
+            'interval': {'lower': {'percent': lower['percent'], 'timestamp': _iso_ms(lower['timestamp']),
+                                   'source': lower['source'], 'resets_at': lower['resets_at']},
+                         'upper': {'percent': upper['percent'], 'timestamp': _iso_ms(upper['timestamp']),
+                                   'session_started_at': _iso_ms(upper['session_started_at']),
+                                   'source': upper['source'], 'resets_at': upper['resets_at']},
+                         'first_call_reserved_at': _iso_ms(first), 'last_call_latest_end': _iso_ms(last_end)},
+            'rise': rise, 'resolution': resolution, 'rise_upper_bound': rise_max,
+            'per_call_upper_bounds': {k: round(v, 6) for k, v in per_call.items()}}
 
 
 def claude_gate(weekly_percent) -> dict:

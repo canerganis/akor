@@ -1,0 +1,4 @@
+{"payload": {"cli_version": "0.160.0", "creator_account_id": "acct-fixture-baseline", "originator": "codex_exec"}, "timestamp": "2026-10-24T14:57:43.319Z", "type": "session_meta"}
+{"payload": {"type": "task_started"}, "timestamp": "2026-10-24T14:57:43.324Z", "type": "event_msg"}
+{"payload": {"rate_limits": {"credits": {"balance": "0", "has_credits": false, "unlimited": false}, "individual_limit": null, "limit_id": "codex", "limit_name": null, "plan_type": "prolite", "primary": {"resets_at": 1793382106, "used_percent": 36.0, "window_minutes": 10080}, "rate_limit_reached_type": null, "secondary": null, "spend_control_reached": null}, "type": "token_count"}, "timestamp": "2026-10-24T14:59:27.322Z", "type": "event_msg"}
+{"payload": {"type": "task_complete"}, "timestamp": "2026-10-24T14:59:27.366Z", "type": "event_msg"}

@@ -1,5 +1,5 @@
 {
- "about": "P3 quota source manifest: where the harness reads the Codex primary quota of the baseline account, how the account and bucket are identified, what the timestamps mean, and the coverage predicate the gate applies before every synchronized Codex dispatch group. Implemented in bench/ozmap_rep/quota.py (read_file, harvest_rollout, coverage_gate) and isolation.account_sha256.",
+ "about": "P3 quota source manifest (bound annex), established under owner decision 5 (docs/design/ozmap-replication-2026-10-24/owner-decisions.md, item 5): the D5 causal coverage of earlier groups is replaced by a static headroom bound. Implemented in bench/ozmap_rep/quota.py (read_file, owner_problem, headroom_m, headroom_gate, estimate_m) and run.CellRun.codex_quota_gate; tests in bench/ozmap_rep/tests/test_p3_headroom.py. The unbound candidate P3-quota-source-manifest-candidate.json (D5, not_established) stays as the record of the D5 work.",
  "account_field_mapping": {
   "baseline": "isolation.account_sha256(baseline): sha256 of tokens.account_id of the baseline auth.json, else the chatgpt_account_id claim of its id_token or access_token",
   "enforced_by": "quota.attribution_problem, called by quota.coverage_gate for the owner reading and every harvested reading",
@@ -22,31 +22,146 @@
  },
  "cli_version": "codex-cli 0.160.0",
  "coverage_predicate_implemented": {
-  "first_group": "the telemetry group has no previously completed attempt; it needs a valid latest owner reading of the baseline account",
-  "text": "before a synchronized Codex dispatch group, every previously completed live Codex attempt that could have consumed the baseline quota (quota.needs_coverage: every launched codex live attempt except one proven not launched and the telemetry probe with unaccepted tokens that ended in an authentication failure) is covered by (i) the validated last reading harvested from that attempt's own worker rollout, or (ii) a validated owner reading of the same account whose event timestamp is later than the attempt's ended_at (or ended_at_upper when recovered). The gate percent is the maximum of the covering readings and the latest owner reading. A concurrent sibling is never covered by another worker's reading."
+  "d5_text": "before a synchronized Codex dispatch group, every previously completed live Codex attempt that could have consumed the baseline quota (quota.needs_coverage) is covered by a validated, attributable reading whose rollout session started strictly after the attempt ended (ended_at, else ended_at_upper; an attempt with neither is never covered). The floor is the event timestamp of the session_meta event of that rollout, and a task_started event must precede the reading in its own turn; a session or turn start in the future or after the reading blocks the gate. Candidate readings are the latest owner reading and the harvested worker readings of other attempts. A reading never covers the attempt whose own rollout produced it, and a concurrent sibling is never covered by another worker of its group, because both sessions started before either ended. The gate percent is the maximum of the latest owner reading, every covering reading and every valid harvested reading; at least 80 stops.",
+  "status": "superseded by owner decision 5 (headroom_bound); quota.coverage_gate stays in the code and its uncovered list is recorded per gate as d5_uncovered_informational, without blocking"
  },
+ "evidence": [
+  {
+   "item": "codex.exe 0.160.0 holds the header names x-codex-primary-used-percent, -primary-window-minutes and -primary-reset-at and the TokenCountEvent rate_limits field; no persisted rate limit cache string (latest_rate_limits) was found",
+   "kind": "binary strings"
+  },
+  {
+   "fixture": "bench/ozmap_rep/tests/fixtures/p3-rollouts/exec-0322.jsonl",
+   "item": "exec 0.160.0: session_meta and task_started 03:22:34.831, one token_count at 03:23:58.784 after the last response item (44, codex, 10080). An attempt ending at 03:23:00 lies inside this turn; the bound event time rule covered it, D5 does not (test_real_an_attempt_ending_inside_an_owner_turn_is_not_covered_by_it)",
+   "kind": "real rollout"
+  },
+  {
+   "fixture": "bench/ozmap_rep/tests/fixtures/p3-rollouts/exec-1502.jsonl",
+   "item": "exec 0.160.0 at 15:02:25: the reading is 0.0 and resets_at moved to 15:02:28 plus 7 days, so the window opened with this request and its own reading excludes its own consumption (supports Opus B D5 point 1)",
+   "kind": "real rollout"
+  },
+  {
+   "fixture": "bench/ozmap_rep/tests/fixtures/p3-rollouts/desktop-0601.jsonl",
+   "item": "desktop 0.164.0-alpha, one turn: 34 readings from 06:01:12 to 06:05:12, 44 then 45 from 06:01:58; readings rise within a busy session within minutes",
+   "kind": "real rollout"
+  },
+  {
+   "item": "across the four fixtures no reading decreased within one resets_at window; one window reset is present (test_real_readings_never_decrease_within_one_reset_window)",
+   "kind": "real rollouts"
+  },
+  {
+   "item": "bench/ozmap_rep/tests/test_p3_d5_coverage.py: the Opus B repro of signoff-opus-2.md now blocks; own rollout, concurrent siblings, sequential groups, long sessions, missing or inconsistent starts, unsettled and recovered attempts, maximum percent, freshness",
+   "kind": "fakes"
+  }
+ ],
  "freshness_and_causal_coverage": {
-  "closing_requires": "both signatories accept the coverage predicate (D5) and this freshness rule for codex-cli 0.160.0; only then is status set to established in a re-signed manifest. rulings.annex_problems refuses to bind P3 while status is not established.",
-  "open": [
-   "D5: whether the last rate_limits event of an attempt's own rollout reflects that attempt's own consumption. The event is emitted before the call ends (Astra: do not assume a response generated reading occurs after local attempt completion), so form (i) of the predicate is causal coverage only if both signatories accept these semantics for codex-cli 0.160.0",
-   "whether the reported used_percent lags server side accounting; no evidence on lag exists without an added model call, which P3 forbids"
-  ],
-  "proposal_for_signatories": "the driver note of D5: for every attempt of every previously completed group, the last rate_limits event of that attempt's own rollout, with the gate using the maximum used_percent across those readings and any later owner readings of the same account. Not signed by either signatory.",
-  "status": "not_established"
+  "basis": "owner decision 5 (owner-decisions.md item 5, commit cd83fe4): causal coverage of the latest call group cannot be established without a model call or an authenticated rate limit request, so the driver, under the owner's delegation, replaced it with the static headroom bound below. P3 is established when this manifest records the bound, m with its sources, and U0 at launch.",
+  "causal_coverage": "replaced by headroom_bound; not claimed",
+  "freshness": "the freshness_rule below (owner reading at most 60 minutes old), unchanged",
+  "status": "established",
+  "superseded_open_points": [
+   "server side accounting lag: whether a request that started after an attempt ended already sees that attempt in x-codex-primary-used-percent. The fixtures show monotone readings and a rise within minutes, but at one point resolution they cannot bound the lag, and measuring it needs a model call, which P3 forbids",
+   "signatory acceptance: Astra A did not approve D5 or the 60 minute rule (signoff-astra-2.md); Opus B approved the freshness rule only with point 2, which this candidate implements; both must sign a manifest whose status is established",
+   "operational consequence (Opus B D5 point 4): workers keep --ephemeral, so the only covering source on the live route is an owner session that starts after the previous group ended. A worker rollout can never cover the group immediately before the gate, because its session starts before that group ends. Without an independently authorized owner Codex call between groups, the run stops after the telemetry group (a stop under A4.14.1)"
+  ]
  },
  "freshness_rule": {
-  "basis": "proposal of the implementer (Opus, ruling repair 2026-10-25) for the signatories, with D5; the value bounds consumption of the baseline account by clients that do not write into the owner sessions directory between the reading and the gate. It is config.QUOTA_OWNER_MAX_AGE_MINUTES",
+  "basis": "implementer proposal of 2026-10-25, accepted by Opus B as a selection bound with D5 point 2 (rulings/signoff-opus-2.md); not approved by Astra A (rulings/signoff-astra-2.md). It is config.QUOTA_OWNER_MAX_AGE_MINUTES",
   "enforced_by": "quota.coverage_gate",
   "owner_reading_max_age_minutes": 60,
-  "text": "the latest owner reading (the last rate_limits object of the newest owner session file) must carry an event timestamp; it blocks when that timestamp is more than 5 minutes after the gate time (future) or more than 60 minutes before it (stale). A harvested worker reading must carry an event timestamp that is neither in the future nor more than 5 minutes before the start of the attempt it covers. Without a valid, attributable, fresh owner reading no group is dispatched, even when harvested readings cover every completed attempt. File modification times are never freshness evidence."
+  "text": "the latest owner reading (the last rate_limits object of the newest owner session file) is always required, must carry an event timestamp and blocks when that timestamp is more than 5 minutes after the gate time (future) or more than 60 minutes before it (stale). Harvested worker readings never replace it. Covering readings of older attempts need no freshness of their own: the gate also takes the fresh owner reading and the maximum of every reading. File modification times are never freshness evidence."
+ },
+ "headroom_bound": {
+  "C": "the remaining Codex call allowance under A4.5, evaluation plus telemetry: EVAL_CAPS codex total (62) minus every physical Codex call charged so far in the experiment (run.CellRun.codex_remaining_calls, the experiment ledger plus the run directory)",
+  "C_at_launch": 62,
+  "U0": "the latest owner reading (quota.owner_problem: present, valid, event timestamped, not in the future, baseline account hash, limit_id codex, primary window 10080, at most 60 minutes before the gate), raised to the maximum of every valid harvested worker reading (none while workers keep --ephemeral)",
+  "U0_at_establishment": {
+   "bound_at_establishment": 26.04,
+   "event_timestamp": "2026-10-25T15:02:35.406Z",
+   "note": "the window reset at 15:02:28 UTC; this is not the launch reading, which the run records itself",
+   "percent": 0.0,
+   "source": "owner ~/.codex/sessions/2026/10/25/rollout-2026-10-25T18-02-23-01a17395-8c5b-7d13-bf93-6e23fe9c61bc.jsonl (fixture p3-rollouts/exec-1502.jsonl)"
+  },
+  "U0_at_launch": "recorded by every gate row in evidence/quota-gates.jsonl of the live run directory (fields u0, u0_owner, owner_reading_at, owner_source, m, remaining_calls, factor, bound); the launch value is the row with group pre-cell of the telemetry cell",
+  "U0_limit_at_launch": 53.96,
+  "enforced_by": "run.CellRun.gates (group pre-cell, before every live Codex cell, the telemetry cell included, which is the launch) and run.CellRun.reserve_group (before every dispatch group, under the authentication lock); both call quota.headroom_gate with m from quota.headroom_m, which reads this manifest through config.SIGNED_RULINGS. A missing or invalid m blocks.",
+  "factor": 2,
+  "m": 0.21,
+  "m_unit": "percentage points of primary used_percent per physical Codex call of the route",
+  "method": {
+   "assumptions": [
+    "used_percent is monotone within one reset window (no decrease in any preserved reading)",
+    "a reading reflects at most the consumption accounted when its request started; the upper reading was taken 28 minutes after the latest possible end of the last pilot call, so an accounting lag below 28 minutes is covered",
+    "three pilot calls (two telemetry calls of live-6a518ece47ab and call a5a07e4405 of codex-boolq-A, all process_error) carry no usage; they are counted in N and left out of the token shares, which raises every share; their elapsed times (11.8 s, 12.1 s, 66.6 s) are below that of the longest call with usage (83.9 s)",
+    "quota consumption of a call is at most proportional to one of the three token weightings; the factor 2 of the bound is the margin for calls heavier than the largest pilot call"
+   ],
+   "estimate": {
+    "calls": 35,
+    "calls_with_usage": 32,
+    "interval": {
+     "first_call_reserved_at": "2026-10-24T12:57:37.570Z",
+     "last_call_latest_end": "2026-10-24T14:11:58.193Z",
+     "lower": {
+      "percent": 33.0,
+      "resets_at": 1793382106,
+      "source": "owner-083918.jsonl",
+      "timestamp": "2026-10-24T08:44:12.712Z"
+     },
+     "upper": {
+      "percent": 35.0,
+      "resets_at": 1793382106,
+      "session_started_at": "2026-10-24T14:40:11.945Z",
+      "source": "owner-144011.jsonl",
+      "timestamp": "2026-10-24T14:40:17.595Z"
+     }
+    },
+    "m": 0.21,
+    "per_call_upper_bounds": {
+     "input_plus_output": 0.116296,
+     "mean": 0.085714,
+     "output": 0.207699,
+     "uncached_input_plus_output": 0.135019
+    },
+    "resolution": 1.0,
+    "rise": 2.0,
+    "rise_upper_bound": 3.0
+   },
+   "text": "quota.estimate_m. The pilot ran every Codex call with --ephemeral, so no rollout of the route holds a reading of its own. Its consumption is bracketed by owner readings of the same account and bucket: the latest reading before the first pilot call was reserved and the earliest reading from a session that started after the last call could have ended (reservation plus the 1320 s child timeout). The rise between them plus the one point reading resolution is an upper bound on what all calls inside consumed together; other consumption in the interval (the tail of an owner Astra call, the owner desktop app) only raises it. m is that bound times the largest share of one call: 1/N, and the share of the largest call in the tokens of the calls with usage under three weightings (input plus output, uncached input plus output, output only); the maximum, rounded up to 0.01."
+  },
+  "pre_cell_owner_reading_check": "the D5 owner reading check (quota.owner_problem) stays as an additional gate in both places: no owner reading, an invalid, unattributable, future or stale one stops before the bound is evaluated",
+  "rule": "a live Codex cell and every synchronized Codex dispatch group are released only when U0 + factor x C x m < stop_percent and U0 < stop_percent",
+  "sources": {
+   "excluded": [
+    "bench/ozmap_rep/tests/fixtures/p3-rollouts (exec-0322, exec-0358, exec-1502: owner Astra calls of gpt-6-astra; desktop-0601: the owner desktop app with gpt-6-sol): not the route",
+    "owner exec calls of gpt-6-astra and Claude Code calls of gpt-6.1-sol at medium or low effort: other models or efforts than the route"
+   ],
+   "owner_rollouts_fixture": "bench/ozmap_rep/tests/fixtures/p3-headroom/owner-*.jsonl, sanitized from every owner rollout of the baseline account with a reading whose session started on 2026-10-24 between 08:00 and 15:20 UTC (INDEX.json names each source file and its sha256; build.py rebuilds them)",
+   "pilot_calls_fixture": "bench/ozmap_rep/tests/fixtures/p3-headroom/pilot-calls.json (35 calls: call id, reservation time from budget.sqlite, child timeout and route from spec.json, outcome, elapsed time and usage from execution.json)",
+   "pilot_runs": [
+    "bench/ozmap/runs/live-6a518ece47ab (2 telemetry calls)",
+    "bench/ozmap/runs/live-538bcde9a80b (2 telemetry calls)",
+    "bench/ozmap/runs/live-e744a1525dbf (2 telemetry calls)",
+    "bench/ozmap/runs/live-bb76c7b0f329 (2 telemetry, 2 bootstrap, 25 dispatch calls)"
+   ],
+   "replication_telemetry_runs": "none: no live replication run exists (~/.ozmap_rep/runs holds only experiment.lock), so no replication telemetry rollout is available",
+   "route": {
+    "cli_version": "codex-cli 0.160.0",
+    "effort": "high",
+    "model": "gpt-6.1-sol"
+   },
+   "scan": "all 179 owner rollouts of 2026-10-22 to 2026-10-25 were scanned for metadata only: no reading of the baseline account lies between 08:44:12 and 14:40:17 UTC on 2026-10-24"
+  },
+  "stop_percent": 80
  },
  "repairs": {
-  "2026-10-25": "blockers P3 (Astra A) and OB-P3 (Opus B): account hashes required and equal, bucket identity enforced, event timestamp required, freshness rule added and enforced, annex status enforced by rulings.annex_problems; regression tests in bench/ozmap_rep/tests/test_ruling_repairs.py"
+  "2026-10-25": "blockers P3 and OB-P3 (see the bound manifest)",
+  "2026-10-25 D5": "strict causal coverage predicate with the session floor (this candidate)",
+  "2026-10-25 owner decision 5": "static headroom bound in place of the D5 causal coverage; status established (this manifest)"
  },
  "selection_and_validation": [
   "select the latest relevant reading first, then validate it; a malformed latest reading blocks and an older valid reading is never substituted",
   "reject missing evidence, booleans, nonnumeric or nonfinite values, values outside [0, 100], unexplained future timestamps, account or bucket mismatches",
-  "no model call is added, repeated or relabeled to obtain a reading; no stale reading or estimated headroom exception",
+  "no model call is added, repeated or relabeled to obtain a reading; no stale reading exception; the only headroom rule is headroom_bound (owner decision 5)",
   "reject a reading without an account hash, or when the baseline account hash is unknown; reject limit_id other than codex and window_minutes other than 10080; reject a reading without an event timestamp; reject a stale owner reading (freshness_rule)"
  ],
  "sources": {
@@ -57,7 +172,9 @@
   "field": "the top level timestamp of the rollout event that carries rate_limits (ISO 8601, UTC, Z suffix)",
   "future": "a timestamp more than 5 minutes after the gate time blocks",
   "meaning": "when the CLI recorded the token_count event of a turn; it is emitted inside the call, before the call ends",
-  "never": "file modification times are never freshness evidence (P3)"
+  "never": "file modification times are never freshness evidence (P3)",
+  "request_start": "codex-cli 0.160.0 parses the x-codex-primary-used-percent, x-codex-primary-window-minutes and x-codex-primary-reset-at response headers (strings of codex.exe); a reading therefore reflects at most the consumption the server had accounted when the request that returned it started",
+  "session_floor": "the top level timestamp of the session_meta event; in the 0.160.0 exec fixtures it precedes task_started by 0 to 4 ms"
  },
  "value_semantics": {
   "field": "primary.used_percent",

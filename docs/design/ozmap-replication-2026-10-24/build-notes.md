@@ -694,3 +694,87 @@ inside it; D5 refuses it. The 15:02 exec reading of 0.0 opened a new window, so 
 | `python -m pytest bench/ozmap_rep -q` | 695 passed |
 | dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
 | `rulings.readiness_problems()` | two problems: P3 annex status `not_established`, D6 not settled |
+
+## P3 established by the static headroom bound (owner decision 5, 2026-10-25)
+
+Implementer: a fresh Opus workflow subagent. No Astra call, no Codex model request, no external request, no
+preparation or review call (nothing added to the call ledger); sealed ASTs and ops content not read; bench/ozmap, the
+core oz_* modules and the ops are unchanged. Owner decision 5 (owner-decisions.md item 5) replaces the D5 causal
+coverage of ruling P3 with a static headroom bound.
+
+### The rule as implemented
+
+* `quota.headroom_gate`: a live Codex cell and every synchronized Codex dispatch group are released only when
+  U0 + 2 x C x m < 80 and U0 < 80. U0 is the latest owner reading after the D5 owner reading check
+  (`quota.owner_problem`, extracted unchanged from `coverage_gate`: present, valid, event timestamped, not in the
+  future, baseline account hash, limit `codex`, window 10080, at most 60 minutes old), raised to every valid
+  harvested worker reading.
+* C (`quota.unreflected_allowance`): the A4.5 Codex allowance (EVAL_CAPS codex total, 62, evaluation plus telemetry)
+  that U0 cannot contain, which is the cap minus the charged calls that ended before the owner reading's session
+  started. This equals the remaining allowance plus every charged call launched after the reading, so a fresh but
+  earlier reading never hides calls made since. Without a session start no call counts as reflected and C is 62.
+* m (`quota.headroom_m`) is read from the bound P3 manifest (`headroom_bound.m`); a missing manifest, a missing or
+  invalid m, or a factor or stop line other than config (`QUOTA_HEADROOM_FACTOR` 2, `CODEX_STOP_PERCENT` 80) stops.
+* Enforcement: `CellRun.gates` runs the gate before every live Codex cell (row `group: pre-cell` in
+  evidence/quota-gates.jsonl; the telemetry cell is the launch), after the telemetry certificate check;
+  `CellRun.reserve_group` runs it before every dispatch group under the authentication lock, as before. Every row
+  records u0, u0_owner, owner_reading_at, owner_source, m, cap, charged, reflected_calls, remaining_calls, factor and
+  bound. The D5 coverage result is kept per row as `d5_uncovered_informational` and does not block.
+
+### m = 0.21 (method and sources)
+
+The pilot ran every Codex call with `--ephemeral`, so no rollout of the route (codex-cli 0.160.0, gpt-6.1-sol, effort
+high) holds a reading of its own, and no replication telemetry run exists yet. `quota.estimate_m` brackets the 35
+physical Codex calls of the four pilot run directories (8 telemetry, 2 bootstrap, 25 dispatch; reserved 12:57:37 to
+13:49:58 UTC on 2026-10-24, child timeout 1320 s) by owner readings of the same account and bucket:
+
+| bracket | reading | event time (UTC) | source |
+|---|---|---|---|
+| lower: latest before the first reservation | 33 | 08:44:12 | owner exec rollout of 08:39:18 |
+| upper: earliest from a session started after 14:11:58 (last reservation plus timeout) | 35 | 14:40:17 | owner desktop rollout of 14:40:11 (0.164.0-alpha) |
+
+The rise of 2 points plus the 1 point resolution bounds what all 35 calls consumed together (3 points); other
+consumption in the interval only raises it. Per call upper bounds: mean 0.0857; largest call share of the tokens of
+the 32 calls with usage, input plus output 0.1163, uncached input plus output 0.1350, output only 0.2077. m is the
+maximum rounded up: 0.21. At launch C = 62, so U0 must be below 53.96; the owner reading at establishment is 0 (window
+reset at 15:02 UTC). A metadata only scan of all 179 owner rollouts of 2026-10-22 to 2026-10-25 found no reading of
+the account between the two brackets. Excluded as not the route: the p3-rollouts fixtures (gpt-6-astra exec calls and
+the desktop app with gpt-6-sol) and the Claude Code calls of gpt-6.1-sol at medium or low effort. Assumptions are in
+the manifest (`headroom_bound.method.assumptions`): monotone readings in one window, an accounting lag below 28
+minutes, three process_error calls without usage counted in N and left out of the token shares.
+
+Evidence: `bench/ozmap_rep/tests/fixtures/p3-headroom/` (`build.py` rebuilds it; `INDEX.json` names each of the 15
+sanitized owner rollouts and its source sha256; `pilot-calls.json` holds call id, reservation time, timeout, route,
+outcome, elapsed time and token counts of the 35 calls; no prompt, reply or token text).
+
+### Ruling and binding
+
+* `rulings/P3-quota-source-manifest.json` (sha256 5ee1f954) is rebuilt from the D5 candidate with
+  `freshness_and_causal_coverage.status` `established`, its basis (owner decision 5), and `headroom_bound` (rule,
+  factor, stop line, m, U0 and C definitions, U0 limit at launch, where U0 at launch is recorded, method, estimate,
+  assumptions, sources). The candidate file stays as the record of the D5 work.
+* `rulings/P3-quota-observation.md` (sha256 51fd6602) gains the section "Owner decision 5" and a status note citing
+  it; the verbatim ruling text is unchanged. It states that the signatures cover the text before that section and the
+  previous annex, and that the amendment binds by owner decision, not by a new signature.
+* `config.SIGNED_RULINGS['P3']` now binds those two hashes. `rulings.readiness_problems()` reports only D6.
+
+### Tests
+
+* New: `tests/test_p3_headroom.py` (33 tests): pass, fail (U0 below 80 with the bound at or above 80, and exactly 80),
+  missing or invalid m (gate and manifest), stale U0 (61 minutes) with a 59 minute control, no, foreign or future
+  owner reading, harvested readings, C counting calls after the owner reading, m recomputed from the fixtures equal
+  to the manifest, a window reset or a missing bracket refused, D5 coverage informational only, and three live
+  harness tests (launch refused on the bound, launch refused without m, U0 and the bound recorded at launch).
+* Changed: `tests/test_council_r1.py::test_c4_a_stale_codex_reading_after_live_calls_refuses_the_next_codex_cell`
+  relied on D5 refusing a fresh reading from before the telemetry calls. Under decision 5 that reading is admissible
+  with those calls kept in C, so the test now makes the reading's event timestamp 61 minutes old (the freshness rule
+  that stays); new `test_c4_d5_a_reading_from_before_the_telemetry_calls_keeps_them_in_c` checks C. No acceptance or
+  red team test changed.
+
+### Test results
+
+| suite | result |
+|---|---|
+| `python -m pytest bench/ozmap_rep -q` | 729 passed |
+| dry run `python -m bench.ozmap_rep.run dry --run-dir <D>` | exit 0: 16 of 16 cells complete, 52 fake calls, 0 external calls |
+| `rulings.readiness_problems()` | one problem: D6 not settled (P3 binds) |

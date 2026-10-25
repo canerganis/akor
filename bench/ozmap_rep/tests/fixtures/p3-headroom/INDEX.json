@@ -1,0 +1,114 @@
+{
+ "about": "Build the owner decision 5 evidence for m (ruling P3): sanitized owner rollouts around the pilot window and the\nmetadata of every physical Codex call of the pilot run directories.\n\nOwner rollouts: every owner session of the baseline account whose session started on 2026-10-24 between 08:00 and\n15:20 UTC and that holds a rate limit reading. Only session_meta (CLI fields, account id replaced by\nacct-fixture-baseline after a hash comparison), task_started, task_complete and token_count events (timestamp and\nrate_limits) survive; no prompt, reply, instruction or token text is kept.\n\nPilot calls: every call id listed in `new_calls` of an execution.json of a Codex attempt or telemetry run under\nbench/ozmap/runs/live-* (read only; bench/ozmap is frozen), with the reservation time from that run directory's\nbudget.sqlite, the child timeout of its spec.json, the outcome, the elapsed time and the token usage counts.\n\nRun from the repo root: python bench/ozmap_rep/tests/fixtures/p3-headroom/build.py\n",
+ "owner_rollouts": [
+  {
+   "fixture": "owner-080141.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T11-01-37-01a16ced-f931-7be0-8eb6-d43ca819a7f0.jsonl",
+   "source_sha256": "5c926b5b033436a5319ff2e7fd4a1a01b1760d7f885226bffd2008c33ff4e076",
+   "session_started_at": "2026-10-24T08:01:41.407Z",
+   "readings": 24
+  },
+  {
+   "fixture": "owner-081410.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T11-14-06-01a16cf9-6499-7ee2-84cf-c4faee4b0998.jsonl",
+   "source_sha256": "644fae4f10f81962b3a439a11753ac4a84fe51c592ddbb2ece2d5327d07771f4",
+   "session_started_at": "2026-10-24T08:14:10.430Z",
+   "readings": 3
+  },
+  {
+   "fixture": "owner-081507.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T11-15-04-01a16cfa-47b2-70d2-8464-3acc8b6a9a22.jsonl",
+   "source_sha256": "5e8492ce9d4fcd886e722ce76a3a20b3fa96657babc4e640d643caa5f44a0a66",
+   "session_started_at": "2026-10-24T08:15:07.240Z",
+   "readings": 1
+  },
+  {
+   "fixture": "owner-081934.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T11-19-32-01a16cfe-5e4c-73f2-9e21-4e0d774fcb76.jsonl",
+   "source_sha256": "18f20844ff63bb4518b260efa765f08092f421d4e4f2cba2838f52985153998c",
+   "session_started_at": "2026-10-24T08:19:34.249Z",
+   "readings": 5
+  },
+  {
+   "fixture": "owner-082204.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T11-22-02-01a16d00-ab79-7221-b072-ff8b96113c58.jsonl",
+   "source_sha256": "176dee4e91ffe45b6283360d722ee36f9b9ee4295cb947dc81364b69cc6d6bd5",
+   "session_started_at": "2026-10-24T08:22:04.693Z",
+   "readings": 17
+  },
+  {
+   "fixture": "owner-083345.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T11-33-43-01a16d0b-5adc-7ba1-a771-a7e55abe29b5.jsonl",
+   "source_sha256": "cba52a325103b18a16b4ac6f9877060b106b57a2fe6949deb444593d06b98f53",
+   "session_started_at": "2026-10-24T08:33:45.232Z",
+   "readings": 1
+  },
+  {
+   "fixture": "owner-083918.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T11-39-17-01a16d10-7180-7cb2-a8b1-f30cf45e41ee.jsonl",
+   "source_sha256": "c4cb771f23295407a2c934b4dcbd877966b8802ad1132db1521d0e4b98af7436",
+   "session_started_at": "2026-10-24T08:39:18.699Z",
+   "readings": 10
+  },
+  {
+   "fixture": "owner-144011.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T17-40-10-01a16e5a-d9bb-7b80-af41-32cfa8b446da.jsonl",
+   "source_sha256": "93ba2618754b15201bb57c311423dcec308da35a9d29268da225edd85a4399b8",
+   "session_started_at": "2026-10-24T14:40:11.945Z",
+   "readings": 180
+  },
+  {
+   "fixture": "owner-144035.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T17-40-33-01a16e5b-3368-7432-bb1a-f006d5e56ba7.jsonl",
+   "source_sha256": "69dd4340424fd4c62cf7981d205ef70e5ce274576b249bb4506416943005d08e",
+   "session_started_at": "2026-10-24T14:40:35.416Z",
+   "readings": 1
+  },
+  {
+   "fixture": "owner-144937.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T17-49-36-01a16e63-78f5-7ca3-a8b0-167e448493c1.jsonl",
+   "source_sha256": "826e91367703abfe75bdb9124e92d23ec8fe29a9d5154280f9ae78707a120146",
+   "session_started_at": "2026-10-24T14:49:37.630Z",
+   "readings": 2
+  },
+  {
+   "fixture": "owner-145743.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T17-57-41-01a16e6a-e0b6-7130-948b-1ff4c77fce7a.jsonl",
+   "source_sha256": "a7e97e8c3279872dd20334e2e41b9b7914c112a2b1c7336c55419f3dec4b4d3e",
+   "session_started_at": "2026-10-24T14:57:43.319Z",
+   "readings": 1
+  },
+  {
+   "fixture": "owner-150404.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T18-04-02-01a16e70-b445-7aa0-8b5b-4bd942ef4c4d.jsonl",
+   "source_sha256": "0df13a52f549f79c4dc4efba52f98dd086bc058fe7825453fd7d16ae0a46e435",
+   "session_started_at": "2026-10-24T15:04:04.481Z",
+   "readings": 1
+  },
+  {
+   "fixture": "owner-151006.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T18-10-04-01a16e76-380c-7e30-85e6-0a7d410b1ff0.jsonl",
+   "source_sha256": "243c74f0ccdeb1a8097e06a57bfe4e4445a46921330cab50f8d496ca4ddc6015",
+   "session_started_at": "2026-10-24T15:10:06.053Z",
+   "readings": 1
+  },
+  {
+   "fixture": "owner-151425.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T18-14-23-01a16e7a-2380-7f10-bf7e-8255b48f978b.jsonl",
+   "source_sha256": "0009396b386b8dfe38ce105d0565f48f95237c0de708a4dd6d6f9c08a5d6b603",
+   "session_started_at": "2026-10-24T15:14:25.427Z",
+   "readings": 1
+  },
+  {
+   "fixture": "owner-151601.jsonl",
+   "source": "owner ~/.codex/sessions/2026/10/24/rollout-2026-10-24T18-16-00-01a16e7b-a8b6-7bb1-aa64-cd3bc67e6db7.jsonl",
+   "source_sha256": "e21bcc818337bc3a246d3afa151ccde261bf1fa03b0fb68bdfbdd9a7cff8c749",
+   "session_started_at": "2026-10-24T15:16:01.937Z",
+   "readings": 1
+  }
+ ],
+ "pilot_calls": {
+  "fixture": "pilot-calls.json",
+  "count": 35
+ }
+}

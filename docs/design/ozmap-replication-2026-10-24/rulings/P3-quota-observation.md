@@ -4,6 +4,8 @@ Slot P3 of config.REQUIRED_RULINGS (bench/ozmap_rep/rulings.py). Source: council
 
 Status: signed by Astra A as prospective protocol text (joint decision, section 3). Opus B confirmation by diff is pending, and this file is not bound in config.SIGNED_RULINGS. A binding needs this file countersigned (the line naming Opus B as signer) and its new sha256 recorded in the slot.
 
+Amended by owner decision 5 (owner-decisions.md item 5, 2026-10-25): see the section "Owner decision 5" at the end. The verbatim ruling text below is unchanged; its causal coverage requirement for P3 is replaced by the static headroom bound recorded there.
+
 ## Ruling text (verbatim)
 
 ### P3 (A4.12)
@@ -42,9 +44,9 @@ annex.
 
 | kind | path | sha256 |
 |---|---|---|
-| quota_source_manifest | docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json | 3646deacbbf5afee8130bf6c79dc8858a9159502af0825f166fc978bb8ce51de |
+| quota_source_manifest | docs/design/ozmap-replication-2026-10-24/rulings/P3-quota-source-manifest.json | 5ee1f954de3d639b3c80377b69d55f461980e9ac1c483d4870da6bdd89123a71 |
 
-The previous annex (sha256 cadd1c8682e5133dbc5d36abc3dd9705f3d488b9f2465c18ae733d06bfa9e26a) is replaced by the repair of 2026-10-25 below.
+The annex signed by both signatories (sha256 3646deacbbf5afee8130bf6c79dc8858a9159502af0825f166fc978bb8ce51de, status `not_established`) is replaced under owner decision 5 (section "Owner decision 5" below). The annex before it (sha256 cadd1c8682e5133dbc5d36abc3dd9705f3d488b9f2465c18ae733d06bfa9e26a) was replaced by the repair of 2026-10-25 below.
 
 ## Repair of 2026-10-25 (blockers P3 and OB-P3)
 
@@ -73,3 +75,16 @@ Source: rulings/signoff-astra-2.md. The earlier account hash blocker is closed b
 Signed: Opus B opusb2-20261025T033012Z
 
 Source: rulings/signoff-opus-2.md. Confirmed by diff: the text above equals lines 205 to 217 and 307 to 321 of council-build-deadlock-r2-joint.md (sha256 fae12460). OB-P3 is closed by repair 62285ac (reproductions in signoff-opus-2.md). The signature covers this text and the annex 3646deac with status `not_established`; it does not approve D5 or the 60 minute freshness rule, and a new manifest needs a new Opus B line. Opus B position on D5 for that manifest: an owner reading covers an attempt only when its own request started after the attempt ended; form (i) never covers its own attempt.
+
+## Owner decision 5 (2026-10-25)
+
+Source: docs/design/ozmap-replication-2026-10-24/owner-decisions.md, item 5 (commit cd83fe4). Causal coverage of the latest call group cannot be established without a model call or an authenticated rate limit request (rulings/P3-quota-source-manifest-candidate.json). P3 exists to keep Codex below the owner's 80% stop line. Under the owner's delegation the driver replaced the causal coverage requirement of this ruling ("causal coverage of all previously completed replication groups") and its sentence "No stale-reading or estimated-headroom exception is authorized" with one static headroom rule:
+
+* A live Codex cell (the telemetry cell is the launch) and every synchronized Codex dispatch group are released only when the fresh owner reading U0 satisfies U0 + 2 x C x m < 80 and U0 < 80.
+* U0 is the latest owner reading of the baseline account, limit `codex`, window 10080, at most 60 minutes old (the D5 owner reading check, quota.owner_problem), raised to every valid harvested worker reading.
+* C is the remaining Codex call allowance under A4.5, evaluation plus telemetry (62 at launch, minus every physical Codex call charged in the experiment).
+* m = 0.21 percentage points per call: the largest per call increase from the preserved real calls of the route (35 pilot calls in bench/ozmap/runs/live-*, telemetry included), bracketed by owner readings 33 (2026-10-24 08:44:12 UTC) and 35 (14:40:17 UTC), the 2 point rise plus 1 point resolution times the largest share of one call (output token weighting). Method, sources and assumptions: annex `headroom_bound`.
+* At launch U0 must therefore be below 53.96. Every gate row records U0, m, C and the bound in evidence/quota-gates.jsonl; the launch value is the `pre-cell` row of the telemetry cell.
+* The D5 pre-cell owner reading check stays as an additional gate: no owner reading, or an invalid, unattributable, future dated or stale one, stops before the bound is evaluated. A missing or invalid m stops.
+
+The annex records `freshness_and_causal_coverage.status` `established` on this basis, so rulings.annex_problems binds P3. The signatures above cover the text before this section and the earlier annex; this section and the new annex are bound by owner decision 5, not by a new signature of Astra A or Opus B. Regression tests: bench/ozmap_rep/tests/test_p3_headroom.py.

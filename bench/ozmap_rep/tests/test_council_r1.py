@@ -1059,12 +1059,31 @@ def test_item23_caps_follow_the_signed_a4_13_text():
 # ========================================================================= changes: C4, C7, C21, quota readings
 
 def test_c4_a_stale_codex_reading_after_live_calls_refuses_the_next_codex_cell(live):
+    """Owner decision 5 replaced the D5 causal coverage: a reading taken before the telemetry calls no longer refuses
+    the next cell by itself (the headroom bound keeps those calls in C). A reading whose EVENT timestamp is more than
+    60 minutes old still refuses it; the file time is never used."""
     assert live.telemetry() == 0
     path = next(live.sessions.rglob('*.jsonl'))
-    old = time.time() - 3600
-    os.utime(path, (old, old))
+    stale = (dt.datetime.now(dt.timezone.utc) - dt.timedelta(minutes=config.QUOTA_OWNER_MAX_AGE_MINUTES + 1))
+    stamp = stale.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+    rows = [dict(json.loads(line), timestamp=stamp) for line in path.read_text(encoding='utf-8').splitlines()]
+    path.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')
+    now = time.time() + 5
+    os.utime(path, (now, now))
     code = run.CellRun(run.spec_by_id('codex-materials-cold-A'), live.opts()).run()
     assert code == config.EXIT_QUOTA
+
+
+def test_c4_d5_a_reading_from_before_the_telemetry_calls_keeps_them_in_c(live):
+    """Owner decision 5: the next cell may run on a fresh reading taken before the telemetry calls, but C then
+    counts those calls as not reflected (the whole cap of 62), so U0 + 2 x 62 x m is checked."""
+    assert live.telemetry() == 0
+    assert run.CellRun(run.spec_by_id('codex-materials-cold-A'), live.opts()).run() == 0
+    rows = [g for g in run.jsonl(live.run_dir / 'evidence' / 'quota-gates.jsonl')
+            if g.get('group') == 'pre-cell' and g.get('cell') == 'codex-materials-cold-A']
+    assert rows and rows[0]['ok'] and rows[0]['charged'] > 0 and rows[0]['reflected_calls'] == 0
+    assert rows[0]['remaining_calls'] == config.EVAL_CAPS['codex']['total']
+    assert rows[0]['bound'] == rows[0]['u0'] + 2 * config.EVAL_CAPS['codex']['total'] * rows[0]['m']
 
 
 def test_c7_positive_cache_write_counter_is_unverified(tmp_path, monkeypatch):

@@ -1296,16 +1296,26 @@ class CellRun:
         return rows
 
     def codex_quota_gate(self):
-        """The P3 gate before every synchronized Codex dispatch group (council round 2, items 31, B8, RT2.5): every
-        completed live Codex call of the experiment covered by an observation from a session that started after it
-        ended (D5: never its own rollout, never a concurrent sibling), the latest owner reading valid and at most 60
-        minutes old, the highest percentage below 80. Live mode reads the owner sessions only (RT3.3)."""
+        """The P3 gate before every synchronized Codex dispatch group and before every live Codex cell (owner decision
+        5, replacing the D5 causal coverage): the latest owner reading valid, attributable, at most 60 minutes old and
+        below 80 (the D5 owner reading check), and U0 + 2 x C x m < 80 with C the remaining Codex allowance and m the
+        largest per call increase recorded in the bound P3 manifest. Live mode reads the owner sessions only
+        (RT3.3)."""
         if self.opts.mode == 'live' and not _same(self.opts.sessions_dir, config.CODEX_SESSIONS_DEFAULT):
             return {'ok': False, 'percent': None, 'uncovered': [], 'sessions_dir': str(self.opts.sessions_dir),
                     'reason': 'live mode reads the owner Codex sessions only; a named sessions directory is refused '
                               '(A4.12, RT3.3)'}
-        return quota.coverage_gate(self.experiment_attempts(), self.opts.sessions_dir, self.harvested_observations(),
-                                   isolation.account_sha256(self.opts.baseline))
+        m, problem = quota.headroom_m()
+        # C: the A4.5 Codex allowance (evaluation plus telemetry) not reflected in the owner reading: the remaining
+        # allowance plus every charged call that did not end before the reading's session started
+        g = quota.headroom_gate(self.opts.sessions_dir, isolation.account_sha256(self.opts.baseline), None, m,
+                                harvested=self.harvested_observations(), attempts=self.experiment_attempts(),
+                                cap=config.EVAL_CAPS['codex']['total'],
+                                charged=self.budget().physical_total('codex'))
+        if problem and g.get('u0') is not None:
+            # the owner reading passed; the gate stops on why m is unknown (missing m, owner decision 5)
+            g = dict(g, ok=False, reason=problem)
+        return g
 
     def owner_auth(self):
         return isolation.owner_auth_paths(self.opts.base_env) if self.opts.mode == 'live' else []
@@ -1385,6 +1395,13 @@ class CellRun:
                     if problems:
                         raise Stop(config.EXIT_TELEMETRY, f'telemetry certificate not established (A4.2): '
                                                           f'{problems[:5]}')
+                # owner decision 5: the pre-cell owner reading check and the headroom bound, at launch (the telemetry
+                # cell) and before every later cell; the dispatch groups repeat it under the authentication lock
+                g = self.codex_quota_gate()
+                _append(self.run_dir, 'evidence/quota-gates.jsonl', dict(g, group='pre-cell', cell=self.spec['id'],
+                                                                         at=_now()))
+                if not g['ok']:
+                    raise Stop(config.EXIT_QUOTA, g['reason'])
         _, problems = bootstrap_mod.validate_classification()
         if problems:
             raise Stop(config.EXIT_CLASSIFICATION, f'classification invalid (A4.6): {problems[:5]}')

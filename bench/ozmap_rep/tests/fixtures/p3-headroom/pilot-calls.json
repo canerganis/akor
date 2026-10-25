@@ -1,0 +1,760 @@
+{
+ "about": "every physical Codex call of the pilot run directories bench/ozmap/runs/live-* (build.py)",
+ "calls": [
+  {
+   "call_id": "69b0f37db26341b1b3380893c20dda7c",
+   "run": "live-538bcde9a80b",
+   "source": "live-538bcde9a80b/telemetry/telemetry-1/execution.json",
+   "reservation": "telemetry-1",
+   "reserved_at": "2026-10-24T13:04:41.937Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 19422,
+   "usage": {
+    "input_tokens": 29694,
+    "cached_input_tokens": 0,
+    "output_tokens": 46,
+    "reasoning_output_tokens": 28
+   }
+  },
+  {
+   "call_id": "2c0594930649486281d184d7068bfa95",
+   "run": "live-538bcde9a80b",
+   "source": "live-538bcde9a80b/telemetry/telemetry-2/execution.json",
+   "reservation": "telemetry-2",
+   "reserved_at": "2026-10-24T13:05:03.574Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "17ba479c30d10f436756158e3ea44fdf8ee1f8657e4e2e2e21d34b2af691f1eb",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 10078,
+   "usage": {
+    "input_tokens": 29692,
+    "cached_input_tokens": 0,
+    "output_tokens": 43,
+    "reasoning_output_tokens": 25
+   }
+  },
+  {
+   "call_id": "fea6cf6ab08c44fa8ce584b905aa162c",
+   "run": "live-6a518ece47ab",
+   "source": "live-6a518ece47ab/telemetry/telemetry-1/execution.json",
+   "reservation": "telemetry-1",
+   "reserved_at": "2026-10-24T12:57:37.570Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "cb15ea806ec5b4398ae413dcb319011da55d5d0d99a9eccc2d5a095b56880671",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "process_error",
+   "elapsed_ms": 11812,
+   "usage": null
+  },
+  {
+   "call_id": "b79b3e78ca654199b56ea31d65dbc51f",
+   "run": "live-6a518ece47ab",
+   "source": "live-6a518ece47ab/telemetry/telemetry-2/execution.json",
+   "reservation": "telemetry-2",
+   "reserved_at": "2026-10-24T12:57:51.278Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "cb15ea806ec5b4398ae413dcb319011da55d5d0d99a9eccc2d5a095b56880671",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "process_error",
+   "elapsed_ms": 12125,
+   "usage": null
+  },
+  {
+   "call_id": "ec58bf5390df425bb0d1a5e0879f8ea6",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-A/attempts/a7xixcu4mypnyit6wo2qaqzlwf5nuf7e6chkfttyyxm67cm3dbrqq/execution.json",
+   "reservation": "qrxysbjznuexhvoqydvt5sf7ephwsgfa4xcfamtcm6s3d322pfigq",
+   "reserved_at": "2026-10-24T13:48:36.511Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 47484,
+   "usage": {
+    "input_tokens": 40819,
+    "cached_input_tokens": 0,
+    "output_tokens": 2671,
+    "reasoning_output_tokens": 322
+   }
+  },
+  {
+   "call_id": "9151ca708c534448b0ab2caa9bf94386",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-A/attempts/ar7n5aq4thanm2ox37exvhgzav3lbpq3valyoyp6qe3eflor3zywq/execution.json",
+   "reservation": "qwc54sntu7qthvqhc6qb3xr7wfmbn7obe3kijxvyqd7attmjq3qya",
+   "reserved_at": "2026-10-24T13:48:36.681Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 37329,
+   "usage": {
+    "input_tokens": 39513,
+    "cached_input_tokens": 0,
+    "output_tokens": 2837,
+    "reasoning_output_tokens": 504
+   }
+  },
+  {
+   "call_id": "a5a07e4405f74240ba425e15dcd10e8b",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-A/attempts/au6anhmeymei65rda4jumllzoho7iz554lq63vmpo35iiotx4c7lq/execution.json",
+   "reservation": "qcljjl42hi7f6ny3ulwktmivhaiyzjjhphf4lqit3towlg57r4haa",
+   "reserved_at": "2026-10-24T13:48:36.868Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "process_error",
+   "elapsed_ms": 66640,
+   "usage": null
+  },
+  {
+   "call_id": "aaa847ac56e94f9d96bc0f57bb384d75",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-A/attempts/avol3jt52545o2qvercgh2fzdze35noiu7eaazm6lpafqijmsaxjq/execution.json",
+   "reservation": "qvfzzbm3wpohf7zhcfuueibrbgj5jupc2ebs3xfau33kpronsklla",
+   "reserved_at": "2026-10-24T13:48:36.770Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "job_error",
+   "elapsed_ms": 78359,
+   "usage": {
+    "input_tokens": 40259,
+    "cached_input_tokens": 0,
+    "output_tokens": 3819,
+    "reasoning_output_tokens": 1337
+   }
+  },
+  {
+   "call_id": "ef176334359e4de68892630c65749a25",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-B/attempts/acvrciuoprkape357jltluwep7q5yfjm5sc4aubmekzod4ihdrz4q/execution.json",
+   "reservation": "qxi4afqpkalugbm7gy6ijlimyk6lsvsvrcdh5wzxyvvjkvfyk7kaa",
+   "reserved_at": "2026-10-24T13:47:15.404Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 33594,
+   "usage": {
+    "input_tokens": 37205,
+    "cached_input_tokens": 28160,
+    "output_tokens": 2079,
+    "reasoning_output_tokens": 316
+   }
+  },
+  {
+   "call_id": "92870cacf933484ba0c23952e80ec65c",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-B/attempts/ahvodqugjualdz6zhikxifwn25ui7m4evqzurjg2waqf7f7p6pb6a/execution.json",
+   "reservation": "q6s6bqri27oupm7n334exyoooevur4xh3c3cx3jqnrcszqwrcl3na",
+   "reserved_at": "2026-10-24T13:46:21.933Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 49812,
+   "usage": {
+    "input_tokens": 42609,
+    "cached_input_tokens": 28160,
+    "output_tokens": 2959,
+    "reasoning_output_tokens": 458
+   }
+  },
+  {
+   "call_id": "dda4d7569cc847829c71c6f057be4ce9",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-B/attempts/ar5gzdijexaj5eyh7xevva7l4r3wey6sqk62i2sgn2rqnfmrvj2hq/execution.json",
+   "reservation": "qyipayn3bqsxzqh5tdebe4lgxosko3penquuo3om3qhw6szpvvpfa",
+   "reserved_at": "2026-10-24T13:47:15.495Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "job_error",
+   "elapsed_ms": 76750,
+   "usage": {
+    "input_tokens": 37585,
+    "cached_input_tokens": 28160,
+    "output_tokens": 2792,
+    "reasoning_output_tokens": 904
+   }
+  },
+  {
+   "call_id": "186633e9b0f64f71ac4c1225a11f2ded",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-B/attempts/awombzdxemgz7zapkqqjqqcc5d56i4ko4c3g4qoahzcwcfnb2zfsq/execution.json",
+   "reservation": "qcl5xr5y2bbjbkfrt7pqv77fq6lt5smjevtojlttbx7g6ctrkelza",
+   "reserved_at": "2026-10-24T13:47:15.398Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "job_error",
+   "elapsed_ms": 78328,
+   "usage": {
+    "input_tokens": 38359,
+    "cached_input_tokens": 28160,
+    "output_tokens": 2684,
+    "reasoning_output_tokens": 863
+   }
+  },
+  {
+   "call_id": "412577977fcf4745b2f6a6f7e30c2526",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-B/attempts/azeikzfk7tgd64qddauiroaqdc4gtubguugyywtn4d32vxk6bmila/execution.json",
+   "reservation": "qabvhstc222f2iyuae4rpfqk4wavxklomb3tphwgmjijx4zb6tyfa",
+   "reserved_at": "2026-10-24T13:47:15.192Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 41265,
+   "usage": {
+    "input_tokens": 37967,
+    "cached_input_tokens": 0,
+    "output_tokens": 2029,
+    "reasoning_output_tokens": 288
+   }
+  },
+  {
+   "call_id": "97af92004fd4480691c139729128cea7",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-C/attempts/a3eptggzn3gqdwtkpalgmtdbkzv6ddx63bcnwmbelqg52y7erodtq/execution.json",
+   "reservation": "qhdm5zgaw77g5ealm5il6xzd4alxcfmr3ckyuaaofzc36b7xqpapq",
+   "reserved_at": "2026-10-24T13:49:58.188Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "job_error",
+   "elapsed_ms": 73687,
+   "usage": {
+    "input_tokens": 41178,
+    "cached_input_tokens": 0,
+    "output_tokens": 3039,
+    "reasoning_output_tokens": 655
+   }
+  },
+  {
+   "call_id": "f88587aa04e2471cbe18968aaaad6ac9",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-C/attempts/a4p7aq67roac4jqmbqxcwfymmydppo6hw3war4bdlb5zqzjyfugwa/execution.json",
+   "reservation": "qjty32x6krnhuocoj45pwxm6ovkzlcg33ff4tmwhdej5kjprmh6oa",
+   "reserved_at": "2026-10-24T13:49:57.987Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 53438,
+   "usage": {
+    "input_tokens": 40225,
+    "cached_input_tokens": 0,
+    "output_tokens": 2810,
+    "reasoning_output_tokens": 465
+   }
+  },
+  {
+   "call_id": "78026d11a38a4d3fa57842a945a47cc7",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-boolq-C/attempts/alshqosilzafa53a2ni533drpnl6p2e7iibsva7yyjlzxsunnumba/execution.json",
+   "reservation": "qqehfqnqgcgiqkb3x4cu2xhg5ifhopzqowgcs6dfp3pwjnawzwcta",
+   "reserved_at": "2026-10-24T13:49:58.193Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "job_error",
+   "elapsed_ms": 72921,
+   "usage": {
+    "input_tokens": 40088,
+    "cached_input_tokens": 0,
+    "output_tokens": 3276,
+    "reasoning_output_tokens": 849
+   }
+  },
+  {
+   "call_id": "47ecdea529ca4508a5aab61afc4afd55",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/a2twu253zahokquds5zzp5aummekpcaz53doirgnn72fyzhfzyh3q/execution.json",
+   "reservation": "qfdge7cjuauws3isnafpi6efs7ubuseoc2rvz6pvn2yvpt673tidq",
+   "reserved_at": "2026-10-24T13:43:30.428Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 43484,
+   "usage": {
+    "input_tokens": 34217,
+    "cached_input_tokens": 0,
+    "output_tokens": 2888,
+    "reasoning_output_tokens": 168
+   }
+  },
+  {
+   "call_id": "6cacc5dde7dd448c8f7f02ab3a281a72",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/a57m3swf62rz5oku5syr3b4p6jhfc2ffds464ispkdg5mkbmqzyjq/execution.json",
+   "reservation": "qr6qjrvfdu5d2prv67dxgg3d7ggdvsobvjeakwtbkmmqbeu6vmhdq",
+   "reserved_at": "2026-10-24T13:43:30.546Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 48859,
+   "usage": {
+    "input_tokens": 34272,
+    "cached_input_tokens": 0,
+    "output_tokens": 3222,
+    "reasoning_output_tokens": 442
+   }
+  },
+  {
+   "call_id": "24a68e042a264b859b16a30282a26444",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/acpt6czq5ge6xczmiompkt4eqrecos3eoz5zx4pkicvcoou3k7wsq/execution.json",
+   "reservation": "qoyut3ql5nieuqe3ecqxqar53ydm253yuea2bzumu6mnrojhlt2za",
+   "reserved_at": "2026-10-24T13:44:54.242Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 49954,
+   "usage": {
+    "input_tokens": 34251,
+    "cached_input_tokens": 0,
+    "output_tokens": 3165,
+    "reasoning_output_tokens": 403
+   }
+  },
+  {
+   "call_id": "a2459ba043bb452b9cdf11e463724281",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/ahhknmm6l4mf6cai7zxryyzqpcz2hutmfwhbu2gom2m7luu4e6kjq/execution.json",
+   "reservation": "qitk3wo55rmurqamxvf4z6asantymwkfy6auljnliqopo2vlootzq",
+   "reserved_at": "2026-10-24T13:44:54.226Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 41422,
+   "usage": {
+    "input_tokens": 34264,
+    "cached_input_tokens": 0,
+    "output_tokens": 2882,
+    "reasoning_output_tokens": 117
+   }
+  },
+  {
+   "call_id": "cdbe9ae96a68447d82f7b412a08969aa",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/aj2paa23rn4sebxyf3ggfdl436k5m62vtvc6fesryfpzo3dzys2wa/execution.json",
+   "reservation": "qiq6emrzssb6gu273nw5hyukh4uyg4gtc7nk4ybeqlvekmxlhplpa",
+   "reserved_at": "2026-10-24T13:44:53.838Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 51859,
+   "usage": {
+    "input_tokens": 34254,
+    "cached_input_tokens": 7296,
+    "output_tokens": 3373,
+    "reasoning_output_tokens": 613
+   }
+  },
+  {
+   "call_id": "76fc86f2c1b94fada64cc91b5bcc8629",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/ao7pncwkzowgo5l5q2ha4qal2vbst7yjokpfhndm6jhwn3tdebqhq/execution.json",
+   "reservation": "qqz4ueglc2ecybkaxotbxynbcczuwmohof2lhfgrafaxu6phw7oca",
+   "reserved_at": "2026-10-24T13:43:30.182Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 39360,
+   "usage": {
+    "input_tokens": 34274,
+    "cached_input_tokens": 0,
+    "output_tokens": 3225,
+    "reasoning_output_tokens": 444
+   }
+  },
+  {
+   "call_id": "8ea1670c75354e818331d2d2003fe492",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/areretc3kwrwbohnvfamvzljezwyhb4wtirn3rgnyb6f6iyshssrq/execution.json",
+   "reservation": "qp7hofllzeeyjzg5sfqepr24v6rgjaqjkqe6ztec3q33gilpixpjq",
+   "reserved_at": "2026-10-24T13:43:30.417Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 39594,
+   "usage": {
+    "input_tokens": 34289,
+    "cached_input_tokens": 0,
+    "output_tokens": 3210,
+    "reasoning_output_tokens": 417
+   }
+  },
+  {
+   "call_id": "240c6339b0e64b36945bbaf536e69c4c",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-A/attempts/azm3cvkllkyio634lh4uboracwsw7777qnu5ddeichpzvtpvcxg5a/execution.json",
+   "reservation": "qglkgyh7ac4for6qx7xismovnqmwn4u5e5bmkuk73pluwzw3ttrnq",
+   "reserved_at": "2026-10-24T13:44:54.156Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 44906,
+   "usage": {
+    "input_tokens": 34243,
+    "cached_input_tokens": 0,
+    "output_tokens": 2900,
+    "reasoning_output_tokens": 153
+   }
+  },
+  {
+   "call_id": "f0a9b4799e1a4ce1813e36f9e3ae382d",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-B/attempts/a4r7l652aul7rrt4h6athgwzvm42ica7cxd6ct3gct6xdxly4op6q/execution.json",
+   "reservation": "qcsws4m2gsb7s4iky2o3ejrt467f3jdv2xopln4yqvkngg4bpwafq",
+   "reserved_at": "2026-10-24T13:42:46.288Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 17969,
+   "usage": {
+    "input_tokens": 30439,
+    "cached_input_tokens": 0,
+    "output_tokens": 502,
+    "reasoning_output_tokens": 71
+   }
+  },
+  {
+   "call_id": "e8e29d6bcab44a94a4b544be85446dbc",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-B/attempts/a6f5y3rok3kirc2f2wy5vqdziqdfzmwoq2bxb5qzhsedmuxvjtcza/execution.json",
+   "reservation": "qiop53zwnlnmd77v5tb7j7ipibjdzhkzlswsp2wt2bg7xglgzgwva",
+   "reserved_at": "2026-10-24T13:42:46.366Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 19859,
+   "usage": {
+    "input_tokens": 30071,
+    "cached_input_tokens": 28160,
+    "output_tokens": 306,
+    "reasoning_output_tokens": 63
+   }
+  },
+  {
+   "call_id": "88c928f6d4ee4cc988fda62bbd4066aa",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-B/attempts/aaoneyyc6fb2stdl6bg4wclktm65lsiuxow6t6nuogmxzobnbrwpq/execution.json",
+   "reservation": "qkxf5t67ijhpkxxrvyepmqhun6awggopsl7boxj4qrh3favmlndjq",
+   "reserved_at": "2026-10-24T13:42:46.489Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 40782,
+   "usage": {
+    "input_tokens": 30513,
+    "cached_input_tokens": 30336,
+    "output_tokens": 559,
+    "reasoning_output_tokens": 102
+   }
+  },
+  {
+   "call_id": "3985a8ab99c64dd782d692dc33b978d2",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-B/attempts/ab5isvtbgdgtwao367joff6gmyhajx4anfjqyeqfaqodwxdwlubea/execution.json",
+   "reservation": "qesicq3regonzpmbhnxe7mfaknpik5oflykeerds4ccwa24ou2sba",
+   "reserved_at": "2026-10-24T13:41:18.917Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 83922,
+   "usage": {
+    "input_tokens": 36639,
+    "cached_input_tokens": 0,
+    "output_tokens": 4545,
+    "reasoning_output_tokens": 1249
+   }
+  },
+  {
+   "call_id": "faa2e1af378a448fb1bf43ecbdc5a527",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-B/attempts/afhyfm4qq34mm7e5gwf3i6fb6h44n4togetkq527er5iq3b6gcd7a/execution.json",
+   "reservation": "qejgwzkbmxwdfprvhu5lgcawld7esteldsevhfrf5g3bq3dectyla",
+   "reserved_at": "2026-10-24T13:42:46.484Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 19891,
+   "usage": {
+    "input_tokens": 30168,
+    "cached_input_tokens": 0,
+    "output_tokens": 353,
+    "reasoning_output_tokens": 99
+   }
+  },
+  {
+   "call_id": "58da4cff35334c75b01a524163d1c321",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-C/attempts/ab264oid73imeahig2ddhpazvmj7v3tjl5qmgvzkpe672e2u2h2xq/execution.json",
+   "reservation": "qbklvd27xkedgxj3ko5mwg54fgueckrsg6jtsgffovzkk63wzehua",
+   "reserved_at": "2026-10-24T13:45:49.203Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 29828,
+   "usage": {
+    "input_tokens": 32019,
+    "cached_input_tokens": 7296,
+    "output_tokens": 1656,
+    "reasoning_output_tokens": 170
+   }
+  },
+  {
+   "call_id": "0066e381710146b3bd69d5b9cdf92aad",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/arms/codex-materials-C/attempts/aqettdydbwmq7obnpnj3i3mvz2vyuowyp2zem3ibjmkourjr65jpq/execution.json",
+   "reservation": "qxkn37zr6ifgfbgyscyqxthzcovuckrzhdvvo2mibkye5utiruhmq",
+   "reserved_at": "2026-10-24T13:44:22.955Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 27891,
+   "usage": {
+    "input_tokens": 31990,
+    "cached_input_tokens": 7296,
+    "output_tokens": 1597,
+    "reasoning_output_tokens": 224
+   }
+  },
+  {
+   "call_id": "eb8e463c6c0040c68fd96e2458e83237",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/telemetry/telemetry-1/execution.json",
+   "reservation": "telemetry-1",
+   "reserved_at": "2026-10-24T13:40:36.453Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 11672,
+   "usage": {
+    "input_tokens": 29686,
+    "cached_input_tokens": 0,
+    "output_tokens": 42,
+    "reasoning_output_tokens": 24
+   }
+  },
+  {
+   "call_id": "566436e47df542daaab6bd6ea76c74d3",
+   "run": "live-bb76c7b0f329",
+   "source": "live-bb76c7b0f329/telemetry/telemetry-2/execution.json",
+   "reservation": "telemetry-2",
+   "reserved_at": "2026-10-24T13:40:49.706Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 9985,
+   "usage": {
+    "input_tokens": 29686,
+    "cached_input_tokens": 0,
+    "output_tokens": 46,
+    "reasoning_output_tokens": 28
+   }
+  },
+  {
+   "call_id": "ac880e0af2164f479ed7971a081f98e0",
+   "run": "live-e744a1525dbf",
+   "source": "live-e744a1525dbf/telemetry/telemetry-1/execution.json",
+   "reservation": "telemetry-1",
+   "reserved_at": "2026-10-24T13:12:49.708Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 11172,
+   "usage": {
+    "input_tokens": 29686,
+    "cached_input_tokens": 0,
+    "output_tokens": 54,
+    "reasoning_output_tokens": 36
+   }
+  },
+  {
+   "call_id": "61299faf81b94deb9db61ddee6ce2e59",
+   "run": "live-e744a1525dbf",
+   "source": "live-e744a1525dbf/telemetry/telemetry-2/execution.json",
+   "reservation": "telemetry-2",
+   "reserved_at": "2026-10-24T13:13:03.088Z",
+   "timeout_s": 1320.0,
+   "route": {
+    "adapter": "57497054831088a6b05a69a71eb57df6eee07386111a6c2e941b368885216a07",
+    "model": "gpt-6.1-sol",
+    "effort": "high",
+    "cli_version": "codex-cli 0.160.0"
+   },
+   "outcome": "ok",
+   "elapsed_ms": 11891,
+   "usage": {
+    "input_tokens": 29686,
+    "cached_input_tokens": 0,
+    "output_tokens": 39,
+    "reasoning_output_tokens": 21
+   }
+  }
+ ]
+}
