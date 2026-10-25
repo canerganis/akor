@@ -19,3 +19,9 @@ A4.13r1.1. The Opus preparation and review cap becomes 70; Astra 20, Fable 4, So
 A4.13r1.2. Subagents that only relay evidence packs to Astra may run on Sonnet and count as Sonnet preparation and review calls, not evaluation calls.
 
 Astra A signed the driver draft ("Signed: Astra A", scratchpad a413r1-astra.md). Opus B gave the text above as replacement; it only clarifies the draft (exact counts, cumulative counting, effective date, no retroactive authorization, relay calls are not evaluation calls) and changes no number. Signed: Opus B (by replacement text).
+
+## A4.13 revision 2 (2026-10-25)
+
+Reason. The ledger logs Astra 19 (7 reconstructed, 12 logged); the unlogged A4.13r1 signature makes 20 of 20 and is added to the ledger. A4.13r2.1. Astra cap 30; Opus 70, Fable 4, Sonnet 40 unchanged; global 246. Cumulative; this signature counts under A4.13.2. Effective when both signatures are complete; no retroactive authorization. Evaluation caps and gates unchanged.
+
+Astra A signed the driver draft (scratchpad a413r2-astra.md). Opus B gave the text above as replacement; it adds the ledger reconciliation and changes no number. Signed: Opus B (by replacement text).
