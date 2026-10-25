@@ -1,0 +1,163 @@
+{
+ "kind": "live",
+ "model": "claude-sonnet-5-5",
+ "order": [
+  "D",
+  "P",
+  "A"
+ ],
+ "rows": [
+  {
+   "arm": "D",
+   "calls": 4,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 15626,
+   "cached_input_tokens": 0,
+   "output_tokens": 317,
+   "thinking_tokens": 0,
+   "tokens": 15943,
+   "answered": 32,
+   "correct": 26,
+   "jobs": 32,
+   "makespan_seconds": 6.02,
+   "producer_latency_seconds": {
+    "p0": 5.32,
+    "p1": 5.38,
+    "p2": 5.03,
+    "p3": 6.02
+   },
+   "worst_producer_latency_seconds": 6.02
+  },
+  {
+   "arm": "P",
+   "calls": 1,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 9590,
+   "cached_input_tokens": 0,
+   "output_tokens": 282,
+   "thinking_tokens": 0,
+   "tokens": 9872,
+   "answered": 32,
+   "correct": 27,
+   "jobs": 32,
+   "makespan_seconds": 6.51,
+   "producer_latency_seconds": {
+    "p0": 6.51,
+    "p1": 6.51,
+    "p2": 6.51,
+    "p3": 6.51
+   },
+   "worst_producer_latency_seconds": 6.51
+  },
+  {
+   "arm": "A",
+   "calls": 1,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 10160,
+   "cached_input_tokens": 603,
+   "output_tokens": 1142,
+   "thinking_tokens": 726,
+   "tokens": 11302,
+   "answered": 32,
+   "correct": 30,
+   "jobs": 32,
+   "makespan_seconds": 13.62,
+   "producer_latency_seconds": {
+    "p0": 13.62,
+    "p1": 13.62,
+    "p2": 13.62,
+    "p3": 13.62
+   },
+   "worst_producer_latency_seconds": 13.62
+  }
+ ],
+ "launches": [
+  {
+   "group": "D-p2",
+   "attempt": 0,
+   "usage": {
+    "input_tokens": 4027,
+    "cached_input_tokens": 0,
+    "output_tokens": 81,
+    "thinking_tokens": 0
+   },
+   "failure": null,
+   "started": 1792965453.5004709,
+   "ended": 1792965458.526602,
+   "jobs": 8
+  },
+  {
+   "group": "D-p0",
+   "attempt": 0,
+   "usage": {
+    "input_tokens": 3778,
+    "cached_input_tokens": 0,
+    "output_tokens": 83,
+    "thinking_tokens": 0
+   },
+   "failure": null,
+   "started": 1792965453.5004709,
+   "ended": 1792965458.817741,
+   "jobs": 8
+  },
+  {
+   "group": "D-p1",
+   "attempt": 0,
+   "usage": {
+    "input_tokens": 3632,
+    "cached_input_tokens": 0,
+    "output_tokens": 81,
+    "thinking_tokens": 0
+   },
+   "failure": null,
+   "started": 1792965453.5004709,
+   "ended": 1792965458.8792522,
+   "jobs": 8
+  },
+  {
+   "group": "D-p3",
+   "attempt": 0,
+   "usage": {
+    "input_tokens": 4189,
+    "cached_input_tokens": 0,
+    "output_tokens": 72,
+    "thinking_tokens": 0
+   },
+   "failure": null,
+   "started": 1792965453.501471,
+   "ended": 1792965459.514813,
+   "jobs": 8
+  },
+  {
+   "group": "P",
+   "attempt": 0,
+   "usage": {
+    "input_tokens": 9590,
+    "cached_input_tokens": 0,
+    "output_tokens": 282,
+    "thinking_tokens": 0
+   },
+   "failure": null,
+   "started": 1792965459.5168188,
+   "ended": 1792965466.03074,
+   "jobs": 32
+  },
+  {
+   "group": "A",
+   "attempt": 0,
+   "usage": {
+    "input_tokens": 10160,
+    "cached_input_tokens": 603,
+    "output_tokens": 1142,
+    "thinking_tokens": 726
+   },
+   "failure": null,
+   "started": 1792965466.0337486,
+   "ended": 1792965479.655818,
+   "jobs": 32
+  }
+ ]
+}
