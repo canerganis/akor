@@ -1,0 +1,18 @@
+{
+ "baseline_auth_sha256": "30086a4b9bddca3999140f93fba5c0ad428272170ef1645a1460b8d567a089ea",
+ "baseline_tokens": {
+  "access_token": "a6271192253593ca906667b911ab3c1b1db9315db5ff31723e2ec934c07a3e33",
+  "id_token": "7898fbd1356b51f3f964374f5772a8ff39e11918269c6f3f6d84954f20546d6d",
+  "refresh_token": "3bb38b52f80204e6250b2c5a941ceec35802420c864f279ec7ca442027dbcec5"
+ },
+ "created_at": "2026-10-25T17:15:47.129034Z",
+ "experiment": "ozmap-replication-2026-10-24",
+ "experiment_id": "71c279d3-b11e-4c84-a365-60c1cddea49b",
+ "freeze_sha256": "9ecf1bd2c0962d3ee35f7e8e8025a89252524a52d6483f086a6191e5d8f572e9",
+ "live_ledger": "C:\\Users\\can02\\.ozmap_rep\\runs\\live-calls.jsonl",
+ "mode": "live",
+ "run_dir": "C:\\ozmap_rep\\runs\\replication",
+ "run_id": "37dd0e5e-8b06-4a7e-8268-70c1455d41c1",
+ "schema": "ozmap-rep.experiment/2",
+ "simulation": false
+}

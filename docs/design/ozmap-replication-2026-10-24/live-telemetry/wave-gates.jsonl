@@ -1,0 +1,2 @@
+{"at": "2026-10-25T17:15:46.180720Z", "auth_sha256": "30086a4b9bddca3999140f93fba5c0ad428272170ef1645a1460b8d567a089ea", "baseline_changed": false, "cell": "telemetry", "exp": "2026-11-03T15:18:43Z", "hours_left": 214.05, "last_refresh": "2026-10-24T15:18:41.484658100Z", "ok": true}
+{"at": "2026-10-25T17:16:22.417577Z", "auth_sha256": "30086a4b9bddca3999140f93fba5c0ad428272170ef1645a1460b8d567a089ea", "baseline_changed": false, "cell": "features", "exp": "2026-11-03T15:18:43Z", "hours_left": 214.04, "last_refresh": "2026-10-24T15:18:41.484658100Z", "ok": true}

@@ -1,0 +1,120 @@
+{
+ "at": "2026-10-25T17:15:47.150040Z",
+ "auth_read_from_codex_home": true,
+ "call": {
+  "argv_sha256": "54f7a1e1a6e98c900ebf3a4bc1ebaef3431ec0950967e6c8c0f36a0910d297c5",
+  "auth_changed": false,
+  "auth_source": {
+   "auth_sha256": "30086a4b9bddca3999140f93fba5c0ad428272170ef1645a1460b8d567a089ea",
+   "home": "worker",
+   "store": "file"
+  },
+  "call_id": "telemetry.r2.b00.t0",
+  "home_listing_before": [
+   "auth.json"
+  ],
+  "instruction_sources": [],
+  "outcome": "ok",
+  "runtime_files": [
+   "goals_1.sqlite",
+   "goals_1.sqlite-shm",
+   "goals_1.sqlite-wal",
+   "installation_id",
+   "logs_2.sqlite",
+   "memories_1.sqlite",
+   "queue_1.sqlite",
+   "queue_1.sqlite-shm",
+   "queue_1.sqlite-wal",
+   "state_5.sqlite",
+   "state_5.sqlite-shm",
+   "state_5.sqlite-wal"
+  ],
+  "runtime_hashes": {
+   "goals_1.sqlite": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f",
+   "goals_1.sqlite-shm": "c4a7315c30ec5f873084eae785081c8212c4b4f70e4f5feb1347027f93a8c4d6",
+   "goals_1.sqlite-wal": "43042c2fd3f26a9b07336b8a28ba7597c4895686c10b98906eb63258c2d8c7de",
+   "installation_id": "3c8007f64b69ad725bc2ae6f1b8a5dae3dd1c10e254344a09450aeae12e61dab",
+   "logs_2.sqlite": "ff6706bf154876586483bd08af09948278b416692aa6b577dd0eb199ca1764b9",
+   "memories_1.sqlite": "060e3715060dadec4c1740bc8ad41a1fe8563af2dfa6f8023d53f3fb46459e9d",
+   "queue_1.sqlite": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f",
+   "queue_1.sqlite-shm": "daedd7bcfed79f69c99f83fa98e934a4a3f7d7049ca966f235cf1cd7d105cbe9",
+   "queue_1.sqlite-wal": "f0a30b1c2d9e44a99e8a25b0b0ffddf82de86d6148ef3cff06cad0d0b9aa2adf",
+   "state_5.sqlite": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f",
+   "state_5.sqlite-shm": "625428e828d7ea3bff093fd1e096411ed2a76064c7a4377db3dc4bb637db8839",
+   "state_5.sqlite-wal": "59bc2174b49f3a3adbca0d4d2a201db5ea6fc87be2785788ec3ce0e4c7d590f4"
+  },
+  "stream_verdict": "plain",
+  "usage_status": "unverified",
+  "workdir_listing_before": []
+ },
+ "exec_probe": {
+  "account_metadata_kept": true,
+  "auth_rewritten": false,
+  "call_id": "telemetry.r1.b00.t0",
+  "home": "worker",
+  "outcome": "auth_failure",
+  "reply": false,
+  "runtime_files": [
+   "goals_1.sqlite",
+   "goals_1.sqlite-shm",
+   "goals_1.sqlite-wal",
+   "installation_id",
+   "logs_2.sqlite",
+   "logs_2.sqlite-shm",
+   "logs_2.sqlite-wal",
+   "memories_1.sqlite",
+   "memories_1.sqlite-shm",
+   "memories_1.sqlite-wal",
+   "queue_1.sqlite",
+   "queue_1.sqlite-shm",
+   "queue_1.sqlite-wal",
+   "state_5.sqlite",
+   "state_5.sqlite-shm",
+   "state_5.sqlite-wal",
+   "tmp/arg0/codex-arg0XAGQB8/.lock",
+   "tmp/arg0/codex-arg0XAGQB8/apply_patch.bat",
+   "tmp/arg0/codex-arg0XAGQB8/applypatch.bat"
+  ],
+  "runtime_hashes": {
+   "goals_1.sqlite": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f",
+   "goals_1.sqlite-shm": "6d10e4a21a02148a5fa6dec1d4b162636c38a6e22650e13f1852b92684402bb6",
+   "goals_1.sqlite-wal": "6f1780df5e05eddb04dbe2f79e7b7c023c63c9d735ea8a371eb17115cad869df",
+   "installation_id": "75d303faa7bfb6a604060a349b4dc73dc5fe5527f7133ae557da444271e6550e",
+   "logs_2.sqlite": "8b1a95b26ddbf9d5259979e59a4430f63461e4e1121b9a5f608ce6caf94205bd",
+   "logs_2.sqlite-shm": "f741eade1e8d9b9c00eba3ffe6c019a0d9a4f6e13027261bbdececfc0b3ffe8a",
+   "logs_2.sqlite-wal": "c979ff7a78276540e464a516b9f1b6dc8d8e4687fcf1204c9469d58d1df8ea94",
+   "memories_1.sqlite": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f",
+   "memories_1.sqlite-shm": "287b47b07b74b99e397f269391d3e7bde6974c60b974b16a09159e1f6cc14036",
+   "memories_1.sqlite-wal": "76fb251523b8fd3016fb8a339b302ee787d285fab9f93a971348c17fd58c6e0f",
+   "queue_1.sqlite": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f",
+   "queue_1.sqlite-shm": "bf30ff28983341d962f9fe64637de6a6b3e9eea8623c2c3018ad4ea77cabbdb5",
+   "queue_1.sqlite-wal": "3967e87f5d5660a695f64ee4b43b536b68093a46363db66d04e908abc6c35482",
+   "state_5.sqlite": "4eeb710c739848e62f0d53d04057e17375b4af741c9b441f2a546f6ed860c79f",
+   "state_5.sqlite-shm": "3d433b81243eaf0d38ae7e3e1179f9830c9b0fe63b59298b617cf6f8a0321691",
+   "state_5.sqlite-wal": "0fef93d7a9b4f858ef523b6c7561c3a28452d944145fefbd6a1a9bb5496ee365",
+   "tmp/arg0/codex-arg0XAGQB8/.lock": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+   "tmp/arg0/codex-arg0XAGQB8/apply_patch.bat": "208af6b8dee93e46a6753243e95b8ef6e466f17c5138d265f12b431184db0145",
+   "tmp/arg0/codex-arg0XAGQB8/applypatch.bat": "208af6b8dee93e46a6753243e95b8ef6e466f17c5138d265f12b431184db0145"
+  },
+  "usage_present": false
+ },
+ "login_status": {
+  "worker_home": "logged_in",
+  "worker_paths_after": {
+   "0": "not_logged_in",
+   "1": "not_logged_in",
+   "2": "not_logged_in",
+   "3": "not_logged_in"
+  },
+  "worker_paths_before": {
+   "0": "not_logged_in",
+   "1": "not_logged_in",
+   "2": "not_logged_in",
+   "3": "not_logged_in"
+  }
+ },
+ "problems": [],
+ "reconciled": true,
+ "sandbox_clean_home": true,
+ "schema": "ozmap-rep.telemetry/3"
+}
