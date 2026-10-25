@@ -1,11 +1,13 @@
 {
  "schema": "ozmap-rep.d6.operation_attestation/1",
- "attestor": "Opus D6 verifier: fresh Opus workflow subagent (claude-opus-5-5), call ledger role d6-focused-verifier-attestor; not the implementer of bench/ozmap_rep or of bench/ozmap_rep/ops",
+ "attestor": "Opus D6 verifier (rerun): fresh Opus workflow subagent (claude-opus-5-5), call ledger role d6-focused-verifier-attestor-rerun; not the implementer of bench/ozmap_rep or of bench/ozmap_rep/ops",
  "implementer": "Fable (claude-fable-5-1), author of bench/ozmap_rep/ops (call ledger: independent operations authoring)",
  "independent": true,
- "independence": "the attestor did not write, edit or review the operations before this call and is not a signatory author of the oracle; Astra saw no ops content; the sealed reviewer ASTs were not read",
- "attested_at_commit": "162f61cf9f3bcaa7a95baa0924b35f93cb5bface",
+ "independence": "the attestor did not write, edit or review the operations before this call and is not an author of the oracle; Astra saw no ops content; the sealed reviewer ASTs were not read",
+ "attested_at_commit": "708e0a7aeafcba237c10dd6158609bf55fdaf0a1",
  "date": "2026-10-25",
+ "supersedes": "the attestation of commit a1c6ae3 (same verdicts; ops and classification unchanged since)",
+ "classification_file": "bench/ozmap_rep/classification.json",
  "classification_sha256": "b6c2a50302a8b4d76ab1b6e2cdf5ff87c20b2b2c31071ffdbefef1b63fe3268a",
  "ops_sha256": {
   "bench/ozmap_rep/ops/__init__.py": "22e5257d6f40484911a29386f58b28ae7af89fd91f31cf07f7be013481725a11",
@@ -17,27 +19,36 @@
  "covers": {
   "oracle_correctness": {
    "verdict": "pass",
-   "count": 6036,
-   "method": "the verifier reimplemented the four operations from ops.md with exact Fraction arithmetic and its own rounding (half to even for margin, half away from zero for elong) and compared with oracle.gold and the harness gold on every admission case and every evaluation job of the frozen seed, on admission and job streams of eight further seeds and on the ops.md worked examples",
+   "count": 6934,
+   "method": "the verifier reimplemented the four operations from ops.md with exact Fraction arithmetic and its own rounding (half to even for margin, half away from zero for elong) and compared with oracle.gold and workload.gold on every admission case and every evaluation job of the frozen seed, on the admission and job streams of eight further seeds and on the ops.md worked examples plus boundary edges",
    "results": {
     "admission_cases": 256,
     "admission_mismatches": [],
     "evaluation_jobs": 512,
     "job_mismatches": [],
-    "extra_seed_cases": 5248,
+    "extra_seeds": [
+     1,
+     2,
+     3,
+     7,
+     11,
+     13,
+     101,
+     2026
+    ],
+    "extra_seed_cases": 6144,
     "extra_seed_mismatches": 0,
-    "ops_md_edges": 20,
+    "ops_md_edges": 22,
     "edge_mismatches": []
    },
    "observations": [
-    "Not reachable from data.py, recorded for completeness: margin computes u - y in the default Decimal context (28 significant digits); a numeral near the 38 digit interpreter limit would be rounded or make quantize raise. Generated values have at most 3 integer digits and 3 fractional digits.",
-    "As the expressibility review noted: the oracle raises ValueError (outside the study) for a governing unknown beside a malformed other field and accepts a value with ';' not followed by a space; no job or admission case has either shape."
+    "Not reachable from data.py: margin subtracts in the default Decimal context (28 significant digits); generated values have at most 3 integer and 3 fractional digits. elong divides at 60 digit precision; no generated quotient is a false tie (the Fraction reimplementation agrees on every case)."
    ]
   },
   "classification": {
    "verdict": "pass",
    "count": 4,
-   "method": "classification.json checked against the expressibility review and the language: R is verdict, margin and temp_class; elong is not rule shaped (division by a per record value, contract rounding half away from zero against fmt half to even); each rule shaped entry carries inputs, outputs, guards, domain, reasons and a sealed AST hash equal to the review's table; the contract domain is the operation's own written contract, not a carve-out; classified_at 2026-10-24T15:23:10Z precedes every learner call (none has happened)",
+   "method": "classification.json checked against the expressibility review: R is verdict, margin and temp_class; elong is not rule shaped (division by a per record value, half away from zero against fmt half to even); every entry carries inputs, outputs, guards, domain and reasons; each rule shaped entry carries the sealed AST hash recorded in the review (the sealed files themselves were not read); classified_at precedes every learner call (none has happened)",
    "results": {
     "R": [
      "verdict",
@@ -47,137 +58,175 @@
     "not_rule_shaped": [
      "elong"
     ],
-    "sealed_hashes_match_review": true,
-    "file_unchanged_since": "4839d99"
+    "hashes_in_review": true,
+    "fields_present": true,
+    "classified_at": "2026-10-24T15:23:10Z",
+    "config_R": [],
+    "file_last_commit": "4839d99",
+    "working_tree_clean": true
    }
   },
   "contract_extraction": {
    "verdict": "pass",
    "count": 4,
-   "method": "prompts.materials_texts rebuilt independently from ops.md: goal is the Record type section, each instruction is its operation section with only the Expectation paragraph removed, every other paragraph kept verbatim; no classification term reaches learner text; all four operations shown eligible so eligibility does not reveal R",
+   "method": "prompts.materials_texts rebuilt independently from ops.md: the goal is the Record type section, each instruction is its operation section with only the Expectation paragraph removed; no classification term reaches learner text; all four operations shown eligible so eligibility does not reveal R",
    "results": {
     "goal_is_record_type": true,
-    "instructions_match_ops_md": {
-     "verdict": true,
-     "verdict_paragraphs_kept": true,
-     "margin": true,
-     "margin_paragraphs_kept": true,
-     "elong": true,
-     "elong_paragraphs_kept": true,
-     "temp_class": true,
-     "temp_class_paragraphs_kept": true
-    },
+    "verdict": true,
+    "verdict_expectation_removed": true,
+    "margin": true,
+    "margin_expectation_removed": true,
+    "elong": true,
+    "elong_expectation_removed": true,
+    "temp_class": true,
+    "temp_class_expectation_removed": true,
     "leak_terms": [],
-    "expectation_paragraphs_in_md": 4,
     "eligibility": {
      "verdict": true,
      "margin": true,
      "elong": true,
      "temp_class": true
-    },
-    "manifest_ops": [
-     "elong",
-     "margin",
-     "temp_class",
-     "verdict"
-    ]
+    }
    }
   },
   "consumer_checks": {
    "verdict": "pass",
    "count": 768,
-   "method": "every gold value of every admission case was run through the pinned consumer checks of the registry package (json_type string plus one_of or max_bytes), and every evaluation job gold through the same predicates; a value outside the closed output sets is rejected",
+   "method": "every gold value of every admission case and every evaluation job run through the pinned consumer checks of rules.CHECKS (json_type string plus one_of or max_bytes); values outside the closed output sets are rejected",
    "results": {
-    "definitions": {
-     "verdict": [
-      [
-       "one_of",
-       {
-        "values": [
-         "pass",
-         "fail",
-         "unknown"
-        ]
-       }
-      ]
+    "values_checked": 768,
+    "gold_rejected": [],
+    "defs": {
+     "verdict_type": [
+      "json_type",
+      {
+       "types": [
+        "string"
+       ]
+      }
      ],
-     "margin": [
-      [
-       "max_bytes",
-       {
-        "bytes": 32
-       }
-      ]
+     "verdict_one_of": [
+      "one_of",
+      {
+       "values": [
+        "pass",
+        "fail",
+        "unknown"
+       ]
+      }
      ],
-     "elong": [
-      [
-       "max_bytes",
-       {
-        "bytes": 32
-       }
-      ]
+     "margin_type": [
+      "json_type",
+      {
+       "types": [
+        "string"
+       ]
+      }
      ],
-     "temp_class": [
-      [
-       "one_of",
-       {
-        "values": [
-         "cold",
-         "room",
-         "hot",
-         "unknown"
-        ]
-       }
-      ]
+     "margin_max_bytes": [
+      "max_bytes",
+      {
+       "bytes": 32
+      }
+     ],
+     "elong_type": [
+      "json_type",
+      {
+       "types": [
+        "string"
+       ]
+      }
+     ],
+     "elong_max_bytes": [
+      "max_bytes",
+      {
+       "bytes": 32
+      }
+     ],
+     "temp_class_type": [
+      "json_type",
+      {
+       "types": [
+        "string"
+       ]
+      }
+     ],
+     "temp_class_one_of": [
+      "one_of",
+      {
+       "values": [
+        "cold",
+        "room",
+        "hot",
+        "unknown"
+       ]
+      }
      ]
     },
-    "gold_rejected": [],
-    "registry_gold_rejected": [],
-    "closed_set_rejects_other": {
-     "verdict": true,
-     "temp_class": true
-    }
+    "closed_rejects_other": true
    }
   },
   "representative_cases": {
    "verdict": "pass",
    "count": 48,
    "count_scope": "per operation, each of the four operations (192 in total)",
+   "method": "workload.materials admission cases of the frozen seed and the resolved registry dataset: 64 per operation, gold from the oracle, unique texts, specimen prefix A, no overlap with any evaluation job text; the registry dataset partitions are 48 representative and 16 challenge per operation",
    "results": {
     "verdict": {
      "total": 64,
      "representative": 48,
      "distinct_gold": 3,
-     "unknown_gold": 12
+     "unknown_gold": 12,
+     "prefix_A": true
     },
     "margin": {
      "total": 64,
      "representative": 48,
      "distinct_gold": 46,
-     "unknown_gold": 6
+     "unknown_gold": 6,
+     "prefix_A": true
     },
     "elong": {
      "total": 64,
      "representative": 48,
      "distinct_gold": 50,
-     "unknown_gold": 6
+     "unknown_gold": 6,
+     "prefix_A": true
     },
     "temp_class": {
      "total": 64,
      "representative": 48,
      "distinct_gold": 4,
-     "unknown_gold": 6
+     "unknown_gold": 6,
+     "prefix_A": true
     },
     "admission_unique": true,
     "admission_job_overlap": 0,
-    "admission_prefix_A": true
-   },
-   "method": "workload.materials admission cases of the frozen seed: 64 per operation, gold from the oracle, unique texts, specimen prefix A, no overlap with any evaluation job text"
+    "registry_partitions": {
+     "verdict": {
+      "representative": 48,
+      "challenge": 16
+     },
+     "margin": {
+      "representative": 48,
+      "challenge": 16
+     },
+     "elong": {
+      "representative": 48,
+      "challenge": 16
+     },
+     "temp_class": {
+      "representative": 48,
+      "challenge": 16
+     }
+    }
+   }
   },
   "challenge_cases": {
    "verdict": "pass",
    "count": 16,
    "count_scope": "per operation, each of the four operations (64 in total)",
+   "method": "the challenge partition is exactly the first 16 non plain cases of each operation in stream order; every challenge case carries an edge category",
    "results": {
     "verdict": {
      "challenge": 16,
@@ -239,21 +288,20 @@
      "plain_in_challenge": [],
      "partition_rule_holds": true
     }
-   },
-   "method": "the challenge partition is exactly the first 16 non plain cases of each operation in stream order (build-notes reading 5); every challenge case carries an edge category"
+   }
   },
   "sealing_and_access_chronology": {
    "verdict": "pass",
    "count": 5,
-   "method": "git history of bench/ozmap_rep/ops, classification.json and the expressibility review, the call ledger, the replication run directories and the freeze file; hashes of the ops files against the hashes the expressibility reviewer recorded; the sealed directory itself was not opened",
+   "method": "git history of bench/ozmap_rep/ops, classification.json and the expressibility review, the call ledger, the run directories and the freeze file; the sealed directory itself was not opened",
    "events": [
     {
      "at": "2026-10-24T15:12:50Z",
-     "event": "operations committed (c7e877f); bench/ozmap_rep/ops unchanged since (git diff c7e877f HEAD empty, working tree clean)"
+     "event": "operations committed (c7e877f); bench/ozmap_rep/ops has no later commit and no working tree change"
     },
     {
      "at": "2026-10-24T15:23:10Z",
-     "event": "independent expressibility review committed (34f612e) by a fresh Opus reviewer; it records ops.md, oracle.py, data.py, test_ops.py and oz_rule.py sha256 values, all equal to the files now, and the three sealed AST hashes; the ASTs are stored outside the repo in the session scratchpad rep/sealed"
+     "event": "independent expressibility review committed (34f612e); it records the three sealed AST hashes that classification.json carries; the ASTs are stored outside the repo in the session scratchpad rep/sealed"
     },
     {
      "at": "2026-10-24T15:23:10Z",
@@ -261,14 +309,15 @@
     },
     {
      "at": "2026-10-24T17:29:39Z onward",
-     "event": "every Astra call records an evidence pack excluding ops content and sealed ASTs (call ledger purposes)"
+     "event": "every Astra call in the call ledger records an evidence pack excluding ops content and sealed ASTs"
     },
     {
      "at": "2026-10-25",
-     "event": "no evaluation call has happened: the call ledger holds preparation and review calls only, no replication run directory exists (C:\\ozmap_rep absent, ~/.ozmap_rep/runs holds only experiment.lock), and no freeze.json exists"
+     "event": "no evaluation call has happened: the call ledger holds preparation and review calls only, C:/ozmap_rep does not exist, ~/.ozmap_rep/runs holds only experiment.lock, and no freeze.json exists"
     }
    ],
-   "access": "No harness code path reads the sealed directory: score.convergence is the only reader, is never called by score_run, and runs only after scoring (A4.8). The learner sees ops.md minus the Expectation paragraphs and never the classification (test_learner_material_never_contains_the_classification_or_hidden_pilot_asts). The sealed directory is outside the repo and every learner working directory; a Codex learner under -s read-only could only reach it through a tool call, which A4.3 treats as execution evidence and the scorer flags as leakage, so such access cannot pass unflagged."
+   "access": "No harness code path reads the sealed directory except score.convergence, which score_run never calls (only tests call it) and which runs after scoring (A4.8). The learner sees ops.md minus the Expectation paragraphs and never the classification. A Codex learner under -s read-only could reach the sealed directory only through a tool call, which A4.3 treats as execution evidence and the scorer flags as leakage."
   }
- }
+ },
+ "failed_covers": []
 }
