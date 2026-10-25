@@ -1,0 +1,77 @@
+{
+ "command": "arrivals",
+ "profile": "sparse",
+ "order": [
+  "D",
+  "P"
+ ],
+ "kind": "live",
+ "rows": [
+  {
+   "arm": "D",
+   "calls": 4,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 15115,
+   "cached_input_tokens": 0,
+   "output_tokens": 315,
+   "thinking_tokens": 0,
+   "tokens": 15430,
+   "answered": 32,
+   "jobs": 32,
+   "correct": 24,
+   "makespan_seconds": 14.58,
+   "producer_latency_seconds": {
+    "p0": 5.33,
+    "p1": 6.17,
+    "p2": 5.32,
+    "p3": 5.58
+   },
+   "worst_producer_latency_seconds": 6.17
+  },
+  {
+   "arm": "P",
+   "calls": 4,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 15117,
+   "cached_input_tokens": 12495,
+   "output_tokens": 314,
+   "thinking_tokens": 0,
+   "tokens": 15431,
+   "answered": 32,
+   "jobs": 32,
+   "correct": 25,
+   "makespan_seconds": 15.15,
+   "producer_latency_seconds": {
+    "p0": 5.74,
+    "p1": 5.97,
+    "p2": 6.62,
+    "p3": 6.15
+   },
+   "worst_producer_latency_seconds": 6.62,
+   "pool_batches": [
+    {
+     "jobs": 8,
+     "attempt": 0,
+     "queued_seconds": 0.515
+    },
+    {
+     "jobs": 8,
+     "attempt": 0,
+     "queued_seconds": 0.5
+    },
+    {
+     "jobs": 8,
+     "attempt": 0,
+     "queued_seconds": 0.515
+    },
+    {
+     "jobs": 8,
+     "attempt": 0,
+     "queued_seconds": 0.515
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,99 @@
+{
+ "command": "format",
+ "profile": null,
+ "order": [
+  "A",
+  "Ph",
+  "Pd"
+ ],
+ "kind": "live",
+ "rows": [
+  {
+   "arm": "A",
+   "calls": 1,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 9244,
+   "cached_input_tokens": 8590,
+   "output_tokens": 412,
+   "thinking_tokens": 0,
+   "tokens": 9656,
+   "answered": 32,
+   "jobs": 32,
+   "correct": 21,
+   "makespan_seconds": 7.08,
+   "producer_latency_seconds": {
+    "p0": 7.08,
+    "p1": 7.08,
+    "p2": 7.08,
+    "p3": 7.08
+   },
+   "worst_producer_latency_seconds": 7.08,
+   "pool_batches": [
+    {
+     "jobs": 32,
+     "attempt": 0,
+     "queued_seconds": 0.0
+    }
+   ]
+  },
+  {
+   "arm": "Ph",
+   "calls": 1,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 8669,
+   "cached_input_tokens": 8015,
+   "output_tokens": 278,
+   "thinking_tokens": 0,
+   "tokens": 8947,
+   "answered": 32,
+   "jobs": 32,
+   "correct": 26,
+   "makespan_seconds": 6.58,
+   "producer_latency_seconds": {
+    "p0": 6.58,
+    "p1": 6.58,
+    "p2": 6.58,
+    "p3": 6.58
+   },
+   "worst_producer_latency_seconds": 6.58,
+   "pool_batches": [
+    {
+     "jobs": 32,
+     "attempt": 0,
+     "queued_seconds": 0.0
+    }
+   ]
+  },
+  {
+   "arm": "Pd",
+   "calls": 1,
+   "rejected_calls": 0,
+   "calls_without_usage": 0,
+   "input_tokens": 8668,
+   "cached_input_tokens": 8015,
+   "output_tokens": 276,
+   "thinking_tokens": 0,
+   "tokens": 8944,
+   "answered": 32,
+   "jobs": 32,
+   "correct": 26,
+   "makespan_seconds": 6.49,
+   "producer_latency_seconds": {
+    "p0": 6.49,
+    "p1": 6.49,
+    "p2": 6.49,
+    "p3": 6.49
+   },
+   "worst_producer_latency_seconds": 6.49,
+   "pool_batches": [
+    {
+     "jobs": 32,
+     "attempt": 0,
+     "queued_seconds": 0.0
+    }
+   ]
+  }
+ ]
+}
