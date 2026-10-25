@@ -16,7 +16,7 @@ provenance) within five minutes. No failed call, no call without usage. 13 launc
 | 2 | direct | cold | 1 | 7,464 | 6,809 | 3,546 | 1,421 | 11,010 | 27.9 |
 | 2 | direct | revision | 1 | 3,515 | 2,860 | 982 | 570 | 4,497 | 12.6 |
 
-AKOR/direct, mean of the two pairs: cold tokens 1.58x, cold time 1.65x; revision tokens 1.40x, revision time 1.73x.
+AKOR/direct, mean of the two pairs: cold tokens 1.58x, cold time 1.60x; revision tokens 1.40x, revision time 1.73x. Time is the delivery time measured by the runner (calls, local checks, packaging); the final independent evaluation is not included.
 
 Reading. AKOR loses both stages; under the decision rule in [README.md](README.md) the next step is to simplify toward
 the direct runner before adding features. The visible cause is structure, not wire size: the executor splits each

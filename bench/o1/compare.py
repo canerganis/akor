@@ -7,6 +7,8 @@ revision 1) followed by a revision (ticket A at revision 2); each arm keeps its 
   direct  one claude -p request for the whole package (same model, flags and source information as the AKOR route),
           local A-tier checks, at most MAX_FIXES corrective requests naming only the failing functions; on the
           revision it re-requests only the changed ticket and keeps B, C and D.
+  fused   the OZ/F1 minimal-call executor (oz_fuse, Astra's wire): all needed core and adapter jobs in one call,
+          host checks in dependency order, corrective calls only for failed jobs with the check failure.
   akor    the existing O1 executor unchanged (oz_flow.run_flow, OZ/1g packets, per-job checks, memo); the revision
           is a new flow in the same memo namespace whose source A starts at revision 2.
 
@@ -38,6 +40,7 @@ import o1 as O  # noqa: E402
 import sandbox  # noqa: E402
 import sandbox_worker as SW  # noqa: E402
 import workflow as W  # noqa: E402
+import oz_fuse as F  # noqa: E402
 from oz_flow import Flow, flow_dir, flow_usage, run_flow  # noqa: E402
 
 MAX_FIXES = 2
@@ -83,7 +86,7 @@ def usage_of(envelope) -> dict | None:
     return O._cca().usage_from_envelope(envelope)
 
 
-def call_claude(prompt: str, kind: str, fixture_answer) -> dict:
+def call_claude(prompt: str, kind: str, fixture_answer, system: str = SYSTEM) -> dict:
     """{'text', 'usage', 'thinking', 'seconds', 'envelope', 'failure'} for one claude -p call (the AKOR route's
     flags, no tools). A timeout, an unreadable envelope or another model is a recorded launch with no usable reply,
     the same as a refused dispatch on the AKOR side."""
@@ -91,14 +94,15 @@ def call_claude(prompt: str, kind: str, fixture_answer) -> dict:
     model = O.spec()['route']['model']
     envelope, failure, raw = None, None, ''
     if kind == 'fixture':
-        text = json.dumps(fixture_answer())
+        answer = fixture_answer()
+        text = answer if isinstance(answer, str) else json.dumps(answer)
         envelope = {'result': text, 'modelUsage': {model: {
             'inputTokens': len(prompt) // 4, 'cacheReadInputTokens': 0, 'cacheCreationInputTokens': 0,
             'outputTokens': len(text) // 4, 'thinkingTokens': 0}}}
     else:
         try:
             proc = subprocess.run([shutil.which('claude'), '-p', '--model', model,
-                                   '--system-prompt', SYSTEM, '--tools', '', '--setting-sources', '',
+                                   '--system-prompt', system, '--tools', '', '--setting-sources', '',
                                    '--strict-mcp-config', '--no-session-persistence', '--output-format', 'json'],
                                   input=prompt, capture_output=True, text=True, encoding='utf-8', timeout=DEADLINE)
             raw = proc.stdout
@@ -248,6 +252,190 @@ def direct_delivery(ws: Path, stage: str, kind: str, state: dict, ledger) -> dic
     return row('direct', stage, calls, elapsed, verdict)
 
 
+# ---- fused arm (OZ/F1) ----
+
+F1_OP = ('Return a JSON string containing one repaired Python function, same def line as the defective source, all '
+         'requirements and public examples satisfied, no other top-level statements. Inputs: limits, task, optional '
+         'core source. The core is in scope: call it by name; do not redefine or include it. If the task includes '
+         'Previous candidate and Check failure, correct that candidate.')
+
+
+def f1_goal() -> str:
+    rules = O.spec()['model_ops']['model.repair_core']['instruction'].split('Rules for the code: ', 1)[1]
+    return 'Repair seeded defects in this Python utility package.\nRules for the code: ' + rules
+
+
+def f1_task(t: dict, kind: str) -> str:
+    r = t['core_record'] if kind == 'core' else t['adapter_record_prefix']
+    for mark in ('Requirements:\n', '\n\nPermitted edits:', 'Public examples:\n', '\n\nDefective function:\n'):
+        if mark not in r:
+            raise ValueError(f'ticket {t["ticket"]} {kind} record lacks {mark!r}')
+    requirements = r.split('Requirements:\n', 1)[1].split('\n\nPermitted edits:', 1)[0]
+    examples = r.split('Public examples:\n', 1)[1].split('\n\nDefective function:\n', 1)[0]
+    source = r.split('\n\nDefective function:\n', 1)[1]
+    if kind == 'adapter':
+        source = source.split(CORE_TAIL, 1)[0]
+    return 'Requirements:\n' + requirements + '\n\nPublic examples:\n' + examples + '\n\nDefective function:\n' + source
+
+
+def f1_reason(reason: str) -> str:
+    """The check failure in one of the forms the wire allows (no hidden rows, expected values or raw output)."""
+    if reason.startswith(('source:', 'policy:', 'model:', 'wire:')):
+        return reason[:300]
+    if reason.startswith(('rows failed', 'hash seed 1')):
+        return 'A: ' + reason
+    if reason.startswith('resource'):
+        return 'A: timeout'
+    return 'A: execution failed'
+
+
+def f1_check(t: dict, op: str, source, core: str | None, policy_only=False) -> str | None:
+    if not W.source_ok(source):
+        return 'source: expected UTF-8 string, at most 4096 bytes'
+    name, params = W.function_of(t, op)
+    problems = SW.check_function(source, name, params, W.policy())
+    if problems:
+        return ('policy: ' + '; '.join(map(str, problems)))[:300]
+    if policy_only:
+        return None
+    payload, expected = W.tier_a_payload(t, op, source, core)
+    result = W.judge(payload, expected)
+    return None if result['pass'] else f1_reason(result['reason'])
+
+
+def f1_request(ts: dict, st: dict) -> tuple:
+    """(body text, job ids) for every job still needed: core unless accepted, adapter unless accepted or held."""
+    refs, jobs = [], []
+    for n in W.TICKETS:
+        s = st[n]
+        need_core = s['core'] is None
+        need_adapter = s['adapter'] is None and s['held'] is None
+        if not (need_core or need_adapter):
+            continue
+        t = ts[n]
+        lim = len(refs)
+        refs.append('Input limits: ' + t['limits'])
+
+        def task(kind):
+            text = f1_task(t, kind)
+            if s['fail'].get(kind):
+                prev, reason = s['fail'][kind]
+                text += '\nPrevious candidate:\n' + (prev if isinstance(prev, str) else '') + '\nCheck failure:\n' + reason
+            refs.append(text)
+            return len(refs) - 1
+        if need_core:
+            jobs.append(['c' + n, lim, task('core')])
+        if need_adapter:
+            if need_core:
+                jobs.append(['a' + n, lim, task('adapter'), 'c' + n])
+            else:
+                at = task('adapter')
+                refs.append(s['core'])
+                jobs.append(['a' + n, lim, at, len(refs) - 1])
+    blocks = [[0] + jobs]
+    return F.body_text(f1_goal(), [F1_OP], refs, blocks), F.job_ids(blocks)
+
+
+def f1_fixture_reply(ts: dict, ids, mode: dict) -> str:
+    good = fixture_sources(ts, sorted({i[1:] for i in ids}))
+    lines = ['OZ/F1']
+    for i in ids:
+        src = good[i[1:]]['core' if i[0] == 'c' else 'adapter']
+        if mode.get('bad_first', set()) & {i} and not mode.setdefault('used', set()) & {i}:
+            mode['used'].add(i)
+            r = ts[i[1:]]['core_record' if i[0] == 'c' else 'adapter_record_prefix']
+            src = r.split('Defective function:\n', 1)[1].split(CORE_TAIL, 1)[0]
+        lines.append(json.dumps({i: src}))
+    return '\n'.join(lines) + '\n'
+
+
+def f1_settle(ts: dict, st: dict, reply) -> None:
+    """Apply one parsed reply: cores first, then adapters against the accepted core; a passing adapter whose core
+    failed is held (policy-checked) and judged once a core is accepted."""
+    for n in W.TICKETS:
+        s, t = st[n], ts[n]
+        cid, aid = 'c' + n, 'a' + n
+        if cid in reply.accepted:
+            reason = f1_check(t, 'core', reply.accepted[cid], None)
+            if reason is None:
+                s['core'], s['fail']['core'] = reply.accepted[cid], None
+            else:
+                s['fail']['core'] = (reply.accepted[cid], reason)
+        elif cid in reply.failed:
+            s['fail']['core'] = ('', 'model: ' + reply.failed[cid][0])
+        if aid in reply.accepted:
+            cand = reply.accepted[aid]
+            if s['core'] is not None:
+                reason = f1_check(t, 'adapter', cand, s['core'])
+                if reason is None:
+                    s['adapter'], s['adapter_core'], s['fail']['adapter'] = cand, W.sha(s['core']), None
+                else:
+                    s['fail']['adapter'] = (cand, reason)
+            else:
+                reason = f1_check(t, 'adapter', cand, None, policy_only=True)
+                if reason is None:
+                    s['held'] = cand
+                else:
+                    s['fail']['adapter'] = (cand, reason)
+        elif aid in reply.failed:
+            s['fail']['adapter'] = ('', 'model: ' + reply.failed[aid][0])
+        if s['held'] is not None and s['core'] is not None:
+            cand, s['held'] = s['held'], None
+            reason = f1_check(t, 'adapter', cand, s['core'])
+            if reason is None:
+                s['adapter'], s['adapter_core'], s['fail']['adapter'] = cand, W.sha(s['core']), None
+            else:
+                s['fail']['adapter'] = (cand, reason)
+
+
+def fused_delivery(ws: Path, stage: str, kind: str, state: dict, ledger) -> dict:
+    revs = revisions(stage)
+    ts = tickets(revs)
+    st = state.setdefault('f1', {})
+    for n in W.TICKETS:
+        s = st.get(n)
+        # A new source revision invalidates the ticket's old candidates; an adapter is bound to its core's hash.
+        if s is None or s['rev'] != revs[n]:
+            st[n] = {'rev': revs[n], 'core': None, 'adapter': None, 'adapter_core': None, 'held': None,
+                     'fail': {}}
+        elif s['adapter'] is not None and s['adapter_core'] != W.sha(s['core'] or ''):
+            s['adapter'] = None
+    calls, started, stopped, wire_fail = [], time.time(), None, None
+    mode = state.setdefault('fixture_mode', {})
+    for attempt in range(1 + MAX_FIXES):
+        if all(st[n]['core'] and st[n]['adapter'] for n in W.TICKETS):
+            break
+        stopped = ledger.refusal()
+        if stopped:
+            break
+        body, ids = f1_request(ts, st)
+        call = call_claude(body, kind, lambda: f1_fixture_reply(ts, ids, mode), system=F.SYSTEM)
+        ledger.add(call['usage'])
+        (ws / 'fused-calls').mkdir(parents=True, exist_ok=True)
+        (ws / 'fused-calls' / f'{stage}-{attempt}.json').write_text(
+            json.dumps({'body': body, 'envelope': call['envelope']}), encoding='utf-8')
+        calls.append({k: call[k] for k in ('usage', 'thinking', 'seconds', 'failure')} | {'jobs': list(ids)})
+        reply = F.parse_reply(call['text'], ids) if not call['failure'] else None
+        if reply is None or reply.rejection:
+            wire_fail = call['failure'] or reply.rejection
+            calls[-1]['rejection'] = wire_fail
+            continue  # nothing of this reply is accepted; the same job set is asked again
+        f1_settle(ts, st, reply)
+    done = all(st[n]['core'] and st[n]['adapter'] for n in W.TICKETS)
+    sources = {n: {'core': st[n]['core'], 'adapter': st[n]['adapter']} for n in W.TICKETS if st[n]['core']}
+    dest = ws / 'fused-delivery' / stage
+    if done:
+        build_package(dest, ts, sources)
+    elapsed = round(time.time() - started, 2)
+    if done:
+        verdict = evaluate(dest, revs, sources)
+    else:
+        left = sorted(f'{k}{n}' for n in W.TICKETS for k in ('core', 'adapter') if not st[n][k])
+        verdict = {'verified': False, 'errors': [stopped or f'unresolved after {MAX_FIXES} fixes: {left}'
+                                                 + (f' (last wire failure: {wire_fail})' if wire_fail else '')]}
+    return row('fused', stage, calls, elapsed, verdict)
+
+
 # ---- AKOR arm ----
 
 def akor_calls(ws: Path, request_id: str) -> list:
@@ -381,6 +569,7 @@ def run(ws: Path, order: list, kind: str, prefix: str, ledger_path: Path) -> dic
                 report['stopped'] = ledger.refusal()
                 break
             r = (direct_delivery(arm_ws, stage, kind, state, ledger) if arm == 'direct'
+                 else fused_delivery(arm_ws, stage, kind, state, ledger) if arm == 'fused'
                  else akor_delivery(arm_ws, stage, kind, prefix, ledger))
             r['order'] = ','.join(order)
             report['rows'].append(r)
@@ -404,11 +593,11 @@ def main(argv=None):
         print(f'live runs paid calls: set {O.LIVE_ENV}=1 to proceed', file=sys.stderr)
         return 2
     order = args.order.split(',')
-    if sorted(order) != ['akor', 'direct']:
-        p.error('--order must name direct and akor once each')
+    if len(set(order)) != len(order) or len(order) < 2 or not set(order) <= {'direct', 'akor', 'fused'}:
+        p.error('--order names two or three of direct, akor, fused, once each')
     ledger = args.ledger or args.workspace.resolve().parent / 'compare-ledger.json'
     report = run(args.workspace, order, args.kind, args.prefix, ledger)
-    complete = len(report['rows']) == 4 and not report.get('stopped')
+    complete = len(report['rows']) == 2 * len(order) and not report.get('stopped')
     return 0 if complete and all(x['verified_on_time'] for x in report['rows']) else 3
 
 
