@@ -33,8 +33,13 @@ decoder rejected on their last JSON object (`bench/live/pilot2_lenient.py`, meas
    batched call, and 29x to 38x more per verified job when format failures are forgiven.
 2. The Sonnet 31x figure is not an outlier. Opus is higher strictly (56x) because 73 of its 192 single-job replies put
    prose or a Markdown fence before the JSON; all 73 parse leniently, and 43 of them are correct.
-3. Single-job calls are also less accurate in content, not only in format: even leniently, Sonnet gets 139/192 and Opus
-   135/192 against 192/192 batched. The trimmed single-job prompt is a likely cause and is checked next (harness item 1).
+3. Most remaining single-job misses are verbose correct answers, not wrong ones. Alone, the model writes
+   `"outside: the interval [12.40, 12.42] mm lies below ..."` where the exact-match oracle wants `"outside"`; batched,
+   it answers tersely. Checking only the leading verdict, the misses that are correct are Sonnet 48 of 53, Opus 61 of
+   100, Haiku 44 of 73, Fable 58 of 58. So the per-verified-job ratio mixes cost with format discipline. The ratio per
+   requested job (18x to 27x) is the cost gap alone and is the number to quote.
+   Batching itself keeps replies terse and parseable: 3 of 3 batched replies were accepted on every model, against
+   119/192 single-job replies on Opus.
 4. The format effect is small next to the call effect: J/H is 1.3x to 1.7x, P/H is 18x or more.
 5. Subagent fan-out is the most expensive way on every model, 70x to 135x per verified job, and loses accuracy on Haiku
    and Fable.
