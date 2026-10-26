@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" role="img" aria-labelledby="t d">
+  <title id="t">Same 64 jobs on Claude Sonnet 5.5: tokens per verified job</title>
+  <desc id="d">Tokens per verified job at 64 jobs on Claude Sonnet 5.5, 3 seeds: one subagent per job 7,931.0; one call per job 2,834.1; plain JSON in one call 151.1; AKOR (OZ/1g) in one call 91.6. Linear axis. Billed tokens include cache and thinking; failed calls are counted.</desc>
+  <style>
+    .bg { fill: #fcfcfb; }
+    .ink { fill: #0b0b0b; }
+    .ink2 { fill: #52514e; }
+    .accent { fill: #2a78d6; }
+    .grey { fill: #a6a59f; }
+    .track { fill: #ecebe6; }
+    .rule { stroke: #e2e1dc; stroke-width: 1.5; }
+    .sans { font-family: -apple-system, "Segoe UI", Inter, Helvetica, Arial, sans-serif; }
+    @media (prefers-color-scheme: dark) {
+      .bg { fill: #1a1a19; }
+      .ink { fill: #ffffff; }
+      .ink2 { fill: #c3c2b7; }
+      .accent { fill: #3987e5; }
+      .grey { fill: #75746f; }
+      .track { fill: #2b2b29; }
+      .rule { stroke: #3a3a38; }
+    }
+    .grow { transform-box: fill-box; transform-origin: left center; animation: grow 1s cubic-bezier(.2,.7,.2,1) both; }
+    @keyframes grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+    .fade { animation: fade .5s ease-out both; }
+    @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+    @media (prefers-reduced-motion: reduce) { .grow, .fade { animation: none; } }
+  </style>
+
+  <rect class="bg" width="960" height="400" rx="16"/>
+  <text class="ink sans" x="24" y="44" font-size="21" font-weight="800">Same 64 jobs, Claude Sonnet 5.5: tokens per verified job</text>
+  <path class="rule" d="M24 66 H 936"/>
+
+  <!-- linear scale: 7931 tokens = 540 px, bars start at x=270 -->
+  <text class="ink2 sans" x="24" y="114" font-size="16" font-weight="400">One subagent per job</text>
+  <rect class="track" x="270" y="94" width="540" height="30" rx="6"/>
+  <rect class="grey grow" x="270" y="94" width="540" height="30" rx="6" style="animation-delay:0.10s"/>
+  <text class="ink sans fade" x="818" y="116" font-size="18" font-weight="700" style="animation-delay:1.00s">7,931</text>
+
+  <text class="ink2 sans" x="24" y="174" font-size="16" font-weight="400">One call per job</text>
+  <rect class="track" x="270" y="154" width="540" height="30" rx="6"/>
+  <rect class="grey grow" x="270" y="154" width="193" height="30" rx="6" style="animation-delay:0.25s"/>
+  <text class="ink sans fade" x="471" y="176" font-size="18" font-weight="700" style="animation-delay:1.15s">2,834</text>
+
+  <text class="ink2 sans" x="24" y="234" font-size="16" font-weight="400">Plain JSON, one call</text>
+  <rect class="track" x="270" y="214" width="540" height="30" rx="6"/>
+  <rect class="grey grow" x="270" y="214" width="10.3" height="30" rx="3" style="animation-delay:0.40s"/>
+  <text class="ink sans fade" x="288" y="236" font-size="18" font-weight="700" style="animation-delay:1.30s">151</text>
+
+  <text class="ink sans" x="24" y="294" font-size="16" font-weight="700">AKOR (OZ/1g), one call</text>
+  <rect class="track" x="270" y="274" width="540" height="30" rx="6"/>
+  <rect class="accent grow" x="270" y="274" width="6.2" height="30" rx="3" style="animation-delay:0.55s"/>
+  <text class="ink sans fade" x="284" y="296" font-size="18" font-weight="700" style="animation-delay:1.45s">91.6</text>
+
+  <path class="rule" d="M24 330 H 936"/>
+  <text class="ink2 sans" x="24" y="362" font-size="15">3 seeds, strict oracles, all billed tokens incl. cache and thinking. Data: bench/live/data/pilot2_sonnet64.jsonl</text>
+</svg>

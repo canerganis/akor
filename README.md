@@ -2,21 +2,23 @@
 
 # AKOR
 
-### A compact language for AI agents to talk to each other, faster and with fewer tokens.
+### Batch, check and account for AI agent work: fewer model calls, fewer tokens, every answer verified.
 
 Your agents keep repeating themselves on every call. AKOR stops you paying for it.
 
-<img src="docs/assets/hero.svg" alt="Minus 42 percent tokens per verified job on Claude Opus 5.5, 64 jobs per call, every reply accepted on the first try." width="100%">
+<img src="docs/assets/hero.svg" alt="31 times fewer tokens per verified job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,834 tokens per verified job as 64 plain JSON calls and 91.6 as one AKOR call. Most of the gap is batching; the format alone is 39 percent under batched JSON." width="100%">
 
 <img src="docs/social/x_language.gif" alt="Two agents exchange the same 64 jobs: plain JSON takes 3,268 tokens, the AKOR request takes 1,471 and comes back as a short checked reply." width="100%">
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
-![Tests](https://img.shields.io/badge/tests-337%20passing-1a7f4b)
+![Tests](https://img.shields.io/badge/tests-749%20passing-1a7f4b)
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**41% to 43% fewer tokens per verified job on Claude Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. Faster replies on all four. 91 of 91 replies accepted on the first try.**
+**31 times fewer tokens per verified job than sending one call per job (64 jobs on Claude Sonnet 5.5), and 24 times faster. Against the same jobs already batched as plain JSON, the format alone saves 41% to 43% on Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. 91 of 91 replies accepted on the first try.**
+
+<sub>Attribution: most of the 31x gap comes from batching, not from the language. Sending 64 jobs in one call instead of 64 calls removes the repeated prompt, CLI overhead and reference material, whatever the reply format. Counted per requested job instead of per verified job, so failed per-job calls do not shrink the denominator, the gap is 22x. [Pilot results](docs/design/brainstorm-2026-10-22/pilot-results.md).</sub>
 
 ```bash
 pip install git+https://github.com/canerganis/akor
@@ -31,8 +33,8 @@ If AKOR saves you tokens, a star helps other people find it.
 ## The 30-second version
 
 AKOR is a compact message language and a small runtime for agent-to-agent work. Agents send jobs in a short,
-indexed format instead of verbose JSON, and get back one checked record per job: fewer tokens on every call, and
-faster replies.
+indexed format instead of verbose JSON, and get back one checked record per job: many jobs per call instead of one,
+shared context written once, and nothing delivered until it passes the check.
 
 **The problem.** Multi-agent pipelines pay again and again for the same thing: every call resends the rules, the
 context and a verbose reply format, and one malformed answer forces a retry.
@@ -42,8 +44,9 @@ once, and jobs point at them by index. Reads, tests and status events never touc
 short record per job, and the host checks the whole reply before it delivers anything.
 
 **The proof.** Live, preregistered tests on billed tokens, with hidden reasoning and failed calls counted, against
-a plain JSON format carrying the same 64 jobs in one call. Nothing in the reply is repaired, so every correct job is
-really correct.
+two baselines: one plain JSON call per job, the way most pipelines send work, and a plain JSON format carrying the
+same 64 jobs in one call, which isolates what the format itself adds. Nothing in the reply is repaired, so every
+correct job is really correct.
 
 <img src="docs/assets/packet.svg" alt="The same 64-job packet: 3,268 tokens as plain JSON, 1,471 tokens in AKOR, because shared parts are written once and jobs are referenced by index." width="100%">
 
@@ -86,9 +89,10 @@ request on stdin and prints one JSON reply can be an adapter; see [`USAGE.md`](U
 
 ## What AKOR does differently
 
-**It cuts the bill for agent-to-agent traffic by about 40%, and proves it.** 64 jobs travel in one call. The goal,
-each operation and each shared input are written once; jobs point at them by index. On Claude Sonnet 5.5 that is
-40.7% fewer tokens per verified job than plain JSON, on Opus 5.5 42.8%, on Fable 5.1 40.6%, on Haiku 5.5 30.8%, and all four answer faster.
+**It turns many calls into one, and writes every instruction once, and proves it.** 64 jobs travel in one call.
+The goal, each operation and each shared input are written once; jobs point at them by index. Against a JSON
+format that spells out each job's instruction in full, Claude Sonnet 5.5 used 40.7% fewer tokens per verified job
+on the same batch, Opus 5.5 42.8%, Fable 5.1 40.6%, Haiku 5.5 30.8%, and all four answered faster.
 
 **Every number is a billed number.** Most token-saving claims count tokens with a tokenizer and stop there. AKOR's
 counts are what the provider billed: prompt, CLI overhead, visible answer and hidden reasoning, with failed calls
@@ -129,6 +133,10 @@ shrinks what the model reads and writes, not how long it thinks.
 | Haiku 5.5, plain JSON | 5 | 5/5 | 320/320 | 13,140 | 21.0 s | 205.3 |
 | Haiku 5.5, AKOR | 5 | **5/5** | **320/320** | **9,095** | **18.5 s** | **142.1 (-30.8%)** |
 
+The plain JSON baseline is the project's earlier 0.8 format: shared refs written once, each job's instruction
+written out in full, and replies as `{"results":[["ID",status,"text"],...]}`. A prompt that states a shared
+instruction once captures much of the same saving (see What drives the cost).
+
 Tokens are everything that was billed: the prompt, the CLI's own fixed overhead (about 950 tokens per call), the
 visible answer and hidden reasoning. Each AKOR call was paired with a plain JSON call on the same data; failed calls
 count in the cost.
@@ -145,6 +153,51 @@ Plus five stress packets per model whose results are all empty arrays, scalars, 
 genuine job failures. Across all 91 Claude calls on the final wire, the parser accepted every reply. Haiku 5.5
 thinks much longer on this wire than Sonnet (up to 10k output tokens per 64-job packet), so it is not the cheaper
 model here. Raw data, manifests and the harness are in [`bench/`](bench/); every decision is in [`docs/design/`](docs/design/).
+
+## Compared with one subagent per job
+
+The same 64 small jobs on Claude Sonnet 5.5, run four ways, preregistered, strict oracles, every billed token counted
+including subagents ([results](docs/design/brainstorm-2026-10-22/pilot-results.md)):
+
+| 64 jobs, 3 seeds | Correct jobs | Tokens per verified job | Median time |
+|---|---:|---:|---:|
+| One subagent per job | 188/192 | 7,931 | 105 s |
+| One plain JSON call per job | 139/192 | 2,834 | 491 s (sequential) |
+| One plain JSON call with all jobs | 192/192 | 151.1 | 21 s |
+| **One AKOR call with all jobs** | **192/192** | **91.6** | **20 s** |
+
+<img src="docs/assets/pilot_subagents.svg" alt="Tokens per verified job for the same 64 jobs on Sonnet 5.5: one subagent per job 7,931; one call per job 2,834; plain JSON in one call 151; AKOR in one call 91.6." width="100%">
+
+Most of that gap is batching, not the language: AKOR's own format adds about 39% over one batched plain JSON call at
+64 jobs (10% to 18% at 16). A caller agent that hands the jobs to `oz do` instead of spawning subagents spends 9 to 10
+times fewer tokens ([arm K](docs/design/foundation-2026-10-23/arm-k-results.md)); with the same model, a caller that can
+do the jobs itself in one reply is cheaper still ([caller-cost results](docs/design/caller-cost-2026-10-23/results.md)).
+
+## What drives the cost of agent work
+
+In October 2026 we tested AKOR against stronger baselines to find out where the savings really come from: a
+competent direct `claude -p` call, a plain shared queue, and plain JSON at default and high effort, all on Sonnet
+5.5, every answer checked by an independent evaluator, every pair repeated in reversed order
+([report](docs/design/direction-2026-10-26/MORNING-REPORT.md)).
+
+**The number of calls is the main lever.** A near-empty `claude -p` call reported 1,916 input tokens in our probe,
+before any work. For small jobs that fixed cost dominates, which is why batching gives the large wins above.
+
+**Pooling work from several agents saves about 40%.** Four producers whose 32 jobs arrived together used about 40%
+fewer tokens in one pooled call than in four separate calls, at similar wall time
+([results](docs/design/direction-2026-10-26/results-3.md)). Spread over a few hundred milliseconds, pooling still
+saved 40% but added up to 25% latency and missed our accuracy bar by one or two answers in 32, so the pooling runtime
+(`akor_pool.py`) stays experimental ([results](docs/design/direction-2026-10-26/results-4.md)).
+
+**The compact format pays off against prompts that repeat themselves.** Its measured 41% to 43% came from writing
+each instruction once instead of once per job, and from a shorter reply. Against a plain JSON prompt that already
+states the instruction once, on reading comprehension and code repair jobs, it gave no gain
+([results](docs/design/direction-2026-10-26/results-2.md), [results](docs/design/direction-2026-10-26/results-4.md)).
+
+**For one coherent task, one call is the baseline to beat.** On a code repair package, a single well-written direct
+call beat our multi-stage executor (1.4 to 1.6 times fewer tokens), because the executor split the work into two
+serial calls ([results](docs/design/direction-2026-10-26/results-1.md)). The executor's strength is verified delivery
+through crashes, stale inputs and repeats, not lower cost on a single task.
 
 ## Supported models
 
@@ -212,6 +265,9 @@ The full specification is in [`OZ9.md`](OZ9.md).
 ## Limits
 
 - Savings come from batching. With 1 to 4 jobs per call there is no gain; the fixed per-call overhead dominates.
+- The format's own saving is measured against a format that repeats each job's instruction. Against a plain JSON
+  prompt that states the instruction once, it matched at best in our tests, and when the model reasoned more on the
+  compact wire it was slower.
 - The paired savings figures are for Sonnet 5.5, Opus 5.5, Fable 5.1 and Haiku 5.5 at 64 jobs on one task family with
   oracles; your workload may differ, and [`bench/`](bench/) lets you measure it. Models that think at length save less,
   because thinking tokens do not shrink with the packet.
@@ -219,6 +275,12 @@ The full specification is in [`OZ9.md`](OZ9.md).
   that did not happen in 91 calls, which bounds the per-call failure rate (about 3.3% at 95% confidence), it does
   not prove it is zero.
 - Only the Claude configurations listed under Supported models are qualified for this wire.
+- The classification operation in the benchmark workload rarely produces an "inside" answer (none in the 64-job
+  pilot), so its correctness figures say little about inclusive-boundary cases. In the step 4 workflow, where half the
+  cases are boundaries, Sonnet 5.5 misclassified four of them, each in a call that used no hidden reasoning; per-job host
+  checks caught every one before delivery ([step 4 results](docs/design/step4-2026-10-23/g3b/results.md)).
+- Authoring rule that follows from it: a step the host can compute exactly from checked values stays on the host
+  ([decision](docs/design/boundary-adoption-2026-10-23/decision-host-classify.md)).
 
 ## Related work
 
@@ -262,7 +324,10 @@ writes, not how long it thinks.
 ## Roadmap
 
 - More task families in the public benchmark (code review, log triage) next to the current extraction tasks.
-- A comparison against one call per job, the way many pipelines run today.
+- Done: a comparison against one call per job and one subagent per job (see above).
+- Done in the runtime: a resumable executor for dependent multi-step work with per-job checks, judged on a 20-step
+  real workflow where the model writes code and the host verifies it in three tiers
+  ([O1 result](docs/design/o1-real-workflow-2026-10-23/results.md)).
 - More models and runtimes, each added only after its own preregistered qualification.
 
 Issues and pull requests are welcome.
