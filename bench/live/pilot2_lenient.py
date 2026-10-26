@@ -19,7 +19,7 @@ for m in ['sonnet','opus','haiku','fable']:
     cache={}
     strict=len_ok=fmt_fail=fmt_fixed=0; tok=0; H=[0,0]
     for r in R:
-        if r['arm']=='H': H[0]+=r['in']+r['out']; H[1]+=r['jobs_passed']
+        if r['arm']=='H': H[0]+=r['in']+r['out']; H[1]+=r['jobs_passed']; H_req=H[0]/192
         if r['arm']!='P': continue
         tok+=r['in']+r['out']; strict+=r['jobs_passed']
         if r['seed'] not in cache: cache[r['seed']]=T.calls(r['seed'],'P')
@@ -32,4 +32,4 @@ for m in ['sonnet','opus','haiku','fable']:
     h=H[0]/H[1]
     print(m,'P strict',strict,'lenient',len_ok,'format fails',fmt_fail,'recovered',fmt_fixed,
           'tok/verified strict',round(tok/strict),'lenient',round(tok/len_ok),'H',round(h,1),
-          'P/H strict',round(tok/strict/h,1),'lenient',round(tok/len_ok/h,1),'per requested',round(tok/192/h,1))
+          'P/H strict',round(tok/strict/h,1),'lenient',round(tok/len_ok/h,1),'per requested',round((tok/192)/H_req,1))  # both arms per requested job
