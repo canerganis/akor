@@ -16,7 +16,7 @@ Your agents keep repeating themselves on every call. AKOR stops you paying for i
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**31 times fewer tokens per verified job than sending one call per job (64 jobs on Claude Sonnet 5.5), and 24 times faster. Against the same jobs already batched as plain JSON, the format alone saves 41% to 43% on Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. 91 of 91 replies accepted on the first try.**
+**31 times fewer tokens per verified job than sending one call per job (64 jobs on Claude Sonnet 5.5), and 24 times faster. Pooling four agents' jobs into one call: 40% fewer tokens. Against a JSON format that repeats each job's instruction, 41% to 43% fewer on Sonnet 5.5, Opus 5.5 and Fable 5.1. 91 of 91 replies accepted on the first try.**
 
 <sub>Attribution: most of the 31x gap comes from batching, not from the language. Sending 64 jobs in one call instead of 64 calls removes the repeated prompt, CLI overhead and reference material, whatever the reply format. Counted per requested job instead of per verified job, so failed per-job calls do not shrink the denominator, the gap is 22x. [Pilot results](docs/design/brainstorm-2026-10-22/pilot-results.md).</sub>
 
