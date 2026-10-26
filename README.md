@@ -89,10 +89,10 @@ request on stdin and prints one JSON reply can be an adapter; see [`USAGE.md`](U
 
 ## What AKOR does differently
 
-**It turns many calls into one, and where jobs share context it cuts about 40% more, and proves it.** 64 jobs
-travel in one call. The goal, each operation and each shared input are written once; jobs point at them by index.
-On a workload where jobs share their inputs, Claude Sonnet 5.5 used 40.7% fewer tokens per verified job than plain
-JSON carrying the same batch, Opus 5.5 42.8%, Fable 5.1 40.6%, Haiku 5.5 30.8%, and all four answered faster.
+**It turns many calls into one, and writes every instruction once, and proves it.** 64 jobs travel in one call.
+The goal, each operation and each shared input are written once; jobs point at them by index. Against a JSON
+format that spells out each job's instruction in full, Claude Sonnet 5.5 used 40.7% fewer tokens per verified job
+on the same batch, Opus 5.5 42.8%, Fable 5.1 40.6%, Haiku 5.5 30.8%, and all four answered faster.
 
 **Every number is a billed number.** Most token-saving claims count tokens with a tokenizer and stop there. AKOR's
 counts are what the provider billed: prompt, CLI overhead, visible answer and hidden reasoning, with failed calls
@@ -132,6 +132,10 @@ shrinks what the model reads and writes, not how long it thinks.
 | Fable 5.1, AKOR | 5 | **5/5** | **320/320** | **5,562** | **18.7 s** | **86.9 (-40.6%)** |
 | Haiku 5.5, plain JSON | 5 | 5/5 | 320/320 | 13,140 | 21.0 s | 205.3 |
 | Haiku 5.5, AKOR | 5 | **5/5** | **320/320** | **9,095** | **18.5 s** | **142.1 (-30.8%)** |
+
+The plain JSON baseline is the project's earlier 0.8 format: shared refs written once, each job's instruction
+written out in full, and replies as `{"results":[["ID",status,"text"],...]}`. A prompt that states a shared
+instruction once captures much of the same saving (see What drives the cost).
 
 Tokens are everything that was billed: the prompt, the CLI's own fixed overhead (about 950 tokens per call), the
 visible answer and hidden reasoning. Each AKOR call was paired with a plain JSON call on the same data; failed calls
@@ -185,9 +189,10 @@ fewer tokens in one pooled call than in four separate calls, at similar wall tim
 saved 40% but added up to 25% latency and missed our accuracy bar by one or two answers in 32, so the pooling runtime
 (`akor_pool.py`) stays experimental ([results](docs/design/direction-2026-10-26/results-4.md)).
 
-**The compact format pays off when jobs share context.** On workloads where every job has its own unique input
-(reading comprehension, code repair), it gave no gain over a plain JSON prompt in one call
-([results](docs/design/direction-2026-10-26/results-2.md)).
+**The compact format pays off against prompts that repeat themselves.** Its measured 41% to 43% came from writing
+each instruction once instead of once per job, and from a shorter reply. Against a plain JSON prompt that already
+states the instruction once, on reading comprehension and code repair jobs, it gave no gain
+([results](docs/design/direction-2026-10-26/results-2.md), [results](docs/design/direction-2026-10-26/results-4.md)).
 
 **For one coherent task, one call is the baseline to beat.** On a code repair package, a single well-written direct
 call beat our multi-stage executor (1.4 to 1.6 times fewer tokens), because the executor split the work into two
@@ -260,8 +265,9 @@ The full specification is in [`OZ9.md`](OZ9.md).
 ## Limits
 
 - Savings come from batching. With 1 to 4 jobs per call there is no gain; the fixed per-call overhead dominates.
-- The format's own saving needs shared context. When each job's input is unique, it matched plain JSON at best in
-  our tests, and when the model reasoned more on the compact wire it was slower.
+- The format's own saving is measured against a format that repeats each job's instruction. Against a plain JSON
+  prompt that states the instruction once, it matched at best in our tests, and when the model reasoned more on the
+  compact wire it was slower.
 - The paired savings figures are for Sonnet 5.5, Opus 5.5, Fable 5.1 and Haiku 5.5 at 64 jobs on one task family with
   oracles; your workload may differ, and [`bench/`](bench/) lets you measure it. Models that think at length save less,
   because thinking tokens do not shrink with the packet.
