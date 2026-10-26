@@ -6,9 +6,9 @@
 
 Your agents keep repeating themselves on every call. AKOR stops you paying for it.
 
-<img src="docs/assets/hero.svg" alt="31 times fewer tokens per verified job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,834 tokens per verified job as 64 plain JSON calls and 91.6 as one AKOR call. Most of the gap is batching; the format alone is 39 percent under batched JSON." width="100%">
+<img src="docs/assets/hero.svg" alt="31 times fewer tokens per verified job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,834 tokens per verified job as 64 plain JSON calls and 91.6 as one AKOR call. Most of the gap is batching; the 64 jobs also finished 24 times faster with every answer checked." width="100%">
 
-<img src="docs/social/x_language.gif" alt="Two agents exchange the same 64 jobs: plain JSON takes 3,268 tokens, the AKOR request takes 1,471 and comes back as a short checked reply." width="100%">
+<img src="docs/social/x_pool.gif" alt="Four agents with 32 jobs: calling the model separately takes 4 calls and 15,055 tokens; AKOR pools the ready jobs into 1 checked call of 8,983 tokens, 40 percent fewer. Claude Sonnet 5.5, live." width="100%">
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
