@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" role="img" aria-labelledby="t d">
-  <title id="t">42 percent fewer tokens per verified job</title>
-  <desc id="d">AKOR cuts tokens per verified job by 42 percent. Same jobs, same answers, fewer tokens, faster. Measured with Claude Opus 5.5, 64 jobs per call, every reply accepted on the first try.</desc>
+  <title id="t">31 times fewer tokens than one call per job</title>
+  <desc id="d">The same 64 jobs on Claude Sonnet 5.5: one plain JSON call per job costs 2,834 tokens per verified job, one AKOR call costs 91.6, 31 times fewer. Most of the gap is batching, and the 64 jobs finished 24 times faster with every answer checked.</desc>
   <style>
     .bg { fill: #fcfcfb; }
     .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
@@ -63,71 +63,27 @@
   <rect class="bg" width="960" height="300" rx="16"/>
   <ellipse class="glow" cx="230" cy="120" rx="300" ry="130" fill="url(#g)"/>
 
-  <text class="accent sans step s0" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-0%</text>
-  <text class="accent sans step s1" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-3%</text>
-  <text class="accent sans step s2" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-9%</text>
-  <text class="accent sans step s3" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-17%</text>
-  <text class="accent sans step s4" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-26%</text>
-  <text class="accent sans step s5" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-34%</text>
-  <text class="accent sans step s6" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-39%</text>
-  <text class="accent sans step s7" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-41%</text>
-  <text class="accent sans step last s8" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">-42%</text>
+  <text class="accent sans step s0" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">1×</text>
+  <text class="accent sans step s1" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">2×</text>
+  <text class="accent sans step s2" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">4×</text>
+  <text class="accent sans step s3" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">8×</text>
+  <text class="accent sans step s4" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">14×</text>
+  <text class="accent sans step s5" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">20×</text>
+  <text class="accent sans step s6" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">26×</text>
+  <text class="accent sans step s7" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">30×</text>
+  <text class="accent sans step last s8" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">31×</text>
 
   <g class="sans">
-    <text class="ink fx" x="436" y="108" font-size="42" font-weight="800" style="animation-delay:.9s">tokens per verified job</text>
-    <text class="ink2 fx" x="436" y="148" font-size="26" style="animation-delay:1.15s">Same jobs. Same answers.</text>
-    <text class="ink2 fx" x="436" y="182" font-size="26" style="animation-delay:1.3s">Fewer tokens. Faster.</text>
+    <text class="ink fx" x="360" y="108" font-size="40" font-weight="800" style="animation-delay:.9s">fewer tokens per job</text>
+    <text class="ink2 fx" x="360" y="148" font-size="26" style="animation-delay:1.15s">than one call per job. Same 64 jobs.</text>
+    <text class="ink2 fx" x="360" y="182" font-size="26" style="animation-delay:1.3s">24 times faster, every answer checked.</text>
   </g>
 
-  <g>
-    <rect class="accent bar" x="48" y="208.0" width="10" height="30.0" rx="3" style="animation-delay:1.00s"/>
-    <rect class="accent bar" x="66" y="208.3" width="10" height="29.7" rx="3" style="animation-delay:1.03s"/>
-    <rect class="accent bar" x="84" y="208.5" width="10" height="29.5" rx="3" style="animation-delay:1.06s"/>
-    <rect class="accent bar" x="102" y="208.8" width="10" height="29.2" rx="3" style="animation-delay:1.09s"/>
-    <rect class="accent bar" x="120" y="209.1" width="10" height="28.9" rx="3" style="animation-delay:1.12s"/>
-    <rect class="accent bar" x="138" y="209.3" width="10" height="28.7" rx="3" style="animation-delay:1.15s"/>
-    <rect class="accent bar" x="156" y="209.6" width="10" height="28.4" rx="3" style="animation-delay:1.18s"/>
-    <rect class="accent bar" x="174" y="209.9" width="10" height="28.1" rx="3" style="animation-delay:1.21s"/>
-    <rect class="accent bar" x="192" y="210.1" width="10" height="27.9" rx="3" style="animation-delay:1.24s"/>
-    <rect class="accent bar" x="210" y="210.4" width="10" height="27.6" rx="3" style="animation-delay:1.27s"/>
-    <rect class="accent bar" x="228" y="210.7" width="10" height="27.3" rx="3" style="animation-delay:1.30s"/>
-    <rect class="accent bar" x="246" y="210.9" width="10" height="27.1" rx="3" style="animation-delay:1.33s"/>
-    <rect class="accent bar" x="264" y="211.2" width="10" height="26.8" rx="3" style="animation-delay:1.36s"/>
-    <rect class="accent bar" x="282" y="211.5" width="10" height="26.5" rx="3" style="animation-delay:1.39s"/>
-    <rect class="accent bar" x="300" y="211.8" width="10" height="26.2" rx="3" style="animation-delay:1.42s"/>
-    <rect class="accent bar" x="318" y="212.0" width="10" height="26.0" rx="3" style="animation-delay:1.45s"/>
-    <rect class="accent bar" x="336" y="212.3" width="10" height="25.7" rx="3" style="animation-delay:1.48s"/>
-    <rect class="accent bar" x="354" y="212.6" width="10" height="25.4" rx="3" style="animation-delay:1.51s"/>
-    <rect class="accent bar" x="372" y="212.8" width="10" height="25.2" rx="3" style="animation-delay:1.54s"/>
-    <rect class="accent bar" x="390" y="213.1" width="10" height="24.9" rx="3" style="animation-delay:1.57s"/>
-    <rect class="accent bar" x="408" y="213.4" width="10" height="24.6" rx="3" style="animation-delay:1.60s"/>
-    <rect class="accent bar" x="426" y="213.6" width="10" height="24.4" rx="3" style="animation-delay:1.63s"/>
-    <rect class="accent bar" x="444" y="213.9" width="10" height="24.1" rx="3" style="animation-delay:1.66s"/>
-    <rect class="accent bar" x="462" y="214.2" width="10" height="23.8" rx="3" style="animation-delay:1.69s"/>
-    <rect class="accent bar" x="480" y="214.4" width="10" height="23.6" rx="3" style="animation-delay:1.72s"/>
-    <rect class="accent bar" x="498" y="214.7" width="10" height="23.3" rx="3" style="animation-delay:1.75s"/>
-    <rect class="accent bar" x="516" y="215.0" width="10" height="23.0" rx="3" style="animation-delay:1.78s"/>
-    <rect class="accent bar" x="534" y="215.2" width="10" height="22.8" rx="3" style="animation-delay:1.81s"/>
-    <rect class="accent bar" x="552" y="215.5" width="10" height="22.5" rx="3" style="animation-delay:1.84s"/>
-    <rect class="accent bar" x="570" y="215.8" width="10" height="22.2" rx="3" style="animation-delay:1.87s"/>
-    <rect class="accent bar" x="588" y="216.0" width="10" height="22.0" rx="3" style="animation-delay:1.90s"/>
-    <rect class="accent bar" x="606" y="216.3" width="10" height="21.7" rx="3" style="animation-delay:1.93s"/>
-    <rect class="accent bar" x="624" y="216.6" width="10" height="21.4" rx="3" style="animation-delay:1.96s"/>
-    <rect class="accent bar" x="642" y="216.8" width="10" height="21.2" rx="3" style="animation-delay:1.99s"/>
-    <rect class="accent bar" x="660" y="217.1" width="10" height="20.9" rx="3" style="animation-delay:2.02s"/>
-    <rect class="accent bar" x="678" y="217.4" width="10" height="20.6" rx="3" style="animation-delay:2.05s"/>
-    <rect class="accent bar" x="696" y="217.7" width="10" height="20.3" rx="3" style="animation-delay:2.08s"/>
-    <rect class="accent bar" x="714" y="217.9" width="10" height="20.1" rx="3" style="animation-delay:2.11s"/>
-    <rect class="accent bar" x="732" y="218.2" width="10" height="19.8" rx="3" style="animation-delay:2.14s"/>
-    <rect class="accent bar" x="750" y="218.5" width="10" height="19.5" rx="3" style="animation-delay:2.17s"/>
-    <rect class="accent bar" x="768" y="218.7" width="10" height="19.3" rx="3" style="animation-delay:2.20s"/>
-    <rect class="accent bar" x="786" y="219.0" width="10" height="19.0" rx="3" style="animation-delay:2.23s"/>
-    <rect class="accent bar" x="804" y="219.3" width="10" height="18.7" rx="3" style="animation-delay:2.26s"/>
-    <rect class="accent bar" x="822" y="219.5" width="10" height="18.5" rx="3" style="animation-delay:2.29s"/>
-    <rect class="accent bar" x="840" y="219.8" width="10" height="18.2" rx="3" style="animation-delay:2.32s"/>
-    <rect class="accent bar" x="858" y="220.1" width="10" height="17.9" rx="3" style="animation-delay:2.35s"/>
-    <rect class="accent bar" x="876" y="220.3" width="10" height="17.7" rx="3" style="animation-delay:2.38s"/>
-    <rect class="accent bar" x="894" y="220.6" width="10" height="17.4" rx="3" style="animation-delay:2.41s"/>
+  <g class="sans">
+    <rect class="grey bar" x="48" y="200" width="864" height="20" rx="4" style="animation-delay:1.0s"/>
+    <text class="ink fx" x="60" y="215" font-size="14" font-weight="600" style="animation-delay:1.4s">64 calls, one per job: 2,834 tokens per verified job</text>
+    <rect class="accent bar" x="48" y="228" width="28" height="20" rx="4" style="opacity:1;animation-delay:1.6s"/>
+    <text class="ink fx" x="86" y="243" font-size="14" font-weight="600" style="animation-delay:1.8s">1 AKOR call: 91.6</text>
   </g>
-  <text class="ink2 sans fx" x="48" y="278" font-size="19" style="animation-delay:1.8s">Claude Opus 5.5, 64 jobs per call, every reply accepted on the first try</text>
+  <text class="ink2 sans fx" x="48" y="278" font-size="19" style="animation-delay:1.8s">Claude Sonnet 5.5, 64 jobs, 3 seeds, preregistered. Most of the gap is batching.</text>
 </svg>

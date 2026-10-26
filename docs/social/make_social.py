@@ -376,6 +376,122 @@ def language_frames():
             + [lang_card(i * DT) for i in range(int(CARD_IN / DT) + 1)])
 
 
+# ---------------------------------------------------------------- 7. pooling (live, results-4 burst run 1)
+POOL_D, POOL_P = 15055, 8983       # tokens: four producer calls vs one pooled call, Sonnet 5.5, 32 BoolQ jobs
+PA_X, PA_W, PA_H = 40, 190, 64     # producer boxes on the left
+PA_YS = [190, 280, 370, 460]
+MODEL_X, MODEL_W, MODEL_H = W - 40 - 200, 200, 150
+POOL_X = 520
+PSCENE, PSCENE2 = 3.2, 3.4
+
+
+def producers(d, lit):
+    for i, y in enumerate(PA_YS):
+        d.rounded_rectangle([PA_X, y - PA_H // 2, PA_X + PA_W, y + PA_H // 2], radius=14, fill=BAR,
+                            outline=mix(LINE_C, ACCENT, lit[i]), width=3)
+        text(d, (PA_X + PA_W // 2, y + 10), f'Agent {"ABCD"[i]}', 28, TEXT, True, anchor='ms')
+
+
+def model_box(d, lit):
+    y = (PA_YS[0] + PA_YS[-1]) // 2
+    d.rounded_rectangle([MODEL_X, y - MODEL_H // 2, MODEL_X + MODEL_W, y + MODEL_H // 2], radius=18, fill=BAR,
+                        outline=mix(LINE_C, ACCENT, lit), width=3)
+    text(d, (MODEL_X + MODEL_W // 2, y - 6), 'claude -p', 30, TEXT, True, anchor='ms')
+    text(d, (MODEL_X + MODEL_W // 2, y + 30), 'model', 24, DIM, anchor='ms')
+    return y
+
+
+def chip(d, x, y, label, color, size=22, right=False):
+    """A small labelled box centred at x, or ending at x when right is set."""
+    f = font(size, True)
+    w = f.getlength(label) + 24
+    if right:
+        x -= w / 2
+    d.rounded_rectangle([x - w / 2, y - 20, x + w / 2, y + 20], radius=10, fill=BAR, outline=color, width=2)
+    d.text((x, y + 8), label, fill=color, font=f, anchor='ms')
+
+
+def counter(d, t, start, end, final, color, strike=None):
+    n = round(final * ease_io((t - start) / (end - start)))
+    cf = font(56, True)
+    cx = W // 2 - cf.getlength(f'{final:,} tokens') / 2
+    if strike:
+        old = font(44)
+        w_old = old.getlength(f'{strike:,}')
+        cx -= (w_old + 36) / 2
+        a = ease_out((t - end) / 0.3)
+        if a > 0:
+            d.text((cx, 640), f'{strike:,}', fill=fade(DIM, a), font=old, anchor='ls')
+            d.line([(cx - 6, 622), (cx + w_old + 6, 622)], fill=fade(DIM, a), width=3)
+        cx += w_old + 36
+    d.text((cx, 640), f'{n:,} tokens', fill=color, font=cf, anchor='ls')
+
+
+def pool_scene(t, pooled):
+    """Scene 1: each agent makes its own call (4 calls, each with fixed per-call input). Scene 2: AKOR pools the
+    same 32 jobs into one call."""
+    img, d = new()
+    my = model_box(d, 0.0)
+    lit = [0.0] * 4
+    if not pooled:
+        text(d, (W // 2, 78), 'Each agent calls the model', 46, TEXT, True, anchor='ms')
+        for i, y in enumerate(PA_YS):
+            s = 0.2 + 0.45 * i
+            k = ease_io((t - s) / 0.9)
+            if t > s:
+                lit[i] = 1.0
+            if t > s and k < 1:
+                x = PA_X + PA_W + 300 + (MODEL_X - 16 - (PA_X + PA_W + 300)) * k
+                yy = y + (my - y) * k
+                chip(d, x, yy, '8 jobs + ~1.9k fixed', '#aab2bb', right=True)
+        text(d, (W // 2, 560), '4 calls', 34, DIM, True, anchor='ms')
+        counter(d, t, 0.2, 2.6, POOL_D, TEXT)
+        model_box(d, ease_out((t - 1.1) / 0.3))
+    else:
+        text(d, (W // 2, 78), 'AKOR pools ready jobs', 46, ACCENT, True, anchor='ms')
+        for i, y in enumerate(PA_YS):
+            s = 0.1 + 0.15 * i
+            k = ease_io((t - s) / 0.7)
+            if t > s:
+                lit[i] = 1.0
+            if t > s and t < 1.4:
+                x = PA_X + PA_W + 60 + (POOL_X - (PA_X + PA_W + 60)) * k
+                yy = y + (my - y) * k
+                chip(d, x, yy, '8 jobs', ACCENT)
+        pa = ease_out((t - 0.9) / 0.3)
+        if pa > 0 and t < 1.6:
+            chip(d, POOL_X, my, '32 jobs', fade(ACCENT, pa), 26)
+        if 1.4 <= t:
+            k = ease_io((t - 1.6) / 0.8)
+            if k < 1:
+                x = POOL_X + 170 + (MODEL_X - 16 - POOL_X - 170) * k
+                chip(d, x, my, '32 jobs + ~1.9k fixed', ACCENT, 24, right=True)
+        text(d, (W // 2, 560), '1 call, every answer checked', 34, fade(ACCENT, ease_out((t - 2.4) / 0.3)), True,
+             anchor='ms')
+        counter(d, t, 0.1, 2.4, POOL_P, ACCENT, strike=POOL_D)
+        model_box(d, ease_out((t - 2.4) / 0.3))
+    producers(d, lit)
+    return img
+
+
+def pool_card(t):
+    img, d = new()
+    a = lambda s: ease_out((t - s) / 0.35)
+    centered(d, 170, 'Fewer calls,', 76, fade(TEXT, a(0.0)), True)
+    centered(d, 260, 'fewer tokens', 76, fade(TEXT, a(0.0)), True)
+    centered(d, 366, '4 agents, 32 jobs: 4 calls -> 1', 44, fade(ACCENT, a(0.1)), True)
+    centered(d, 428, '-40% tokens, every answer checked', 44, fade(ACCENT, a(0.2)), True)
+    centered(d, 520, 'Claude Sonnet 5.5, live, measured', 30, fade(DIM, a(0.3)))
+    centered(d, 626, 'github.com/canerganis/akor', 34, fade(DIM, a(0.4)))
+    return img
+
+
+def pool_frames():
+    return ([pool_scene(i * DT, False) for i in range(int(PSCENE / DT))]
+            + [pool_scene(i * DT, True) for i in range(int(PSCENE2 / DT))]
+            + [pool_card(i * DT) for i in range(int(CARD_IN / DT) + 1)])
+
+
 # ---------------------------------------------------------------- output
 def save_gif(name, frames, colors, hold=HOLD):
     sample = frames[::4] + [frames[-1]]
