@@ -19,9 +19,6 @@ import concurrent.futures as cf
 import json
 import os
 from pathlib import Path
-import re
-import shutil
-import subprocess
 import sys
 import time
 
@@ -30,6 +27,7 @@ ROOT = HERE.parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from bench import harness as H  # noqa: E402
 from bench.ozmap import data  # noqa: E402
 import oz_batch  # noqa: E402
 import oz_reply  # noqa: E402
@@ -39,6 +37,8 @@ JOBS = 8
 TIMEOUT = 300
 RETRIES = 1
 MAX_LAUNCHES = 8
+MAX_TOKENS = 200_000
+RESERVE = 20_000  # tokens held for a call in flight until its usage is known
 LIVE_ENV = 'POOL_LIVE_CONFIRM'
 DIRECT_SYSTEM = 'You answer questions about passages. Reply with one JSON object only, no prose and no Markdown fences.'
 GOAL = 'Answer yes/no reading-comprehension questions.'
@@ -58,44 +58,9 @@ def workload() -> tuple:
     return jobs, gold
 
 
-def usage_of(envelope):
-    mu = envelope.get('modelUsage') if isinstance(envelope, dict) else None
-    if not isinstance(mu, dict) or not mu:
-        return None
-    keys = ('inputTokens', 'cacheReadInputTokens', 'cacheCreationInputTokens', 'outputTokens')
-    if any(type(e.get(k)) is not int for e in mu.values() for k in keys):
-        return None
-    s = {k: sum(e[k] for e in mu.values()) for k in keys}
-    return {'input_tokens': s['inputTokens'] + s['cacheReadInputTokens'] + s['cacheCreationInputTokens'],
-            'cached_input_tokens': s['cacheReadInputTokens'], 'output_tokens': s['outputTokens'],
-            'thinking_tokens': sum(e.get('thinkingTokens') or 0 for e in mu.values())}
-
-
 def call(system: str, prompt: str, kind: str, fixture_text, effort: str | None = None) -> dict:
-    started = time.time()
-    envelope, failure = None, None
-    if kind == 'fixture':
-        text = fixture_text()
-        envelope = {'result': text, 'modelUsage': {MODEL: {
-            'inputTokens': (len(system) + len(prompt)) // 4, 'cacheReadInputTokens': 0,
-            'cacheCreationInputTokens': 0, 'outputTokens': len(text) // 4, 'thinkingTokens': 0}}}
-    else:
-        try:
-            proc = subprocess.run([shutil.which('claude'), '-p', '--model', MODEL, '--system-prompt', system,
-                                   '--tools', '', '--setting-sources', '', '--strict-mcp-config',
-                                   '--no-session-persistence', '--output-format', 'json']
-                                  + (['--effort', effort] if effort else []),
-                                  input=prompt, capture_output=True, text=True, encoding='utf-8', timeout=TIMEOUT)
-            envelope = json.loads(proc.stdout)
-        except subprocess.TimeoutExpired:
-            failure = 'timeout'
-        except ValueError:
-            failure = 'unreadable envelope'
-    if isinstance(envelope, dict) and sorted(envelope.get('modelUsage') or {}) != [MODEL]:
-        failure = 'unexpected model(s): ' + ', '.join(sorted(envelope.get('modelUsage') or {}))
-    return {'text': '' if failure or not isinstance(envelope, dict) else envelope.get('result', ''),
-            'usage': usage_of(envelope), 'failure': failure, 'started': started, 'ended': time.time(),
-            'envelope': envelope}
+    """One call through bench/harness.py (model check, usage None when unknown, failures recorded)."""
+    return H.call(system, prompt, model=MODEL, kind=kind, fixture=fixture_text, effort=effort, timeout=TIMEOUT)
 
 
 # ---- reply formats ----
@@ -139,15 +104,15 @@ def fixture_answers(items, gold, fmt: str) -> str:
 
 # ---- arms ----
 
-def run_group(items, fmt: str, kind: str, gold, launches: list, ws: Path, tag: str) -> dict:
+def run_group(items, fmt: str, kind: str, gold, launches: list, ws: Path, tag: str, ledger) -> dict:
     """Send one group in one call (plus at most RETRIES retries of an unusable reply). {id: (answer, arrival)}."""
     ids = [jid for jid, _ in items]
     system, prompt, parse = ((oz_batch.SYSTEM, oz_packet(items), oz_parse) if fmt == 'oz'
                              else (DIRECT_SYSTEM, direct_prompt(items), direct_parse))
     for attempt in range(1 + RETRIES):
-        if len(launches) >= MAX_LAUNCHES:
+        c = H.run_charged(ledger, lambda: call(system, prompt, kind, lambda: fixture_answers(items, gold, fmt)))
+        if c is None:  # launch cap, token cap or a call without usage
             return {}
-        c = call(system, prompt, kind, lambda: fixture_answers(items, gold, fmt))
         record = {'group': tag, 'attempt': attempt, 'usage': c['usage'], 'failure': c['failure'],
                   'started': c['started'], 'ended': c['ended'], 'jobs': len(ids)}
         launches.append(record)
@@ -161,33 +126,31 @@ def run_group(items, fmt: str, kind: str, gold, launches: list, ws: Path, tag: s
     return {}
 
 
-def run_arm(arm: str, jobs, gold, kind: str, ws: Path, launches: list) -> dict:
+def run_arm(arm: str, jobs, gold, kind: str, ws: Path, launches: list, ledger) -> dict:
     t0 = time.time()
     by_producer = {p: [(jid, text) for q, jid, text in jobs if q == p] for p in data.PRODUCERS}
     results = {}
     if arm == 'D':
         with cf.ThreadPoolExecutor(len(by_producer)) as pool:
-            futures = [pool.submit(run_group, items, 'direct', kind, gold, launches, ws, f'D-{p}')
+            futures = [pool.submit(run_group, items, 'direct', kind, gold, launches, ws, f'D-{p}', ledger)
                        for p, items in by_producer.items()]
             for f in futures:
                 results.update(f.result())
     else:
         results = run_group([(jid, text) for _, jid, text in jobs], 'oz' if arm == 'A' else 'direct', kind, gold,
-                            launches, ws, arm)
+                            launches, ws, arm, ledger)
     mine = [x for x in launches if x['group'] == arm or x['group'].startswith(arm + '-')]
-    known = [x['usage'] for x in mine if x['usage']]
+    t = H.total(x['usage'] for x in mine)
     latency = {}
     for p, items in by_producer.items():
         arrivals = [results[jid][1] for jid, _ in items if jid in results]
         latency[p] = round(max(arrivals) - t0, 2) if len(arrivals) == len(items) else None
     correct = sum(1 for jid in gold if jid in results and results[jid][0] == gold[jid])
     return {'arm': arm, 'calls': len(mine), 'rejected_calls': sum(1 for x in mine if x.get('rejected')),
-            'calls_without_usage': len(mine) - len(known),
-            'input_tokens': sum(u['input_tokens'] for u in known),
-            'cached_input_tokens': sum(u['cached_input_tokens'] for u in known),
-            'output_tokens': sum(u['output_tokens'] for u in known),
-            'thinking_tokens': sum(u['thinking_tokens'] for u in known),
-            'tokens': sum(u['input_tokens'] + u['output_tokens'] for u in known),
+            **{k: t[k] for k in ('calls_without_usage', 'input_tokens', 'cached_input_tokens', 'output_tokens',
+                                 'thinking_tokens', 'thinking_unknown')},
+            'tokens': t['tokens'] if t['conclusive'] else None,  # None when any call has unknown usage
+            'tokens_known_calls_only': t['tokens'],
             'answered': len(results), 'correct': correct, 'jobs': len(gold),
             'makespan_seconds': round(max((x['ended'] for x in mine), default=t0) - t0, 2),
             'producer_latency_seconds': latency,
@@ -212,10 +175,11 @@ def main(argv=None):
     ws.mkdir(parents=True, exist_ok=True)
     jobs, gold = workload()
     launches, rows = [], []
+    ledger = H.Ledger(ws / 'pool-ledger.sqlite', max_launches=MAX_LAUNCHES, max_tokens=MAX_TOKENS, reserve=RESERVE)
     for arm in order:
-        row = run_arm(arm, jobs, gold, args.kind, ws, launches)
+        row = run_arm(arm, jobs, gold, args.kind, ws, launches, ledger)
         rows.append(row)
-        print(arm, f"{row['correct']}/{row['jobs']} correct", row['calls'], 'calls', row['tokens'], 'tokens',
+        print(arm, f"{row['correct']}/{row['jobs']} correct", row['calls'], 'calls', 'n/a (unknown usage)' if row['tokens'] is None else row['tokens'], 'tokens',
               row['makespan_seconds'], 's makespan, worst producer', row['worst_producer_latency_seconds'], flush=True)
         (ws / 'pool.json').write_text(json.dumps({'kind': args.kind, 'model': MODEL, 'order': order, 'rows': rows,
                                                   'launches': launches}, indent=1) + '\n', encoding='utf-8')

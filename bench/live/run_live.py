@@ -1,16 +1,17 @@
 """Live A/B pilot: 0.8 rows vs OZ/9 vs OZ/9 + RESULTS_RULE on Sonnet via `claude -p`.
 
-Run from the repo root with the .venv python. Billed usage comes from the CLI's own
-usage report (input + cache creation + cache read = raw input). Every call is
+Run from the repo root with the .venv python. Billed usage is summed from the CLI's
+modelUsage through bench/harness.py (input + cache creation + cache read = raw input). Every call is
 sequential; arm order is shuffled per (domain, n, rep) so drift hits all arms.
 """
-import json, os, random, re, shutil, subprocess, sys, time
+import json, os, random, re, shutil, subprocess, sys, tempfile, time
 from pathlib import Path
 
-sys.path.insert(0, '.')
+sys.path.insert(0, '.'); sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import tiktoken
 import oz_batch
 from oz2_benchmark import WORK, scenario
+from bench import harness as HX
 try:
     from oz_reply import validate_reply  # removed in the JSONL wire; only old arms use it
 except ImportError:
@@ -62,7 +63,7 @@ def results08(value, ids):
     out = {}
     for row in value['results']:
         if (not isinstance(row, list) or len(row) != 3 or row[0] not in ids or row[0] in out
-                or row[1] not in (0, 1, 2) or not isinstance(row[2], str) or not row[2].strip()):
+                or type(row[1]) is not int or row[1] not in (0, 1, 2) or not isinstance(row[2], str) or not row[2].strip()):
             raise ValueError('bad row')
         out[row[0]] = ({0: 'ok', 1: 'retry', 2: 'failed'}[row[1]], row[2])
     if set(out) != set(ids):
@@ -70,9 +71,12 @@ def results08(value, ids):
     return out
 
 
-def call_codex(prompt, model):
-    """Codex CLI (read-only sandbox, ephemeral). Usage from the turn.completed event."""
+def call_codex(prompt, model, system=None):
+    """Codex CLI (read-only sandbox, ephemeral). Usage from the turn.completed event. codex exec has no system prompt
+    flag, so the system text leads the input (runs before 2026-10-27 sent no system text). A non-zero exit, a missing
+    reply or malformed usage is a failed attempt with usage None."""
     start = time.monotonic()
+    prompt = f'System instructions:\n{system or SYSTEM}\n\n{prompt}'
     effort = os.environ.get('EFFORT', 'medium')
     wd = LIVE / 'codexwd'
     wd.mkdir(exist_ok=True)
@@ -84,6 +88,10 @@ def call_codex(prompt, model):
         text = [e['item']['text'] for e in events if e.get('type') == 'item.completed'
                 and e['item'].get('type') == 'agent_message'][-1]
         u = [e['usage'] for e in events if e.get('type') == 'turn.completed'][-1]
+        if proc.returncode:
+            raise RuntimeError(f'exit {proc.returncode}')
+        if not all(type(u.get(k)) is int and u[k] >= 0 for k in ('input_tokens', 'output_tokens')):
+            raise ValueError('malformed usage')
     except Exception as exc:  # noqa: BLE001
         return {'text': '', 'is_error': True, 'wall_s': round(time.monotonic() - start, 2), 'api_ms': None,
                 'ttft_ms': None, 'in': None, 'in_uncached': None, 'cache_read': None, 'cache_write': None,
@@ -100,31 +108,44 @@ MODEL_IDS = {'sonnet': 'claude-sonnet-5-5', 'opus': 'claude-opus-5-5', 'haiku': 
              'fable': 'claude-fable-5-1'}
 
 
+_LEDGER = []
+
+
+def _ledger():
+    """Caps for every live call of this process (bench/harness.py rules). LIVE_LEDGER names a file shared between
+    runs; without it each process gets its own. Limits: LIVE_MAX_LAUNCHES, LIVE_MAX_TOKENS, LIVE_RESERVE."""
+    if not _LEDGER:
+        path = os.environ.get('LIVE_LEDGER') or Path(tempfile.gettempdir()) / f'akor-run_live-{os.getpid()}-{time.time_ns()}.sqlite'
+        _LEDGER.append(HX.Ledger(path, max_launches=int(os.environ.get('LIVE_MAX_LAUNCHES', '2000')),
+                                 max_tokens=int(os.environ.get('LIVE_MAX_TOKENS', '20000000')),
+                                 reserve=int(os.environ.get('LIVE_RESERVE', '60000'))))
+    return _LEDGER[0]
+
+
 def call(prompt, system=None):
     if os.environ.get('MODEL', '').startswith('codex:'):
-        return call_codex(prompt, os.environ['MODEL'][6:])
-    start = time.monotonic()
-    try:
-        proc = subprocess.run([CLAUDE, '-p', '--model', MODEL_IDS.get(os.environ.get('MODEL', 'sonnet'), os.environ.get('MODEL', 'sonnet')), *(['--effort', os.environ['EFFORT']] if os.environ.get('EFFORT') else []), '--system-prompt', system or SYSTEM, '--tools', '',
-                               '--setting-sources', '', '--strict-mcp-config', '--no-session-persistence',
-                               '--output-format', 'json'], input=prompt, capture_output=True, text=True,
-                              encoding='utf-8', cwd=LIVE, timeout=300)
-        data = json.loads(proc.stdout)
-    except (subprocess.TimeoutExpired, ValueError) as exc:
-        # A hung or unparsable call is a failed attempt; usage is unknown, so it is
-        # recorded as such and never as zero-cost success.
-        return {'text': '', 'is_error': True, 'wall_s': round(time.monotonic() - start, 2), 'api_ms': None,
-                'ttft_ms': None, 'in': None, 'in_uncached': None, 'cache_read': None, 'cache_write': None,
-                'out': None, 'call_error': type(exc).__name__}
-    wall = time.monotonic() - start
-    u = data['usage']
-    return {'text': data.get('result', ''), 'is_error': data.get('is_error'), 'wall_s': round(wall, 2),
-            'api_ms': data.get('duration_api_ms'), 'ttft_ms': data.get('ttft_ms'),
-            'in': u['input_tokens'] + u['cache_creation_input_tokens'] + u['cache_read_input_tokens'],
-            'in_uncached': u['input_tokens'], 'cache_read': u['cache_read_input_tokens'],
-            'cache_write': u['cache_creation_input_tokens'], 'out': u['output_tokens'],
-            'model': ','.join(data.get('modelUsage', {})),
-            'thinking': (u.get('output_tokens_details') or {}).get('thinking_tokens')}
+        def codex():
+            r = call_codex(prompt, os.environ['MODEL'][6:], system)
+            r['usage'] = None if r['in'] is None else {'input_tokens': r['in'], 'output_tokens': r['out']}
+            return r
+        r = HX.run_charged(_ledger(), codex)
+        if r is None:
+            raise SystemExit(f'stopped before a launch: {_ledger().refusal()}')
+        r.pop('usage')
+        return r
+    # Through bench/harness.py: usage summed from modelUsage (None when unknown, never zero), every model checked
+    # against the pinned one, timeouts and error results recorded as failed attempts.
+    model = MODEL_IDS.get(os.environ.get('MODEL', 'sonnet'), os.environ.get('MODEL', 'sonnet'))
+    c = HX.run_charged(_ledger(), lambda: HX.call(system or SYSTEM, prompt, model=model, kind='live',
+                                                   effort=os.environ.get('EFFORT') or None, timeout=300, cwd=LIVE))
+    if c is None:
+        raise SystemExit(f'stopped before a launch: {_ledger().refusal()}')
+    u = c['usage'] or {}
+    return {'text': c['text'], 'is_error': bool(c['failure']), 'wall_s': c['seconds'], 'api_ms': c['api_ms'],
+            'ttft_ms': None, 'in': u.get('input_tokens'), 'in_uncached': u.get('uncached_input_tokens'),
+            'cache_read': u.get('cached_input_tokens'), 'cache_write': u.get('cache_write_tokens'),
+            'out': u.get('output_tokens'), 'model': ','.join(c['models']), 'thinking': u.get('thinking_tokens'),
+            **({'call_error': c['failure']} if c['failure'] else {})}
 
 
 def main():

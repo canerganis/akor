@@ -7,7 +7,7 @@ Experiment 1 (arrivals): four producers arrive at frozen offsets, each with 8 Bo
 Experiment 2 (format control, questions 24-31, all producers at t0, pooled):
   P-default plain format, default effort; P-high plain format, --effort high; A-default OZ/1g, default effort.
 Latency of a producer = its arrival to the delivery of its last answer, waits and retries included.
-Caps shared by every run: 36 launches, 250,000 tokens (ledger next to the workspace).
+Caps shared by every run: 36 launches, 250,000 tokens (bench/harness.py ledger next to the workspace).
 
     python bench/pool/pool2.py arrivals --profile burst|sparse --order D,P --workspace DIR [--kind live]
     python bench/pool/pool2.py format --order Pd,Ph,A --workspace DIR [--kind live]
@@ -30,6 +30,7 @@ for p in (str(ROOT), str(HERE)):
         sys.path.insert(0, p)
 
 import akor_pool  # noqa: E402
+from bench import harness as H  # noqa: E402
 import oz_batch  # noqa: E402
 import pool as P1  # noqa: E402
 from bench.ozmap import data  # noqa: E402
@@ -54,72 +55,53 @@ def workload(sl: slice):
     return jobs, gold
 
 
-class Ledger:
-    def __init__(self, path: Path):
-        self.path, self.lock = path, threading.Lock()
-        self.data = json.loads(path.read_text(encoding='utf-8')) if path.exists() else {
-            'launches': 0, 'tokens': 0, 'calls_without_usage': 0}
-        self.pending = 0
-
-    def reserve(self) -> bool:
-        """A launch needs room for itself and every call in flight; any call without usage stops all launches."""
-        with self.lock:
-            if (self.data['launches'] >= MAX_LAUNCHES or self.data['calls_without_usage']
-                    or self.data['tokens'] + (self.pending + 1) * RESERVE > MAX_TOKENS):
-                return False
-            self.data['launches'] += 1
-            self.pending += 1
-            return True
-
-    def charge(self, usage):
-        with self.lock:
-            self.pending -= 1
-            if usage:
-                self.data['tokens'] += usage['input_tokens'] + usage['output_tokens']
-            else:
-                self.data['calls_without_usage'] += 1
-            self.path.write_text(json.dumps(self.data), encoding='utf-8')
+def Ledger(path: Path):
+    """Shared caps (bench/harness.py): a launch needs room for itself and every call in flight; any call without usage
+    stops all launches."""
+    return H.Ledger(path, max_launches=MAX_LAUNCHES, max_tokens=MAX_TOKENS, reserve=RESERVE)
 
 
 def make_send(fmt: str, kind: str, gold: dict, ledger: Ledger, calls: list, ws: Path, tag: str, effort=None):
     """send(batch) -> {id: answer} through one claude -p call; records every launch."""
+    lock = threading.Lock()
+
     def send(batch):
-        if not ledger.reserve():
-            raise RuntimeError('engineering cap reached')
         ids = [jid for jid, _ in batch]
         if fmt == 'oz':
             system, prompt, parse = oz_batch.SYSTEM, P1.oz_packet(batch), P1.oz_parse
         else:
             system, prompt, parse = P1.DIRECT_SYSTEM, P1.direct_prompt(batch), P1.direct_parse
-        c = P1.call(system, prompt, kind, lambda: P1.fixture_answers(batch, gold, fmt), effort=effort)
-        ledger.charge(c['usage'])
-        n = len(calls)
-        calls.append({'tag': tag, 'jobs': len(ids), 'usage': c['usage'], 'failure': c['failure'],
-                      'started': c['started'], 'ended': c['ended']})
+        c = H.run_charged(ledger, lambda: P1.call(system, prompt, kind, lambda: P1.fixture_answers(batch, gold, fmt),
+                                                  effort=effort))
+        if c is None:
+            raise RuntimeError('engineering cap reached')
+        record = {'tag': tag, 'jobs': len(ids), 'usage': c['usage'], 'failure': c['failure'],
+                  'started': c['started'], 'ended': c['ended']}
+        with lock:  # concurrent batches: one file name and one record each
+            n = len(calls)
+            calls.append(record)
         (ws / 'calls').mkdir(parents=True, exist_ok=True)
         (ws / 'calls' / f'{tag}-{n}.json').write_text(json.dumps({'system': system, 'prompt': prompt,
                                                                   'envelope': c['envelope']}), encoding='utf-8')
         answers = parse(c['text'], ids) if not c['failure'] else {}
         if not answers:
-            calls[-1]['rejected'] = True
+            record['rejected'] = True
         return answers
     return send
 
 
 def summarize(arm: str, calls: list, delivered: dict, arrivals: dict, jobs: dict, gold: dict) -> dict:
-    known = [c['usage'] for c in calls if c['usage']]
+    t = H.total(c['usage'] for c in calls)
     latency = {}
     for p, items in jobs.items():
         times = [delivered[jid][1] for jid, _ in items if jid in delivered]
         latency[p] = round(max(times) - arrivals[p], 2) if len(times) == len(items) else None
     t0 = min(arrivals.values())
     return {'arm': arm, 'calls': len(calls), 'rejected_calls': sum(1 for c in calls if c.get('rejected')),
-            'calls_without_usage': len(calls) - len(known),
-            'input_tokens': sum(u['input_tokens'] for u in known),
-            'cached_input_tokens': sum(u['cached_input_tokens'] for u in known),
-            'output_tokens': sum(u['output_tokens'] for u in known),
-            'thinking_tokens': sum(u['thinking_tokens'] for u in known),
-            'tokens': sum(u['input_tokens'] + u['output_tokens'] for u in known),
+            **{k: t[k] for k in ('calls_without_usage', 'input_tokens', 'cached_input_tokens', 'output_tokens',
+                                 'thinking_tokens', 'thinking_unknown')},
+            'tokens': t['tokens'] if t['conclusive'] else None,  # None when any call has unknown usage
+            'tokens_known_calls_only': t['tokens'],
             'answered': len(delivered), 'jobs': len(gold),
             'correct': sum(1 for jid, (v, _) in delivered.items() if v == gold[jid]),
             'makespan_seconds': round(max((t for _, t in delivered.values()), default=t0) - t0, 2),
@@ -199,7 +181,7 @@ def main(argv=None):
         return 2
     ws = args.workspace.resolve()
     ws.mkdir(parents=True, exist_ok=True)
-    ledger = Ledger(args.ledger or ws.parent / 'pool2-ledger.json')
+    ledger = Ledger(args.ledger or ws.parent / 'pool2-ledger.sqlite')
     order = args.order.split(',')
     rows = []
     if args.command == 'arrivals':
@@ -219,7 +201,7 @@ def main(argv=None):
             fmt, effort = {'Pd': ('direct', None), 'Ph': ('direct', 'high'), 'A': ('oz', None)}[arm]
             rows.append(run_pooled(arm, jobs, gold, offsets, args.kind, ledger, ws / arm, arm, fmt, effort))
     for r in rows:
-        print(r['arm'], f"{r['correct']}/{r['jobs']}", r['calls'], 'calls', r['tokens'], 'tokens', 'makespan',
+        print(r['arm'], f"{r['correct']}/{r['jobs']}", r['calls'], 'calls', 'n/a (unknown usage)' if r['tokens'] is None else r['tokens'], 'tokens', 'makespan',
               r['makespan_seconds'], 'worst', r['worst_producer_latency_seconds'], flush=True)
     (ws / 'pool2.json').write_text(json.dumps({'command': args.command, 'profile': getattr(args, 'profile', None),
                                                'order': order, 'kind': args.kind, 'rows': rows}, indent=1) + '\n',

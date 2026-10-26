@@ -78,9 +78,11 @@ class OverlayTests(unittest.TestCase):
 
     def test_the_alias_map_is_the_key_every_archived_haiku_report_carries(self):
         """bench/live/run_live.py writes the joined modelUsage keys of each claude -p envelope as `model`."""
+        # Only the files the pack recorded: later haiku runs add files without changing this evidence.
+        evidence = json.loads((PACK / 'route.json').read_text(encoding='utf-8'))['evidence']
         seen, count = set(), 0
-        for path in sorted((ROOT / 'bench' / 'live' / 'data').glob('*haiku*.jsonl')):
-            for line in path.read_text(encoding='utf-8').splitlines():
+        for name in sorted(evidence['files']):
+            for line in (ROOT / name).read_text(encoding='utf-8').splitlines():
                 row = json.loads(line) if line.strip() else {}
                 if isinstance(row, dict) and 'model' in row:
                     seen.add(row['model'])
@@ -89,7 +91,6 @@ class OverlayTests(unittest.TestCase):
         self.assertEqual(seen, {HAIKU})
         alias = S.overlay()['alias_map']
         self.assertEqual(alias, {key: HAIKU for key in seen})
-        evidence = json.loads((PACK / 'route.json').read_text(encoding='utf-8'))['evidence']
         self.assertEqual((evidence['records'], evidence['reported_models']), (count, [HAIKU]))
 
     def test_the_response_check_accepts_only_haiku_under_the_derived_route(self):

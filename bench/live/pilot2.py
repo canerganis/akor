@@ -7,15 +7,18 @@ Same 16 materials jobs per seed, four ways:
   Q   16 OZ/1g calls, one job each (the H body cut to that job's op and ref)
   S   one orchestrator call that must spawn one subagent per job (Agent tool), then reply in the 0.8 format
 Tokens are summed from modelUsage, which includes subagents; the CLI's `usage` field covers only the last
-turn. Every reply is judged strictly by the same oracles; nothing is repaired.
+turn. Every reply is judged strictly by the same oracles; nothing is repaired. Calls go through bench/harness.py
+(pinned subagent model, model check, shared caps in OUT.ledger.sqlite: MAX_LAUNCHES, MAX_TOKENS, RESERVE).
 Usage: OUT=pilot2_sonnet.jsonl python bench/live/pilot2.py
 """
-import hashlib, json, os, re, subprocess, sys, time
+import hashlib, json, os, re, sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent)); sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import live11 as M
 import run_live as L
+from bench import harness as HX
+import oz_reply
 
 N = int(os.environ.get('N', '16'))
 lo, hi = map(int, os.environ.get('SEEDS', '3005-3007').split('-'))
@@ -23,6 +26,8 @@ SEEDS = list(range(lo, hi + 1))
 ARMS = os.environ.get('ARMS', 'H,J,P,S').split(',')
 MODEL = L.MODEL_IDS[os.environ.get('MODEL', 'sonnet')]
 OUT = M.X.V.LIVE / 'data' / os.environ.get('OUT', 'pilot2_sonnet.jsonl')
+LEDGER = HX.Ledger(OUT.with_suffix('.ledger.sqlite'), max_launches=int(os.environ.get('MAX_LAUNCHES', '800')),
+                   max_tokens=int(os.environ.get('MAX_TOKENS', '8000000')), reserve=int(os.environ.get('RESERVE', '600000')))
 S_TEXT = ('Orchestrate the jobs below. For each message ID, spawn exactly one subagent with the Agent tool '
           '(subagent_type general-purpose) and give it the goal, that one message and the reference it names. '
           'Do not answer any job yourself; use only what the subagents return. When all are back, reply with the '
@@ -40,37 +45,18 @@ def single(text, i):
 
 
 def run(prompt, system=None, tools=''):
-    """claude -p with stream-json so subagent spawns can be counted; tokens from modelUsage."""
-    start = time.monotonic()
-    cmd = [L.CLAUDE, '-p', '--model', MODEL, '--system-prompt', system or L.SYSTEM, '--tools', tools,
-           '--setting-sources', '', '--strict-mcp-config', '--no-session-persistence',
-           '--output-format', 'stream-json', '--verbose']
-    try:
-        proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding='utf-8', cwd=L.LIVE, timeout=900)
-    except subprocess.TimeoutExpired:
-        return {'text': '', 'is_error': True, 'wall_s': round(time.monotonic() - start, 2), 'in': None, 'out': None,
-                'call_error': 'timeout'}
-    wall = time.monotonic() - start
-    final, spawns = None, 0
-    for line in proc.stdout.splitlines():
-        try:
-            ev = json.loads(line)
-        except ValueError:
-            continue
-        if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
-            spawns += sum(1 for b in ev['message'].get('content', []) if b.get('type') == 'tool_use' and b.get('name') in ('Agent', 'Task'))
-        if ev.get('type') == 'result':
-            final = ev
-    if final is None:
-        return {'text': '', 'is_error': True, 'wall_s': round(wall, 2), 'in': None, 'out': None, 'call_error': 'no result'}
-    mu = final.get('modelUsage') or {}
-    tot = lambda f: sum(m.get(f, 0) for m in mu.values())
-    return {'text': final.get('result', ''), 'is_error': final.get('is_error'), 'wall_s': round(wall, 2),
-            'api_ms': final.get('duration_api_ms'), 'in': tot('inputTokens') + tot('cacheReadInputTokens') + tot('cacheCreationInputTokens'),
-            'in_uncached': tot('inputTokens'), 'cache_read': tot('cacheReadInputTokens'), 'cache_write': tot('cacheCreationInputTokens'),
-            'out': tot('outputTokens'), 'thinking': tot('thinkingTokens'), 'model': ','.join(mu), 'spawns': spawns,
-            'turns': final.get('num_turns'), 'usage_last_turn_in': sum((final.get('usage') or {}).get(f, 0) for f in
-                                                                         ('input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens'))}
+    """One live call through bench/harness.py: pinned model for subagents too, a call that used another model or has
+    no result is a failure, and missing usage stays None. Fields kept from the first pilots."""
+    c = HX.run_charged(LEDGER, lambda: HX.call(system or L.SYSTEM, prompt, model=MODEL, kind='live', tools=tools,
+                                                cwd=L.LIVE))
+    if c is None:
+        raise SystemExit(f'stopped before a launch: {LEDGER.refusal()}')
+    u = c['usage'] or {}
+    return {'text': c['text'], 'is_error': bool(c['failure']), 'failure': c['failure'], 'wall_s': c['seconds'],
+            'api_ms': c['api_ms'], 'in': u.get('input_tokens'), 'in_uncached': u.get('uncached_input_tokens'),
+            'cache_read': u.get('cached_input_tokens'), 'cache_write': u.get('cache_write_tokens'),
+            'out': u.get('output_tokens'), 'thinking': u.get('thinking_tokens'), 'model': ','.join(c['models']),
+            'spawns': c['spawns'], 'turns': c['turns']}
 
 
 def judge(dec, reply, js, native):
@@ -110,7 +96,7 @@ def calls(seed, arm):
     out = []
     for i in range(N):
         def dec1(reply, i=i):
-            r = L.results08(json.loads(reply), [ids[i]])
+            r = L.results08(oz_reply.loads(reply), [ids[i]])
             return [(r[ids[i]][0] == 'ok', r[ids[i]][1])]
         out.append((system, single(user, i), '', dec1, native, [js[i]]))
     return out
@@ -128,7 +114,7 @@ def main():
     for seq, (seed, a) in enumerate(plan):
         for k, (system, prompt, tools, dec, native, js) in enumerate(calls(seed, a)):
             r = run(prompt, system, tools)
-            err, ok = judge(dec, r['text'], js, native)
+            err, ok = ('call: ' + r['failure'], 0) if r['failure'] else judge(dec, r['text'], js, native)
             rec = {'seq': seq, 'part': k, 'seed': seed, 'arm': a, 'valid': not err, 'error': err, 'jobs_passed': ok,
                    'jobs': len(js), 'manifest': man['sha256'], **r}
             with OUT.open('a', encoding='utf-8') as f:
