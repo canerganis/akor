@@ -90,14 +90,18 @@ def call_codex(prompt, model, system=None):
         u = [e['usage'] for e in events if e.get('type') == 'turn.completed'][-1]
         if proc.returncode:
             raise RuntimeError(f'exit {proc.returncode}')
-        if not all(type(u.get(k)) is int and u[k] >= 0 for k in ('input_tokens', 'output_tokens')):
+        present = [k for k in ('input_tokens', 'output_tokens', 'cached_input_tokens', 'cache_write_input_tokens',
+                               'reasoning_output_tokens') if k in u]
+        if (not {'input_tokens', 'output_tokens'} <= set(present)
+                or not all(type(u[k]) is int and u[k] >= 0 for k in present)
+                or u.get('cached_input_tokens', 0) > u['input_tokens']):
             raise ValueError('malformed usage')
     except Exception as exc:  # noqa: BLE001
         return {'text': '', 'is_error': True, 'wall_s': round(time.monotonic() - start, 2), 'api_ms': None,
                 'ttft_ms': None, 'in': None, 'in_uncached': None, 'cache_read': None, 'cache_write': None,
                 'out': None, 'call_error': type(exc).__name__}
     wall = time.monotonic() - start
-    return {'text': text, 'is_error': False, 'wall_s': round(wall, 2), 'api_ms': round(wall * 1000), 'ttft_ms': None,
+    return {'text': text, 'is_error': False, 'wall_s': round(wall, 2), 'api_ms': None, 'ttft_ms': None,  # codex reports no API time
             'in': u['input_tokens'], 'in_uncached': u['input_tokens'] - u.get('cached_input_tokens', 0),
             'cache_read': u.get('cached_input_tokens', 0), 'cache_write': u.get('cache_write_input_tokens', 0),
             'out': u['output_tokens'], 'reasoning': u.get('reasoning_output_tokens')}

@@ -57,7 +57,7 @@ def main(files):
                 if short:
                     flags.append(f'{short} call(s) did not spawn one subagent per job')
             tok = None if unknown else sum(r['in'] + r['out'] for r in X)
-            cr = sum(r.get('cache_read') or 0 for r in X)
+            cr = None if any(r.get('cache_read') is None for r in X) else sum(r['cache_read'] for r in X)
             ok = sum(r['jobs_passed'] for r in X)
             jobs = sum(r['jobs'] for r in X)
             per_seed = defaultdict(float)
@@ -73,7 +73,7 @@ def main(files):
             fmt = lambda v: 'n/a' if v is None else f'{v:,.1f}'
             ratio = None if per_job_for_ratio is None or not h_per_job else per_job_for_ratio / h_per_job
             print(f"| {model} | {NAMES[arm]} | {len(X)} | {sum(r['valid'] for r in X)}/{len(X)} | {ok}/{jobs} | "
-                  f"{'n/a' if tok is None else f'{tok:,}'} | {cr:,} | {fmt(per_job)} | "
+                  f"{'n/a' if tok is None else f'{tok:,}'} | {'n/a' if cr is None else f'{cr:,}'} | {fmt(per_job)} | "
                   f"{fmt(tok / ok if tok is not None and ok else None)} | {fmt(ratio)} | "
                   f"{statistics.median(per_seed.values()):.1f} | {'; '.join(flags)} |")
 
