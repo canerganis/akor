@@ -2,7 +2,7 @@
 
 # AKOR
 
-### A compact language for AI agents to talk to each other, faster and with fewer tokens.
+### Batch, check and account for AI agent work: fewer model calls, fewer tokens, every answer verified.
 
 Your agents keep repeating themselves on every call. AKOR stops you paying for it.
 
@@ -33,8 +33,8 @@ If AKOR saves you tokens, a star helps other people find it.
 ## The 30-second version
 
 AKOR is a compact message language and a small runtime for agent-to-agent work. Agents send jobs in a short,
-indexed format instead of verbose JSON, and get back one checked record per job: fewer tokens on every call, and
-faster replies.
+indexed format instead of verbose JSON, and get back one checked record per job: many jobs per call instead of one,
+shared context written once, and nothing delivered until it passes the check.
 
 **The problem.** Multi-agent pipelines pay again and again for the same thing: every call resends the rules, the
 context and a verbose reply format, and one malformed answer forces a retry.
@@ -89,9 +89,10 @@ request on stdin and prints one JSON reply can be an adapter; see [`USAGE.md`](U
 
 ## What AKOR does differently
 
-**It cuts the bill for agent-to-agent traffic by about 40%, and proves it.** 64 jobs travel in one call. The goal,
-each operation and each shared input are written once; jobs point at them by index. On Claude Sonnet 5.5 that is
-40.7% fewer tokens per verified job than plain JSON, on Opus 5.5 42.8%, on Fable 5.1 40.6%, on Haiku 5.5 30.8%, and all four answer faster.
+**It turns many calls into one, and where jobs share context it cuts about 40% more, and proves it.** 64 jobs
+travel in one call. The goal, each operation and each shared input are written once; jobs point at them by index.
+On a workload where jobs share their inputs, Claude Sonnet 5.5 used 40.7% fewer tokens per verified job than plain
+JSON carrying the same batch, Opus 5.5 42.8%, Fable 5.1 40.6%, Haiku 5.5 30.8%, and all four answered faster.
 
 **Every number is a billed number.** Most token-saving claims count tokens with a tokenizer and stop there. AKOR's
 counts are what the provider billed: prompt, CLI overhead, visible answer and hidden reasoning, with failed calls
@@ -168,6 +169,31 @@ Most of that gap is batching, not the language: AKOR's own format adds about 39%
 times fewer tokens ([arm K](docs/design/foundation-2026-10-23/arm-k-results.md)); with the same model, a caller that can
 do the jobs itself in one reply is cheaper still ([caller-cost results](docs/design/caller-cost-2026-10-23/results.md)).
 
+## What drives the cost of agent work
+
+In October 2026 we tested AKOR against stronger baselines to find out where the savings really come from: a
+competent direct `claude -p` call, a plain shared queue, and plain JSON at default and high effort, all on Sonnet
+5.5, every answer checked by an independent evaluator, every pair repeated in reversed order
+([report](docs/design/direction-2026-10-26/MORNING-REPORT.md)).
+
+**The number of calls is the main lever.** A near-empty `claude -p` call reported 1,916 input tokens in our probe,
+before any work. For small jobs that fixed cost dominates, which is why batching gives the large wins above.
+
+**Pooling work from several agents saves about 40%.** Four producers whose 32 jobs arrived together used about 40%
+fewer tokens in one pooled call than in four separate calls, at similar wall time
+([results](docs/design/direction-2026-10-26/results-3.md)). Spread over a few hundred milliseconds, pooling still
+saved 40% but added up to 25% latency and missed our accuracy bar by one or two answers in 32, so the pooling runtime
+(`akor_pool.py`) stays experimental ([results](docs/design/direction-2026-10-26/results-4.md)).
+
+**The compact format pays off when jobs share context.** On workloads where every job has its own unique input
+(reading comprehension, code repair), it gave no gain over a plain JSON prompt in one call
+([results](docs/design/direction-2026-10-26/results-2.md)).
+
+**For one coherent task, one call is the baseline to beat.** On a code repair package, a single well-written direct
+call beat our multi-stage executor (1.4 to 1.6 times fewer tokens), because the executor split the work into two
+serial calls ([results](docs/design/direction-2026-10-26/results-1.md)). The executor's strength is verified delivery
+through crashes, stale inputs and repeats, not lower cost on a single task.
+
 ## Supported models
 
 This release is qualified for the tested Claude configurations only: `claude-sonnet-5-5` (32 and 64 jobs per
@@ -234,6 +260,8 @@ The full specification is in [`OZ9.md`](OZ9.md).
 ## Limits
 
 - Savings come from batching. With 1 to 4 jobs per call there is no gain; the fixed per-call overhead dominates.
+- The format's own saving needs shared context. When each job's input is unique, it matched plain JSON at best in
+  our tests, and when the model reasoned more on the compact wire it was slower.
 - The paired savings figures are for Sonnet 5.5, Opus 5.5, Fable 5.1 and Haiku 5.5 at 64 jobs on one task family with
   oracles; your workload may differ, and [`bench/`](bench/) lets you measure it. Models that think at length save less,
   because thinking tokens do not shrink with the packet.
