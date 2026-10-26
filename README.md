@@ -6,9 +6,9 @@
 
 Your agents keep repeating themselves on every call. AKOR stops you paying for it.
 
-<img src="docs/assets/hero.svg" alt="31 times fewer tokens per verified job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,834 tokens per verified job as 64 plain JSON calls and 91.6 as one AKOR call. Most of the gap is batching; the 64 jobs also finished 24 times faster with every answer checked." width="100%">
+<img src="docs/assets/hero.svg" alt="31 times fewer tokens per verified job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,834 tokens per verified job as 64 plain JSON calls and 91.6 as one AKOR call. With one AKOR call per 64 jobs, 192 of 192 jobs were correct across 3 seeds. Most of the gap is batching." width="100%">
 
-<img src="docs/social/x_pool.gif" alt="Four agents with 32 jobs: calling the model separately takes 4 calls and 15,055 tokens; AKOR pools the ready jobs into 1 checked call of 8,983 tokens, 40 percent fewer. Claude Sonnet 5.5, live." width="100%">
+<img src="docs/social/x_akor.gif" alt="Agent A sends 64 jobs as 64 separate calls, each resending the prompt: 2,834 tokens per verified job. As one AKOR call with shared parts written once, the same jobs cost 91.6 tokens per verified job, 31 times fewer, and come back as one checked reply. Claude Sonnet 5.5, 64 jobs, 3 seeds." width="100%">
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
@@ -16,7 +16,7 @@ Your agents keep repeating themselves on every call. AKOR stops you paying for i
 ![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**31 times fewer tokens per verified job than sending one call per job (64 jobs on Claude Sonnet 5.5), and 24 times faster. Against the same jobs already batched as plain JSON, the format alone saves 41% to 43% on Sonnet 5.5, Opus 5.5 and Fable 5.1, 31% on Haiku 5.5. 91 of 91 replies accepted on the first try.**
+**31 times fewer tokens per verified job than sending one call per job (64 jobs on Claude Sonnet 5.5), and 24 times faster. Pooling four agents' jobs into one call: 40% fewer tokens. Against a JSON format that repeats each job's instruction, 41% to 43% fewer on Sonnet 5.5, Opus 5.5 and Fable 5.1. 91 of 91 replies accepted on the first try.**
 
 <sub>Attribution: most of the 31x gap comes from batching, not from the language. Sending 64 jobs in one call instead of 64 calls removes the repeated prompt, CLI overhead and reference material, whatever the reply format. Counted per requested job instead of per verified job, so failed per-job calls do not shrink the denominator, the gap is 22x. [Pilot results](docs/design/brainstorm-2026-10-22/pilot-results.md).</sub>
 

@@ -1,8 +1,8 @@
 """Render the X (Twitter) GIFs into docs/social/: 1200x675, dark terminal palette, one green accent.
 
 Run with any Python that has Pillow (not in .venv):  python docs/social/make_social.py
-Writes x_hero.gif, x_packet.gif, x_results.gif, x_reply.gif, x_debate.gif, x_language.gif and first/last frame PNGs
-into docs/social/preview/. No network, no model calls.
+Writes x_hero.gif, x_packet.gif, x_results.gif, x_reply.gif, x_debate.gif, x_language.gif, x_akor.gif and first/last
+frame PNGs into docs/social/preview/. No network, no model calls.
 """
 from functools import lru_cache
 from pathlib import Path
@@ -376,43 +376,26 @@ def language_frames():
             + [lang_card(i * DT) for i in range(int(CARD_IN / DT) + 1)])
 
 
-# ---------------------------------------------------------------- 7. pooling (live, results-4 burst run 1)
-POOL_D, POOL_P = 15055, 8983       # tokens: four producer calls vs one pooled call, Sonnet 5.5, 32 BoolQ jobs
-PA_X, PA_W, PA_H = 40, 190, 64     # producer boxes on the left
-PA_YS = [190, 280, 370, 460]
-MODEL_X, MODEL_W, MODEL_H = W - 40 - 200, 200, 150
-POOL_X = 520
-PSCENE, PSCENE2 = 3.2, 3.4
+# ---------------------------------------------------------------- 7. one call (pilot, 64 jobs, Sonnet 5.5, 3 seeds)
+PER_JOB, ONE_CALL = 2834, 91.6     # tokens per verified job: one plain JSON call per job vs one AKOR call
+N_CALLS = 64
+CALL_EVERY, CALL_TRAVEL = 0.036, 0.6
+DOC_W, DOC_H = 34, 46              # one small call packet
 
 
-def producers(d, lit):
-    for i, y in enumerate(PA_YS):
-        d.rounded_rectangle([PA_X, y - PA_H // 2, PA_X + PA_W, y + PA_H // 2], radius=14, fill=BAR,
-                            outline=mix(LINE_C, ACCENT, lit[i]), width=3)
-        text(d, (PA_X + PA_W // 2, y + 10), f'Agent {"ABCD"[i]}', 28, TEXT, True, anchor='ms')
+def doc(d, x, y, color):
+    """A small call packet (prompt plus one job) centred at x, y."""
+    d.rounded_rectangle([x - DOC_W / 2, y - DOC_H / 2, x + DOC_W / 2, y + DOC_H / 2], radius=6, fill=BAR,
+                        outline=color, width=2)
+    for k in range(4):
+        yy = y - DOC_H / 2 + 10 + k * 8
+        d.line([(x - DOC_W / 2 + 7, yy), (x + DOC_W / 2 - (7 if k < 3 else 15), yy)], fill=color, width=2)
 
 
-def model_box(d, lit):
-    y = (PA_YS[0] + PA_YS[-1]) // 2
-    d.rounded_rectangle([MODEL_X, y - MODEL_H // 2, MODEL_X + MODEL_W, y + MODEL_H // 2], radius=18, fill=BAR,
-                        outline=mix(LINE_C, ACCENT, lit), width=3)
-    text(d, (MODEL_X + MODEL_W // 2, y - 6), 'claude -p', 30, TEXT, True, anchor='ms')
-    text(d, (MODEL_X + MODEL_W // 2, y + 30), 'model', 24, DIM, anchor='ms')
-    return y
-
-
-def chip(d, x, y, label, color, size=22, right=False):
-    """A small labelled box centred at x, or ending at x when right is set."""
-    f = font(size, True)
-    w = f.getlength(label) + 24
-    if right:
-        x -= w / 2
-    d.rounded_rectangle([x - w / 2, y - 20, x + w / 2, y + 20], radius=10, fill=BAR, outline=color, width=2)
-    d.text((x, y + 8), label, fill=color, font=f, anchor='ms')
-
-
-def counter(d, t, start, end, final, color, strike=None):
-    n = round(final * ease_io((t - start) / (end - start)))
+def tokens_counter(d, t, start, end, final, color, strike=None):
+    """Bottom counter in the x_language style; decimals only once the count has finished."""
+    k = ease_io((t - start) / (end - start))
+    shown = f'{final:,} tokens' if k >= 1 else f'{round(final * k):,} tokens'
     cf = font(56, True)
     cx = W // 2 - cf.getlength(f'{final:,} tokens') / 2
     if strike:
@@ -421,75 +404,80 @@ def counter(d, t, start, end, final, color, strike=None):
         cx -= (w_old + 36) / 2
         a = ease_out((t - end) / 0.3)
         if a > 0:
-            d.text((cx, 640), f'{strike:,}', fill=fade(DIM, a), font=old, anchor='ls')
-            d.line([(cx - 6, 622), (cx + w_old + 6, 622)], fill=fade(DIM, a), width=3)
+            d.text((cx, 612), f'{strike:,}', fill=fade(DIM, a), font=old, anchor='ls')
+            d.line([(cx - 6, 594), (cx + w_old + 6, 594)], fill=fade(DIM, a), width=3)
         cx += w_old + 36
-    d.text((cx, 640), f'{n:,} tokens', fill=color, font=cf, anchor='ls')
+    d.text((cx, 612), shown, fill=color, font=cf, anchor='ls')
+    centered(d, 652, 'per verified job', 26, DIM)
 
 
-def pool_scene(t, pooled):
-    """Scene 1: each agent makes its own call (4 calls, each with fixed per-call input). Scene 2: AKOR pools the
-    same 32 jobs into one call."""
+def calls_scene(t, akor):
+    """Scene 1: agent A sends the 64 jobs as 64 calls, each with its own prompt. Scene 2: one AKOR call with
+    shared parts written once, then one checked reply."""
     img, d = new()
-    my = model_box(d, 0.0)
-    lit = [0.0] * 4
-    if not pooled:
-        text(d, (W // 2, 78), 'Each agent calls the model', 46, TEXT, True, anchor='ms')
-        for i, y in enumerate(PA_YS):
-            s = 0.2 + 0.45 * i
-            k = ease_io((t - s) / 0.9)
-            if t > s:
-                lit[i] = 1.0
-            if t > s and k < 1:
-                x = PA_X + PA_W + 300 + (MODEL_X - 16 - (PA_X + PA_W + 300)) * k
-                yy = y + (my - y) * k
-                chip(d, x, yy, '8 jobs + ~1.9k fixed', '#aab2bb', right=True)
-        text(d, (W // 2, 560), '4 calls', 34, DIM, True, anchor='ms')
-        counter(d, t, 0.2, 2.6, POOL_D, TEXT)
-        model_box(d, ease_out((t - 1.1) / 0.3))
-    else:
-        text(d, (W // 2, 78), 'AKOR pools ready jobs', 46, ACCENT, True, anchor='ms')
-        for i, y in enumerate(PA_YS):
-            s = 0.1 + 0.15 * i
-            k = ease_io((t - s) / 0.7)
-            if t > s:
-                lit[i] = 1.0
-            if t > s and t < 1.4:
-                x = PA_X + PA_W + 60 + (POOL_X - (PA_X + PA_W + 60)) * k
-                yy = y + (my - y) * k
-                chip(d, x, yy, '8 jobs', ACCENT)
-        pa = ease_out((t - 0.9) / 0.3)
-        if pa > 0 and t < 1.6:
-            chip(d, POOL_X, my, '32 jobs', fade(ACCENT, pa), 26)
-        if 1.4 <= t:
-            k = ease_io((t - 1.6) / 0.8)
+    d.line([(AG_A + AG_W, AG_Y), (AG_B, AG_Y)], fill=LINE_C, width=3)
+    arrive_b = arrive_a = 0.0
+    if not akor:
+        x0, x1 = AG_A + AG_W + DOC_W, AG_B - DOC_W
+        sent = 0
+        for i in range(N_CALLS):
+            s = 0.15 + CALL_EVERY * i
+            if t < s:
+                break
+            sent = i + 1
+            k = (t - s) / CALL_TRAVEL
             if k < 1:
-                x = POOL_X + 170 + (MODEL_X - 16 - POOL_X - 170) * k
-                chip(d, x, my, '32 jobs + ~1.9k fixed', ACCENT, 24, right=True)
-        text(d, (W // 2, 560), '1 call, every answer checked', 34, fade(ACCENT, ease_out((t - 2.4) / 0.3)), True,
+                doc(d, x0 + (x1 - x0) * k, AG_Y + (6 if i % 2 else -6), '#aab2bb')
+            else:
+                arrive_b = 1.0
+        text(d, (W // 2, 78), 'One call per job', 52, TEXT, True, anchor='ms')
+        text(d, (W // 2, 470), 'each call resends the prompt', 30, DIM, anchor='ms')
+        text(d, (W // 2, 530), f'{sent} call' + ('' if sent == 1 else 's'), 38, TEXT, True, anchor='ms')
+        tokens_counter(d, t, 0.15, 2.6, PER_JOB, TEXT)
+    else:
+        if t < 1.7:        # one request A to B, shared parts once
+            rows = [AKOR_REQ[0], AKOR_REQ[1]]
+            pw = round(max(font(30).getlength(r) for r, _ in rows)) + 58
+            x0, x1 = AG_A + 120, AG_B - 10 - pw
+            left = x0 + (x1 - x0) * ease_io((t - 0.55) / 0.85)
+            _, top = draw_packet(d, rows, 30, 44, 26, left, AG_Y, ACCENT, 0.1, 0.3, t)
+            text(d, (left + pw / 2, top - 16), '64 jobs, one call', 34, fade(ACCENT, ease_out((t - 0.1) / 0.3)), True,
+                 anchor='ms')
+            arrive_b = ease_out((t - 1.4) / 0.3)
+        else:              # checked reply B to A
+            rows = AKOR_MSG[2:]
+            pw = round(max(font(30).getlength(r) for r, _ in rows)) + 58
+            x0, x1 = AG_B + 80 - pw, AG_A + AG_W + 10
+            left = x0 + (x1 - x0) * ease_io((t - 1.9) / 0.9)
+            _, top = draw_packet(d, rows, 30, 44, 26, left, AG_Y, ACCENT, 1.7, 0.15, t)
+            text(d, (left + pw / 2, top - 16), 'checked reply', 34, fade(ACCENT, ease_out((t - 1.7) / 0.3)), True,
+                 anchor='ms')
+            arrive_a = ease_out((t - 2.8) / 0.3)
+        text(d, (W // 2, 78), 'One AKOR call', 52, ACCENT, True, anchor='ms')
+        text(d, (W // 2, 530), '1 call, every answer checked', 38, fade(ACCENT, ease_out((t - 2.8) / 0.3)), True,
              anchor='ms')
-        counter(d, t, 0.1, 2.4, POOL_P, ACCENT, strike=POOL_D)
-        model_box(d, ease_out((t - 2.4) / 0.3))
-    producers(d, lit)
+        tokens_counter(d, t, 0.1, 1.4, ONE_CALL, ACCENT, strike=PER_JOB)
+    agents(d, arrive_b, ACCENT if akor else TEXT, arrive_a)
     return img
 
 
-def pool_card(t):
+def calls_card(t):
     img, d = new()
     a = lambda s: ease_out((t - s) / 0.35)
-    centered(d, 170, 'Fewer calls,', 76, fade(TEXT, a(0.0)), True)
-    centered(d, 260, 'fewer tokens', 76, fade(TEXT, a(0.0)), True)
-    centered(d, 366, '4 agents, 32 jobs: 4 calls -> 1', 44, fade(ACCENT, a(0.1)), True)
-    centered(d, 428, '-40% tokens, every answer checked', 44, fade(ACCENT, a(0.2)), True)
-    centered(d, 520, 'Claude Sonnet 5.5, live, measured', 30, fade(DIM, a(0.3)))
+    centered(d, 160, 'Many agent jobs,', 76, fade(TEXT, a(0.0)), True)
+    centered(d, 250, 'one checked call', 76, fade(TEXT, a(0.0)), True)
+    centered(d, 356, '31x fewer tokens than one call per job', 44, fade(ACCENT, a(0.1)), True)
+    centered(d, 418, 'shared parts written once', 44, fade(ACCENT, a(0.2)), True)
+    centered(d, 480, 'every answer checked', 44, fade(ACCENT, a(0.3)), True)
+    centered(d, 550, 'Claude Sonnet 5.5, 64 jobs, 3 seeds, billed tokens', 28, fade(DIM, a(0.35)))
     centered(d, 626, 'github.com/canerganis/akor', 34, fade(DIM, a(0.4)))
     return img
 
 
-def pool_frames():
-    return ([pool_scene(i * DT, False) for i in range(int(PSCENE / DT))]
-            + [pool_scene(i * DT, True) for i in range(int(PSCENE2 / DT))]
-            + [pool_card(i * DT) for i in range(int(CARD_IN / DT) + 1)])
+def calls_frames():
+    return ([calls_scene(i * DT, False) for i in range(int(SCENE / DT))]
+            + [calls_scene(i * DT, True) for i in range(int(SCENE2 / DT))]
+            + [calls_card(i * DT) for i in range(int(CARD_IN / DT) + 1)])
 
 
 # ---------------------------------------------------------------- output
@@ -522,12 +510,14 @@ if __name__ == '__main__':
     save_gif('x_reply.gif', reply_frames(), 24)
     save_gif('x_debate.gif', debate_frames(), 32)
     save_gif('x_language.gif', language_frames(), 32, hold=CARD_HOLD)
-    with Image.open(OUT / 'x_language.gif') as im:
-        for secs, tag in ((SCENE * 0.8, 'scene1_arrive'), (SCENE + 1.5, 'request'), (SCENE + 2.5, 'reply')):
-            at = 0.0   # frames with equal pixels are merged on save, so find the frame by elapsed time
-            for k in range(im.n_frames):
-                im.seek(k)
-                at += im.info['duration'] / 1000
-                if at > secs:
-                    break
-            im.convert('RGB').save(OUT / 'preview' / f'x_language_{tag}.png')
+    save_gif('x_akor.gif', calls_frames(), 32, hold=CARD_HOLD)
+    for stem in ('x_language', 'x_akor'):
+        with Image.open(OUT / f'{stem}.gif') as im:
+            for secs, tag in ((SCENE * 0.8, 'scene1_arrive'), (SCENE + 1.5, 'request'), (SCENE + 2.5, 'reply')):
+                at = 0.0   # frames with equal pixels are merged on save, so find the frame by elapsed time
+                for k in range(im.n_frames):
+                    im.seek(k)
+                    at += im.info['duration'] / 1000
+                    if at > secs:
+                        break
+                im.convert('RGB').save(OUT / 'preview' / f'{stem}_{tag}.png')

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" role="img" aria-labelledby="t d">
   <title id="t">31 times fewer tokens than one call per job</title>
-  <desc id="d">The same 64 jobs on Claude Sonnet 5.5: one plain JSON call per job costs 2,834 tokens per verified job, one AKOR call costs 91.6, 31 times fewer. Most of the gap is batching, and the 64 jobs finished 24 times faster with every answer checked.</desc>
+  <desc id="d">The same 64 jobs on Claude Sonnet 5.5: one plain JSON call per job costs 2,834 tokens per verified job, one AKOR call costs 91.6, 31 times fewer. Most of the gap is batching. With one AKOR call per 64 jobs, 192 of 192 jobs were correct across 3 seeds.</desc>
   <style>
     .bg { fill: #fcfcfb; }
     .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
@@ -76,7 +76,7 @@
   <g class="sans">
     <text class="ink fx" x="360" y="108" font-size="40" font-weight="800" style="animation-delay:.9s">fewer tokens per job</text>
     <text class="ink2 fx" x="360" y="148" font-size="26" style="animation-delay:1.15s">than one call per job. Same 64 jobs.</text>
-    <text class="ink2 fx" x="360" y="182" font-size="26" style="animation-delay:1.3s">24 times faster, every answer checked.</text>
+    <text class="ink2 fx" x="360" y="182" font-size="26" style="animation-delay:1.3s">One call per 64 jobs, 192 of 192 correct.</text>
   </g>
 
   <g class="sans">
