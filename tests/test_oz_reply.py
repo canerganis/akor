@@ -19,12 +19,13 @@ IDS = ('a', 'b')
 
 def line(row):
     """One reply line: a str is kept raw; a two-element [id, value] row with a str id is the success line
-    {"id":value}; any other row (dict, error line, malformed shape) is dumped as given."""
+    {"id":value}; any other row (dict, error line, malformed shape) is dumped as given, as compact JSON (a
+    model's own spacing is kept byte for byte since clause 12, so compact rows keep stored values compact)."""
     if isinstance(row, str):
         return row
     if isinstance(row, list) and len(row) == 2 and isinstance(row[0], str):
         row = {row[0]: row[1]}
-    return json.dumps(row, ensure_ascii=False)
+    return json.dumps(row, ensure_ascii=False, separators=(',', ':'))
 
 
 HEAD = 'OZ/1g'

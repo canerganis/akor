@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1])); sys.path.insert(0,
 import live6 as X
 import live8 as R
 import run_live as L
+import oz_reply
 
 OUT = X.V.LIVE / 'data' / os.environ.get('OUT', 'live11.jsonl')
 ARMS = {}
@@ -51,7 +52,7 @@ def arm(name):
 def _08(n):
     ids, text = X.V.packet_08('materials', n)
     def dec(reply):
-        out = L.results08(json.loads(reply), ids)
+        out = L.results08(oz_reply.loads(reply), ids)  # strict like OZ/1g: duplicate keys reject
         return [(out[i][0] == 'ok', out[i][1]) for i in ids]
     return None, text, dec, False
 

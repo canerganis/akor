@@ -11,11 +11,17 @@ The host, not the model, decides routing: an ID written by the model proves noth
 so the ledger records binding "declared" and semantic_verified false. regroup() folds the accepted results, the
 job failures and the slots the host filled itself back into inbox jobs. Receipts stay host-side: the adapter
 request carries one per call attempt to correlate the reply; they are not authentication or proof.
+
+Lossless values (foundation record clause 12): loads() stays the float-based strict validator and alone decides
+acceptance. After a line is accepted, the source text of its value is cut from the line and kept (Parsed.texts);
+storage, result_json, handoffs and oz do results carry those bytes, so 12.50, 1E+2, -0.0, large integers, string
+escapes and internal whitespace survive. RawJSON is that text with its decoded value; dumps() writes it verbatim.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 import json
+from json.decoder import scanstring
 import math
 
 from oz import Error
@@ -53,6 +59,96 @@ def loads(text: str):
     return json.loads(text, object_pairs_hook=unique, parse_constant=constant, parse_float=number)
 
 
+_WS = ' \t\n\r'
+
+
+def _member_text(line: str) -> str:
+    """Source text of the member value of a line that loads() accepted as a one-member object.
+
+    The line is ws { ws "key" ws : ws value ws } ws, so the value starts after the key's closing quote and the
+    colon, and ends before the last closing brace. Only called after strict validation; it decides nothing."""
+    start = len(line) - len(line.lstrip(_WS))
+    _, end = scanstring(line, line.index('"', start) + 1)
+    start = line.index(':', end) + 1
+    while line[start] in _WS:
+        start += 1
+    close = len(line.rstrip(_WS)) - 1
+    return line[start:close].rstrip(_WS)
+
+
+class RawJSON:
+    """One validated JSON value kept as its exact source text (text), decoded on demand (value).
+
+    It compares equal to its decoded value and indexes, iterates and measures like it (read-only), so code that
+    reads values keeps working; dumps() writes text unchanged, while json.dumps refuses it. Construct it only
+    from text that already passed strict validation."""
+    __slots__ = ('text', '_value')
+    __hash__ = None
+
+    def __init__(self, text: str):
+        if not isinstance(text, str):
+            raise TypeError('RawJSON text must be str')
+        self.text = text
+
+    @property
+    def value(self):
+        try:
+            return self._value
+        except AttributeError:
+            self._value = loads(self.text)
+            return self._value
+
+    def __eq__(self, other):
+        return self.value == (other.value if isinstance(other, RawJSON) else other)
+
+    def __bool__(self):
+        return bool(self.value)
+
+    def __getitem__(self, key):
+        return self.value[key]
+
+    def __iter__(self):
+        return iter(self.value)
+
+    def __len__(self):
+        return len(self.value)
+
+    def __contains__(self, item):
+        return item in self.value
+
+    def __repr__(self):
+        return f'RawJSON({self.text!r})'
+
+
+def _has_raw(value) -> bool:
+    if isinstance(value, RawJSON):
+        return True
+    if isinstance(value, dict):
+        return any(_has_raw(v) for v in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_has_raw(v) for v in value)
+    return False
+
+
+def dumps(value, **options) -> str:
+    """json.dumps that writes each RawJSON as its source text. Without a RawJSON it is exactly json.dumps(value,
+    **options); with one, only compact output (ensure_ascii=False, separators=(',', ':'), optional allow_nan)
+    is supported and str keys are required."""
+    if not _has_raw(value):
+        return json.dumps(value, **options)
+    if (options.get('ensure_ascii', True) or options.get('separators') != (',', ':')
+            or set(options) - {'ensure_ascii', 'separators', 'allow_nan'}):
+        raise ValueError('RawJSON values need compact output')
+    if isinstance(value, RawJSON):
+        return value.text
+    if isinstance(value, dict):
+        if any(not isinstance(k, str) for k in value):
+            raise TypeError('keys must be str')
+        return '{' + ','.join(json.dumps(k, ensure_ascii=False) + ':' + dumps(v, **options)
+                              for k, v in value.items()) + '}'
+    return '[' + ','.join(dumps(v, **options) for v in value) + ']'
+
+
 def check_capabilities(value: object) -> dict:
     """Fail before claim/call when the adapter cannot speak what will be sent."""
     if (not isinstance(value, dict) or set(value) != {'protocols', 'languages'}
@@ -64,7 +160,7 @@ def check_capabilities(value: object) -> dict:
 
 
 def _json(value) -> str:
-    return json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+    return dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
 
 
 def _store(value) -> str:
@@ -96,7 +192,8 @@ class Parsed:
     accepted maps packet job ID -> result value and failed maps packet job ID -> (code, message) for a valid
     job failure; both are empty when the reply is rejected. received counts the lines that parsed as JSON;
     violations lists {line, reason} (1-based, capped, line 0 for the whole text); rejection is the reason
-    the whole reply was refused, else None.
+    the whole reply was refused, else None. texts maps each accepted packet job ID to the exact source text
+    of its value, cut from the validated line (clause 12); accepted keeps the decoded value.
     """
     expected: int
     accepted: dict
@@ -104,6 +201,7 @@ class Parsed:
     violations: tuple
     rejection: str | None = None
     failed: dict = field(default_factory=dict)
+    texts: dict = field(default_factory=dict)
 
 
 def _rejected(n: int, received: int, bad: dict, reason: str) -> Parsed:
@@ -168,7 +266,7 @@ def parse_reply(text: object, ids) -> Parsed:
             except (ValueError, UnicodeEncodeError):
                 bad[number] = 'result is not storable or exceeds its size limit'
                 continue
-            seen[key] = (True, result)
+            seen[key] = (True, (result, _member_text(line)))
             continue
         _, marker, code, message = value
         if not isinstance(marker, str) or marker != 'error':
@@ -183,16 +281,18 @@ def parse_reply(text: object, ids) -> Parsed:
         return _rejected(n, received, bad, 'a malformed or unknown line rejects the whole reply')
     if set(seen) != set(ids):
         return _rejected(n, received, {}, 'the reply does not cover exactly the expected jobs')
-    return Parsed(n, {k: v for k, (ok, v) in seen.items() if ok}, received, (), None,
-                  {k: v for k, (ok, v) in seen.items() if not ok})
+    return Parsed(n, {k: v[0] for k, (ok, v) in seen.items() if ok}, received, (), None,
+                  {k: v for k, (ok, v) in seen.items() if not ok}, {k: v[1] for k, (ok, v) in seen.items() if ok})
 
 
 @dataclass(frozen=True)
 class Regrouped:
     """outcomes maps inbox job ID -> (status, text); status is ok, failed or retry.
 
-    values maps the ID of every ok job to the compact JSON of its accepted native value
-    (single slot: the value; several slots: {"results":[...]}), which is what dependents receive.
+    values maps the ID of every ok job to the JSON text dependents receive (single slot: the value; several
+    slots: {"results":[...]}). A model value keeps its validated source bytes (Parsed.texts); a host slot value
+    and the {"results":[...]} wrapper are compact JSON written by the host. The ok text of a job is its value
+    text too, except that a single nonblank string is stored as the string itself.
     A failed job's text is "<code>: <message>" of its first failing slot (atom order).
     """
     outcomes: dict
@@ -226,14 +326,26 @@ def regroup(text: object, job_map, host_slots=()) -> Regrouped:
             outcomes[mid] = ('failed', f'{failure[0]}: {failure[1]}')
             continue
         parts = [parsed.accepted[pid] if model else pid for _, pid, model in slots]
+        raws = [RawJSON(parsed.texts[pid]) if model and pid in parsed.texts else part
+                for (_, pid, model), part in zip(slots, parts)]
         try:
+            # Size and storability are judged on the compact native form exactly as before clause 12, so the
+            # set of ok and retried jobs does not change; the stored bytes are the validated source bytes.
             if len(parts) == 1:
-                outcomes[mid] = ('ok', _store(parts[0]))
-                values[mid] = _json(parts[0])
+                stored = _store(parts[0])
+                value = _json(raws[0])
+                if not (isinstance(parts[0], str) and parts[0].strip()):
+                    stored = value
             else:
-                combined = _json({'results': parts})
-                outcomes[mid] = ('ok', _store(combined))
-                values[mid] = combined
+                _store(_json({'results': parts}))
+                value = _json({'results': raws})
+                if len(value.encode('utf-8')) > MAX_RESULT_BYTES:
+                    # Source whitespace or spelling made the wrapper outgrow the limit the compact form met:
+                    # the host serializes it compactly (an explicit, lossy fallback) rather than change the outcome.
+                    value = _json({'results': parts})
+                stored = value
+            outcomes[mid] = ('ok', stored)
+            values[mid] = value
         except (ValueError, UnicodeEncodeError):
             outcomes[mid] = ('retry', RETRY_REASON)
     return Regrouped(outcomes, parsed, values)

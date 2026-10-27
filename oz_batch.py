@@ -18,7 +18,7 @@ from types import MappingProxyType
 from typing import Callable, Iterable
 
 from oz import Channel, Error, RULES, TokenMeter
-from oz_reply import slot_ids
+from oz_reply import RawJSON, dumps, slot_ids
 
 LANGUAGE = 'OZ/9'
 PREVIEW_RECEIPT = '0' * 16
@@ -85,8 +85,9 @@ def valid_receipt(value: object) -> bool:
 
 
 def J(value: object) -> str:
-    """Compact JSON in insertion key order; unpaired surrogates are rejected."""
-    text = json.dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+    """Compact JSON in insertion key order; unpaired surrogates are rejected. A RawJSON value (a validated
+    result record) is written as its source bytes (clause 12)."""
+    text = dumps(value, ensure_ascii=False, separators=(',', ':'), allow_nan=False)
     try:
         text.encode('utf-8')
     except UnicodeEncodeError as exc:
@@ -188,7 +189,8 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
     """Render one complete OZ/9 packet for exactly these jobs, never splitting them.
 
     handoffs lists (delivered job ID, predecessor ID, result record) in the jobs' dependency declaration
-    order; a record is the accepted JSON value of the predecessor. literals (literal text to persisted number)
+    order; a record is the accepted JSON value of the predecessor, written as its validated source bytes when it
+    is a RawJSON. literals (literal text to persisted number)
     is accepted for host bookkeeping only: the 1g wire carries the literal text itself in ops, never a number.
     """
     messages = tuple(messages)
@@ -216,6 +218,8 @@ def render(channel: Channel, messages: Iterable[tuple[str, str]], *,
             raise Error('handoff must be [delivered job ID, predecessor ID, result record]')
         try:
             record = J(link[2])
+            if isinstance(link[2], RawJSON):
+                link[2].value  # strict decode: stored text that is not one finite JSON value fails as before
         except (TypeError, ValueError, RecursionError):
             raise Error('handoff result must be a JSON value') from None
         if J(results.setdefault(link[1], link[2])) != record:
