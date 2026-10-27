@@ -1252,5 +1252,36 @@ class LineSeparatorTests(unittest.TestCase):
         self.assertNotIn('.splitlines(', source)
 
 
+class RunLiveInterfaceTests(unittest.TestCase):
+    """Re-freeze 2026-10-27 (Astra's conditions): the pilot uses only CLAUDE, SYSTEM and count from run_live.py, so
+    those are pinned here, and importing run_live must launch nothing and create no ledger."""
+
+    def test_the_used_names_are_pinned(self):
+        import tiktoken
+        L = P.L
+        self.assertEqual(L.SYSTEM, 'You are a worker agent in a multi-agent orchestration. Do what the packet asks and '
+                                   'reply exactly in its format.')
+        self.assertEqual(L.CLAUDE, shutil.which('claude'))
+        enc = tiktoken.get_encoding('o200k_base')
+        for s in ('', 'reply exactly in its format', '<|endoftext|> é   64 jobs'):
+            self.assertEqual(L.count(s), len(enc.encode(s, disallowed_special=())))
+        used = {n for n in re.findall(r'\bL\.([A-Za-z_]\w*)', (CR / 'pilot.py').read_text(encoding='utf-8'))}
+        self.assertEqual(used, {'CLAUDE', 'SYSTEM', 'count'})
+
+    def test_import_launches_nothing(self):
+        code = ('import sys, subprocess; sys.path[:0] = [sys.argv[1], sys.argv[2]]; calls = []; '
+                'subprocess.run = lambda *a, **k: calls.append(a); import run_live as L, bench.harness as H; '
+                'print(len(calls), len(L._LEDGER), H.__file__)')
+        with tempfile.TemporaryDirectory() as d:
+            out = subprocess.run([sys.executable, '-B', '-c', code, str(ROOT / 'bench' / 'live'), str(ROOT)],
+                                 capture_output=True, text=True, cwd=d, timeout=120,
+                                 env={k: v for k, v in os.environ.items() if k != 'LIVE_LEDGER'})
+            self.assertEqual(out.returncode, 0, out.stderr)
+            calls, ledgers, harness = out.stdout.split(maxsplit=2)
+            self.assertEqual((calls, ledgers), ('0', '0'))
+            self.assertEqual(Path(harness.strip()).resolve(), (ROOT / 'bench' / 'harness.py').resolve())
+            self.assertEqual(os.listdir(d), [])
+
+
 if __name__ == '__main__':
     unittest.main()

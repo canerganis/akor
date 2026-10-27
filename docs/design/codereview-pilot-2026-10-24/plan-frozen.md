@@ -1,6 +1,6 @@
 # Code-review sizing pilot: frozen run plan
 
-Status: frozen at digest `ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838` (`bench/codereview/freeze.json`,
+Status: frozen at digest `ee1f7c72db53447cf62e183681405b3fface67b90c82a015933eeb5d614768f6` (`bench/codereview/freeze.json`,
 CLI 2.1.306), not run, runnable. The witness domains are frozen: Astra answered the six questions as a new
 evaluator file, `DOMAINS.md` (Astra revision 2), which changes no module, span or reference.
 
@@ -254,16 +254,16 @@ and put it in place of `PCT`; after each run, read it again and settle it.
 1. Check: `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/verify.py`
    and `.venv/Scripts/python.exe bench/codereview/pilot.py freeze` must print ALL PASS and freeze holds.
 2. Run 1 (A-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ee1f7c72db53447cf62e183681405b3fface67b90c82a015933eeb5d614768f6 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 3. Run 2 (A-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ee1f7c72db53447cf62e183681405b3fface67b90c82a015933eeb5d614768f6 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 4. Run 3 (B-D):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ee1f7c72db53447cf62e183681405b3fface67b90c82a015933eeb5d614768f6 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 5. Run 4 (B-I):
-   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 --quota-before PCT`
+   `TIKTOKEN_CACHE_DIR=<repo>/.token-cache PYTHONIOENCODING=utf-8 .venv/Scripts/python.exe bench/codereview/pilot.py run --expect ee1f7c72db53447cf62e183681405b3fface67b90c82a015933eeb5d614768f6 --quota-before PCT`
    then `.venv/Scripts/python.exe bench/codereview/pilot.py quota-after --percent PCT`
 6. `pilot.py report` prints the per-run table (caller turns, caller tokens, cache reads and writes, worker tokens,
    total, lower bound, charged, time, correctness, recall, false positives, unproven) and the fill-slope estimates for
@@ -293,3 +293,11 @@ Astra approved the harness after five reviews (all findings closed; freeze ea306
 the weekly figure read 55%, above the admission edge of 53.32% for the first run, so no run was started and nothing
 was spent on model calls. The pilot runs unchanged at this freeze once the weekly figure allows admission (window
 resets 2026-10-27 09:00 UTC), after `verify.py`, `pilot.py freeze` and `claude --version`.
+
+## Re-freeze record, 2026-10-27
+
+At the owner's request, Astra approved ([decision](astra-refreeze-2026-10-27.md)) replacing digest ea306969b35100cb89ac68a34e7b39c1610569adf987cd8169cc9daa8d62d838 with ee1f7c72db53447cf62e183681405b3fface67b90c82a015933eeb5d614768f6. The original approval is recorded at commit 17cac21. No pilot run had started and no model tokens had been spent.
+
+Shared measurement harness commits 8afe9af, f445c5b and d0b154d changed bench/live/run_live.py. Its code hash is the only changed manifest field. The pilot's used interface, separately pinned runtime, experimental design, accounting rules and budgets remain unchanged.
+
+Offline interface and import checks, pilot tests, verify.py and freeze verification passed. The unrelated test_step1_traces failure remains separately recorded. The active status and all four launch commands now use ee1f7c72db53447cf62e183681405b3fface67b90c82a015933eeb5d614768f6. Existing quota admission and stop conditions still apply.
