@@ -7,10 +7,13 @@ One place for the rules every bench review kept re-finding:
            (CLAUDE_CODE_SUBAGENT_MODEL plus CLAUDE_CODE_SUBAGENT_MODEL_FORCE). Any other model makes the call a failure
            with no usable reply (its tokens still count). This is a pure-model cell rule: housekeeping on another model
            would also fail the call, which is the intended conservative reading.
-  failure  a timeout, an unreadable stream, a non-zero exit, is_error or any exception while calling is a recorded
-           failure with no reply, never a lost attempt.
+  failure  a timeout, an unreadable stream (a line that is not JSON, or not exactly one result event), a non-zero
+           exit, is_error or any exception while calling is a recorded failure with no reply, never a lost attempt.
+  delegate every top-level Agent/Task call is returned with its input and whether its tool result came back without
+           error, so a caller can prove one successful subagent per job instead of counting calls.
   ledger   launches and tokens are capped across threads and processes sharing one SQLite file. Each launch is a
-           durable reservation; it reserves `reserve` tokens until settled with real usage. A reservation left
+           durable reservation; it reserves `reserve` tokens until settled with real usage. The caps and the reserve are
+           stored in the file on first open; opening it with other values raises, so every client enforces one policy. A reservation left
            unsettled longer than `stale_after` seconds (its process died) counts as a call without usage, and any call
            without usage stops all later launches. The token cap is soft: the CLI has no per-call token ceiling, so
            every call in flight can exceed its reserve; the overshoot is bounded by the calls outstanding at once (one
@@ -57,25 +60,35 @@ def tokens(usage) -> int | None:
     return None if usage is None else usage['input_tokens'] + usage['output_tokens']
 
 
-def _read_stream(stdout: str):
-    """(final result event or None, unique top-level Agent/Task tool calls) from stream-json output. Events are
-    split on LF only: U+2028 and friends may appear inside JSON strings."""
-    final, spawned = None, set()
+def _read_stream(stdout: str) -> dict:
+    """Parsed stream-json output: the result event (None unless exactly one), how many result events and unreadable
+    lines there were, and the top-level Agent/Task calls in order with their input and whether their tool result came
+    back without error. Events are split on LF only: U+2028 and friends may appear inside JSON strings."""
+    results, bad, agents, outcome = [], 0, {}, {}
     for line in stdout.split('\n'):
+        if not line.strip():
+            continue
         try:
             ev = json.loads(line)
         except ValueError:
+            bad += 1
             continue
         if not isinstance(ev, dict):
+            bad += 1
             continue
-        if ev.get('type') == 'assistant' and not ev.get('parent_tool_use_id'):
-            content = (ev.get('message') or {}).get('content') if isinstance(ev.get('message'), dict) else None
-            for b in content if isinstance(content, list) else []:
-                if isinstance(b, dict) and b.get('type') == 'tool_use' and b.get('name') in ('Agent', 'Task'):
-                    spawned.add(b.get('id') or f'anon-{len(spawned)}')
+        content = (ev.get('message') or {}).get('content') if isinstance(ev.get('message'), dict) else None
+        if not ev.get('parent_tool_use_id') and isinstance(content, list):
+            for b in content:
+                if not isinstance(b, dict):
+                    continue
+                if ev.get('type') == 'assistant' and b.get('type') == 'tool_use' and b.get('name') in ('Agent', 'Task'):
+                    agents.setdefault(b.get('id') or f'anon-{len(agents)}', b.get('input'))
+                elif ev.get('type') == 'user' and b.get('type') == 'tool_result':
+                    outcome[b.get('tool_use_id')] = not b.get('is_error')
         if ev.get('type') == 'result':
-            final = ev
-    return final, len(spawned)
+            results.append(ev)
+    return {'final': results[0] if len(results) == 1 else None, 'results': len(results), 'bad_lines': bad,
+            'delegations': [{'id': k, 'input': v, 'ok': outcome.get(k, False)} for k, v in agents.items()]}
 
 
 def _text(out) -> str:
@@ -87,12 +100,12 @@ def _text(out) -> str:
 def call(system: str, prompt: str, *, model: str, kind: str = 'fixture', fixture=None, tools: str = '',
          effort: str | None = None, timeout: float = 900, cwd=None) -> dict:
     """One claude -p call with the AKOR route's flags. Returns text, usage, failure, models, spawns, turns, api_ms,
-    started, ended, seconds, envelope and raw (stdout tail kept when there is no result event). text is '' whenever
-    failure is set. Never raises for a live call; a bad `kind` is a programming error and raises."""
+    started, ended, seconds, envelope, raw (stdout tail kept when the stream is unusable) and delegations (top-level
+    Agent/Task calls: id, input, ok). text is '' whenever failure is set. Never raises for a live call; a bad `kind` is a programming error and raises."""
     if kind not in ('fixture', 'live'):
         raise ValueError(f'kind must be fixture or live, not {kind!r}')
     started = time.time()
-    envelope, failure, spawns, raw = None, None, 0, ''
+    envelope, failure, raw, delegations = None, None, '', []
     if kind == 'fixture':
         text = fixture() if fixture else ''
         envelope = {'type': 'result', 'result': text, 'is_error': False, 'num_turns': 1, 'modelUsage': {model: {
@@ -106,14 +119,20 @@ def call(system: str, prompt: str, *, model: str, kind: str = 'fixture', fixture
         try:
             proc = subprocess.run(cmd, input=prompt, capture_output=True, text=True, encoding='utf-8',
                                   errors='replace', cwd=cwd, env=env, timeout=timeout)
-            envelope, spawns = _read_stream(proc.stdout)
-            if envelope is None:
-                failure, raw = f'no result event (exit {proc.returncode})', (proc.stdout + proc.stderr)[-4000:]
+            st = _read_stream(proc.stdout)
+            envelope, delegations = st['final'], st['delegations']
+            if st['results'] != 1:
+                failure = f"{st['results']} result events (exit {proc.returncode})"
+            elif st['bad_lines']:
+                failure = f"{st['bad_lines']} unreadable stream line(s) (exit {proc.returncode})"
             elif proc.returncode:
                 failure = f'exit {proc.returncode}'
+            if failure and envelope is None or st['bad_lines']:
+                raw = (proc.stdout + proc.stderr)[-4000:]
         except subprocess.TimeoutExpired as exc:
             failure, raw = 'timeout', _text(exc.stdout)[-4000:]
-            envelope, spawns = _read_stream(_text(exc.stdout))
+            st = _read_stream(_text(exc.stdout))
+            envelope, delegations = st['final'], st['delegations']
         except Exception as exc:  # noqa: BLE001  any launch error is a recorded failed attempt
             failure = f'{type(exc).__name__}: {exc}'[:300]
     mu = envelope.get('modelUsage') if isinstance(envelope, dict) else None
@@ -128,7 +147,7 @@ def call(system: str, prompt: str, *, model: str, kind: str = 'fixture', fixture
     ended = time.time()
     ok_env = isinstance(envelope, dict)
     return {'text': '' if failure or not ok_env else envelope['result'], 'usage': usage_of(mu), 'failure': failure,
-            'models': seen, 'spawns': spawns, 'turns': envelope.get('num_turns') if ok_env else None,
+            'models': seen, 'spawns': len(delegations), 'delegations': delegations, 'turns': envelope.get('num_turns') if ok_env else None,
             'api_ms': envelope.get('duration_api_ms') if ok_env else None, 'started': started, 'ended': ended,
             'seconds': round(ended - started, 2), 'envelope': envelope, 'raw': raw}
 
@@ -141,8 +160,17 @@ class Ledger:
         self.reserve_tokens, self.stale_after = reserve, stale_after
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self._db() as con:
+            con.execute('BEGIN IMMEDIATE')
             con.execute('CREATE TABLE IF NOT EXISTS launch (id TEXT PRIMARY KEY, created REAL NOT NULL, '
                         'settled INTEGER NOT NULL DEFAULT 0, tokens INTEGER, unknown INTEGER NOT NULL DEFAULT 0)')
+            con.execute('CREATE TABLE IF NOT EXISTS policy (k TEXT PRIMARY KEY, v REAL NOT NULL)')
+            want = {'max_launches': max_launches, 'max_tokens': max_tokens, 'reserve': reserve,
+                    'stale_after': stale_after}
+            have = dict(con.execute('SELECT k, v FROM policy').fetchall())
+            if not have:
+                con.executemany('INSERT INTO policy VALUES (?, ?)', want.items())
+            elif have != {k: float(v) for k, v in want.items()}:
+                raise ValueError(f'{self.path} holds another policy {have}; asked for {want}')
 
     def _db(self):
         con = sqlite3.connect(self.path, timeout=60, isolation_level=None)
@@ -228,12 +256,17 @@ def run_charged(ledger: Ledger, fn):
 
 
 def total(usages) -> dict:
-    """Sums over calls with known usage plus the count without; conclusive only when every call has usage."""
+    """Sums over calls. Conclusive only with at least one call and usage on every call; otherwise every token figure
+    is None and only tokens_known_calls_only (a labelled partial sum) remains. thinking_tokens is None when any call's
+    thinking is unknown."""
     usages = list(usages)
     known = [u for u in usages if u is not None]
-    out = {k: sum(u[k] for u in known) for k in ('input_tokens', 'cached_input_tokens', 'output_tokens')}
+    conclusive = bool(usages) and len(known) == len(usages)
     th = [u['thinking_tokens'] for u in known]
-    out.update(thinking_tokens=sum(t for t in th if t is not None), thinking_unknown=sum(t is None for t in th),
-               tokens=sum(tokens(u) for u in known), calls=len(usages), calls_without_usage=len(usages) - len(known),
-               conclusive=len(known) == len(usages))
+    out = {k: sum(u[k] for u in known) if conclusive else None
+           for k in ('input_tokens', 'cached_input_tokens', 'output_tokens')}
+    out.update(thinking_tokens=sum(th) if conclusive and None not in th else None,
+               thinking_unknown=sum(t is None for t in th), tokens=sum(tokens(u) for u in known) if conclusive else None,
+               tokens_known_calls_only=sum(tokens(u) for u in known), calls=len(usages),
+               calls_without_usage=len(usages) - len(known), conclusive=conclusive)
     return out

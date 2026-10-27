@@ -4,7 +4,7 @@ Run from the repo root with the .venv python. Billed usage is summed from the CL
 modelUsage through bench/harness.py (input + cache creation + cache read = raw input). Every call is
 sequential; arm order is shuffled per (domain, n, rep) so drift hits all arms.
 """
-import json, os, random, re, shutil, subprocess, sys, tempfile, time
+import json, os, random, re, shutil, subprocess, sys, time
 from pathlib import Path
 
 sys.path.insert(0, '.'); sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -73,8 +73,10 @@ def results08(value, ids):
 
 def call_codex(prompt, model, system=None):
     """Codex CLI (read-only sandbox, ephemeral). Usage from the turn.completed event. codex exec has no system prompt
-    flag, so the system text leads the input (runs before 2026-10-27 sent no system text). A non-zero exit, a missing
-    reply or malformed usage is a failed attempt with usage None."""
+    flag, so the system text leads the input (runs before 2026-10-27 sent no system text). A non-zero exit, a failed
+    turn or error event, a missing reply or malformed usage is a failed attempt with usage None. Missing cache
+    counters are None, not zero. The codex stream names no model, so model is None: codex cells are never "pinned
+    model verified"."""
     start = time.monotonic()
     prompt = f'System instructions:\n{system or SYSTEM}\n\n{prompt}'
     effort = os.environ.get('EFFORT', 'medium')
@@ -90,6 +92,8 @@ def call_codex(prompt, model, system=None):
         u = [e['usage'] for e in events if e.get('type') == 'turn.completed'][-1]
         if proc.returncode:
             raise RuntimeError(f'exit {proc.returncode}')
+        if any(e.get('type') in ('turn.failed', 'error') for e in events):
+            raise RuntimeError('failed turn')
         present = [k for k in ('input_tokens', 'output_tokens', 'cached_input_tokens', 'cache_write_input_tokens',
                                'reasoning_output_tokens') if k in u]
         if (not {'input_tokens', 'output_tokens'} <= set(present)
@@ -99,12 +103,13 @@ def call_codex(prompt, model, system=None):
     except Exception as exc:  # noqa: BLE001
         return {'text': '', 'is_error': True, 'wall_s': round(time.monotonic() - start, 2), 'api_ms': None,
                 'ttft_ms': None, 'in': None, 'in_uncached': None, 'cache_read': None, 'cache_write': None,
-                'out': None, 'call_error': type(exc).__name__}
+                'out': None, 'model': None, 'call_error': type(exc).__name__}
     wall = time.monotonic() - start
     return {'text': text, 'is_error': False, 'wall_s': round(wall, 2), 'api_ms': None, 'ttft_ms': None,  # codex reports no API time
-            'in': u['input_tokens'], 'in_uncached': u['input_tokens'] - u.get('cached_input_tokens', 0),
-            'cache_read': u.get('cached_input_tokens', 0), 'cache_write': u.get('cache_write_input_tokens', 0),
-            'out': u['output_tokens'], 'reasoning': u.get('reasoning_output_tokens')}
+            'in': u['input_tokens'],
+            'in_uncached': u['input_tokens'] - u['cached_input_tokens'] if 'cached_input_tokens' in u else None,
+            'cache_read': u.get('cached_input_tokens'), 'cache_write': u.get('cache_write_input_tokens'),
+            'out': u['output_tokens'], 'reasoning': u.get('reasoning_output_tokens'), 'model': None}
 
 
 # Pin full model ids: the bare 'haiku' alias resolved to claude-haiku-4-5, not 5.5.
@@ -116,10 +121,13 @@ _LEDGER = []
 
 
 def _ledger():
-    """Caps for every live call of this process (bench/harness.py rules). LIVE_LEDGER names a file shared between
-    runs; without it each process gets its own. Limits: LIVE_MAX_LAUNCHES, LIVE_MAX_TOKENS, LIVE_RESERVE."""
+    """Caps for every live call (bench/harness.py rules). LIVE_LEDGER is required: one file per experiment, shared by
+    its processes and kept across restarts, so a rerun cannot open a fresh budget. Limits: LIVE_MAX_LAUNCHES,
+    LIVE_MAX_TOKENS, LIVE_RESERVE (stored in the file on first use)."""
     if not _LEDGER:
-        path = os.environ.get('LIVE_LEDGER') or Path(tempfile.gettempdir()) / f'akor-run_live-{os.getpid()}-{time.time_ns()}.sqlite'
+        path = os.environ.get('LIVE_LEDGER')
+        if not path:
+            raise SystemExit('set LIVE_LEDGER to the experiment ledger file (for example data/<run>.ledger.sqlite)')
         _LEDGER.append(HX.Ledger(path, max_launches=int(os.environ.get('LIVE_MAX_LAUNCHES', '2000')),
                                  max_tokens=int(os.environ.get('LIVE_MAX_TOKENS', '20000000')),
                                  reserve=int(os.environ.get('LIVE_RESERVE', '60000'))))

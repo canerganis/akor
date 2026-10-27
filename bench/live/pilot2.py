@@ -8,7 +8,8 @@ Same 16 materials jobs per seed, four ways:
   S   one orchestrator call that must spawn one subagent per job (Agent tool), then reply in the 0.8 format
 Tokens are summed from modelUsage, which includes subagents; the CLI's `usage` field covers only the last
 turn. Every reply is judged strictly by the same oracles; nothing is repaired. Calls go through bench/harness.py
-(pinned subagent model, model check, shared caps in OUT.ledger.sqlite: MAX_LAUNCHES, MAX_TOKENS, RESERVE).
+(pinned subagent model, model check, shared caps in OUT.ledger.sqlite: MAX_LAUNCHES, MAX_TOKENS, RESERVE). An S call
+counts as delegated only when each job went to one subagent whose call succeeded (delegation_ok).
 Usage: OUT=pilot2_sonnet.jsonl python bench/live/pilot2.py
 """
 import hashlib, json, os, re, sys
@@ -56,7 +57,15 @@ def run(prompt, system=None, tools=''):
             'api_ms': c['api_ms'], 'in': u.get('input_tokens'), 'in_uncached': u.get('uncached_input_tokens'),
             'cache_read': u.get('cached_input_tokens'), 'cache_write': u.get('cache_write_tokens'),
             'out': u.get('output_tokens'), 'thinking': u.get('thinking_tokens'), 'model': ','.join(c['models']),
-            'spawns': c['spawns'], 'turns': c['turns']}
+            'spawns': c['spawns'], 'turns': c['turns'], 'delegations': c['delegations']}
+
+
+def delegation_ok(delegations, n) -> bool:
+    """True when every subagent call came back without error and names exactly one message ID, and the calls cover
+    the n IDs once each."""
+    named = [set(re.findall(r'\bma_\d{2}\b', json.dumps(d['input'], ensure_ascii=False))) for d in delegations]
+    return (all(d['ok'] for d in delegations) and all(len(x) == 1 for x in named)
+            and sorted(x.pop() for x in named) == [f'ma_{i + 1:02d}' for i in range(n)])
 
 
 def judge(dec, reply, js, native):
@@ -115,8 +124,11 @@ def main():
         for k, (system, prompt, tools, dec, native, js) in enumerate(calls(seed, a)):
             r = run(prompt, system, tools)
             err, ok = ('call: ' + r['failure'], 0) if r['failure'] else judge(dec, r['text'], js, native)
+            d = r.pop('delegations')
             rec = {'seq': seq, 'part': k, 'seed': seed, 'arm': a, 'valid': not err, 'error': err, 'jobs_passed': ok,
-                   'jobs': len(js), 'manifest': man['sha256'], **r}
+                   'jobs': len(js), 'manifest': man['sha256'], **r,
+                   **({'delegation_ok': delegation_ok(d, len(js)),
+                       'delegations': [[x['id'], x['ok'], x['input']] for x in d]} if a == 'S' else {})}
             with OUT.open('a', encoding='utf-8') as f:
                 f.write(json.dumps(rec, ensure_ascii=False) + '\n')
             print(seq, k, seed, a, 'ok' if not err else 'FAIL ' + err, f'{ok}/{len(js)}', 'in', r['in'], 'out', r['out'],

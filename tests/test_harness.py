@@ -1,4 +1,7 @@
+import contextlib
+import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -21,13 +24,16 @@ def mu(model=M, **over):
     return {model: e}
 
 
-def stream(result='ok', model_usage=None, is_error=False, spawns=0):
-    lines = [{'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Agent', 'id': f't{i}'}
-                                                           for i in range(spawns)]}},
+def stream(result='ok', model_usage=None, is_error=False, spawns=0, failed=()):
+    lines = [{'type': 'assistant', 'message': {'content': [
+                 {'type': 'tool_use', 'name': 'Agent', 'id': f't{i}', 'input': {'prompt': f'job ma_{i + 1:02d}'}}
+                 for i in range(spawns)]}},
+             {'type': 'user', 'message': {'content': [{'type': 'tool_result', 'tool_use_id': f't{i}',
+                                                       'is_error': i in failed} for i in range(spawns)]}},
              {'type': 'assistant', 'parent_tool_use_id': 'x', 'message': {'content': [{'type': 'tool_use', 'name': 'Agent'}]}},
              {'type': 'result', 'result': result, 'is_error': is_error, 'num_turns': 2,
               'modelUsage': mu() if model_usage is None else model_usage}]
-    return 'not json\n' + '\n'.join(json.dumps(l) for l in lines) + '\n'
+    return '\n'.join(json.dumps(l) for l in lines) + '\n'
 
 
 def fake_run(stdout='', returncode=0, raise_timeout=False):
@@ -57,13 +63,16 @@ class UsageTest(unittest.TestCase):
         self.assertIsNone(H.usage_of(mu(thinkingTokens=None))['thinking_tokens'])
         self.assertIsNone(H.usage_of(mu(thinkingTokens='7'))['thinking_tokens'])
         t = H.total([H.usage_of(mu(thinkingTokens=None)), H.usage_of(mu())])
-        self.assertEqual((t['thinking_tokens'], t['thinking_unknown']), (2, 1))
+        self.assertEqual((t['thinking_tokens'], t['thinking_unknown'], t['tokens']), (None, 1, 40))
         self.assertIsNone(H.tokens(None))
 
     def test_total_is_inconclusive_with_unknown(self):
         t = H.total([H.usage_of(mu()), None])
-        self.assertEqual((t['tokens'], t['calls'], t['calls_without_usage'], t['conclusive']), (20, 2, 1, False))
+        self.assertEqual((t['tokens'], t['calls'], t['calls_without_usage'], t['conclusive']), (None, 2, 1, False))
+        self.assertEqual((t['input_tokens'], t['output_tokens'], t['tokens_known_calls_only']), (None, None, 20))
         self.assertTrue(H.total([H.usage_of(mu())])['conclusive'])
+        e = H.total([])
+        self.assertEqual((e['tokens'], e['conclusive']), (None, False))  # no calls is not zero tokens
 
 
 class CallTest(unittest.TestCase):
@@ -79,6 +88,18 @@ class CallTest(unittest.TestCase):
         self.assertEqual(run.env['CLAUDE_CODE_SUBAGENT_MODEL'], M)
         self.assertEqual(run.env['CLAUDE_CODE_SUBAGENT_MODEL_FORCE'], '1')
         self.assertIn('--model', run.cmd)
+
+    def test_delegations_carry_input_and_result_status(self):
+        c = self.live(fake_run(stream(spawns=2, failed={1})))
+        self.assertEqual([(d['id'], d['ok']) for d in c['delegations']], [('t0', True), ('t1', False)])
+        self.assertEqual(c['delegations'][0]['input'], {'prompt': 'job ma_01'})
+
+    def test_unreadable_or_conflicting_stream_fails(self):
+        self.assertTrue(self.live(fake_run('not json\n' + stream()))['failure'].startswith('1 unreadable'))
+        two = stream(is_error=True, model_usage=mu('claude-haiku-5-5')) + stream()
+        c = self.live(fake_run(two))
+        self.assertTrue(c['failure'].startswith('2 result events'))
+        self.assertEqual(c['text'], '')
 
     def test_spawns_are_unique_tool_ids(self):
         ev = {'type': 'assistant', 'message': {'content': [{'type': 'tool_use', 'name': 'Agent', 'id': 'a'}]}}
@@ -102,7 +123,7 @@ class CallTest(unittest.TestCase):
     def test_failures(self):
         self.assertEqual(self.live(fake_run(raise_timeout=True))['failure'], 'timeout')
         self.assertIsNone(self.live(fake_run(raise_timeout=True))['usage'])
-        self.assertTrue(self.live(fake_run('garbage'))['failure'].startswith('no result event'))
+        self.assertTrue(self.live(fake_run(''))['failure'].startswith('0 result events'))
         self.assertEqual(self.live(fake_run(stream(), returncode=1))['failure'], 'exit 1')
         self.assertEqual(self.live(fake_run(stream(is_error=True)))['failure'], 'is_error')
         c = self.live(fake_run(stream(model_usage={})))
@@ -156,7 +177,15 @@ class LedgerTest(unittest.TestCase):
         L = self.ledger(max_launches=10, max_tokens=10_000)
         L.charge(L.reserve(), None)
         self.assertIsNone(L.reserve())
-        self.assertIn('without usage', self.ledger(max_tokens=10_000).refusal())
+        self.assertIn('without usage', self.ledger(max_launches=10, max_tokens=10_000).refusal())
+
+    def test_policy_is_stored_and_enforced(self):
+        self.ledger()
+        with self.assertRaises(ValueError):
+            self.ledger(reserve=10)  # another client cannot count reservations differently
+        with self.assertRaises(ValueError):
+            self.ledger(max_launches=99)
+        self.ledger()  # same policy opens fine
 
     def test_stale_reservation_counts_as_unknown(self):
         L = self.ledger(max_launches=10, max_tokens=10_000, stale_after=0.05)
@@ -208,16 +237,87 @@ class LedgerTest(unittest.TestCase):
 
 
 class CallerTest(unittest.TestCase):
-    """Terra review 2026-10-27: callers of the harness."""
+    """Callers of the harness (reviews 2026-10-27)."""
 
     def test_pool2_summary_counts_unknown_thinking(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'pool'))
         import pool2
-        calls = [{'usage': H.usage_of(mu(thinkingTokens=None))}, {'usage': H.usage_of(mu())}]
-        out = pool2.summarize('P', calls, {'j': ('yes', 1.0)}, {'a': 0.0}, {'a': [('j', 'q')]}, {'j': 'yes'})
-        self.assertEqual((out['thinking_tokens'], out['thinking_unknown'], out['tokens']), (2, 1, 40))
-        out = pool2.summarize('P', calls + [{'usage': None}], {'j': ('yes', 1.0)}, {'a': 0.0}, {'a': [('j', 'q')]}, {'j': 'yes'})
-        self.assertEqual((out['tokens'], out['tokens_known_calls_only'], out['calls_without_usage']), (None, 40, 1))
+        calls = [{'usage': H.usage_of(mu(thinkingTokens=None)), 'ended': 2.0}, {'usage': H.usage_of(mu()), 'ended': 3.0}]
+        args = ({'j': ('yes', 1.0)}, {'a': 0.0}, {'a': [('j', 'q')]}, {'j': 'yes'})
+        out = pool2.summarize('P', calls, *args)
+        self.assertEqual((out['thinking_tokens'], out['thinking_unknown'], out['tokens']), (None, 1, 40))
+        self.assertEqual((out['makespan_seconds'], out['run_seconds']), (3.0, 3.0))  # every attempt counts
+        out = pool2.summarize('P', calls + [{'usage': None, 'ended': 4.0}], *args)
+        self.assertEqual((out['tokens'], out['input_tokens'], out['tokens_known_calls_only'], out['calls_without_usage']),
+                         (None, None, 40, 1))
+
+    def test_pool2_refused_or_unanswered_publishes_no_tokens(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'pool'))
+        import pool2
+        ok = [{'usage': H.usage_of(mu()), 'ended': 1.0}]
+        out = pool2.summarize('P', ok + [{'refused': True, 'usage': None}], {'j': ('yes', 1.0)}, {'a': 0.0},
+                              {'a': [('j', 'q')]}, {'j': 'yes'})
+        self.assertEqual((out['tokens'], out['complete'], out['refused_launches']), (None, False, 1))
+        out = pool2.summarize('P', ok, {}, {'a': 0.0}, {'a': [('j', 'q')]}, {'j': 'yes'})
+        self.assertEqual((out['tokens'], out['makespan_seconds'], out['run_seconds']), (None, None, 1.0))
+        self.assertEqual(pool2.summarize('P', [], {}, {'a': 0.0}, {'a': [('j', 'q')]}, {'j': 'yes'})['tokens'], None)
+
+    def report(self, rows, man, ledger_launches=None):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'live'))
+        import pilot2_report as R
+        with tempfile.TemporaryDirectory() as d:
+            f = Path(d) / 'pilot2_sonnet.jsonl'
+            f.write_text(''.join(json.dumps(r) + '\n' for r in rows), encoding='utf-8')
+            f.with_suffix('.manifest.json').write_text(json.dumps(man), encoding='utf-8')
+            if ledger_launches is not None:
+                L = H.Ledger(f.with_suffix('.ledger.sqlite'), max_launches=99, max_tokens=10**9, reserve=1)
+                for _ in range(ledger_launches):
+                    L.charge(L.reserve(), H.usage_of(mu()))
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                R.main([f])
+        return {l.split('|')[2].strip(): [c.strip() for c in l.split('|')[1:-1]] for l in out.getvalue().splitlines()[2:]}
+
+    def row(self, arm, part=0, **kw):
+        r = {'seed': 1, 'arm': arm, 'part': part, 'manifest': 'x', 'in': 90, 'out': 10, 'in_uncached': 90,
+             'cache_read': 0, 'cache_write': 0, 'model': M, 'valid': True, 'jobs': 2 if arm in 'HS' else 1,
+             'jobs_passed': 2 if arm in 'HS' else 1, 'wall_s': 1.0, 'api_ms': 900}
+        r.update(kw)
+        return r
+
+    def test_report_withholds_figures_for_unclean_cells(self):
+        man = {'sha256': 'x', 'n': 2, 'model': M, 'schedule': [[1, 'H'], [1, 'S'], [1, 'P']]}
+        rows = [self.row('H'), self.row('H', manifest='old', **{'in': 5000}),  # an older run in the same file
+                self.row('S', spawns=2, delegation_ok=False), self.row('P', 0), self.row('P', 1, model='')]
+        t = self.report(rows, man)
+        h, s, p = t['OZ/1g, one call'], t['one subagent per job'], t['plain JSON, one call per job']
+        self.assertEqual((h[5], h[7]), ('100', '50.0'))  # the old run is ignored, not summed
+        self.assertIn('another run ignored', h[-1])
+        self.assertEqual((s[7], s[11]), ('n/a', 'n/a'))
+        self.assertIn('without proven', s[-1])
+        self.assertEqual((p[7], p[11]), ('n/a', 'n/a'))  # an empty model is not the pinned model
+        rows = [self.row('H'), self.row('S', delegation_ok=True), self.row('P', 0), self.row('P', 1)]
+        t = self.report(rows, man)
+        self.assertEqual(t['plain JSON, one call per job'][11], '2.0')
+        self.assertEqual(t['one subagent per job'][11], '1.0')
+        t = self.report(rows, man, ledger_launches=5)  # a paid launch never written
+        self.assertEqual(t['OZ/1g, one call'][7], 'n/a')
+        self.assertIn('without a record', t['OZ/1g, one call'][-1])
+        t = self.report([self.row('H', **{'in': -80})] + rows[1:], man)
+        self.assertEqual(t['OZ/1g, one call'][5], 'n/a')  # a negative counter is not usage
+
+    def test_pilot2_delegation_must_cover_each_job_once(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'live'))
+        with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {'OUT': str(Path(d) / 'p.jsonl')}):
+            import pilot2
+            d1 = lambda i, ok=True: {'id': f't{i}', 'ok': ok, 'input': {'prompt': f'do ma_{i:02d}'}}
+            self.assertTrue(pilot2.delegation_ok([d1(1), d1(2)], 2))
+            self.assertFalse(pilot2.delegation_ok([d1(1), d1(1)], 2))  # same job twice
+            self.assertFalse(pilot2.delegation_ok([d1(1), d1(2, ok=False)], 2))  # a failed subagent
+            self.assertFalse(pilot2.delegation_ok([d1(1)], 2))
+            both = {'id': 't', 'ok': True, 'input': {'prompt': 'ma_01 and ma_02'}}
+            self.assertFalse(pilot2.delegation_ok([both, d1(2)], 2))
+            pilot2.LEDGER = None
 
     def test_report_coverage_with_other_manifest(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'live'))
@@ -230,6 +330,30 @@ class CallerTest(unittest.TestCase):
         rows[2]['manifest'] = 'x'
         self.assertTrue(R.coverage(rows, man)['P'])
         self.assertFalse(R.coverage(rows + [rows[2]], man)['P'])  # duplicate part
+
+    def test_run_live_needs_an_experiment_ledger(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'live'))
+        import run_live
+        env = {k: v for k, v in os.environ.items() if k != 'LIVE_LEDGER'}
+        with mock.patch.dict(os.environ, env, clear=True):
+            run_live._LEDGER.clear()
+            with self.assertRaises(SystemExit):
+                run_live.call('hi')
+
+    def test_codex_failed_turn_and_missing_cache(self):
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'live'))
+        import run_live
+        msg = {'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'hi'}}
+        done = {'type': 'turn.completed', 'usage': {'input_tokens': 100, 'output_tokens': 10}}
+        out = lambda *ev: subprocess.CompletedProcess([], 0, '\n'.join(json.dumps(e) for e in ev), '')
+        with mock.patch.object(run_live.subprocess, 'run', lambda *a, **k: out(msg, done)), \
+                mock.patch.object(run_live.shutil, 'which', lambda _: 'codex'):
+            r = run_live.call_codex('p', 'm')
+        self.assertEqual((r['is_error'], r['cache_read'], r['in_uncached'], r['model']), (False, None, None, None))
+        with mock.patch.object(run_live.subprocess, 'run', lambda *a, **k: out(msg, done, {'type': 'turn.failed'})), \
+                mock.patch.object(run_live.shutil, 'which', lambda _: 'codex'):
+            r = run_live.call_codex('p', 'm')
+        self.assertEqual((r['is_error'], r['in']), (True, None))
 
     def test_run_live_stops_when_ledger_refuses(self):
         sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'bench' / 'live'))

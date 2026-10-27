@@ -15,13 +15,18 @@ for r in rows:
 
 def price(r):
     """Relative money units at Sonnet list ratios: input 1, cache write 1.25, cache read 0.1, output 5."""
-    return (r['in_uncached'] or 0) + 1.25 * (r['cache_write'] or 0) + 0.1 * (r['cache_read'] or 0) + 5 * (r['out'] or 0)
+    return r['in_uncached'] + 1.25 * r['cache_write'] + 0.1 * r['cache_read'] + 5 * r['out']
 
 
 def stats(rs):
-    tok = sum((r['in'] or 0) + (r['out'] or 0) for r in rs)
+    """Raises when any counter is unknown: a gate is never computed from a zero that stands for missing usage."""
+    keys = ('in', 'out', 'in_uncached', 'cache_write', 'cache_read', 'api_ms')
+    missing = sum(1 for r in rs if any(type(r.get(k)) is not int or r[k] < 0 for k in keys))
+    if missing:
+        raise SystemExit(f'{missing} call(s) without complete usage or API time: gates are inconclusive')
+    tok = sum(r['in'] + r['out'] for r in rs)
     money = sum(price(r) for r in rs)
-    ms = sum(r['api_ms'] or 0 for r in rs)
+    ms = sum(r['api_ms'] for r in rs)
     req = sum(r['jobs'] for r in rs)
     ver = sum(r['jobs'] for r in rs if r['passed'])
     return {'calls': len(rs), 'passed': sum(r['passed'] for r in rs), 'tokens': tok, 'C_requested': tok / req,

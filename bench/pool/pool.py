@@ -112,6 +112,7 @@ def run_group(items, fmt: str, kind: str, gold, launches: list, ws: Path, tag: s
     for attempt in range(1 + RETRIES):
         c = H.run_charged(ledger, lambda: call(system, prompt, kind, lambda: fixture_answers(items, gold, fmt)))
         if c is None:  # launch cap, token cap or a call without usage
+            launches.append({'group': tag, 'attempt': attempt, 'refused': True, 'usage': None, 'jobs': len(ids)})
             return {}
         record = {'group': tag, 'attempt': attempt, 'usage': c['usage'], 'failure': c['failure'],
                   'started': c['started'], 'ended': c['ended'], 'jobs': len(ids)}
@@ -139,20 +140,25 @@ def run_arm(arm: str, jobs, gold, kind: str, ws: Path, launches: list, ledger) -
     else:
         results = run_group([(jid, text) for _, jid, text in jobs], 'oz' if arm == 'A' else 'direct', kind, gold,
                             launches, ws, arm, ledger)
-    mine = [x for x in launches if x['group'] == arm or x['group'].startswith(arm + '-')]
+    tagged = [x for x in launches if x['group'] == arm or x['group'].startswith(arm + '-')]
+    refused = sum(1 for x in tagged if x.get('refused'))
+    mine = [x for x in tagged if not x.get('refused')]
     t = H.total(x['usage'] for x in mine)
+    complete = not refused and len(results) == len(gold)  # token figures only for a complete arm
+    pub = lambda k: t[k] if complete else None
     latency = {}
     for p, items in by_producer.items():
         arrivals = [results[jid][1] for jid, _ in items if jid in results]
         latency[p] = round(max(arrivals) - t0, 2) if len(arrivals) == len(items) else None
     correct = sum(1 for jid in gold if jid in results and results[jid][0] == gold[jid])
-    return {'arm': arm, 'calls': len(mine), 'rejected_calls': sum(1 for x in mine if x.get('rejected')),
-            **{k: t[k] for k in ('calls_without_usage', 'input_tokens', 'cached_input_tokens', 'output_tokens',
-                                 'thinking_tokens', 'thinking_unknown')},
-            'tokens': t['tokens'] if t['conclusive'] else None,  # None when any call has unknown usage
-            'tokens_known_calls_only': t['tokens'],
+    return {'arm': arm, 'calls': len(mine), 'refused_launches': refused, 'complete': complete,
+            'rejected_calls': sum(1 for x in mine if x.get('rejected')),
+            **{k: pub(k) for k in ('input_tokens', 'cached_input_tokens', 'output_tokens', 'thinking_tokens', 'tokens')},
+            'calls_without_usage': t['calls_without_usage'], 'thinking_unknown': t['thinking_unknown'],
+            'tokens_known_calls_only': t['tokens_known_calls_only'],  # partial: diagnostics only
             'answered': len(results), 'correct': correct, 'jobs': len(gold),
-            'makespan_seconds': round(max((x['ended'] for x in mine), default=t0) - t0, 2),
+            'makespan_seconds': round(max((x['ended'] for x in mine), default=t0) - t0, 2) if complete else None,
+            'run_seconds': round(max((x['ended'] for x in mine), default=t0) - t0, 2),
             'producer_latency_seconds': latency,
             'worst_producer_latency_seconds': None if None in latency.values() else max(latency.values())}
 
@@ -182,8 +188,9 @@ def main(argv=None):
         print(arm, f"{row['correct']}/{row['jobs']} correct", row['calls'], 'calls', 'n/a (unknown usage)' if row['tokens'] is None else row['tokens'], 'tokens',
               row['makespan_seconds'], 's makespan, worst producer', row['worst_producer_latency_seconds'], flush=True)
         (ws / 'pool.json').write_text(json.dumps({'kind': args.kind, 'model': MODEL, 'order': order, 'rows': rows,
-                                                  'launches': launches}, indent=1) + '\n', encoding='utf-8')
-    complete = all(r['answered'] == r['jobs'] for r in rows) and len(launches) <= MAX_LAUNCHES
+                                                  'launches': launches, 'ledger': ledger.state()}, indent=1) + '\n',
+                                      encoding='utf-8')
+    complete = all(r['complete'] for r in rows)
     # A call without usage makes the token comparison inconclusive, never a zero.
     conclusive = all(r['calls_without_usage'] == 0 for r in rows)
     if not conclusive:

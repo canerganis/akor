@@ -74,6 +74,8 @@ def make_send(fmt: str, kind: str, gold: dict, ledger: Ledger, calls: list, ws: 
         c = H.run_charged(ledger, lambda: P1.call(system, prompt, kind, lambda: P1.fixture_answers(batch, gold, fmt),
                                                   effort=effort))
         if c is None:
+            with lock:
+                calls.append({'tag': tag, 'jobs': len(ids), 'refused': True, 'usage': None})
             raise RuntimeError('engineering cap reached')
         record = {'tag': tag, 'jobs': len(ids), 'usage': c['usage'], 'failure': c['failure'],
                   'started': c['started'], 'ended': c['ended']}
@@ -91,20 +93,28 @@ def make_send(fmt: str, kind: str, gold: dict, ledger: Ledger, calls: list, ws: 
 
 
 def summarize(arm: str, calls: list, delivered: dict, arrivals: dict, jobs: dict, gold: dict) -> dict:
-    t = H.total(c['usage'] for c in calls)
+    """Token figures only for a complete arm (every job answered, no refused launch, usage on every call); the
+    makespan covers every attempt and is None when a job was never answered."""
+    refused = sum(1 for c in calls if c.get('refused'))
+    launched = [c for c in calls if not c.get('refused')]
+    t = H.total(c['usage'] for c in launched)
+    complete = not refused and len(delivered) == len(gold)
+    pub = lambda k: t[k] if complete else None
     latency = {}
     for p, items in jobs.items():
         times = [delivered[jid][1] for jid, _ in items if jid in delivered]
         latency[p] = round(max(times) - arrivals[p], 2) if len(times) == len(items) else None
     t0 = min(arrivals.values())
-    return {'arm': arm, 'calls': len(calls), 'rejected_calls': sum(1 for c in calls if c.get('rejected')),
-            **{k: t[k] for k in ('calls_without_usage', 'input_tokens', 'cached_input_tokens', 'output_tokens',
-                                 'thinking_tokens', 'thinking_unknown')},
-            'tokens': t['tokens'] if t['conclusive'] else None,  # None when any call has unknown usage
-            'tokens_known_calls_only': t['tokens'],
+    ends = [c['ended'] for c in launched] + [t for _, t in delivered.values()]
+    return {'arm': arm, 'calls': len(launched), 'refused_launches': refused, 'complete': complete,
+            'rejected_calls': sum(1 for c in launched if c.get('rejected')),
+            **{k: pub(k) for k in ('input_tokens', 'cached_input_tokens', 'output_tokens', 'thinking_tokens', 'tokens')},
+            'calls_without_usage': t['calls_without_usage'], 'thinking_unknown': t['thinking_unknown'],
+            'tokens_known_calls_only': t['tokens_known_calls_only'],  # partial: diagnostics only
             'answered': len(delivered), 'jobs': len(gold),
             'correct': sum(1 for jid, (v, _) in delivered.items() if v == gold[jid]),
-            'makespan_seconds': round(max((t for _, t in delivered.values()), default=t0) - t0, 2),
+            'makespan_seconds': round(max(ends) - t0, 2) if complete and ends else None,
+            'run_seconds': round(max(ends, default=t0) - t0, 2),
             'producer_latency_seconds': latency,
             'worst_producer_latency_seconds': None if None in latency.values() else max(latency.values())}
 
@@ -201,12 +211,12 @@ def main(argv=None):
             fmt, effort = {'Pd': ('direct', None), 'Ph': ('direct', 'high'), 'A': ('oz', None)}[arm]
             rows.append(run_pooled(arm, jobs, gold, offsets, args.kind, ledger, ws / arm, arm, fmt, effort))
     for r in rows:
-        print(r['arm'], f"{r['correct']}/{r['jobs']}", r['calls'], 'calls', 'n/a (unknown usage)' if r['tokens'] is None else r['tokens'], 'tokens', 'makespan',
+        print(r['arm'], f"{r['correct']}/{r['jobs']}", r['calls'], 'calls', 'n/a (incomplete or unknown usage)' if r['tokens'] is None else r['tokens'], 'tokens', 'makespan',
               r['makespan_seconds'], 'worst', r['worst_producer_latency_seconds'], flush=True)
     (ws / 'pool2.json').write_text(json.dumps({'command': args.command, 'profile': getattr(args, 'profile', None),
-                                               'order': order, 'kind': args.kind, 'rows': rows}, indent=1) + '\n',
-                                   encoding='utf-8')
-    ok = all(r['answered'] == r['jobs'] and r['calls_without_usage'] == 0 for r in rows)
+                                               'order': order, 'kind': args.kind, 'rows': rows,
+                                               'ledger': ledger.state()}, indent=1) + '\n', encoding='utf-8')
+    ok = all(r['complete'] and r['calls_without_usage'] == 0 for r in rows)
     return 0 if ok else 3
 
 
