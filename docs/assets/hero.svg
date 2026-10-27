@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 300" width="960" height="300" role="img" aria-labelledby="t d">
-  <title id="t">31 times fewer tokens than one call per job</title>
-  <desc id="d">The same 64 jobs on Claude Sonnet 5.5: one plain JSON call per job costs 2,834 tokens per verified job, one AKOR call costs 91.6, 31 times fewer. Most of the gap is batching. With one AKOR call per 64 jobs, 192 of 192 jobs were correct across 3 seeds.</desc>
+  <title id="t">22 times fewer tokens than one call per job</title>
+  <desc id="d">The same 64 jobs on Claude Sonnet 5.5: one plain JSON call per job costs 2,052 tokens per requested job, one AKOR call costs 91.6, 22 times fewer. On four Claude models the gap is 20 to 27 times. Most of the gap is batching.</desc>
   <style>
     .bg { fill: #fcfcfb; }
     .panel { fill: #ffffff; stroke: #d9d8d3; stroke-width: 1.5; }
@@ -67,23 +67,23 @@
   <text class="accent sans step s1" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">2×</text>
   <text class="accent sans step s2" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">4×</text>
   <text class="accent sans step s3" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">8×</text>
-  <text class="accent sans step s4" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">14×</text>
-  <text class="accent sans step s5" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">20×</text>
-  <text class="accent sans step s6" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">26×</text>
-  <text class="accent sans step s7" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">30×</text>
-  <text class="accent sans step last s8" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">31×</text>
+  <text class="accent sans step s4" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">12×</text>
+  <text class="accent sans step s5" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">16×</text>
+  <text class="accent sans step s6" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">19×</text>
+  <text class="accent sans step s7" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">21×</text>
+  <text class="accent sans step last s8" x="40" y="176" font-size="150" font-weight="800" letter-spacing="-4">22×</text>
 
   <g class="sans">
     <text class="ink fx" x="360" y="108" font-size="40" font-weight="800" style="animation-delay:.9s">fewer tokens per job</text>
-    <text class="ink2 fx" x="360" y="148" font-size="26" style="animation-delay:1.15s">than one call per job. Same 64 jobs.</text>
-    <text class="ink2 fx" x="360" y="182" font-size="26" style="animation-delay:1.3s">One call per 64 jobs, 192 of 192 correct.</text>
+    <text class="ink2 fx" x="360" y="148" font-size="26" style="animation-delay:1.15s">than one call per job, per requested job.</text>
+    <text class="ink2 fx" x="360" y="182" font-size="26" style="animation-delay:1.3s">20× to 27× on four Claude models.</text>
   </g>
 
   <g class="sans">
     <rect class="grey bar" x="48" y="200" width="864" height="20" rx="4" style="animation-delay:1.0s"/>
-    <text class="ink fx" x="60" y="215" font-size="14" font-weight="600" style="animation-delay:1.4s">64 calls, one per job: 2,834 tokens per verified job</text>
-    <rect class="accent bar" x="48" y="228" width="28" height="20" rx="4" style="opacity:1;animation-delay:1.6s"/>
-    <text class="ink fx" x="86" y="243" font-size="14" font-weight="600" style="animation-delay:1.8s">1 AKOR call: 91.6</text>
+    <text class="ink fx" x="60" y="215" font-size="14" font-weight="600" style="animation-delay:1.4s">64 calls, one per job: 2,052 tokens per requested job</text>
+    <rect class="accent bar" x="48" y="228" width="39" height="20" rx="4" style="opacity:1;animation-delay:1.6s"/>
+    <text class="ink fx" x="97" y="243" font-size="14" font-weight="600" style="animation-delay:1.8s">1 AKOR call: 91.6</text>
   </g>
-  <text class="ink2 sans fx" x="48" y="278" font-size="19" style="animation-delay:1.8s">Claude Sonnet 5.5, 64 jobs, 3 seeds, preregistered. Most of the gap is batching.</text>
+  <text class="ink2 sans fx" x="48" y="278" font-size="19" style="animation-delay:1.8s">Claude Sonnet 5.5 shown, 64 jobs, 3 seeds, preregistered. Most of the gap is batching.</text>
 </svg>

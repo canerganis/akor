@@ -377,7 +377,7 @@ def language_frames():
 
 
 # ---------------------------------------------------------------- 7. one call (pilot, 64 jobs, Sonnet 5.5, 3 seeds)
-PER_JOB, ONE_CALL = 2834, 91.6     # tokens per verified job: one plain JSON call per job vs one AKOR call
+PER_JOB, ONE_CALL = 2052, 91.6     # tokens per requested job: one plain JSON call per job vs one AKOR call
 N_CALLS = 64
 CALL_EVERY, CALL_TRAVEL = 0.036, 0.6
 DOC_W, DOC_H = 34, 46              # one small call packet
@@ -408,7 +408,7 @@ def tokens_counter(d, t, start, end, final, color, strike=None):
             d.line([(cx - 6, 594), (cx + w_old + 6, 594)], fill=fade(DIM, a), width=3)
         cx += w_old + 36
     d.text((cx, 612), shown, fill=color, font=cf, anchor='ls')
-    centered(d, 652, 'per verified job', 26, DIM)
+    centered(d, 652, 'per requested job', 26, DIM)
 
 
 def calls_scene(t, akor):
@@ -466,10 +466,10 @@ def calls_card(t):
     a = lambda s: ease_out((t - s) / 0.35)
     centered(d, 160, 'Many agent jobs,', 76, fade(TEXT, a(0.0)), True)
     centered(d, 250, 'one checked call', 76, fade(TEXT, a(0.0)), True)
-    centered(d, 356, '31x fewer tokens than one call per job', 44, fade(ACCENT, a(0.1)), True)
+    centered(d, 356, '20x to 27x fewer tokens than per-job calls', 44, fade(ACCENT, a(0.1)), True)
     centered(d, 418, 'shared parts written once', 44, fade(ACCENT, a(0.2)), True)
     centered(d, 480, 'every answer checked', 44, fade(ACCENT, a(0.3)), True)
-    centered(d, 550, 'Claude Sonnet 5.5, 64 jobs, 3 seeds, billed tokens', 28, fade(DIM, a(0.35)))
+    centered(d, 550, 'Sonnet, Opus, Haiku 5.5 and Fable 5.1, 64 jobs, 3 seeds', 28, fade(DIM, a(0.35)))
     centered(d, 626, 'github.com/canerganis/akor', 34, fade(DIM, a(0.4)))
     return img
 

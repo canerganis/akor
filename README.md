@@ -6,19 +6,18 @@
 
 Your agents keep repeating themselves on every call. AKOR stops you paying for it.
 
-<img src="docs/assets/hero.svg" alt="31 times fewer tokens per verified job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,834 tokens per verified job as 64 plain JSON calls and 91.6 as one AKOR call. With one AKOR call per 64 jobs, 192 of 192 jobs were correct across 3 seeds. Most of the gap is batching." width="100%">
+<img src="docs/assets/hero.svg" alt="22 times fewer tokens per requested job than one call per job: the same 64 jobs on Claude Sonnet 5.5 cost 2,052 tokens per requested job as 64 plain JSON calls and 91.6 as one AKOR call. 20 to 27 times on four Claude models. Most of the gap is batching." width="100%">
 
-<img src="docs/social/x_akor.gif" alt="Agent A sends 64 jobs as 64 separate calls, each resending the prompt: 2,834 tokens per verified job. As one AKOR call with shared parts written once, the same jobs cost 91.6 tokens per verified job, 31 times fewer, and come back as one checked reply. Claude Sonnet 5.5, 64 jobs, 3 seeds." width="100%">
+<img src="docs/social/x_akor.gif" alt="Agent A sends 64 jobs as 64 separate calls, each resending the prompt: 2,052 tokens per requested job. As one AKOR call with shared parts written once, the same jobs cost 91.6 tokens per requested job and come back as one checked reply. 20 to 27 times fewer on four Claude models, 64 jobs, 3 seeds." width="100%">
 
 ![Python](https://img.shields.io/badge/python-3.10%2B-2a78d6)
 ![Dependencies](https://img.shields.io/badge/core%20dependencies-none-2a78d6)
-![Tests](https://img.shields.io/badge/tests-749%20passing-1a7f4b)
-![Protocol](https://img.shields.io/badge/wire-OZ%2F9%20stage%201g-52514e)
+![Tests](https://img.shields.io/badge/tests-368%20passing-1a7f4b)
 ![License](https://img.shields.io/badge/license-MIT-52514e)
 
-**31 times fewer tokens per verified job than sending one call per job (64 jobs on Claude Sonnet 5.5), and 24 times faster. Pooling four agents' jobs into one call: 40% fewer tokens. Against a JSON format that repeats each job's instruction, 41% to 43% fewer on Sonnet 5.5, Opus 5.5 and Fable 5.1. 91 of 91 replies accepted on the first try.**
+**20 to 27 times fewer tokens per requested job than sending one call per job, on Claude Sonnet 5.5, Opus 5.5, Haiku 5.5 and Fable 5.1 (64 jobs, 3 seeds). Pooling four agents' jobs into one call: 40% fewer tokens. When jobs share instructions and inputs, the compact format saves another 1.3 to 1.7 times over plain JSON in the same single call.**
 
-<sub>Attribution: most of the 31x gap comes from batching, not from the language. Sending 64 jobs in one call instead of 64 calls removes the repeated prompt, CLI overhead and reference material, whatever the reply format. Counted per requested job instead of per verified job, so failed per-job calls do not shrink the denominator, the gap is 22x. The same test on Opus 5.5, Haiku 5.5 and Fable 5.1 gives 27x, 20x and 25x per requested job. [Pilot results](docs/design/brainstorm-2026-10-22/pilot-results.md), [four models](docs/design/direction-2026-10-26/results-5.md).</sub>
+<sub>Attribution: most of the gap comes from batching, not from the format. Sending 64 jobs in one call instead of 64 calls removes the repeated prompt, CLI overhead and reference material, whatever the reply format. Per requested job (Sonnet 22x, Opus 27x, Haiku 20x, Fable 25x) is the cost gap alone. Per verified job it is 29x to 56x, because many single-job replies fail the strict check, mostly with verbose but correct answers. [Four models](docs/design/direction-2026-10-26/results-5.md), [pilot results](docs/design/brainstorm-2026-10-22/pilot-results.md).</sub>
 
 ```bash
 pip install git+https://github.com/canerganis/akor
@@ -32,9 +31,10 @@ If AKOR saves you tokens, a star helps other people find it.
 
 ## The 30-second version
 
-AKOR is a compact message language and a small runtime for agent-to-agent work. Agents send jobs in a short,
-indexed format instead of verbose JSON, and get back one checked record per job: many jobs per call instead of one,
-shared context written once, and nothing delivered until it passes the check.
+AKOR is a small runtime that turns many agent jobs into one model call and checks every answer before delivery.
+Jobs travel in a short, indexed format and come back as one checked record per job: many jobs per call instead of
+one, shared context written once, and nothing delivered until it passes the check. Batching does most of the work;
+the format adds a smaller saving on top.
 
 **The problem.** Multi-agent pipelines pay again and again for the same thing: every call resends the rules, the
 context and a verbose reply format, and one malformed answer forces a retry.
@@ -168,7 +168,8 @@ including subagents ([results](docs/design/brainstorm-2026-10-22/pilot-results.m
 
 <img src="docs/assets/pilot_subagents.svg" alt="Tokens per verified job for the same 64 jobs on Sonnet 5.5: one subagent per job 7,931; one call per job 2,834; plain JSON in one call 151; AKOR in one call 91.6." width="100%">
 
-Most of that gap is batching, not the language: AKOR's own format adds about 39% over one batched plain JSON call at
+The subagent row was recorded before the harness proved one successful subagent per job, so it shows what was
+billed, not a verified fan-out. Most of that gap is batching, not the language: AKOR's own format adds about 39% over one batched plain JSON call at
 64 jobs (10% to 18% at 16). A caller agent that hands the jobs to `oz do` instead of spawning subagents spends 9 to 10
 times fewer tokens ([arm K](docs/design/foundation-2026-10-23/arm-k-results.md)); with the same model, a caller that can
 do the jobs itself in one reply is cheaper still ([caller-cost results](docs/design/caller-cost-2026-10-23/results.md)).
@@ -242,6 +243,11 @@ OZ/1g
 
 ## How it was measured
 
+Every live call goes through one harness ([`bench/harness.py`](bench/harness.py)): the model is pinned and checked,
+subagents included; usage that the provider did not report stays unknown, never zero; every failed call is recorded;
+and a shared SQLite ledger caps launches and tokens across processes. Reports withhold per-job figures and ratios
+for any cell that is incomplete, mixes models or has unknown usage.
+
 Every change to the wire went through the same gate: a plan, thresholds and call budget frozen and hashed before the
 first call, fresh records every repetition, deterministic oracles for every job, strict validation as in the
 product, and failed calls counted in the cost. Every design decision and test round is recorded in
@@ -297,7 +303,7 @@ baselines, so their numbers are not directly comparable.
 - [`OZ9.md`](OZ9.md): the protocol and host design, normative.
 - [`docs/design/`](docs/design/): every wire stage, review, debate and live evidence, in order.
 - [`USAGE.md`](USAGE.md): command-line guide.
-- [`bench/`](bench/): live measurement harness, raw results and measurement kits.
+- [`bench/`](bench/): live measurement harness ([`bench/harness.py`](bench/harness.py)), raw results and measurement kits.
 - [`docs/HISTORY.md`](docs/HISTORY.md): how the protocol evolved.
 
 ## FAQ
